@@ -14,7 +14,7 @@ merge_output_format=mp4
 output_template=%(title)s.%(ext)s
 # output_template=%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s
 
-# Number of playlists to download in parallel at the same time
+# Number of videos to download in parallel across all playlists
 max_concurrent_downloads=3
 
 # Download the official music video instead of the auto-generated audio track.
@@ -24,6 +24,10 @@ max_concurrent_downloads=3
 # official video and downloads that instead. Entries from normal channels and
 # tracks without an official video are downloaded unchanged.
 download_official_music_video=false
+
+# File that receives every line of output (the screen only shows the tail).
+# Set to "off" to disable.
+log_file=mvd.log
 
 # Extra flags to pass to yt-dlp (space separated)
 # -4 enforces IPv4 (prevents YouTube 403 Forbidden errors on IPv6 connections)

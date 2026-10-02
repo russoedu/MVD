@@ -4,17 +4,18 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"context"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 )
 
 // Config holds settings read from setup.conf
@@ -28,6 +29,8 @@ type Config struct {
 	// DownloadOfficialMusicVideo replaces auto-generated "- Topic" art
 	// tracks with the official music video linked from their description.
 	DownloadOfficialMusicVideo bool
+	// LogFile receives every line of output. Empty disables it.
+	LogFile string
 }
 
 // defaultConfig returns fallback settings if setup.conf lacks them
@@ -39,6 +42,7 @@ func defaultConfig() Config {
 		OutputTemplate:         "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s",
 		MaxConcurrentDownloads: 3,
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno,node"},
+		LogFile:                "mvd.log",
 	}
 }
 
@@ -308,6 +312,14 @@ func loadSetupConfig(filePath string) (Config, error) {
 			}
 		case "download_official_music_video":
 			cfg.DownloadOfficialMusicVideo = parseBool(val)
+		case "log_file":
+			switch strings.ToLower(val) {
+			case "":
+			case "off", "none", "false":
+				cfg.LogFile = ""
+			default:
+				cfg.LogFile = val
+			}
 		}
 	}
 
@@ -345,6 +357,9 @@ func loadDownloads(filePath string) ([]string, error) {
 }
 
 func main() {
+	noTUI := flag.Bool("no-tui", false, "plain log output instead of the full screen interface")
+	flag.Parse()
+
 	// 1. Auto-check & download any missing dependencies
 	ensureDependencies()
 
@@ -374,6 +389,7 @@ func main() {
 	fmt.Printf("Max Concurrent Downloads: %d\n", cfg.MaxConcurrentDownloads)
 	fmt.Printf("Extra Arguments:          %v\n", cfg.ExtraArgs)
 	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
+	fmt.Printf("Log File:                 %s\n", cfg.LogFile)
 	fmt.Println("--------------------------------")
 
 	// 4. Ensure output directory exists
@@ -394,81 +410,48 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Found %d playlist(s) to process (%d parallel worker(s)).\n\n", len(urls), cfg.MaxConcurrentDownloads)
+	fmt.Printf("Found %d playlist(s) to process (%d parallel download(s)).\n\n", len(urls), cfg.MaxConcurrentDownloads)
 
-	// 6. Download playlists in parallel with limited concurrency
-	var successful int64
-	var failed int64
-
-	outPattern := filepath.Join(cfg.OutputDir, cfg.OutputTemplate)
-	sem := make(chan struct{}, cfg.MaxConcurrentDownloads)
-	var wg sync.WaitGroup
-	var logMutex sync.Mutex
-
-	logMsg := func(format string, a ...interface{}) {
-		logMutex.Lock()
-		defer logMutex.Unlock()
-		fmt.Printf(format, a...)
+	// 6. Run the engine and attach a renderer
+	eng, err := NewEngine(cfg, ytDlpPath, urls, cfg.LogFile)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
 
-	var resolver *OfficialResolver
-	var stats videoStats
-	if cfg.DownloadOfficialMusicVideo {
-		resolver = newOfficialResolver(logMsg)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	engineDone := make(chan struct{})
+	go func() {
+		eng.Run(ctx)
+		close(engineDone)
+	}()
+
+	var tally Tally
+	if useTUI(*noTUI) {
+		state, err := runTUI(ctx, eng)
+		cancel()
+		// Unblock the engine so it can shut down, then print the summary
+		// into the normal screen buffer where it stays in the scrollback.
+		for range eng.Events() {
+		}
+		<-engineDone
+		if err != nil {
+			fmt.Printf("Interface error: %v\n", err)
+		}
+		if state != nil {
+			tally = state.tally()
+			printSummary(os.Stdout, state, tally)
+		}
+	} else {
+		tally = runPlain(ctx, cancel, eng, os.Stdout)
+		<-engineDone
 	}
 
-	for i, url := range urls {
-		wg.Add(1)
-		sem <- struct{}{} // Acquire worker slot
-
-		go func(idx int, playlistURL string) {
-			defer wg.Done()
-			defer func() { <-sem }() // Release worker slot
-
-			logMsg("[PLAYLIST %d/%d] Starting download: %s\n", idx+1, len(urls), playlistURL)
-
-			var err error
-			if cfg.DownloadOfficialMusicVideo {
-				err = downloadPlaylistOfficial(ytDlpPath, cfg, outPattern, playlistURL, resolver, logMsg, &stats)
-			} else {
-				err = runYtDlp(ytDlpPath, buildDownloadArgs(cfg, outPattern, playlistURL))
-			}
-
-			if err != nil {
-				logMsg("\n[ERROR] Playlist #%d (%s) failed: %v\n\n", idx+1, playlistURL, err)
-				atomic.AddInt64(&failed, 1)
-			} else {
-				logMsg("\n[SUCCESS] Playlist #%d completed successfully!\n\n", idx+1)
-				atomic.AddInt64(&successful, 1)
-			}
-		}(i, url)
+	if tally.Failed > 0 {
+		os.Exit(1)
 	}
-
-	wg.Wait()
-
-	// 7. Print summary
-	fmt.Println("==================================================")
-	fmt.Println("Download Summary:")
-	fmt.Printf("Total Playlists: %d\n", len(urls))
-	fmt.Printf("Successful:      %d\n", successful)
-	fmt.Printf("Failed:          %d\n", failed)
-	if cfg.DownloadOfficialMusicVideo {
-		fmt.Printf("Videos downloaded:        %d\n", atomic.LoadInt64(&stats.downloaded))
-		fmt.Printf("  replaced by official:   %d\n", atomic.LoadInt64(&stats.replaced))
-		fmt.Printf("  kept original:          %d\n", atomic.LoadInt64(&stats.keptOriginal))
-		fmt.Printf("  skipped duplicates:     %d\n", atomic.LoadInt64(&stats.duplicates))
-		fmt.Printf("Videos failed:            %d\n", atomic.LoadInt64(&stats.failed))
-	}
-	fmt.Println("==================================================")
-}
-
-// videoStats counts per-video outcomes in official music video mode.
-type videoStats struct {
-	downloaded   int64
-	replaced     int64
-	keptOriginal int64
-	duplicates   int64
-	failed       int64
 }
 
 // buildDownloadArgs assembles the yt-dlp command line. The trailing
@@ -485,70 +468,4 @@ func buildDownloadArgs(cfg Config, outPattern string, trailing ...string) []stri
 		args = append(args, cfg.ExtraArgs...)
 	}
 	return append(args, trailing...)
-}
-
-func runYtDlp(ytDlpPath string, args []string) error {
-	cmd := exec.Command(ytDlpPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-// downloadPlaylistOfficial lists the playlist, swaps every auto-generated
-// art track for the official music video linked from its description, and
-// downloads the videos one by one so playlist folder/index fields keep
-// working in the output template.
-func downloadPlaylistOfficial(ytDlpPath string, cfg Config, outPattern, playlistURL string, resolver *OfficialResolver, logMsg func(string, ...interface{}), stats *videoStats) error {
-	entries, err := listPlaylistEntries(ytDlpPath, playlistURL, cfg.ExtraArgs)
-	if err != nil {
-		return err
-	}
-	if len(entries) == 0 {
-		return fmt.Errorf("playlist is empty or could not be listed")
-	}
-	logMsg("    Playlist %q has %d entries, resolving official videos...\n", entries[0].PlaylistTitle, len(entries))
-
-	seen := make(map[string]bool, len(entries))
-	var failures int
-	for _, e := range entries {
-		targetID := e.ID
-		label := "original"
-
-		if isAutoGenerated(e) {
-			if official, reason := resolver.Resolve(e.ID); official != "" {
-				targetID = official
-				label = "official"
-				logMsg("    [%02d] %s -> %s (%s)\n", e.PlaylistIndex, e.ID, official, reason)
-			} else {
-				logMsg("    [%02d] %s kept as is (%s)\n", e.PlaylistIndex, e.ID, reason)
-			}
-		}
-
-		if seen[targetID] {
-			logMsg("    [%02d] %s already downloaded for this playlist, skipping duplicate\n", e.PlaylistIndex, targetID)
-			atomic.AddInt64(&stats.duplicates, 1)
-			continue
-		}
-		seen[targetID] = true
-
-		args := buildDownloadArgs(cfg, applyPlaylistFields(outPattern, e), "--no-playlist", "https://www.youtube.com/watch?v="+targetID)
-
-		if err := runYtDlp(ytDlpPath, args); err != nil {
-			logMsg("    [ERROR] %s (%s for entry %02d) failed: %v\n", targetID, label, e.PlaylistIndex, err)
-			atomic.AddInt64(&stats.failed, 1)
-			failures++
-			continue
-		}
-		atomic.AddInt64(&stats.downloaded, 1)
-		if label == "official" {
-			atomic.AddInt64(&stats.replaced, 1)
-		} else {
-			atomic.AddInt64(&stats.keptOriginal, 1)
-		}
-	}
-
-	if failures > 0 {
-		return fmt.Errorf("%d of %d videos failed", failures, len(entries))
-	}
-	return nil
 }
