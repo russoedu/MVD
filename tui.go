@@ -146,6 +146,9 @@ func (m tuiModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if key == "ctrl+c" {
 		return m, tea.Quit
 	}
+	if key == "ctrl+l" {
+		return m, tea.ClearScreen
+	}
 
 	if m.confirmQuit {
 		switch key {
@@ -263,7 +266,7 @@ func (m *tuiModel) retry() {
 			return
 		}
 		if m.eng.Retry(en.ID) {
-			m.flash(fmt.Sprintf("retrying %02d %s", en.Index, en.Title))
+			m.flash(fmt.Sprintf("retrying %02d %s", en.Index, entryTitle(en)))
 		}
 	default:
 		if m.selPlaylist < len(m.state.Playlists) {
@@ -441,7 +444,7 @@ func (m tuiModel) renderPlaylists(w, h int) string {
 			cursor = "▸"
 		}
 		titleW := innerW - 2 - 1 - len(count) - 1 - 2
-		title := padRight(truncate(pl.Title, titleW), titleW)
+		title := padRight(truncate(display(pl.Title), titleW), titleW)
 		row := fmt.Sprintf("%s %s %s ", cursor, title, count)
 		if i == m.selPlaylist {
 			row = stySelected.Render(row)
@@ -509,7 +512,7 @@ func (m tuiModel) renderEntries(w, h int) string {
 		tag, tagW := m.entryTag(en)
 		// glyph(1) space(1) idx(2) space(1) title space(1) tag
 		titleW := innerW - 1 - 1 - 2 - 1 - 1 - tagW
-		title := padRight(truncate(en.Title, titleW), titleW)
+		title := padRight(truncate(entryTitle(en), titleW), titleW)
 		text := fmt.Sprintf(" %02d %s ", en.Index, title)
 		if i == sel && m.focus == paneEntries {
 			text = stySelected.Render(text)
@@ -531,7 +534,7 @@ func (m tuiModel) renderEntries(w, h int) string {
 		pl := m.state.Playlists[m.selPlaylist]
 		if pl.Err != "" {
 			rows = nil
-			for _, l := range wrap("✗ "+pl.Err, innerW) {
+			for _, l := range wrap("✗ "+display(pl.Err), innerW) {
 				rows = append(rows, styRed.Render(l))
 			}
 		} else if !pl.Listed {
@@ -561,10 +564,10 @@ func (m tuiModel) outputTitle() string {
 	}
 	pl := m.state.Playlists[m.selPlaylist]
 	if m.focus == paneLists || m.selectedEntry() == nil {
-		return pl.Title
+		return display(pl.Title)
 	}
 	en := m.selectedEntry()
-	return fmt.Sprintf("%s › %02d %s", pl.Title, en.Index, en.Title)
+	return fmt.Sprintf("%s › %02d %s", display(pl.Title), en.Index, entryTitle(en))
 }
 
 func (m tuiModel) renderOutput(w, h int) string {
@@ -578,7 +581,7 @@ func (m tuiModel) renderOutput(w, h int) string {
 		case StateDownloading, StateMerging:
 			footer = append(footer, "", m.renderBar(en, innerW))
 		case StateFailed:
-			footer = append(footer, "", styRed.Render(truncate("✗ "+en.Err, innerW)))
+			footer = append(footer, "", styRed.Render(truncate("✗ "+display(en.Err), innerW)))
 		case StateDone:
 			what := "original " + en.TargetID
 			if en.Official {
@@ -602,7 +605,7 @@ func (m tuiModel) renderOutput(w, h int) string {
 	}
 	shown := make([]string, 0, avail+len(footer))
 	for _, l := range lines[start:end] {
-		shown = append(shown, styText.Render(truncate(l, innerW)))
+		shown = append(shown, styText.Render(truncate(display(l), innerW)))
 	}
 	for len(shown) < avail {
 		shown = append(shown, "")
@@ -679,6 +682,7 @@ func (m tuiModel) renderHelp() string {
 		styKey.Render("l") + "           toggle full screen output",
 		styKey.Render("q") + "           quit (asks for confirmation while running)",
 		styKey.Render("ctrl+c") + "      quit immediately",
+		styKey.Render("ctrl+l") + "      redraw the screen",
 		"",
 		styDim.Render("glyphs: · queued  ⟲ resolving  ⠋ downloading  ⚙ merging  ✓ done  ≡ duplicate  ✗ failed  ⇄ official video"),
 		"",
