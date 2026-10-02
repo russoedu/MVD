@@ -130,6 +130,23 @@ https://youtube.com/playlist?list=PLsc4x0rSyZsNF6WV5rBk2M41W12ox0nhq
 
 ---
 
+## 🗂️ Code Layout
+
+The code follows vertical feature slices: `main.go` at the root only wires things together, and every folder under `internal/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
+
+| Slice | Outcome |
+|---|---|
+| `internal/config` | Load `setup.conf` and `downloads.conf`. |
+| `internal/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading them into `./bin` when missing. |
+| `internal/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template. |
+| `internal/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
+| `internal/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
+| `internal/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
+| `internal/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
+| `internal/tui` | Show the run on the full screen interface. |
+
+Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it; `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
+
 ## 🛠️ Building & Releasing
 
 ```powershell

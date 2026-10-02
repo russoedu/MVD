@@ -1,4 +1,4 @@
-package main
+package tui
 
 import (
 	"strings"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/mattn/go-runewidth"
 	"golang.org/x/text/unicode/norm"
+
+	"youtube-downloader/internal/runstate"
 )
 
 // display makes a user supplied string safe to draw in a fixed layout.
@@ -58,7 +60,7 @@ func eastAsian(r rune) bool {
 
 // entryTitle returns the title to show for an entry, falling back to the
 // video id when the listing had no title.
-func entryTitle(en *entryView) string {
+func entryTitle(en *runstate.Entry) string {
 	t := display(en.Title)
 	if t == "" {
 		return "(" + en.VideoID + ")"

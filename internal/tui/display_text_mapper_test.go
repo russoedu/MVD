@@ -1,9 +1,12 @@
-package main
+package tui
 
 import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"youtube-downloader/internal/engine"
+	"youtube-downloader/internal/runstate"
 )
 
 func TestDisplay(t *testing.T) {
@@ -25,8 +28,6 @@ func TestDisplay(t *testing.T) {
 			t.Errorf("display(%q)\n want %q\n got  %q", in, want, got)
 		}
 	}
-	// Whatever is left must have a stable width: no double width runes
-	// outside East Asian scripts.
 	out := display("mix 🔊 of 日本 and 🎵 emoji ✅")
 	if w := ansi.StringWidth(out); w != len([]rune(out))+2 {
 		t.Errorf("unexpected width %d for %q", w, out)
@@ -34,13 +35,16 @@ func TestDisplay(t *testing.T) {
 }
 
 func TestEntryTitleFallback(t *testing.T) {
-	if got := entryTitle(&entryView{EntryInfo: EntryInfo{VideoID: "abc", Title: ""}}); got != "(abc)" {
+	mk := func(id, title string) *runstate.Entry {
+		return &runstate.Entry{EntryInfo: engine.EntryInfo{VideoID: id, Title: title}}
+	}
+	if got := entryTitle(mk("abc", "")); got != "(abc)" {
 		t.Errorf("empty title should fall back to the id, got %q", got)
 	}
-	if got := entryTitle(&entryView{EntryInfo: EntryInfo{VideoID: "abc", Title: "🔊"}}); got != "(abc)" {
+	if got := entryTitle(mk("abc", "🔊")); got != "(abc)" {
 		t.Errorf("title made only of emoji should fall back to the id, got %q", got)
 	}
-	if got := entryTitle(&entryView{EntryInfo: EntryInfo{VideoID: "abc", Title: "Song"}}); got != "Song" {
+	if got := entryTitle(mk("abc", "Song")); got != "Song" {
 		t.Errorf("got %q", got)
 	}
 }
