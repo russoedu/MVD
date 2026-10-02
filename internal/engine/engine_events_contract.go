@@ -18,6 +18,11 @@ type EntryInfo struct {
 
 // Events emitted by the Engine. Renderers (TUI, plain log) consume them.
 type (
+	// EvPlaylistListing is sent when the listing of a playlist starts.
+	EvPlaylistListing struct {
+		Playlist int
+		URL      string
+	}
 	// EvPlaylistListed is sent once the flat listing of a playlist is known.
 	EvPlaylistListed struct {
 		Playlist int

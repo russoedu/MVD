@@ -23,6 +23,13 @@ type Config struct {
 	DownloadOfficialMusicVideo bool
 	// LogFile receives every line of output. Empty disables it.
 	LogFile string
+	// CookiesFromBrowser is a yt-dlp browser specification such as "edge"
+	// or "firefox:default". Empty means no browser cookies.
+	CookiesFromBrowser string
+	// CookiesFile is a Netscape cookie file. With CookiesFromBrowser set
+	// the browser cookies are exported here at start; otherwise it is used
+	// as is when it exists.
+	CookiesFile string
 }
 
 // Default returns the settings used when setup.conf lacks a key.
@@ -35,6 +42,7 @@ func Default() Config {
 		MaxConcurrentDownloads: 3,
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno,node"},
 		LogFile:                "mvd.log",
+		CookiesFile:            "cookies.txt",
 	}
 }
 
@@ -102,6 +110,21 @@ func LoadSetup(path string) (Config, error) {
 				cfg.LogFile = ""
 			default:
 				cfg.LogFile = val
+			}
+		case "cookies_from_browser":
+			switch strings.ToLower(val) {
+			case "", "off", "none", "false":
+				cfg.CookiesFromBrowser = ""
+			default:
+				cfg.CookiesFromBrowser = val
+			}
+		case "cookies_file":
+			switch strings.ToLower(val) {
+			case "":
+			case "off", "none", "false":
+				cfg.CookiesFile = ""
+			default:
+				cfg.CookiesFile = val
 			}
 		}
 	}

@@ -20,6 +20,7 @@ import (
 	"youtube-downloader/internal/plain"
 	"youtube-downloader/internal/runstate"
 	"youtube-downloader/internal/tui"
+	"youtube-downloader/internal/ytdlp"
 )
 
 func main() {
@@ -56,6 +57,8 @@ func main() {
 	fmt.Printf("Extra Arguments:          %v\n", cfg.ExtraArgs)
 	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
 	fmt.Printf("Log File:                 %s\n", cfg.LogFile)
+	fmt.Printf("Cookies From Browser:     %s\n", orNone(cfg.CookiesFromBrowser))
+	fmt.Printf("Cookies File:             %s\n", orNone(cfg.CookiesFile))
 	fmt.Println("--------------------------------")
 
 	// 4. Ensure output directory exists
@@ -78,7 +81,35 @@ func main() {
 
 	fmt.Printf("Found %d playlist(s) to process (%d parallel download(s)).\n\n", len(urls), cfg.MaxConcurrentDownloads)
 
-	// 6. Build the engine and attach a renderer
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	// 6. Browser cookies: export them once through yt-dlp, then let every
+	//    yt-dlp run and the official video resolver reuse the file.
+	extraArgs := append([]string(nil), cfg.ExtraArgs...)
+	if cfg.CookiesFromBrowser != "" {
+		if cfg.CookiesFile == "" {
+			fmt.Println("Error: cookies_from_browser needs cookies_file to store the exported cookies.")
+			os.Exit(1)
+		}
+		fmt.Printf("Exporting cookies from %s...\n", cfg.CookiesFromBrowser)
+		if err := ytdlp.ExportCookies(ctx, ytDlpPath, cfg.CookiesFromBrowser, cfg.CookiesFile, urls[0], extraArgs); err != nil {
+			fmt.Printf("Warning: %v\n", err)
+		}
+	}
+	cookiesActive := false
+	if cfg.CookiesFile != "" {
+		if _, err := os.Stat(cfg.CookiesFile); err == nil {
+			extraArgs = append(extraArgs, ytdlp.CookieArgs(cfg.CookiesFile)...)
+			cookiesActive = true
+			fmt.Printf("Using cookies from %s\n", cfg.CookiesFile)
+		} else if cfg.CookiesFromBrowser != "" {
+			fmt.Println("Warning: no cookie file available, continuing without cookies.")
+		}
+	}
+	fmt.Println()
+
+	// 7. Build the engine and attach a renderer
 	opts := engine.Options{
 		YtDlp:             ytDlpPath,
 		URLs:              urls,
@@ -86,12 +117,28 @@ func main() {
 		OutputTemplate:    cfg.OutputTemplate,
 		Quality:           cfg.Quality,
 		MergeOutputFormat: cfg.MergeOutputFormat,
-		ExtraArgs:         cfg.ExtraArgs,
+		ExtraArgs:         extraArgs,
 		Workers:           cfg.MaxConcurrentDownloads,
 		LogPath:           cfg.LogFile,
 	}
 	if cfg.DownloadOfficialMusicVideo {
-		opts.Resolver = official.NewResolver(nil)
+		resolver := official.NewResolver(nil)
+		if cookiesActive {
+			if n, err := resolver.UseCookies(cfg.CookiesFile); err != nil {
+				fmt.Printf("Warning: resolver cannot use cookies: %v\n", err)
+			} else {
+				fmt.Printf("Official video resolver loaded %d cookies\n", n)
+			}
+		}
+		resolver.Dumper = func(videoID string) ([]official.DumpedPage, error) {
+			pages, err := ytdlp.DumpPages(ctx, ytDlpPath, "https://www.youtube.com/watch?v="+videoID, extraArgs)
+			out := make([]official.DumpedPage, 0, len(pages))
+			for _, p := range pages {
+				out = append(out, official.DumpedPage{URL: p.URL, Body: p.Body})
+			}
+			return out, err
+		}
+		opts.Resolver = resolver
 	}
 
 	eng, err := engine.New(opts)
@@ -99,9 +146,6 @@ func main() {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
 
 	engineDone := make(chan struct{})
 	go func() {
@@ -133,4 +177,11 @@ func main() {
 	if tally.Failed > 0 {
 		os.Exit(1)
 	}
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "(none)"
+	}
+	return s
 }

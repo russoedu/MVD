@@ -46,6 +46,9 @@ func stubYtDlp(args []string) int {
 		case strings.Contains(url, "list=B"):
 			entries = []ytdlp.PlaylistEntry{{ID: "bbbbbbbbbb1", Title: "Normal upload", Channel: "Band",
 				Playlist: "Playlist B", PlaylistTitle: "Playlist B", PlaylistID: "B", PlaylistIndex: 1, PlaylistCount: 1}}
+		case strings.Contains(url, "list=C"):
+			entries = []ytdlp.PlaylistEntry{{ID: "cccccccccc1", Title: "Art track with a dead official video", Channel: "Other - Topic",
+				Playlist: "Playlist C", PlaylistTitle: "Playlist C", PlaylistID: "C", PlaylistIndex: 1, PlaylistCount: 1}}
 		default:
 			fmt.Fprintln(os.Stderr, "ERROR: [youtube:tab] Unable to recognize playlist")
 			return 1
@@ -80,6 +83,9 @@ func (fakeResolver) ResolveLog(videoID string, logf func(string, ...interface{})
 	logf("[official] %s: looked up", videoID)
 	if strings.HasPrefix(videoID, "aaaa") {
 		return "OFFICIAL001", `official video by "Label Records"`
+	}
+	if strings.HasPrefix(videoID, "cccc") {
+		return "OFFICIALfail", `official video by "Gone Records"`
 	}
 	return "", "no official video link found in description"
 }
@@ -141,7 +147,7 @@ func final(events []interface{}) map[int]EvEntryState {
 }
 
 func TestEngineRun(t *testing.T) {
-	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A", "https://youtube.com/playlist?list=B", "https://youtube.com/playlist?list=NOPE")
+	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A", "https://youtube.com/playlist?list=B", "https://youtube.com/playlist?list=NOPE", "https://youtube.com/playlist?list=C")
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { eng.Run(ctx); close(done) }()
@@ -171,8 +177,8 @@ func TestEngineRun(t *testing.T) {
 			sawProgress = true
 		}
 	}
-	if listed != 2 || failedLists != 1 {
-		t.Fatalf("want 2 listed and 1 failed playlist, got %d and %d", listed, failedLists)
+	if listed != 3 || failedLists != 1 {
+		t.Fatalf("want 3 listed and 1 failed playlist, got %d and %d", listed, failedLists)
 	}
 	if !sawMerging || !sawProgress {
 		t.Errorf("expected merging and progress events (merging=%v progress=%v)", sawMerging, sawProgress)
@@ -198,6 +204,20 @@ func TestEngineRun(t *testing.T) {
 	b1 := states[infos["bbbbbbbbbb1"].ID]
 	if b1.State != StateDone || b1.Official || b1.TargetID != "bbbbbbbbbb1" {
 		t.Errorf("b1 should be downloaded as is: %+v", b1)
+	}
+	// The official video of c1 cannot be downloaded: the original is used.
+	c1 := states[infos["cccccccccc1"].ID]
+	if c1.State != StateDone || c1.Official || c1.TargetID != "cccccccccc1" {
+		t.Errorf("c1 should fall back to the original track: %+v", c1)
+	}
+	sawFallbackLog := false
+	for _, ev := range events {
+		if lg, ok := ev.(EvLog); ok && lg.Entry == c1.Entry && strings.Contains(lg.Line, "downloading the original instead") {
+			sawFallbackLog = true
+		}
+	}
+	if !sawFallbackLog {
+		t.Error("fallback to the original should be logged")
 	}
 
 	// Retry the failed entry: it fails again and the engine goes idle again.

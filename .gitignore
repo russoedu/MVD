@@ -37,3 +37,6 @@ Thumbs.db
 # Configurations
 downloads.conf
 setup.conf
+
+# Exported browser cookies (session secrets)
+cookies.txt

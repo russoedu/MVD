@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -256,5 +258,70 @@ func TestResolveSkipsTopicAndDeadLinks(t *testing.T) {
 	_, res = f.server(t)
 	if got, _ := res.Resolve("rnlp_avexYQ"); got != "" {
 		t.Fatalf("expected empty result, got %q", got)
+	}
+}
+
+func TestResolveThroughDumper(t *testing.T) {
+	// Direct fetch and next are stripped; the dumper hands over a full page.
+	f := &fakeYouTube{
+		pages:   map[string]string{"rnlp_avexYQ": `<script>var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":"stripped"}};</script>`},
+		authors: map[string]string{"-bsONE-kZwI": "London Records"},
+	}
+	_, res := f.server(t)
+	dumped := 0
+	res.Dumper = func(videoID string) ([]DumpedPage, error) {
+		dumped++
+		return []DumpedPage{
+			{URL: "https://www.youtube.com/watch?v=" + videoID, Body: []byte(watchPage(videoID, "-bsONE-kZwI", ""))},
+			{URL: "https://www.youtube.com/youtubei/v1/player?prettyPrint=false", Body: []byte(`{}`)},
+		}, nil
+	}
+	got, reason := res.Resolve("rnlp_avexYQ")
+	if got != "-bsONE-kZwI" || dumped != 1 {
+		t.Fatalf("want -bsONE-kZwI via dumper, got %q (%s), dumped=%d", got, reason, dumped)
+	}
+
+	// With a Music card on the direct page the dumper is never called.
+	f = &fakeYouTube{
+		pages:   map[string]string{"rnlp_avexYQ": watchPage("rnlp_avexYQ", "-bsONE-kZwI", "")},
+		authors: map[string]string{"-bsONE-kZwI": "London Records"},
+	}
+	_, res = f.server(t)
+	res.Dumper = func(string) ([]DumpedPage, error) { t.Error("dumper should not run"); return nil, nil }
+	if got, _ := res.Resolve("rnlp_avexYQ"); got != "-bsONE-kZwI" {
+		t.Fatalf("direct path broken: %q", got)
+	}
+}
+
+func TestLoadCookieJar(t *testing.T) {
+	path := t.TempDir() + "/cookies.txt"
+	content := "# Netscape HTTP Cookie File\n# comment\n\n.youtube.com\tTRUE\t/\tTRUE\t0\tSOCS\tCAI\n#HttpOnly_.youtube.com\tTRUE\t/\tTRUE\t4102444800\tSID\tsecret\nexample.com\tFALSE\t/\tFALSE\t0\tother\tx\nbroken line\n"
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	jar, n, err := LoadCookieJar(path)
+	if err != nil || n != 3 {
+		t.Fatalf("load failed: %v (n=%d)", err, n)
+	}
+	u, _ := url.Parse("https://www.youtube.com/watch?v=x")
+	names := map[string]string{}
+	for _, c := range jar.Cookies(u) {
+		names[c.Name] = c.Value
+	}
+	if names["SID"] != "secret" || names["SOCS"] != "CAI" || names["other"] != "" {
+		t.Errorf("unexpected cookies for youtube: %v", names)
+	}
+
+	res := NewResolver(nil)
+	if n, err := res.UseCookies(path); err != nil || n != 3 || res.Client.Jar == nil {
+		t.Errorf("UseCookies failed: %v %d", err, n)
+	}
+	if _, _, err := LoadCookieJar(t.TempDir() + "/missing.txt"); err == nil {
+		t.Error("missing file should fail")
+	}
+	empty := t.TempDir() + "/empty.txt"
+	os.WriteFile(empty, []byte("# nothing\n"), 0600)
+	if _, _, err := LoadCookieJar(empty); err == nil {
+		t.Error("file without cookies should fail")
 	}
 }

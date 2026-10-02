@@ -13,8 +13,10 @@ import (
 func (r *Resolver) do(req *http.Request) ([]byte, int, error) {
 	req.Header.Set("User-Agent", r.UserAgent)
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
-	// Skip the EU cookie consent interstitial.
-	req.Header.Set("Cookie", "SOCS=CAI; CONSENT=YES+cb")
+	if r.Client.Jar == nil {
+		// Skip the EU cookie consent interstitial.
+		req.Header.Set("Cookie", "SOCS=CAI; CONSENT=YES+cb")
+	}
 
 	attempts := r.Attempts
 	if attempts < 1 {
