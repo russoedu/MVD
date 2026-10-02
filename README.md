@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="MVD - Music Video Downloader" width="480">
+</p>
+
 # YouTube Playlist Downloader (Go + yt-dlp)
 
 A lightweight, zero-setup, concurrent Go application that automatically reads playlist URLs from `downloads.conf`, reads settings from `setup.conf`, self-diagnoses and installs missing dependencies, and downloads playlists in parallel with the best available video and audio quality.

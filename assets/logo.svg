@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <!-- TV Outer Casing Gradient -->
+    <linearGradient id="tvCase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a3d40"/>
+      <stop offset="50%" stop-color="#1f2124"/>
+      <stop offset="100%" stop-color="#121315"/>
+    </linearGradient>
+
+    <!-- CRT Bezel Gradient -->
+    <linearGradient id="bezel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#18191b"/>
+      <stop offset="100%" stop-color="#0a0a0b"/>
+    </linearGradient>
+
+    <!-- Screen Glow Gradient -->
+    <radialGradient id="screenGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a1c2e"/>
+      <stop offset="80%" stop-color="#0d0e17"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </radialGradient>
+
+    <!-- 3D Extrusion Gradient for Block Letters -->
+    <linearGradient id="block3D" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00a896"/>
+      <stop offset="100%" stop-color="#028090"/>
+    </linearGradient>
+
+    <!-- Block Letters Front Face Gradient -->
+    <linearGradient id="letterFace" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff007f"/>
+      <stop offset="50%" stop-color="#d8117a"/>
+      <stop offset="100%" stop-color="#7928ca"/>
+    </linearGradient>
+
+    <!-- CRT Scanline Pattern -->
+    <pattern id="scanlines" width="100" height="4" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="100" y2="0" stroke="#000000" stroke-width="1.5" opacity="0.35"/>
+    </pattern>
+
+    <!-- Glass Reflection Highlight -->
+    <linearGradient id="glassGlare" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="30%" stop-color="#ffffff" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="4" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="800" height="600" fill="#08080a"/>
+
+  <!-- TV Set Outer Shell -->
+  <rect x="70" y="50" width="660" height="500" rx="40" ry="40" fill="url(#tvCase)" stroke="#111" stroke-width="4"/>
+  <rect x="80" y="60" width="640" height="480" rx="32" ry="32" fill="none" stroke="#4a4e54" stroke-width="2" opacity="0.5"/>
+
+  <!-- Main TV Screen Area Bezel -->
+  <rect x="100" y="80" width="460" height="440" rx="35" ry="35" fill="url(#bezel)"/>
+
+  <!-- CRT Tube Curved Screen Surface -->
+  <rect x="115" y="95" width="430" height="410" rx="45" ry="45" fill="url(#screenGlow)"/>
+
+  <!-- CRT Screen Contents -->
+  <g clip-path="url(#screenClip)">
+    <clipPath id="screenClip">
+      <rect x="115" y="95" width="430" height="410" rx="45" ry="45"/>
+    </clipPath>
+
+    <!-- Background Grid inside TV Screen -->
+    <path d="M115 150 L545 150 M115 220 L545 220 M115 290 L545 290 M115 360 L545 360 M115 430 L545 430" stroke="#ff007f" stroke-width="1" opacity="0.15"/>
+    <path d="M180 95 L180 505 M260 95 L260 505 M340 95 L340 505 M420 95 L420 505 M500 95 L500 505" stroke="#00f0ff" stroke-width="1" opacity="0.15"/>
+
+    <!-- LOGO GROUP: M V D IN MATCHING BLOCKY STYLES -->
+    <g transform="translate(130, 160)">
+      
+      <!-- 1. 3D BACK/DEPTH LAYER (ALL THREE LETTERS) -->
+      <g fill="url(#block3D)" transform="translate(10, 10)">
+        <!-- Block 'M' Depth -->
+        <path d="M 10 180 L 10 50 L 50 50 L 80 105 L 110 50 L 150 50 L 150 180 L 115 180 L 115 95 L 90 145 L 70 145 L 45 95 L 45 180 Z"/>
+        <!-- Block 'V' Depth -->
+        <path d="M 140 50 L 180 50 L 205 130 L 230 50 L 270 50 L 225 180 L 185 180 Z"/>
+        <!-- Block 'D' Depth -->
+        <path d="M 260 50 L 320 50 C 355 50 370 75 370 115 C 370 155 355 180 320 180 L 260 180 Z M 295 82 L 295 148 L 315 148 C 330 148 335 138 335 115 C 335 92 330 82 315 82 Z"/>
+      </g>
+
+      <!-- 2. FRONT FACES (ALL THREE LETTERS) -->
+      <g fill="url(#letterFace)" stroke="#ffffff" stroke-width="4" stroke-linejoin="round">
+        <!-- Block 'M' Front -->
+        <path d="M 10 180 L 10 50 L 50 50 L 80 105 L 110 50 L 150 50 L 150 180 L 115 180 L 115 95 L 90 145 L 70 145 L 45 95 L 45 180 Z"/>
+        <!-- Block 'V' Front -->
+        <path d="M 140 50 L 180 50 L 205 130 L 230 50 L 270 50 L 225 180 L 185 180 Z"/>
+        <!-- Block 'D' Front -->
+        <path d="M 260 50 L 320 50 C 355 50 370 75 370 115 C 370 155 355 180 320 180 L 260 180 Z M 295 82 L 295 148 L 315 148 C 330 148 335 138 335 115 C 335 92 330 82 315 82 Z"/>
+      </g>
+
+      <!-- 3. ACCENTS & CUTOUTS -->
+      <!-- Inner Stencil Shadows for M -->
+      <path d="M 20 60 L 40 60 L 40 85 Z" fill="#121315" opacity="0.3"/>
+      <path d="M 120 60 L 140 60 L 120 85 Z" fill="#121315" opacity="0.3"/>
+
+      <!-- Integrated Download Arrow inside D -->
+      <g transform="translate(302, 95)" stroke="#ffe600" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#shadow)">
+        <line x1="12" y1="0" x2="12" y2="28"/>
+        <polyline points="2,18 12,28 22,18"/>
+        <line x1="0" y1="36" x2="24" y2="36"/>
+      </g>
+
+      <!-- Decorative Pop-Art Spray Strokes -->
+      <path d="M 5 40 L 25 25 M 360 45 L 375 35" stroke="#00f0ff" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 130 190 L 145 205 M 245 190 L 255 205" stroke="#ffe600" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Subtitle Banner: "MUSIC VIDEO DOWNLOADER" -->
+    <rect x="160" y="415" width="340" height="32" rx="6" fill="#000000" stroke="#00f0ff" stroke-width="2"/>
+    <text x="330" y="437" font-family="'Impact', 'Arial Black', sans-serif" font-size="17" fill="#ffffff" text-anchor="middle" letter-spacing="3">
+      MUSIC VIDEO DOWNLOADER
+    </text>
+
+    <!-- CRT Scanlines Overlay -->
+    <rect x="115" y="95" width="430" height="410" fill="url(#scanlines)" pointer-events="none"/>
+
+    <!-- Glass Reflection Glare -->
+    <path d="M 115 95 L 350 95 L 115 330 Z" fill="url(#glassGlare)" pointer-events="none"/>
+  </g>
+
+  <!-- TV Screen Inner Border / Rubber Gasket -->
+  <rect x="115" y="95" width="430" height="410" rx="45" ry="45" fill="none" stroke="#000000" stroke-width="8" opacity="0.7"/>
+
+  <!-- TV CONTROL PANEL (Right Side) -->
+  <g transform="translate(580, 80)">
+    <!-- Panel Background -->
+    <rect x="0" y="0" width="120" height="440" rx="15" ry="15" fill="#1a1c1e" stroke="#0d0e0f" stroke-width="2"/>
+    
+    <!-- Speaker Grille Slots -->
+    <g fill="#0a0a0b">
+      <rect x="20" y="30" width="80" height="6" rx="3"/>
+      <rect x="20" y="45" width="80" height="6" rx="3"/>
+      <rect x="20" y="60" width="80" height="6" rx="3"/>
+      <rect x="20" y="75" width="80" height="6" rx="3"/>
+      <rect x="20" y="90" width="80" height="6" rx="3"/>
+      <rect x="20" y="105" width="80" height="6" rx="3"/>
+    </g>
+
+    <!-- Dials -->
+    <circle cx="60" cy="180" r="32" fill="#111214" stroke="#33373b" stroke-width="3"/>
+    <circle cx="60" cy="180" r="24" fill="#222529"/>
+    <rect x="57" y="152" width="6" height="28" rx="2" fill="#d1d5db"/>
+    <text x="60" y="226" font-family="sans-serif" font-size="10" fill="#888" text-anchor="middle" font-weight="bold">CHANNEL</text>
+
+    <circle cx="60" cy="280" r="32" fill="#111214" stroke="#33373b" stroke-width="3"/>
+    <circle cx="60" cy="280" r="24" fill="#222529"/>
+    <rect x="57" y="252" width="6" height="28" rx="2" fill="#d1d5db" transform="rotate(45, 60, 280)"/>
+    <text x="60" y="326" font-family="sans-serif" font-size="10" fill="#888" text-anchor="middle" font-weight="bold">VOLUME</text>
+
+    <!-- Power Button & LED -->
+    <circle cx="35" cy="380" r="8" fill="#cc1100" stroke="#550000" stroke-width="2"/>
+    <text x="35" y="402" font-family="sans-serif" font-size="9" fill="#666" text-anchor="middle">POWER</text>
+
+    <circle cx="85" cy="380" r="5" fill="#ff3333"/>
+    <circle cx="85" cy="380" r="2" fill="#ffffff" opacity="0.8"/>
+    <text x="85" y="402" font-family="sans-serif" font-size="9" fill="#666" text-anchor="middle">ON</text>
+  </g>
+</svg>
