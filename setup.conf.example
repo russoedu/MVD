@@ -1,0 +1,23 @@
+# setup.conf - Configuration file for yt-dlp playlist downloader
+
+# Directory where downloaded videos will be saved
+output_dir=../DJ/new
+
+# Quality setting for yt-dlp (-f option)
+# bestvideo+bestaudio/best downloads the highest quality video and audio streams available
+quality=bestvideo+bestaudio/best
+
+# Container format to merge video and audio streams into (e.g. mp4, mkv)
+merge_output_format=mp4
+
+# Output template for filenames inside output_dir
+output_template=%(title)s.%(ext)s
+# output_template=%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s
+
+# Number of playlists to download in parallel at the same time
+max_concurrent_downloads=3
+
+# Extra flags to pass to yt-dlp (space separated)
+# -4 enforces IPv4 (prevents YouTube 403 Forbidden errors on IPv6 connections)
+# --js-runtimes node enables Node.js as the JavaScript runtime for signature decryption
+extra_args=-4 --js-runtimes node

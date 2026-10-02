@@ -1,0 +1,39 @@
+# Binaries & Executables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+downloader
+install_deps
+
+# Auto-downloaded dependency binaries
+/bin/
+
+# Video download outputs & temporary download files
+/downloads/
+test_downloads/
+*.mp4
+*.webm
+*.mkv
+*.m4a
+*.mp3
+*.part
+*.ytdl
+*.aria2
+
+# Logs & Temporary Files
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# IDE & Editor Configurations
+.vscode/
+.idea/
+*.swp
+
+# Configurations
+downloads.conf
+setup.conf
