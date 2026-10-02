@@ -25,6 +25,8 @@ func Run(ctx context.Context, cancel context.CancelFunc, events <-chan interface
 	for ev := range events {
 		id := state.Apply(ev)
 		switch e := ev.(type) {
+		case engine.EvPlaylistListing:
+			fmt.Fprintf(out, "[P%d] listing %s\n", e.Playlist+1, e.URL)
 		case engine.EvPlaylistListed:
 			fmt.Fprintf(out, "[P%d] %q: %d entries\n", e.Playlist+1, e.Title, len(e.Entries))
 		case engine.EvPlaylistFailed:
@@ -64,9 +66,8 @@ func Run(ctx context.Context, cancel context.CancelFunc, events <-chan interface
 				fmt.Fprintf(out, "%s %s\n", tag(en), runstate.ProgressLine(en))
 			}
 		case engine.EvLog:
-			if e.Entry < 0 {
-				fmt.Fprintf(out, "[P%d] %s\n", e.Playlist+1, e.Line)
-			} else if en := state.Entry(e.Entry); en != nil && (strings.HasPrefix(e.Line, "ERROR") || strings.HasPrefix(e.Line, "[official]")) {
+			// Playlist level lines duplicate the listing events above.
+			if en := state.Entry(e.Entry); en != nil && (strings.HasPrefix(e.Line, "ERROR") || strings.HasPrefix(e.Line, "[official]") || strings.HasPrefix(e.Line, "official video ")) {
 				fmt.Fprintf(out, "%s %s\n", tag(en), e.Line)
 			}
 		case engine.EvIdle:

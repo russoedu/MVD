@@ -3,11 +3,23 @@ package official
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
 // LogFunc receives progress messages, printf style.
 type LogFunc func(format string, a ...interface{})
+
+// DumpedPage is one response fetched by an external tool for a video.
+type DumpedPage struct {
+	URL  string
+	Body []byte
+}
+
+// PageDumper fetches the pages behind a video through another tool (the
+// app wires yt-dlp here), as a last resort when direct requests come back
+// stripped down.
+type PageDumper func(videoID string) ([]DumpedPage, error)
 
 // Resolver crawls YouTube to find the official music video of an art track.
 type Resolver struct {
@@ -18,6 +30,7 @@ type Resolver struct {
 	UserAgent string
 	Attempts  int
 	Log       LogFunc
+	Dumper    PageDumper // optional
 }
 
 // NewResolver returns a resolver pointed at the real YouTube endpoints.
@@ -71,6 +84,26 @@ func (r *Resolver) ResolveLog(videoID string, logFn func(format string, a ...int
 			logf("[official] %s: innertube next request failed: %v", videoID, err)
 		} else {
 			candidates = append(candidates, candidatesFromInitialData(nextJSON, videoID)...)
+		}
+	}
+
+	// 3. Still nothing: let yt-dlp fetch the page with its cookies and
+	//    bot-check workarounds, and read whatever it got.
+	if len(candidates) == 0 && r.Dumper != nil {
+		pages, err := r.Dumper(videoID)
+		if err != nil {
+			logf("[official] %s: yt-dlp page dump failed: %v", videoID, err)
+		}
+		for _, p := range pages {
+			switch {
+			case strings.Contains(p.URL, "/watch?"):
+				candidates = append(candidates, candidatesFromWatchPage(p.Body, videoID)...)
+			case strings.Contains(p.URL, "/youtubei/v1/next"):
+				candidates = append(candidates, candidatesFromInitialData(p.Body, videoID)...)
+			}
+		}
+		if len(candidates) > 0 {
+			logf("[official] %s: found the link through yt-dlp", videoID)
 		}
 	}
 

@@ -2,6 +2,7 @@ package ytdlp
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 )
@@ -123,5 +124,41 @@ func TestParseProgressLine(t *testing.T) {
 	}
 	if !IsPostProcessLine(`[Merger] Merging formats into "x.mp4"`) || IsPostProcessLine("[download] Destination: x") {
 		t.Error("post process detection wrong")
+	}
+}
+
+func TestExportCookies(t *testing.T) {
+	bin := useStub(t)
+	file := t.TempDir() + "/cookies.txt"
+	if err := ExportCookies(context.Background(), bin, "edge", file, "https://youtube.com/playlist?list=A", nil); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(file); err != nil || !strings.Contains(string(data), "SID") {
+		t.Errorf("cookie file not written: %v %q", err, data)
+	}
+	if err := ExportCookies(context.Background(), bin, "nope", file, "https://youtube.com/playlist?list=A", nil); err == nil || !strings.Contains(err.Error(), "could not find nope") {
+		t.Errorf("expected yt-dlp's error, got %v", err)
+	}
+	if got := CookieArgs(""); got != nil {
+		t.Errorf("no file should mean no args, got %v", got)
+	}
+	if got := strings.Join(CookieArgs("c.txt"), " "); got != "--cookies c.txt" {
+		t.Errorf("unexpected cookie args %q", got)
+	}
+}
+
+func TestDumpPages(t *testing.T) {
+	bin := useStub(t)
+	pages, err := DumpPages(context.Background(), bin, "https://www.youtube.com/watch?v=aaaaaaaaaa1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pages) != 2 || !strings.Contains(pages[0].URL, "/watch?v=aaaaaaaaaa1") || !strings.Contains(string(pages[0].Body), "DUMPEDOFF01") || !strings.Contains(pages[1].URL, "/youtubei/v1/player") {
+		t.Errorf("unexpected pages: %+v", pages)
+	}
+
+	parsed := ParseDumpedPages("[youtube:tab] Extracting URL: x\n[youtube:tab] Dumping request to https://a\naGVsbG8=\n[download] done\n[youtube] Dumping request to https://b\nnot base64!!\n")
+	if len(parsed) != 1 || parsed[0].URL != "https://a" || string(parsed[0].Body) != "hello" {
+		t.Errorf("unexpected parse result %+v", parsed)
 	}
 }

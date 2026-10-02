@@ -14,6 +14,8 @@ func TestRun(t *testing.T) {
 	sources := []engine.PlaylistSource{{Index: 0, URL: "https://a"}, {Index: 1, URL: "https://b"}}
 	ctx, cancel := context.WithCancel(context.Background())
 
+	events <- engine.EvPlaylistListing{Playlist: 0, URL: "https://a"}
+	events <- engine.EvLog{Playlist: 0, Entry: -1, Line: "listing https://a"}
 	events <- engine.EvPlaylistListed{Playlist: 0, Title: "Playlist A", Entries: []engine.EntryInfo{
 		{ID: 0, Playlist: 0, Index: 1, VideoID: "v0", Title: "Track One (Radio Edit)"},
 		{ID: 1, Playlist: 0, Index: 2, VideoID: "v1", Title: "Broken"},
@@ -41,6 +43,7 @@ func TestRun(t *testing.T) {
 		t.Fatalf("unexpected tally %+v\n%s", tl, out.String())
 	}
 	for _, want := range []string{
+		"[P1] listing https://a",
 		`[P1] "Playlist A": 2 entries`,
 		"[P2] FAILED to list: unable to recognize playlist",
 		"[P1/01] resolving official video for Track One (Radio Edit)",
@@ -60,5 +63,8 @@ func TestRun(t *testing.T) {
 	}
 	if strings.Count(out.String(), "55.0%") != 1 || strings.Contains(out.String(), "57.0%") {
 		t.Errorf("progress should be printed once per 10%% step:\n%s", out.String())
+	}
+	if strings.Count(out.String(), "listing https://a") != 1 {
+		t.Errorf("listing should be printed once:\n%s", out.String())
 	}
 }

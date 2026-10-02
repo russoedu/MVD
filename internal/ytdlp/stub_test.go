@@ -1,6 +1,7 @@
 package ytdlp
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,13 +20,41 @@ func TestMain(m *testing.M) {
 
 // stubYtDlp mimics the two yt-dlp invocations the app makes.
 func stubYtDlp(args []string) int {
-	isFlat := false
-	for _, a := range args {
-		if a == "--flat-playlist" {
+	isFlat, dump := false, false
+	cookiesFile, browser := "", ""
+	for i, a := range args {
+		switch a {
+		case "--flat-playlist":
 			isFlat = true
+		case "--dump-pages":
+			dump = true
+		case "--cookies":
+			cookiesFile = args[i+1]
+		case "--cookies-from-browser":
+			browser = args[i+1]
 		}
 	}
 	url := args[len(args)-1]
+
+	if browser != "" {
+		if browser == "nope" {
+			fmt.Fprintln(os.Stderr, "ERROR: could not find nope cookies database")
+			return 1
+		}
+		os.WriteFile(cookiesFile, []byte("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t0\tSID\tsecret\n"), 0600)
+		return 0
+	}
+
+	if dump {
+		id := url[strings.LastIndex(url, "=")+1:]
+		page := `<script>var ytInitialData = {"engagementPanels":[{"engagementPanelSectionListRenderer":{"panelIdentifier":"engagement-panel-structured-description","content":{"videoDescriptionMusicSectionRenderer":{"carouselLockups":[{"carouselLockupRenderer":{"videoLockup":{"compactVideoRenderer":{"videoId":"DUMPEDOFF01"}}}}]}}}}]};</script>`
+		fmt.Println("[youtube] " + id + ": Downloading webpage")
+		fmt.Println("[youtube] Dumping request to https://www.youtube.com/watch?v=" + id)
+		fmt.Println(base64.StdEncoding.EncodeToString([]byte(page)))
+		fmt.Println("[youtube] Dumping request to https://www.youtube.com/youtubei/v1/player?prettyPrint=false")
+		fmt.Println(base64.StdEncoding.EncodeToString([]byte(`{"videoDetails":{}}`)))
+		return 0
+	}
 
 	if isFlat {
 		if !strings.Contains(url, "list=A") {

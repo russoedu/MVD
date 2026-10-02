@@ -185,6 +185,7 @@ func (e *Engine) log(playlist, entry int, format string, a ...interface{}) {
 }
 
 func (e *Engine) listPlaylist(ctx context.Context, src PlaylistSource) {
+	e.emit(EvPlaylistListing{Playlist: src.Index, URL: src.URL})
 	e.log(src.Index, -1, "listing %s", src.URL)
 
 	entries, err := ytdlp.ListPlaylist(ctx, e.opts.YtDlp, src.URL, e.opts.ExtraArgs)
@@ -301,6 +302,39 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 	e.setState(en, StateDownloading, "")
 
+	err := e.download(ctx, en)
+	if err != nil && ctx.Err() == nil && en.official {
+		// The official video could not be downloaded: fall back to the
+		// art track itself rather than losing the entry.
+		e.log(pl, eid, "official video %s failed (%v); downloading the original instead", en.targetID, err)
+		e.mu.Lock()
+		en.targetID = en.info.VideoID
+		en.official = false
+		e.mu.Unlock()
+		if !e.claimTarget(pl, en.targetID, eid) {
+			e.log(pl, eid, "%s already downloaded for this playlist, skipping duplicate", en.targetID)
+			e.setState(en, StateDuplicate, "")
+			return
+		}
+		e.setState(en, StateDownloading, "")
+		err = e.download(ctx, en)
+	}
+	if err != nil {
+		e.setState(en, StateFailed, err.Error())
+		return
+	}
+	e.setState(en, StateDone, "")
+}
+
+// download runs yt-dlp for the entry's current target, turning its output
+// into progress, merging and log events.
+func (e *Engine) download(ctx context.Context, en *engineEntry) error {
+	pl, eid := en.info.Playlist, en.info.ID
+
+	e.mu.Lock()
+	target := en.targetID
+	e.mu.Unlock()
+
 	outPattern := filepath.Join(e.opts.OutputDir, e.opts.OutputTemplate)
 	args := ytdlp.DownloadArgs(ytdlp.DownloadOptions{
 		Format:            e.opts.Quality,
@@ -311,10 +345,10 @@ func (e *Engine) process(ctx context.Context, id int) {
 		"--newline",
 		"--progress-template", ytdlp.ProgressTemplate,
 		"--no-playlist",
-		"https://www.youtube.com/watch?v="+en.targetID,
+		"https://www.youtube.com/watch?v="+target,
 	)
 
-	err := ytdlp.Download(ctx, e.opts.YtDlp, args, func(line string) {
+	return ytdlp.Download(ctx, e.opts.YtDlp, args, func(line string) {
 		if p, ok := ytdlp.ParseProgressLine(line); ok {
 			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA})
 			return
@@ -331,11 +365,6 @@ func (e *Engine) process(ctx context.Context, id int) {
 		}
 		e.log(pl, eid, "%s", line)
 	})
-	if err != nil {
-		e.setState(en, StateFailed, err.Error())
-		return
-	}
-	e.setState(en, StateDone, "")
 }
 
 func (e *Engine) finishOne() {

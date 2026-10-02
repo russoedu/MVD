@@ -101,11 +101,29 @@ download_official_music_video=false
 # Full output log ("off" to disable)
 log_file=mvd.log
 
+# Browser to take YouTube cookies from (edge, chrome, firefox, ...)
+cookies_from_browser=
+
+# Where the exported cookies are kept, or an existing Netscape cookie file
+cookies_file=cookies.txt
+
 # Extra flags passed to yt-dlp (space separated)
 # -4 enforces IPv4 (prevents YouTube 403 Forbidden errors)
 # --js-runtimes deno,node specifies JS runtimes for deciphering
 extra_args=-4 --js-runtimes deno,node
 ```
+
+#### Browser cookies
+
+YouTube rate limits heavy use and answers with `Sign in to confirm you're not a bot` or `HTTP Error 429`. The way around it is to let the app use the cookies of a browser where you are signed in:
+
+```ini
+cookies_from_browser=edge
+```
+
+At start the app asks yt-dlp to read that browser's cookie store once and save it to `cookies_file` (default `cookies.txt`, ignored by git, keep it private: it holds your session). Every yt-dlp run and the official video resolver then reuse that file. You can also skip `cookies_from_browser` and drop a cookie file exported with a browser extension at `cookies_file`.
+
+Close nothing: yt-dlp copies the browser's database before reading it. On Windows, Chrome and Edge may still refuse while they are running; close the browser for the first run if the export fails.
 
 #### Official music video mode
 
@@ -115,8 +133,9 @@ With `download_official_music_video=true` the app, for every playlist:
 
 1. Lists the playlist with `yt-dlp --flat-playlist` (nothing is downloaded yet).
 2. For every entry uploaded by a `- Topic` channel, crawls the watch page (and, if the page comes back stripped down, the same `youtubei/v1/next` call the page makes) and reads the video linked from the **Music** card. Links written in the description text are used as a fallback.
-3. Confirms through YouTube's oEmbed endpoint that the linked video is not another auto-generated track and still exists.
-4. Downloads the official video instead of the art track. Entries from normal channels, and tracks without an official video, are downloaded unchanged. If two tracks of a playlist point to the same official video (radio edit and extended mix, for example) it is downloaded once.
+3. If the page came back without the card (YouTube serves a stripped page to clients it distrusts), fetches it again through yt-dlp itself, so the browser cookies and yt-dlp's bot-check workarounds apply.
+4. Confirms through YouTube's oEmbed endpoint that the linked video is not another auto-generated track and still exists.
+5. Downloads the official video instead of the art track. Entries from normal channels, and tracks without an official video, are downloaded unchanged. If two tracks of a playlist point to the same official video (radio edit and extended mix, for example) it is downloaded once. When the official video exists but cannot be downloaded (blocked, removed, private), the original art track is downloaded instead and the log says so.
 
 Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_index)s` and the other playlist fields of `output_template` are filled in from the playlist listing and files land exactly where a playlist download would put them.
 
