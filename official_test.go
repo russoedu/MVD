@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -151,7 +152,20 @@ type fakeYouTube struct {
 	pages   map[string]string // video id -> watch page HTML
 	next    map[string][]byte // video id -> next response
 	authors map[string]string // video id -> channel name (missing = 404)
+	mu      sync.Mutex
 	hits    map[string]int
+}
+
+func (f *fakeYouTube) hit(name string) {
+	f.mu.Lock()
+	f.hits[name]++
+	f.mu.Unlock()
+}
+
+func (f *fakeYouTube) count(name string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.hits[name]
 }
 
 func (f *fakeYouTube) server(t *testing.T) (*httptest.Server, *OfficialResolver) {
@@ -159,7 +173,7 @@ func (f *fakeYouTube) server(t *testing.T) (*httptest.Server, *OfficialResolver)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/watch", func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("v")
-		f.hits["watch"]++
+		f.hit("watch")
 		if page, ok := f.pages[id]; ok {
 			w.Write([]byte(page))
 			return
@@ -167,7 +181,7 @@ func (f *fakeYouTube) server(t *testing.T) (*httptest.Server, *OfficialResolver)
 		http.NotFound(w, r)
 	})
 	mux.HandleFunc("/youtubei/v1/next", func(w http.ResponseWriter, r *http.Request) {
-		f.hits["next"]++
+		f.hit("next")
 		var body struct {
 			VideoID string `json:"videoId"`
 		}
@@ -182,7 +196,7 @@ func (f *fakeYouTube) server(t *testing.T) (*httptest.Server, *OfficialResolver)
 		w.Write([]byte(`{}`))
 	})
 	mux.HandleFunc("/oembed", func(w http.ResponseWriter, r *http.Request) {
-		f.hits["oembed"]++
+		f.hit("oembed")
 		u := r.URL.Query().Get("url")
 		id := u[strings.LastIndex(u, "=")+1:]
 		if author, ok := f.authors[id]; ok {
@@ -213,7 +227,7 @@ func TestResolveFromWatchPage(t *testing.T) {
 	if got != "-bsONE-kZwI" {
 		t.Fatalf("want -bsONE-kZwI, got %q (%s)", got, reason)
 	}
-	if f.hits["next"] != 0 {
+	if f.count("next") != 0 {
 		t.Errorf("next endpoint should not be needed when the page has the Music card")
 	}
 }
@@ -229,8 +243,8 @@ func TestResolveFallsBackToNext(t *testing.T) {
 	if got != "-bsONE-kZwI" {
 		t.Fatalf("want -bsONE-kZwI, got %q (%s)", got, reason)
 	}
-	if f.hits["next"] != 1 {
-		t.Errorf("expected one next request, got %d", f.hits["next"])
+	if n := f.count("next"); n != 1 {
+		t.Errorf("expected one next request, got %d", n)
 	}
 }
 

@@ -116,12 +116,23 @@ var youtubeLinkPattern = regexp.MustCompile(`(?:youtube\.com/watch\?(?:[^\s"&]*&
 // given art track, or "" when none could be found. The returned reason is a
 // short human readable explanation for logging.
 func (r *OfficialResolver) Resolve(videoID string) (string, string) {
+	return r.ResolveLog(videoID, r.Log)
+}
+
+// ResolveLog is Resolve with a per-call log function, so concurrent
+// callers can route messages to their own entry.
+func (r *OfficialResolver) ResolveLog(videoID string, logFn func(format string, a ...interface{})) (string, string) {
+	logf := func(format string, a ...interface{}) {
+		if logFn != nil {
+			logFn(format+"\n", a...)
+		}
+	}
 	var candidates []string
 
 	// 1. Crawl the watch page like a browser would.
 	html, err := r.get(r.WatchBase + videoID)
 	if err != nil {
-		r.logf("    [official] %s: cannot fetch watch page: %v", videoID, err)
+		logf("[official] %s: cannot fetch watch page: %v", videoID, err)
 	} else {
 		candidates = append(candidates, candidatesFromWatchPage(html, videoID)...)
 	}
@@ -131,7 +142,7 @@ func (r *OfficialResolver) Resolve(videoID string) (string, string) {
 	if len(candidates) == 0 {
 		nextJSON, err := r.fetchNext(videoID, html)
 		if err != nil {
-			r.logf("    [official] %s: innertube next request failed: %v", videoID, err)
+			logf("[official] %s: innertube next request failed: %v", videoID, err)
 		} else {
 			candidates = append(candidates, candidatesFromInitialData(nextJSON, videoID)...)
 		}
@@ -147,24 +158,18 @@ func (r *OfficialResolver) Resolve(videoID string) (string, string) {
 		case err != nil:
 			// oEmbed can refuse (401) for videos that disallow embedding.
 			// The link came from YouTube itself, so accept it.
-			r.logf("    [official] %s: oembed check for %s inconclusive (%v), accepting", videoID, cand, err)
+			logf("[official] %s: oembed check for %s inconclusive (%v), accepting", videoID, cand, err)
 			return cand, "linked from description (unverified channel)"
 		case !ok:
-			r.logf("    [official] %s: candidate %s does not exist, skipping", videoID, cand)
+			logf("[official] %s: candidate %s does not exist, skipping", videoID, cand)
 		case isTopicChannel(author):
-			r.logf("    [official] %s: candidate %s is another auto-generated track (%s), skipping", videoID, cand, author)
+			logf("[official] %s: candidate %s is another auto-generated track (%s), skipping", videoID, cand, author)
 		default:
 			return cand, fmt.Sprintf("official video by %q", author)
 		}
 	}
 
 	return "", "linked videos were not official uploads"
-}
-
-func (r *OfficialResolver) logf(format string, a ...interface{}) {
-	if r.Log != nil {
-		r.Log(format+"\n", a...)
-	}
 }
 
 func (r *OfficialResolver) do(req *http.Request) ([]byte, int, error) {
