@@ -14,8 +14,18 @@ merge_output_format=mp4
 output_template=%(title)s.%(ext)s
 # output_template=%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s
 
-# Number of videos to download in parallel across all playlists
-max_concurrent_downloads=3
+# Number of videos to download in parallel across all playlists (default 4)
+max_concurrent_downloads=4
+
+# How many fragments of a single video yt-dlp fetches in parallel
+# (--concurrent-fragments). This is the main per-video speedup. "off" disables.
+concurrent_fragments=4
+
+# Retry failed downloads automatically (default on). One-off glitches are
+# retried at once; rate-limited ones (429, bot checks) are retried in a sweep
+# after the whole backlog finishes; private/removed videos are never retried.
+# Set to "off" to fail and move on, like before.
+auto_retry=on
 
 # Download the official music video instead of the auto-generated audio track.
 # Playlists often contain "<Artist> - Topic" uploads (the ones whose description
@@ -25,15 +35,18 @@ max_concurrent_downloads=3
 # tracks without an official video are downloaded unchanged.
 download_official_music_video=false
 
-# Use the cookies of a browser where you are signed in to YouTube. This is
-# what clears "Sign in to confirm you're not a bot" and HTTP 429 errors.
-# Values: edge, chrome, firefox, brave, chromium, opera, vivaldi, safari
-# (yt-dlp syntax, e.g. "firefox:default" for a profile). Leave empty to skip.
+# Browser cookies clear "Sign in to confirm you're not a bot" and HTTP 429.
+# Leave this empty (or "all") and the app tries every installed browser and
+# uses the first with a live YouTube login - no setup needed. Pin one browser
+# by name (edge, chrome, firefox, brave, chromium, opera, vivaldi, or yt-dlp
+# syntax like "firefox:default"). "off" disables cookies entirely.
+# Note: Chrome/Edge 127+ encrypt cookies and often cannot be read; Firefox is
+# the reliable source.
 cookies_from_browser=
 
-# Netscape cookie file. With cookies_from_browser set, the browser cookies
-# are exported here at start; otherwise the file is used as is when it
-# exists (for example one exported with a browser extension). "off" disables.
+# Netscape cookie file. In auto mode the chosen browser's cookies are written
+# here once and reused on later runs (delete it to refresh). You can also drop
+# your own exported cookie file here. "off" disables.
 cookies_file=cookies.txt
 
 # File that receives every line of output (the screen only shows the tail).

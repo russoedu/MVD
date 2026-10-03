@@ -44,6 +44,14 @@ func TestApplyAndTally(t *testing.T) {
 	if !s.Idle {
 		t.Error("idle not applied")
 	}
+
+	// A failed -> queued transition counts as a retry.
+	s.Apply(engine.EvEntryState{Entry: 2, State: engine.StateFailed, Err: "boom"})
+	s.Apply(engine.EvEntryState{Entry: 2, State: engine.StateQueued})
+	s.Apply(engine.EvEntryState{Entry: 2, State: engine.StateDone})
+	if got := s.Tally().Retried; got != 1 {
+		t.Errorf("retried = %d, want 1", got)
+	}
 }
 
 func TestHumanFormats(t *testing.T) {

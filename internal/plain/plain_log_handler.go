@@ -90,6 +90,7 @@ func PrintSummary(out io.Writer, state *runstate.State, t runstate.Tally) {
 	fmt.Fprintf(out, "  replaced by official: %d\n", t.Official)
 	fmt.Fprintf(out, "  skipped duplicates:   %d\n", t.Duplicate)
 	fmt.Fprintf(out, "  failed:               %d\n", t.Failed)
+	fmt.Fprintf(out, "Retried:                %d\n", t.Retried)
 	for _, pl := range state.Playlists {
 		if pl.Err != "" {
 			fmt.Fprintf(out, "  [P%d] %s: %s\n", pl.Index+1, pl.URL, pl.Err)

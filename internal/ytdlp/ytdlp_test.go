@@ -60,10 +60,16 @@ func TestDownload(t *testing.T) {
 }
 
 func TestDownloadArgs(t *testing.T) {
-	got := DownloadArgs(DownloadOptions{Format: "best", OutputTemplate: "out/%(title)s.%(ext)s", MergeOutputFormat: "mp4", ExtraArgs: []string{"-4"}}, "--no-playlist", "https://www.youtube.com/watch?v=abc")
-	want := "-f best -o out/%(title)s.%(ext)s --merge-output-format mp4 -4 --no-playlist https://www.youtube.com/watch?v=abc"
+	got := DownloadArgs(DownloadOptions{Format: "best", OutputTemplate: "out/%(title)s.%(ext)s", MergeOutputFormat: "mp4", ConcurrentFragments: 4, ExtraArgs: []string{"-4"}}, "--no-playlist", "https://www.youtube.com/watch?v=abc")
+	want := "-f best -o out/%(title)s.%(ext)s --merge-output-format mp4 --concurrent-fragments 4 -4 --no-playlist https://www.youtube.com/watch?v=abc"
 	if strings.Join(got, " ") != want {
 		t.Errorf("want %q, got %q", want, strings.Join(got, " "))
+	}
+
+	// ConcurrentFragments <= 0 omits the flag.
+	bare := DownloadArgs(DownloadOptions{Format: "best", OutputTemplate: "o", ConcurrentFragments: 0}, "url")
+	if strings.Contains(strings.Join(bare, " "), "concurrent-fragments") {
+		t.Errorf("zero fragments should omit the flag: %v", bare)
 	}
 }
 

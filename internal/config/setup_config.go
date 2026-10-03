@@ -17,15 +17,24 @@ type Config struct {
 	MergeOutputFormat      string
 	OutputTemplate         string
 	MaxConcurrentDownloads int
-	ExtraArgs              []string
+	// ConcurrentFragments is passed to yt-dlp as --concurrent-fragments:
+	// parallel DASH fragments per video. 0 disables the flag.
+	ConcurrentFragments int
+	ExtraArgs           []string
 	// DownloadOfficialMusicVideo replaces auto-generated "- Topic" art
 	// tracks with the official music video linked from their description.
 	DownloadOfficialMusicVideo bool
+	// AutoRetry retries one-off failures immediately and rate-limited ones in
+	// a sweep after the backlog drains.
+	AutoRetry bool
 	// LogFile receives every line of output. Empty disables it.
 	LogFile string
-	// CookiesFromBrowser is a yt-dlp browser specification such as "edge"
-	// or "firefox:default". Empty means no browser cookies.
+	// CookiesFromBrowser pins one yt-dlp browser specification such as "edge"
+	// or "firefox:default". Empty means no specific browser is pinned.
 	CookiesFromBrowser string
+	// AutoCookies tries every installed browser and uses the first with a
+	// live YouTube login. Ignored when CookiesFromBrowser pins one.
+	AutoCookies bool
 	// CookiesFile is a Netscape cookie file. With CookiesFromBrowser set
 	// the browser cookies are exported here at start; otherwise it is used
 	// as is when it exists.
@@ -39,7 +48,10 @@ func Default() Config {
 		Quality:                "bestvideo+bestaudio/best",
 		MergeOutputFormat:      "mp4",
 		OutputTemplate:         "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s",
-		MaxConcurrentDownloads: 3,
+		MaxConcurrentDownloads: 4,
+		ConcurrentFragments:    4,
+		AutoRetry:              true,
+		AutoCookies:            true,
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno,node"},
 		LogFile:                "mvd.log",
 		CookiesFile:            "cookies.txt",
@@ -97,12 +109,23 @@ func LoadSetup(path string) (Config, error) {
 			if n, err := strconv.Atoi(val); err == nil && n > 0 {
 				cfg.MaxConcurrentDownloads = n
 			}
+		case "concurrent_fragments":
+			switch strings.ToLower(val) {
+			case "off", "none", "false":
+				cfg.ConcurrentFragments = 0
+			default:
+				if n, err := strconv.Atoi(val); err == nil && n >= 0 {
+					cfg.ConcurrentFragments = n
+				}
+			}
 		case "extra_args":
 			if val != "" {
 				cfg.ExtraArgs = strings.Fields(val)
 			}
 		case "download_official_music_video":
 			cfg.DownloadOfficialMusicVideo = parseBool(val)
+		case "auto_retry":
+			cfg.AutoRetry = parseBool(val)
 		case "log_file":
 			switch strings.ToLower(val) {
 			case "":
@@ -113,9 +136,14 @@ func LoadSetup(path string) (Config, error) {
 			}
 		case "cookies_from_browser":
 			switch strings.ToLower(val) {
-			case "", "off", "none", "false":
+			case "", "all", "auto":
+				cfg.AutoCookies = true
+				cfg.CookiesFromBrowser = ""
+			case "off", "none", "false":
+				cfg.AutoCookies = false
 				cfg.CookiesFromBrowser = ""
 			default:
+				cfg.AutoCookies = false
 				cfg.CookiesFromBrowser = val
 			}
 		case "cookies_file":
