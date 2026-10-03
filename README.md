@@ -26,7 +26,7 @@ A lightweight, zero-setup, concurrent Go application with interactive terminal s
 Build and run; on first launch it creates a default config in your preferences folder and opens the **preferences** screen:
 
 ```powershell
-go build -o mvd.exe .
+go build -o mvd.exe ./apps/mvd-cli
 .\mvd.exe
 ```
 
@@ -139,22 +139,24 @@ Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_in
 
 ## 🗂️ Code Layout
 
-The code follows vertical feature slices: `main.go` at the root only wires things together, and every folder under `internal/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
+The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (today `apps/mvd-cli`, the terminal app) and `libs/` the code they share (`libs/mvd-core`), so a second front end can reuse the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
+
+The code follows vertical feature slices: `apps/mvd-cli/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
 
 | Slice | Outcome |
 |---|---|
-| `internal/appdir` | Locate the OS app-data folder and the Downloads folder. |
-| `internal/config` | Load/create/save the config; compile quality presets to a yt-dlp `-f`. |
-| `internal/sourcelist` | Load/save/clear the saved URL list. |
-| `internal/runner` | Assemble a ready-to-run engine (cookies, resolver, options) from a config. |
-| `internal/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading them into `./bin` when missing. |
-| `internal/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
-| `internal/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
-| `internal/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
-| `internal/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
-| `internal/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
-| `internal/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
-| `internal/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
+| `libs/mvd-core/appdir` | Locate the OS app-data folder and the Downloads folder. |
+| `libs/mvd-core/config` | Load/create/save the config; compile quality presets to a yt-dlp `-f`. |
+| `libs/mvd-core/sourcelist` | Load/save/clear the saved URL list. |
+| `libs/mvd-core/runner` | Assemble a ready-to-run engine (cookies, resolver, options) from a config. |
+| `libs/mvd-core/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading them into `./bin` when missing. |
+| `libs/mvd-core/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
+| `libs/mvd-core/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
+| `libs/mvd-core/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
+| `libs/mvd-core/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
+| `libs/mvd-core/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
+| `libs/mvd-core/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
+| `libs/mvd-core/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
 
 Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it; `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
 
@@ -162,10 +164,11 @@ Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `officia
 
 ```powershell
 # Build for your OS
-go build -o downloader.exe .
+go build -o downloader.exe ./apps/mvd-cli
 
-# Run the tests
-go test ./...
+# Run the tests (Nx runs each project from its own folder; a bare `go test ./...`
+# from the root would also walk node_modules once `npm install` has run)
+npx nx run-many -t test
 
 # Plain log output (no full screen interface)
 .\downloader.exe --no-tui
