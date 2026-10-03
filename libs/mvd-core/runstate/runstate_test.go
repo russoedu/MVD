@@ -54,6 +54,39 @@ func TestApplyAndTally(t *testing.T) {
 	}
 }
 
+func TestApplyPlaylistAddedWhileRunning(t *testing.T) {
+	s := New([]engine.PlaylistSource{{Index: 0, URL: "https://a"}})
+	s.Apply(engine.EvIdle{})
+	if !s.Idle {
+		t.Fatal("setup: the run should be idle")
+	}
+
+	s.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: 1, URL: "https://b"}})
+
+	if len(s.Playlists) != 2 || s.Playlists[1].Index != 1 || s.Playlists[1].URL != "https://b" || s.Playlists[1].Title != "https://b" {
+		t.Fatalf("playlist not added as the next index: %+v", s.Playlists)
+	}
+	if s.Idle {
+		t.Error("a run that has work again is not idle")
+	}
+
+	// The same event again is already folded in: it must not duplicate the playlist.
+	s.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: 1, URL: "https://b"}})
+	if len(s.Playlists) != 2 {
+		t.Errorf("a repeated event added a playlist: %d", len(s.Playlists))
+	}
+
+	// The engine's later events about it land on it like on any other playlist.
+	s.Apply(engine.EvPlaylistListed{Playlist: 1, Title: "B", Entries: []engine.EntryInfo{{ID: 0, Playlist: 1, Index: 1, VideoID: "v0", Title: "zero"}}})
+	if pl := s.Playlists[1]; pl.Title != "B" || !pl.Listed || len(pl.Entries) != 1 {
+		t.Errorf("listing did not reach the added playlist: %+v", pl)
+	}
+	s.Apply(engine.EvLog{Playlist: 1, Entry: -1, Line: "listed"})
+	if got := s.Playlists[1].Log; len(got) != 1 || got[0] != "listed" {
+		t.Errorf("log did not reach the added playlist: %v", got)
+	}
+}
+
 func TestHumanFormats(t *testing.T) {
 	cases := map[int64]string{500: "500B", 2048: "2.0KiB", 117833728: "112.4MiB", 3 << 30: "3.0GiB"}
 	for in, want := range cases {

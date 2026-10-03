@@ -18,6 +18,12 @@ type EntryInfo struct {
 
 // Events emitted by the Engine. Renderers (TUI, plain log) consume them.
 type (
+	// EvPlaylistAdded is sent when AddSource queues a playlist after the engine
+	// was built, before its listing starts. Playlists the engine was built with
+	// are known from Sources() and send no such event.
+	EvPlaylistAdded struct {
+		Source PlaylistSource
+	}
 	// EvPlaylistListing is sent when the listing of a playlist starts.
 	EvPlaylistListing struct {
 		Playlist int

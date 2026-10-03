@@ -419,6 +419,195 @@ func TestEngineAutoRetryOff(t *testing.T) {
 	<-done
 }
 
+// stop cancels a running engine, drains its events and waits for Run to return.
+func stop(eng *Engine, cancel context.CancelFunc, done <-chan struct{}) {
+	cancel()
+	for range eng.Events() {
+	}
+	<-done
+}
+
+// startEngine runs the engine in the background.
+func startEngine(eng *Engine) (context.CancelFunc, <-chan struct{}) {
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	return cancel, done
+}
+
+func indexOfEvent(events []interface{}, match func(interface{}) bool) int {
+	for i, ev := range events {
+		if match(ev) {
+			return i
+		}
+	}
+	return -1
+}
+
+func TestEngineAddSourceWhileRunning(t *testing.T) {
+	eng := stubEngine(t, false, "https://youtube.com/playlist?list=B")
+	cancel, done := startEngine(eng)
+
+	first := collect(t, eng) // the first playlist is finished and the engine is idle
+	if len(final(first)) != 1 {
+		t.Fatalf("want 1 entry before adding, got %d", len(final(first)))
+	}
+
+	src, ok := eng.AddSource("https://youtube.com/playlist?list=A")
+	if !ok || src.Index != 1 {
+		t.Fatalf("AddSource = %+v, %v; want index 1", src, ok)
+	}
+
+	second := collect(t, eng) // must not end before the new playlist is listed and done
+
+	added := indexOfEvent(second, func(ev interface{}) bool {
+		a, is := ev.(EvPlaylistAdded)
+		return is && a.Source.Index == 1
+	})
+	listing := indexOfEvent(second, func(ev interface{}) bool {
+		l, is := ev.(EvPlaylistListing)
+		return is && l.Playlist == 1
+	})
+	listed := indexOfEvent(second, func(ev interface{}) bool {
+		l, is := ev.(EvPlaylistListed)
+		return is && l.Playlist == 1
+	})
+	if added < 0 || listing < 0 || listed < 0 || !(added < listing && listing < listed) {
+		t.Fatalf("want added < listing < listed for playlist 1, got %d %d %d", added, listing, listed)
+	}
+
+	states := final(append(first, second...))
+	if len(states) != 4 {
+		t.Fatalf("want 4 entries in all (1 + 3), got %d", len(states))
+	}
+	for id, st := range states {
+		if st.State != StateDone && st.State != StateFailed {
+			t.Errorf("entry %d is still %v when the engine reported idle", id, st.State)
+		}
+	}
+	if got := len(eng.Sources()); got != 2 {
+		t.Errorf("Sources() = %d, want 2", got)
+	}
+
+	stop(eng, cancel, done)
+}
+
+// The invariant that keeps a source added just as the last download finishes from
+// producing a false "idle": while one waits to be listed, a drain must not be
+// signalled. It cannot be hit reliably through a running engine, since it is a
+// window between two lock acquisitions, so it is pinned directly.
+func TestEngineAddSourceKeepsTheEngineBusyUntilListed(t *testing.T) {
+	eng := stubEngine(t, false)
+
+	eng.signalDrain()
+	select {
+	case <-eng.drained:
+	default:
+		t.Fatal("with nothing queued and nothing to list, a drain should be signalled")
+	}
+
+	if _, ok := eng.AddSource("https://youtube.com/playlist?list=B"); !ok {
+		t.Fatal("AddSource refused a source on an engine that has not run")
+	}
+	eng.signalDrain()
+	select {
+	case <-eng.drained:
+		t.Fatal("a drain was signalled while a source was waiting to be listed")
+	default:
+	}
+
+	// Once the producer has taken it and found nothing more, drains are signalled again.
+	if _, ok := eng.nextToList(); !ok {
+		t.Fatal("nextToList returned nothing for the waiting source")
+	}
+	if _, ok := eng.nextToList(); ok {
+		t.Fatal("nextToList returned a source twice")
+	}
+	eng.signalDrain()
+	select {
+	case <-eng.drained:
+	default:
+		t.Fatal("a drain should be signalled once everything is listed")
+	}
+}
+
+func TestEngineAddSourceBeforeRun(t *testing.T) {
+	eng := stubEngine(t, false)
+	src, ok := eng.AddSource("https://youtube.com/playlist?list=B")
+	if !ok || src.Index != 0 {
+		t.Fatalf("AddSource = %+v, %v; want index 0", src, ok)
+	}
+
+	cancel, done := startEngine(eng)
+	events := collect(t, eng)
+
+	if indexOfEvent(events, func(ev interface{}) bool { _, is := ev.(EvPlaylistAdded); return is }) < 0 {
+		t.Error("no EvPlaylistAdded for a source added before Run")
+	}
+	states := final(events)
+	if len(states) != 1 || states[0].State != StateDone {
+		t.Errorf("want the one entry done, got %+v", states)
+	}
+	if got := len(eng.Sources()); got != 1 {
+		t.Errorf("Sources() = %d, want 1 (listed once, not twice)", got)
+	}
+	stop(eng, cancel, done)
+}
+
+func TestEngineAddSourceAfterStopIsRefused(t *testing.T) {
+	eng := stubEngine(t, false, "https://youtube.com/playlist?list=B")
+	cancel, done := startEngine(eng)
+	collect(t, eng)
+	stop(eng, cancel, done)
+
+	if _, ok := eng.AddSource("https://youtube.com/playlist?list=A"); ok {
+		t.Error("AddSource accepted a source after Run finished")
+	}
+	if got := len(eng.Sources()); got != 1 {
+		t.Errorf("Sources() = %d, want 1", got)
+	}
+}
+
+func TestEngineAddSourceConcurrently(t *testing.T) {
+	eng := stubEngine(t, false) // nothing to list at first: the engine goes idle at once
+	cancel, done := startEngine(eng)
+	collect(t, eng)
+
+	const n = 8
+	indices := make(chan int, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			src, ok := eng.AddSource("https://youtube.com/playlist?list=NOPE")
+			if !ok {
+				src.Index = -1
+			}
+			indices <- src.Index
+		}()
+	}
+	seen := map[int]bool{}
+	for i := 0; i < n; i++ {
+		seen[<-indices] = true
+	}
+	for i := 0; i < n; i++ {
+		if !seen[i] {
+			t.Errorf("index %d was never handed out: %v", i, seen)
+		}
+	}
+
+	// Every playlist is listed (and fails, as NOPE is not one) before the idle event.
+	events := collect(t, eng)
+	failed := 0
+	for _, ev := range events {
+		if _, is := ev.(EvPlaylistFailed); is {
+			failed++
+		}
+	}
+	if failed != n {
+		t.Errorf("want %d playlists listed before idle, got %d", n, failed)
+	}
+	stop(eng, cancel, done)
+}
+
 func TestTaskQueue(t *testing.T) {
 	q := newTaskQueue()
 	q.Push(1)
