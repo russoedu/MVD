@@ -6,9 +6,17 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"youtube-downloader/internal/ytdlp"
 )
+
+// defaultRetryCooldown is how long the engine waits before the deferred
+// retry sweep, so rate-limit windows have time to reset.
+const defaultRetryCooldown = 20 * time.Second
+
+// maxSweeps is how many deferred retry passes a failed entry gets.
+const maxSweeps = 1
 
 // Options configures an Engine.
 type Options struct {
@@ -23,6 +31,10 @@ type Options struct {
 	Workers             int    // videos in flight across all playlists
 	LogPath             string // "" disables the log file
 	Resolver            OfficialResolver
+	// AutoRetry turns on immediate one-off retries and the deferred sweep.
+	AutoRetry bool
+	// RetryCooldown is the wait before each deferred sweep. 0 uses the default.
+	RetryCooldown time.Duration
 }
 
 type engineEntry struct {
@@ -32,6 +44,8 @@ type engineEntry struct {
 	targetID string
 	official bool
 	err      string
+	deferred bool // failed with a transient error, eligible for the sweep
+	sweeps   int  // deferred retry passes already spent
 }
 
 // Engine lists playlists, resolves official videos and runs yt-dlp per
@@ -41,9 +55,10 @@ type Engine struct {
 	opts    Options
 	sources []PlaylistSource
 
-	events chan interface{}
-	queue  *taskQueue
-	logger *runLogger
+	events  chan interface{}
+	queue   *taskQueue
+	logger  *runLogger
+	drained chan struct{} // pinged when the queue empties
 
 	mu       sync.Mutex
 	entries  []*engineEntry
@@ -60,11 +75,12 @@ func New(opts Options) (*Engine, error) {
 		return nil, err
 	}
 	e := &Engine{
-		opts:   opts,
-		events: make(chan interface{}, 1024),
-		queue:  newTaskQueue(),
-		logger: logger,
-		claims: make(map[int]map[string]int),
+		opts:    opts,
+		events:  make(chan interface{}, 1024),
+		queue:   newTaskQueue(),
+		logger:  logger,
+		drained: make(chan struct{}, 1),
+		claims:  make(map[int]map[string]int),
 	}
 	for i, u := range opts.URLs {
 		e.sources = append(e.sources, PlaylistSource{Index: i, URL: u})
@@ -92,6 +108,14 @@ func (e *Engine) Run(ctx context.Context) {
 	e.mu.Lock()
 	e.listing = true
 	e.mu.Unlock()
+
+	// Coordinator: decides, each time the queue empties, whether to run a
+	// deferred retry sweep or declare the run idle.
+	coordDone := make(chan struct{})
+	go func() {
+		e.coordinate(ctx)
+		close(coordDone)
+	}()
 
 	var wg sync.WaitGroup
 	for i := 0; i < workers; i++ {
@@ -121,13 +145,45 @@ func (e *Engine) Run(ctx context.Context) {
 	e.mu.Lock()
 	e.listing = false
 	e.mu.Unlock()
-	e.checkIdle()
+	e.signalDrain()
 
 	<-ctx.Done()
 	e.queue.Close()
 	wg.Wait()
+	<-coordDone
 	e.logger.Close()
 	close(e.events)
+}
+
+// coordinate waits for the queue to drain and then either runs a deferred
+// retry sweep (after a cooldown) or emits the final idle event.
+func (e *Engine) coordinate(ctx context.Context) {
+	cooldown := e.opts.RetryCooldown
+	if cooldown <= 0 {
+		cooldown = defaultRetryCooldown
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-e.drained:
+			ids := e.sweepCandidates()
+			if len(ids) == 0 {
+				e.markIdle()
+				continue
+			}
+			e.mu.Lock()
+			pl := e.entries[ids[0]].info.Playlist
+			e.mu.Unlock()
+			e.log(pl, -1, "cooling down %s before retrying %d rate-limited download(s)", cooldown, len(ids))
+			if !sleepCtx(ctx, cooldown) {
+				return
+			}
+			for _, id := range ids {
+				e.autoRetry(id)
+			}
+		}
+	}
 }
 
 // Retry re-queues a failed entry. It returns false when the entry is not
@@ -303,28 +359,61 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 	e.setState(en, StateDownloading, "")
 
-	err := e.download(ctx, en)
-	if err != nil && ctx.Err() == nil && en.official {
-		// The official video could not be downloaded: fall back to the
-		// art track itself rather than losing the entry.
-		e.log(pl, eid, "official video %s failed (%v); downloading the original instead", en.targetID, err)
-		e.mu.Lock()
-		en.targetID = en.info.VideoID
-		en.official = false
-		e.mu.Unlock()
-		if !e.claimTarget(pl, en.targetID, eid) {
-			e.log(pl, eid, "%s already downloaded for this playlist, skipping duplicate", en.targetID)
-			e.setState(en, StateDuplicate, "")
+	immediateUsed := false
+	for {
+		err := e.download(ctx, en)
+		if err == nil {
+			e.setState(en, StateDone, "")
 			return
 		}
-		e.setState(en, StateDownloading, "")
-		err = e.download(ctx, en)
+		if ctx.Err() != nil {
+			e.setState(en, StateFailed, "cancelled")
+			return
+		}
+
+		// The official video could not be downloaded: fall back to the art
+		// track itself rather than losing the entry.
+		if en.official {
+			e.log(pl, eid, "official video %s failed (%v); downloading the original instead", en.targetID, err)
+			e.mu.Lock()
+			en.targetID = en.info.VideoID
+			en.official = false
+			e.mu.Unlock()
+			if !e.claimTarget(pl, en.targetID, eid) {
+				e.log(pl, eid, "%s already downloaded for this playlist, skipping duplicate", en.targetID)
+				e.setState(en, StateDuplicate, "")
+				return
+			}
+			e.setState(en, StateDownloading, "")
+			continue
+		}
+
+		if !e.opts.AutoRetry {
+			e.setState(en, StateFailed, err.Error())
+			return
+		}
+
+		switch classify(err.Error()) {
+		case ClassImmediate:
+			if !immediateUsed {
+				immediateUsed = true
+				e.log(pl, eid, "retrying now (%v)", err)
+				e.setState(en, StateDownloading, "")
+				continue
+			}
+			e.setState(en, StateFailed, err.Error())
+			return
+		case ClassDeferred:
+			e.mu.Lock()
+			en.deferred = true
+			e.mu.Unlock()
+			e.setState(en, StateFailed, err.Error())
+			return
+		default: // ClassPermanent
+			e.setState(en, StateFailed, err.Error())
+			return
+		}
 	}
-	if err != nil {
-		e.setState(en, StateFailed, err.Error())
-		return
-	}
-	e.setState(en, StateDone, "")
 }
 
 // download runs yt-dlp for the entry's current target, turning its output
@@ -373,17 +462,78 @@ func (e *Engine) finishOne() {
 	e.mu.Lock()
 	e.pending--
 	e.mu.Unlock()
-	e.checkIdle()
+	e.signalDrain()
 }
 
-func (e *Engine) checkIdle() {
+// signalDrain wakes the coordinator when the queue has emptied.
+func (e *Engine) signalDrain() {
 	e.mu.Lock()
-	idle := !e.listing && e.pending == 0 && !e.idleSent
-	if idle {
-		e.idleSent = true
-	}
+	drained := !e.listing && e.pending == 0
 	e.mu.Unlock()
-	if idle {
+	if drained {
+		select {
+		case e.drained <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// markIdle emits the idle event once per quiet period.
+func (e *Engine) markIdle() {
+	e.mu.Lock()
+	already := e.idleSent
+	e.idleSent = true
+	e.mu.Unlock()
+	if !already {
 		e.emit(EvIdle{})
+	}
+}
+
+// sweepCandidates returns the failed entries still eligible for a deferred
+// retry pass.
+func (e *Engine) sweepCandidates() []int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if !e.opts.AutoRetry {
+		return nil
+	}
+	var ids []int
+	for _, en := range e.entries {
+		if en.deferred && en.state == StateFailed && en.sweeps < maxSweeps {
+			ids = append(ids, en.info.ID)
+		}
+	}
+	return ids
+}
+
+// autoRetry re-queues a deferred failure for the sweep, counting the pass.
+func (e *Engine) autoRetry(id int) {
+	e.mu.Lock()
+	en := e.entries[id]
+	if en.state != StateFailed {
+		e.mu.Unlock()
+		return
+	}
+	en.state = StateQueued
+	en.err = ""
+	en.sweeps++
+	e.pending++
+	e.idleSent = false
+	e.mu.Unlock()
+
+	e.emit(EvEntryState{Entry: id, State: StateQueued, TargetID: en.targetID, Official: en.official})
+	e.log(en.info.Playlist, id, "auto-retry after cooldown")
+	e.queue.Push(id)
+}
+
+// sleepCtx waits for d or until ctx is cancelled. It returns false on cancel.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-t.C:
+		return true
 	}
 }

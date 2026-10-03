@@ -39,7 +39,7 @@ type Entry struct {
 
 // Tally holds the global counters shown in the header.
 type Tally struct {
-	Total, Queued, Running, Done, Official, Duplicate, Failed int
+	Total, Queued, Running, Done, Official, Duplicate, Failed, Retried int
 }
 
 // State is the renderer side mirror of the engine, built purely from
@@ -49,6 +49,7 @@ type State struct {
 	Entries   []*Entry
 	Idle      bool
 	Started   time.Time
+	retried   int // cumulative failed -> queued transitions
 }
 
 // New prepares a state with one playlist per source.
@@ -91,6 +92,9 @@ func (s *State) Apply(ev interface{}) int {
 		en := s.Entry(e.Entry)
 		if en == nil {
 			return -1
+		}
+		if en.State == engine.StateFailed && e.State == engine.StateQueued {
+			s.retried++
 		}
 		en.State = e.State
 		en.TargetID = e.TargetID
@@ -159,6 +163,7 @@ func (s *State) Tally() Tally {
 			t.Failed++
 		}
 	}
+	t.Retried = s.retried
 	return t
 }
 

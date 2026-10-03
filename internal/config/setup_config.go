@@ -24,6 +24,9 @@ type Config struct {
 	// DownloadOfficialMusicVideo replaces auto-generated "- Topic" art
 	// tracks with the official music video linked from their description.
 	DownloadOfficialMusicVideo bool
+	// AutoRetry retries one-off failures immediately and rate-limited ones in
+	// a sweep after the backlog drains.
+	AutoRetry bool
 	// LogFile receives every line of output. Empty disables it.
 	LogFile string
 	// CookiesFromBrowser is a yt-dlp browser specification such as "edge"
@@ -44,6 +47,7 @@ func Default() Config {
 		OutputTemplate:         "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s",
 		MaxConcurrentDownloads: 4,
 		ConcurrentFragments:    4,
+		AutoRetry:              true,
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno,node"},
 		LogFile:                "mvd.log",
 		CookiesFile:            "cookies.txt",
@@ -116,6 +120,8 @@ func LoadSetup(path string) (Config, error) {
 			}
 		case "download_official_music_video":
 			cfg.DownloadOfficialMusicVideo = parseBool(val)
+		case "auto_retry":
+			cfg.AutoRetry = parseBool(val)
 		case "log_file":
 			switch strings.ToLower(val) {
 			case "":

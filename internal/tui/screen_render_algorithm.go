@@ -67,6 +67,9 @@ func (m model) renderHeader(w int) string {
 		styDim.Render(fmt.Sprintf("≡ Dup %d", t.Duplicate)),
 		styRed.Render(fmt.Sprintf("✗ Failed %d", t.Failed)),
 	}
+	if t.Retried > 0 {
+		parts = append(parts, styCyan.Render(fmt.Sprintf("↻ Retried %d", t.Retried)))
+	}
 	if m.state.Idle {
 		parts[1] = styDim.Render(fmt.Sprintf("  Running %d", t.Running))
 	}

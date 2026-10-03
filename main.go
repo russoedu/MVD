@@ -57,6 +57,7 @@ func main() {
 	fmt.Printf("Concurrent Fragments:     %d\n", cfg.ConcurrentFragments)
 	fmt.Printf("Extra Arguments:          %v\n", cfg.ExtraArgs)
 	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
+	fmt.Printf("Auto Retry:               %v\n", cfg.AutoRetry)
 	fmt.Printf("Log File:                 %s\n", cfg.LogFile)
 	fmt.Printf("Cookies From Browser:     %s\n", orNone(cfg.CookiesFromBrowser))
 	fmt.Printf("Cookies File:             %s\n", orNone(cfg.CookiesFile))
@@ -122,6 +123,7 @@ func main() {
 		ExtraArgs:           extraArgs,
 		Workers:             cfg.MaxConcurrentDownloads,
 		LogPath:             cfg.LogFile,
+		AutoRetry:           cfg.AutoRetry,
 	}
 	if cfg.DownloadOfficialMusicVideo {
 		resolver := official.NewResolver(nil)

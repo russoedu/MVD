@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +51,16 @@ func stubYtDlp(args []string) int {
 		case strings.Contains(url, "list=C"):
 			entries = []ytdlp.PlaylistEntry{{ID: "cccccccccc1", Title: "Art track with a dead official video", Channel: "Other - Topic",
 				Playlist: "Playlist C", PlaylistTitle: "Playlist C", PlaylistID: "C", PlaylistIndex: 1, PlaylistCount: 1}}
+		case strings.Contains(url, "list=R"):
+			entries = []ytdlp.PlaylistEntry{
+				{ID: "trans4290001", Title: "Rate limited then ok", Channel: "Band"},
+				{ID: "glitch000001", Title: "Glitch then ok", Channel: "Band"},
+				{ID: "private00001", Title: "Private", Channel: "Band"},
+			}
+			for i := range entries {
+				entries[i].Playlist, entries[i].PlaylistTitle = "Playlist R", "Playlist R"
+				entries[i].PlaylistID, entries[i].PlaylistIndex, entries[i].PlaylistCount = "R", i+1, 3
+			}
 		default:
 			fmt.Fprintln(os.Stderr, "ERROR: [youtube:tab] Unable to recognize playlist")
 			return 1
@@ -62,7 +74,22 @@ func stubYtDlp(args []string) int {
 
 	id := url[strings.LastIndex(url, "=")+1:]
 	fmt.Printf("[youtube] %s: Downloading webpage\n", id)
-	if strings.Contains(id, "fail") {
+	attempt := stubAttempt(id)
+	switch {
+	case strings.HasPrefix(id, "trans429"):
+		if attempt == 1 {
+			fmt.Fprintln(os.Stderr, "ERROR: [youtube] "+id+": HTTP Error 429: Too Many Requests")
+			return 1
+		}
+	case strings.HasPrefix(id, "glitch"):
+		if attempt == 1 {
+			fmt.Fprintln(os.Stderr, "ERROR: [youtube] "+id+": Unable to download webpage")
+			return 1
+		}
+	case strings.HasPrefix(id, "private"):
+		fmt.Fprintln(os.Stderr, "ERROR: [youtube] "+id+": Private video. Sign in if you've been granted access")
+		return 1
+	case strings.Contains(id, "fail"):
 		fmt.Fprintln(os.Stderr, "ERROR: [youtube] "+id+": Video unavailable")
 		return 1
 	}
@@ -70,6 +97,24 @@ func stubYtDlp(args []string) int {
 	fmt.Println("MVD|1024|1024|NA|2048.0|0")
 	fmt.Printf("[Merger] Merging formats into \"%s.mp4\"\n", id)
 	return 0
+}
+
+// stubAttempt returns the 1-based attempt number for a video, persisted in
+// MVD_STUB_STATE_DIR so a stub can "fail once then succeed". Without the dir
+// it always reports attempt 1 (stateless), so other tests are unaffected.
+func stubAttempt(id string) int {
+	dir := os.Getenv("MVD_STUB_STATE_DIR")
+	if dir == "" {
+		return 1
+	}
+	p := filepath.Join(dir, id)
+	n := 0
+	if b, err := os.ReadFile(p); err == nil {
+		n, _ = strconv.Atoi(strings.TrimSpace(string(b)))
+	}
+	n++
+	os.WriteFile(p, []byte(strconv.Itoa(n)), 0644)
+	return n
 }
 
 // fakeResolver maps both art tracks to the same official video.
@@ -268,6 +313,106 @@ func TestEngineWithoutResolver(t *testing.T) {
 	if done_ != 2 || dup != 0 || failed != 1 {
 		t.Errorf("want 2 done, 0 dup, 1 failed; got %d %d %d", done_, dup, failed)
 	}
+	cancel()
+	for range eng.Events() {
+	}
+	<-done
+}
+
+func retryEngine(t *testing.T, autoRetry bool, stateDir string) *Engine {
+	t.Helper()
+	os.Setenv("MVD_STUB_YTDLP", "1")
+	if stateDir != "" {
+		os.Setenv("MVD_STUB_STATE_DIR", stateDir)
+	}
+	t.Cleanup(func() {
+		os.Unsetenv("MVD_STUB_YTDLP")
+		os.Unsetenv("MVD_STUB_STATE_DIR")
+	})
+	eng, err := New(Options{
+		YtDlp:             os.Args[0],
+		URLs:              []string{"https://youtube.com/playlist?list=R"},
+		OutputDir:         t.TempDir(),
+		OutputTemplate:    "%(title)s.%(ext)s",
+		Quality:           "best",
+		MergeOutputFormat: "mp4",
+		Workers:           2,
+		AutoRetry:         autoRetry,
+		RetryCooldown:     10 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return eng
+}
+
+// videoStates maps video id -> its last state, from a run's events.
+func videoStates(events []interface{}) map[string]EvEntryState {
+	states := final(events)
+	out := map[string]EvEntryState{}
+	for _, ev := range events {
+		if pl, ok := ev.(EvPlaylistListed); ok {
+			for _, i := range pl.Entries {
+				out[i.VideoID] = states[i.ID]
+			}
+		}
+	}
+	return out
+}
+
+func TestEngineAutoRetry(t *testing.T) {
+	eng := retryEngine(t, true, t.TempDir())
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+
+	events := collect(t, eng)
+	byVideo := videoStates(events)
+
+	if st := byVideo["trans4290001"]; st.State != StateDone {
+		t.Errorf("rate-limited entry should recover in the sweep: %+v", st)
+	}
+	if st := byVideo["glitch000001"]; st.State != StateDone {
+		t.Errorf("glitch entry should recover on the immediate retry: %+v", st)
+	}
+	if st := byVideo["private00001"]; st.State != StateFailed {
+		t.Errorf("private entry must not be retried: %+v", st)
+	}
+
+	sawCooldown, sawImmediate := false, false
+	for _, ev := range events {
+		if lg, ok := ev.(EvLog); ok {
+			if strings.Contains(lg.Line, "auto-retry after cooldown") {
+				sawCooldown = true
+			}
+			if strings.Contains(lg.Line, "retrying now") {
+				sawImmediate = true
+			}
+		}
+	}
+	if !sawCooldown || !sawImmediate {
+		t.Errorf("expected both retry kinds logged (cooldown=%v immediate=%v)", sawCooldown, sawImmediate)
+	}
+
+	cancel()
+	for range eng.Events() {
+	}
+	<-done
+}
+
+func TestEngineAutoRetryOff(t *testing.T) {
+	eng := retryEngine(t, false, t.TempDir())
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+
+	byVideo := videoStates(collect(t, eng))
+	for _, v := range []string{"trans4290001", "glitch000001", "private00001"} {
+		if st := byVideo[v]; st.State != StateFailed {
+			t.Errorf("with auto-retry off %s should fail, got %+v", v, st)
+		}
+	}
+
 	cancel()
 	for range eng.Events() {
 	}
