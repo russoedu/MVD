@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"youtube-downloader/internal/config"
+	"youtube-downloader/libs/mvd-core/config"
 )
 
 func key(s string) tea.KeyMsg {

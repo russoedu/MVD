@@ -7,8 +7,8 @@ import (
 	"io"
 	"strings"
 
-	"youtube-downloader/internal/engine"
-	"youtube-downloader/internal/runstate"
+	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/runstate"
 )
 
 // Run prints engine events as log lines until the engine reports idle,

@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"youtube-downloader/internal/ytdlp"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
 // LogFunc receives progress messages, printf style.

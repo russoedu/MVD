@@ -67,7 +67,36 @@
   },
   "tasks": {
     "version": "2.0.0",
-    "tasks": []
+    "tasks": [
+      {
+        "label": "mvd-cli: qa",
+        "type": "npm",
+        "script": "mvd-cli:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-cli: build",
+        "type": "npm",
+        "script": "mvd-cli:build",
+        "problemMatcher": [],
+        "group": "build"
+      },
+      {
+        "label": "mvd-cli: start",
+        "type": "npm",
+        "script": "mvd-cli:start",
+        "problemMatcher": [],
+        "isBackground": true
+      },
+      {
+        "label": "mvd-core: qa",
+        "type": "npm",
+        "script": "mvd-core:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      }
+    ]
   },
   "launch": {
     "version": "0.2.0",

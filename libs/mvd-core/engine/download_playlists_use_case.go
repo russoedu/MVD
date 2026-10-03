@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"youtube-downloader/internal/ytdlp"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
 // defaultRetryCooldown is how long the engine waits before the deferred

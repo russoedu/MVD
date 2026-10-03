@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"youtube-downloader/internal/ytdlp"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
 // TestMain lets the test binary double as a yt-dlp stub, so engine tests

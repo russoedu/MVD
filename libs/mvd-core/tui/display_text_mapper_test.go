@@ -5,8 +5,8 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"youtube-downloader/internal/engine"
-	"youtube-downloader/internal/runstate"
+	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/runstate"
 )
 
 func TestDisplay(t *testing.T) {

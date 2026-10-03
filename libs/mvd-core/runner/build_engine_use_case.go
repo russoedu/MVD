@@ -7,11 +7,11 @@ import (
 	"context"
 	"os"
 
-	"youtube-downloader/internal/config"
-	"youtube-downloader/internal/cookies"
-	"youtube-downloader/internal/engine"
-	"youtube-downloader/internal/official"
-	"youtube-downloader/internal/ytdlp"
+	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/cookies"
+	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/official"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
 // BuildEngine resolves cookies and builds the engine for cfg and urls. logf

@@ -7,7 +7,7 @@ import (
 	"github.com/mattn/go-runewidth"
 	"golang.org/x/text/unicode/norm"
 
-	"youtube-downloader/internal/runstate"
+	"youtube-downloader/libs/mvd-core/runstate"
 )
 
 // display makes a user supplied string safe to draw in a fixed layout.

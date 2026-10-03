@@ -3,7 +3,7 @@ package runstate
 import (
 	"testing"
 
-	"youtube-downloader/internal/engine"
+	"youtube-downloader/libs/mvd-core/engine"
 )
 
 func TestApplyAndTally(t *testing.T) {

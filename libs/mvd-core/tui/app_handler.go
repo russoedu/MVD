@@ -6,8 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"youtube-downloader/internal/config"
-	"youtube-downloader/internal/sourcelist"
+	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/sourcelist"
 )
 
 // SetupAction is what the user chose on the setup screens.

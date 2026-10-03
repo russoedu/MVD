@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"youtube-downloader/internal/engine"
+	"youtube-downloader/libs/mvd-core/engine"
 )
 
 func TestRun(t *testing.T) {

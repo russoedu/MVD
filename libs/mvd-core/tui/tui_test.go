@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 
-	"youtube-downloader/internal/engine"
+	"youtube-downloader/libs/mvd-core/engine"
 )
 
 // fakeController stands in for the engine.

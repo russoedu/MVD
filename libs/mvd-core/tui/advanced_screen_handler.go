@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"youtube-downloader/internal/config"
+	"youtube-downloader/libs/mvd-core/config"
 )
 
 type advancedOutcome int

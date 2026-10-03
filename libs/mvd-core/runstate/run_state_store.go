@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"youtube-downloader/internal/engine"
+	"youtube-downloader/libs/mvd-core/engine"
 )
 
 const maxLogLines = 400

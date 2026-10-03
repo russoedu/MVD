@@ -13,13 +13,13 @@ import (
 	"os/signal"
 	"path/filepath"
 
-	"youtube-downloader/internal/appdir"
-	"youtube-downloader/internal/config"
-	"youtube-downloader/internal/deps"
-	"youtube-downloader/internal/plain"
-	"youtube-downloader/internal/runner"
-	"youtube-downloader/internal/sourcelist"
-	"youtube-downloader/internal/tui"
+	"youtube-downloader/libs/mvd-core/appdir"
+	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/deps"
+	"youtube-downloader/libs/mvd-core/plain"
+	"youtube-downloader/libs/mvd-core/runner"
+	"youtube-downloader/libs/mvd-core/sourcelist"
+	"youtube-downloader/libs/mvd-core/tui"
 )
 
 func main() {

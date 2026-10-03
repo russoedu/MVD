@@ -9,8 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
 
-	"youtube-downloader/internal/engine"
-	"youtube-downloader/internal/runstate"
+	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/runstate"
 )
 
 // Controller is what the screen needs from the engine.
