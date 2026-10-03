@@ -4,7 +4,7 @@
 
 # YouTube Playlist Downloader (Go + yt-dlp)
 
-A lightweight, zero-setup, concurrent Go application that automatically reads playlist URLs from `downloads.conf`, reads settings from `setup.conf`, self-diagnoses and installs missing dependencies, and downloads playlists in parallel with the best available video and audio quality.
+A lightweight, zero-setup, concurrent Go application with interactive terminal screens: paste a list of playlists/videos, tune settings in a preferences screen, and watch a live download dashboard. It self-diagnoses and installs missing dependencies, borrows your browser's YouTube cookies automatically, downloads in parallel, and keeps its config and list in your OS preferences folder.
 
 ---
 
@@ -23,15 +23,19 @@ A lightweight, zero-setup, concurrent Go application that automatically reads pl
 
 ## 🚀 Quick Start
 
-Simply run the main application. It will detect your system, install any missing dependencies, and start downloading your playlists:
+Build and run; on first launch it creates a default config in your preferences folder and opens the **preferences** screen:
 
 ```powershell
-go run main.go
+go build -o mvd.exe .
+.\mvd.exe
 ```
 
-Or run the compiled executable directly:
+Then: paste your playlist/video URLs on the **list** screen (one per line), press `Ctrl+S` to start, and the **download** dashboard takes over. Everything is kept in the app-data folder (see below) — there are no config files next to the binary.
+
+For an unattended/headless run (pipes, CI, cron) it downloads the saved list with a plain log instead of the screens:
+
 ```powershell
-.\downloader.exe
+.\mvd.exe --no-tui
 ```
 
 ---
@@ -74,54 +78,32 @@ Emoji in playlist and video titles are not drawn, because terminals disagree on 
 
 Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order. Each video also fetches `concurrent_fragments` fragments in parallel.
 
-## ⚙️ Configuration Files
+## ⚙️ Configuration
 
-### 1. `setup.conf`
-Defines output paths, download quality, format merging, concurrency limits, and extra flags for `yt-dlp`.
+Config and the download list live in your OS preferences folder, created on first run — nothing sits next to the binary:
 
-```ini
-# setup.conf - Downloader Configuration
+| OS | Folder |
+|---|---|
+| Windows | `%AppData%\mvd\` |
+| macOS | `~/Library/Application Support/mvd/` |
+| Linux | `~/.config/mvd/` |
 
-# Directory where downloaded videos will be saved
-output_dir=../DJ/new
+It holds `config.conf` (settings), `list.txt` (your URLs) and `cookies.txt` (the exported browser cookies, private — keep it safe). You normally never touch these by hand; edit everything in the app. A legacy `setup.conf`/`downloads.conf` next to the binary is imported once on first run.
 
-# Quality setting for yt-dlp (-f option)
-quality=bestvideo+bestaudio/best
+### Screens and keys
 
-# Container format to merge video and audio streams into (e.g. mp4, mkv)
-merge_output_format=mp4
+- **List** — paste/type URLs, one per line. `Ctrl+S` start · `Ctrl+P` preferences · `Ctrl+R` reset · `Ctrl+Q`/`Esc` quit. (Ctrl here because Return makes a new line.)
+- **Preferences** — `↑↓` move · `Enter` edit/toggle · `a` advanced · `s` save · `Esc` cancel. Booleans toggle on Enter; quality/merge/cookies open a radio selector; the output and log folders open a folder navigator (`↑↓` move, `→` open, `←` up, `n` new folder, `Enter` choose, `Esc` cancel).
+- **Advanced** — raw extra yt-dlp args, parallel fragments and auto-retry. `s` save · `Esc` back.
+- **Download** — the live dashboard (see above); `q` returns to the list.
 
-# Output filename template for yt-dlp (-o option)
-output_template=%(title)s.%(ext)s
+> Keys are bare single letters where you aren't typing; `Ctrl` is used only on the list editor. A terminal can't receive the Cmd key on macOS, so `Ctrl` is used on every platform.
 
-# Number of videos to download in parallel (default 4)
-max_concurrent_downloads=4
+### `config.conf` keys (for reference)
 
-# Parallel fragments per video, the main per-video speedup ("off" disables)
-concurrent_fragments=4
+`output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `download_official_music_video`, `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args`.
 
-# Auto-retry failed downloads ("off" to fail and move on)
-auto_retry=on
-
-# Replace auto-generated "- Topic" tracks with the official music video
-download_official_music_video=false
-
-# Full output log ("off" to disable)
-log_file=mvd.log
-
-# Browser cookies: empty/"all" tries every browser; a name pins one; "off" disables
-cookies_from_browser=
-
-# Where the exported cookies are kept, or an existing Netscape cookie file
-cookies_file=cookies.txt
-
-# Extra flags passed to yt-dlp (space separated)
-# -4 enforces IPv4 (prevents YouTube 403 Forbidden errors)
-# --js-runtimes deno,node specifies JS runtimes for deciphering
-extra_args=-4 --js-runtimes deno,node
-```
-
-#### Browser cookies
+### Browser cookies
 
 YouTube rate limits heavy use and answers with `Sign in to confirm you're not a bot` or `HTTP Error 429`. The way around it is to run as a signed-in user by borrowing a browser's cookies. **This is on by default and needs no configuration**: at start the app tries every installed browser and uses the first one with a live YouTube login, saving it to `cookies_file` (default `cookies.txt`, ignored by git, keep it private: it holds your session). Later runs reuse that file; delete it to refresh. Every yt-dlp run and the official video resolver use it.
 
@@ -135,11 +117,11 @@ You can also drop your own cookie file (exported with a browser extension) at `c
 
 **Caveat:** Chrome and Edge 127+ encrypt their cookies (App-Bound Encryption) and yt-dlp often cannot read them, even with the browser closed. **Firefox is the reliable source.** If auto mode finds nothing, sign in to YouTube in Firefox, or export a cookie file manually.
 
-#### Auto-retry
+### Auto-retry
 
 Failed downloads are retried automatically (`auto_retry=on` by default). A one-off glitch is retried immediately; a rate-limited failure (`429`, bot check) is retried in a single sweep after the whole backlog finishes, once a cooldown lets the limit window reset; a permanent failure (private, removed, geo-blocked) is never retried. The header and summary show a **Retried** count. Set `auto_retry=off` to fail and move on instead.
 
-#### Official music video mode
+### Official music video mode
 
 Many playlists contain auto-generated uploads from `<Artist> - Topic` channels: a still image with the audio track, whose description ends with *"Auto-generated by YouTube"*. Below that description YouTube shows a **Music** card that links to the official video of the song.
 
@@ -153,14 +135,6 @@ With `download_official_music_video=true` the app, for every playlist:
 
 Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_index)s` and the other playlist fields of `output_template` are filled in from the playlist listing and files land exactly where a playlist download would put them.
 
-### 2. `downloads.conf`
-Contains the list of YouTube playlist URLs to download (one URL per line). Empty lines and lines starting with `#` are ignored.
-
-```txt
-https://youtube.com/playlist?list=PLYPcrcIixkLEaupMLBEt3GaajHGVTHeF9
-https://youtube.com/playlist?list=PLsc4x0rSyZsNF6WV5rBk2M41W12ox0nhq
-```
-
 ---
 
 ## 🗂️ Code Layout
@@ -169,7 +143,10 @@ The code follows vertical feature slices: `main.go` at the root only wires thing
 
 | Slice | Outcome |
 |---|---|
-| `internal/config` | Load `setup.conf` and `downloads.conf`. |
+| `internal/appdir` | Locate the OS app-data folder and the Downloads folder. |
+| `internal/config` | Load/create/save the config; compile quality presets to a yt-dlp `-f`. |
+| `internal/sourcelist` | Load/save/clear the saved URL list. |
+| `internal/runner` | Assemble a ready-to-run engine (cookies, resolver, options) from a config. |
 | `internal/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading them into `./bin` when missing. |
 | `internal/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
 | `internal/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
@@ -177,7 +154,7 @@ The code follows vertical feature slices: `main.go` at the root only wires thing
 | `internal/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
 | `internal/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
 | `internal/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
-| `internal/tui` | Show the run on the full screen interface. |
+| `internal/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
 
 Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it; `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
 

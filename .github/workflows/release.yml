@@ -66,13 +66,13 @@ jobs:
         if: matrix.goos == 'windows'
         shell: powershell
         run: |
-          Compress-Archive -Path ${{ matrix.binary_name }}, setup.conf, downloads.conf, README.md -DestinationPath ${{ matrix.asset_name }}
+          Compress-Archive -Path ${{ matrix.binary_name }}, README.md, assets -DestinationPath ${{ matrix.asset_name }}
 
       - name: Package Unix Asset
         if: matrix.goos != 'windows'
         run: |
           chmod +x ${{ matrix.binary_name }}
-          tar -czvf ${{ matrix.asset_name }} ${{ matrix.binary_name }} setup.conf downloads.conf README.md
+          tar -czvf ${{ matrix.asset_name }} ${{ matrix.binary_name }} README.md assets
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

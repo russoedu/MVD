@@ -17,6 +17,7 @@ const (
 	cfgNone configOutcome = iota
 	cfgSave
 	cfgCancel
+	cfgAdvanced
 )
 
 // editor modes while a config item is being changed.
@@ -25,6 +26,7 @@ const (
 	editText
 	editNumber
 	editRadio
+	editFolder
 )
 
 const cfgItemCount = 10
@@ -41,6 +43,7 @@ type configModel struct {
 	input         textinput.Model
 	radioOpts     []string
 	radioIdx      int
+	folder        folderModel
 	width, height int
 }
 
@@ -55,6 +58,7 @@ func (m configModel) init() tea.Cmd { return textinput.Blink }
 func (m configModel) setSize(w, h int) configModel {
 	m.width, m.height = w, h
 	m.input.Width = max(10, w-8)
+	m.folder = m.folder.setSize(w, h)
 	return m
 }
 
@@ -78,6 +82,8 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 			}
 		case "s", "ctrl+s":
 			return m, nil, cfgSave, m.cfg
+		case "a":
+			return m, nil, cfgAdvanced, m.cfg
 		case "esc":
 			return m, nil, cfgCancel, m.cfg
 		case "enter", " ":
@@ -100,7 +106,13 @@ func (m *configModel) activate() {
 	case 5:
 		m.beginInput(strconv.Itoa(m.cfg.MaxConcurrentDownloads))
 		m.mode = editNumber
-	default: // 0, 4, 9 text
+	case 0:
+		m.folder = newFolderModel(m.cfg.OutputDir).setSize(m.width, m.height)
+		m.mode = editFolder
+	case 9:
+		m.folder = newFolderModel(m.cfg.LogDir).setSize(m.width, m.height)
+		m.mode = editFolder
+	default: // 4 text
 		m.beginInput(m.textValue())
 		m.mode = editText
 	}
@@ -113,6 +125,22 @@ func (m *configModel) beginInput(val string) {
 }
 
 func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyMsg, isKey bool) tea.Cmd {
+	if m.mode == editFolder {
+		next, cmd, out := m.folder.update(msg)
+		m.folder = next
+		switch out {
+		case folderChosen:
+			if m.cursor == 0 {
+				m.cfg.OutputDir = m.folder.dir
+			} else {
+				m.cfg.LogDir = m.folder.dir
+			}
+			m.mode = editNone
+		case folderCancel:
+			m.mode = editNone
+		}
+		return cmd
+	}
 	if isKey {
 		switch k.String() {
 		case "esc":
@@ -280,6 +308,9 @@ func (m configModel) display(i int) string {
 }
 
 func (m configModel) view(width, height int) string {
+	if m.mode == editFolder {
+		return m.folder.view(width, height)
+	}
 	var rows []string
 	labelW := 0
 	for _, l := range cfgLabels {
@@ -311,7 +342,7 @@ func (m configModel) view(width, height int) string {
 	if m.mode != editNone {
 		bar = keyBar(width, []keyHint{{"enter", "apply"}, {"esc", "cancel"}})
 	} else {
-		bar = keyBar(width, []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"s", "save"}, {"esc", "cancel"}})
+		bar = keyBar(width, []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"s", "save"}, {"esc", "cancel"}})
 	}
 	return screenFrame(width, height, "MVD · Preferences", body, bar)
 }

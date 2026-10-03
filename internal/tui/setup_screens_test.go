@@ -128,16 +128,82 @@ func TestConfigModelNumber(t *testing.T) {
 
 func TestConfigModelTextCommit(t *testing.T) {
 	m := newConfigModel(config.Default("/app", "/dl"))
-	m.cursor = 0 // Output Folder
+	m.cursor = 4 // Output Template
 
 	m, _, _, _ = m.update(key("enter"))
 	if m.mode != editText {
 		t.Fatalf("enter should start text edit")
 	}
-	m.input.SetValue("/new/output")
+	m.input.SetValue("%(title)s.%(ext)s")
 	m, _, _, _ = m.update(key("enter"))
-	if m.cfg.OutputDir != "/new/output" {
-		t.Errorf("text edit should commit, got %q", m.cfg.OutputDir)
+	if m.cfg.OutputTemplate != "%(title)s.%(ext)s" {
+		t.Errorf("text edit should commit, got %q", m.cfg.OutputTemplate)
+	}
+}
+
+func TestConfigModelFolderPicker(t *testing.T) {
+	dir := t.TempDir()
+	m := newConfigModel(config.Default(dir, dir))
+	m.cursor = 0 // Output Folder -> folder picker
+
+	m, _, _, _ = m.update(key("enter"))
+	if m.mode != editFolder {
+		t.Fatalf("enter on Output Folder should open the folder picker")
+	}
+	// Choosing the current folder commits it.
+	m, _, _, _ = m.update(key("enter"))
+	if m.mode != editNone {
+		t.Fatalf("enter should choose and close the picker")
+	}
+	if m.cfg.OutputDir != resolveDir(dir) {
+		t.Errorf("output dir should be the chosen folder, got %q", m.cfg.OutputDir)
+	}
+
+	// Esc cancels without changing.
+	m.cursor = 9 // Log File Location
+	m, _, _, _ = m.update(key("enter"))
+	before := m.cfg.LogDir
+	m, _, _, _ = m.update(key("esc"))
+	if m.mode != editNone || m.cfg.LogDir != before {
+		t.Errorf("esc should cancel the picker without changing the dir")
+	}
+}
+
+func TestConfigAdvancedTransition(t *testing.T) {
+	m := newConfigModel(config.Default("/app", "/dl"))
+	if _, _, out, _ := m.update(key("a")); out != cfgAdvanced {
+		t.Errorf("'a' should request the advanced screen, got %d", out)
+	}
+}
+
+func TestAdvancedModel(t *testing.T) {
+	m := newAdvancedModel(config.Default("/app", "/dl"))
+
+	// Toggle auto retry (item 2).
+	m.cursor = 2
+	before := m.cfg.AutoRetry
+	m, _, _, _ = m.update(key("enter"))
+	if m.cfg.AutoRetry == before {
+		t.Error("enter should toggle auto retry")
+	}
+
+	// Fragment count (item 1): edit, decrement, commit.
+	m.cursor = 1
+	start := m.cfg.ConcurrentFragments
+	m, _, _, _ = m.update(key("enter"))
+	if m.mode != editNumber {
+		t.Fatalf("enter should edit the fragment count")
+	}
+	m, _, _, _ = m.update(key("down"))
+	m, _, _, _ = m.update(key("enter"))
+	if m.cfg.ConcurrentFragments != start-1 {
+		t.Errorf("fragments should decrement to %d, got %d", start-1, m.cfg.ConcurrentFragments)
+	}
+
+	// Save returns the edited config.
+	_, _, out, cfg := m.update(key("s"))
+	if out != advSave || cfg.AutoRetry == before {
+		t.Errorf("s should save the edited config")
 	}
 }
 

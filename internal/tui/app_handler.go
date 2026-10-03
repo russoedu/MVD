@@ -48,6 +48,7 @@ func RunSetup(in SetupInput) (SetupResult, error) {
 const (
 	screenList = iota
 	screenConfig
+	screenAdvanced
 )
 
 type setupModel struct {
@@ -58,6 +59,7 @@ type setupModel struct {
 	listPath      string
 	list          listModel
 	config        configModel
+	advanced      advancedModel
 	result        SetupResult
 }
 
@@ -84,6 +86,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.list = m.list.setSize(msg.Width, msg.Height)
 		m.config = m.config.setSize(msg.Width, msg.Height)
+		m.advanced = m.advanced.setSize(msg.Width, msg.Height)
 		return m, nil
 	}
 
@@ -119,6 +122,23 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case cfgCancel:
 			m.screen = screenList
 			return m, nil
+		case cfgAdvanced:
+			m.advanced = newAdvancedModel(m.config.cfg).setSize(m.width, m.height)
+			m.screen = screenAdvanced
+			return m, nil
+		}
+		return m, cmd
+	case screenAdvanced:
+		next, cmd, out, cfg := m.advanced.update(msg)
+		m.advanced = next
+		switch out {
+		case advSave:
+			m.config.cfg = cfg
+			m.screen = screenConfig
+			return m, nil
+		case advCancel:
+			m.screen = screenConfig
+			return m, nil
 		}
 		return m, cmd
 	}
@@ -129,6 +149,8 @@ func (m setupModel) View() string {
 	switch m.screen {
 	case screenConfig:
 		return m.config.view(m.width, m.height)
+	case screenAdvanced:
+		return m.advanced.view(m.width, m.height)
 	default:
 		return m.list.view(m.width, m.height)
 	}
