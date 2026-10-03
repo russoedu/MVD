@@ -22,7 +22,7 @@ func TestParseBool(t *testing.T) {
 func TestLoadSetup(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "setup.conf")
-	content := "download_official_music_video = true\nquality=best\nlog_file=off\nmax_concurrent_downloads=5\nextra_args=-4 --js-runtimes node\ncookies_from_browser=edge\ncookies_file=my.txt\n# comment\nbroken line\n"
+	content := "download_official_music_video = true\nquality=best\nlog_file=off\nmax_concurrent_downloads=5\nconcurrent_fragments=8\nextra_args=-4 --js-runtimes node\ncookies_from_browser=edge\ncookies_file=my.txt\n# comment\nbroken line\n"
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -33,11 +33,26 @@ func TestLoadSetup(t *testing.T) {
 	if !cfg.DownloadOfficialMusicVideo || cfg.Quality != "best" || cfg.LogFile != "" || cfg.MaxConcurrentDownloads != 5 || len(cfg.ExtraArgs) != 3 {
 		t.Errorf("unexpected config: %+v", cfg)
 	}
+	if cfg.ConcurrentFragments != 8 {
+		t.Errorf("concurrent_fragments not read: %+v", cfg)
+	}
 	if cfg.CookiesFromBrowser != "edge" || cfg.CookiesFile != "my.txt" {
 		t.Errorf("cookie settings not read: %+v", cfg)
 	}
 	if Default().DownloadOfficialMusicVideo || Default().LogFile != "mvd.log" || Default().CookiesFromBrowser != "" || Default().CookiesFile != "cookies.txt" {
 		t.Error("unexpected defaults")
+	}
+	if Default().MaxConcurrentDownloads != 4 || Default().ConcurrentFragments != 4 {
+		t.Errorf("unexpected speed defaults: %+v", Default())
+	}
+
+	// concurrent_fragments=off disables it.
+	off := filepath.Join(dir, "off.conf")
+	if err := os.WriteFile(off, []byte("concurrent_fragments=off\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ := LoadSetup(off); c.ConcurrentFragments != 0 {
+		t.Errorf("off should disable fragments, got %d", c.ConcurrentFragments)
 	}
 
 	missing, err := LoadSetup(filepath.Join(dir, "nope.conf"))

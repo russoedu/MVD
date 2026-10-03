@@ -17,7 +17,10 @@ type Config struct {
 	MergeOutputFormat      string
 	OutputTemplate         string
 	MaxConcurrentDownloads int
-	ExtraArgs              []string
+	// ConcurrentFragments is passed to yt-dlp as --concurrent-fragments:
+	// parallel DASH fragments per video. 0 disables the flag.
+	ConcurrentFragments int
+	ExtraArgs           []string
 	// DownloadOfficialMusicVideo replaces auto-generated "- Topic" art
 	// tracks with the official music video linked from their description.
 	DownloadOfficialMusicVideo bool
@@ -39,7 +42,8 @@ func Default() Config {
 		Quality:                "bestvideo+bestaudio/best",
 		MergeOutputFormat:      "mp4",
 		OutputTemplate:         "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s",
-		MaxConcurrentDownloads: 3,
+		MaxConcurrentDownloads: 4,
+		ConcurrentFragments:    4,
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno,node"},
 		LogFile:                "mvd.log",
 		CookiesFile:            "cookies.txt",
@@ -96,6 +100,15 @@ func LoadSetup(path string) (Config, error) {
 		case "max_concurrent_downloads":
 			if n, err := strconv.Atoi(val); err == nil && n > 0 {
 				cfg.MaxConcurrentDownloads = n
+			}
+		case "concurrent_fragments":
+			switch strings.ToLower(val) {
+			case "off", "none", "false":
+				cfg.ConcurrentFragments = 0
+			default:
+				if n, err := strconv.Atoi(val); err == nil && n >= 0 {
+					cfg.ConcurrentFragments = n
+				}
 			}
 		case "extra_args":
 			if val != "" {

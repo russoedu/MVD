@@ -12,16 +12,17 @@ import (
 
 // Options configures an Engine.
 type Options struct {
-	YtDlp             string   // path to the yt-dlp executable
-	URLs              []string // playlists, in order
-	OutputDir         string
-	OutputTemplate    string
-	Quality           string
-	MergeOutputFormat string
-	ExtraArgs         []string
-	Workers           int    // videos in flight across all playlists
-	LogPath           string // "" disables the log file
-	Resolver          OfficialResolver
+	YtDlp               string   // path to the yt-dlp executable
+	URLs                []string // playlists, in order
+	OutputDir           string
+	OutputTemplate      string
+	Quality             string
+	MergeOutputFormat   string
+	ConcurrentFragments int // yt-dlp --concurrent-fragments per video; 0 skips
+	ExtraArgs           []string
+	Workers             int    // videos in flight across all playlists
+	LogPath             string // "" disables the log file
+	Resolver            OfficialResolver
 }
 
 type engineEntry struct {
@@ -337,10 +338,11 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 
 	outPattern := filepath.Join(e.opts.OutputDir, e.opts.OutputTemplate)
 	args := ytdlp.DownloadArgs(ytdlp.DownloadOptions{
-		Format:            e.opts.Quality,
-		OutputTemplate:    ytdlp.ApplyPlaylistFields(outPattern, en.raw),
-		MergeOutputFormat: e.opts.MergeOutputFormat,
-		ExtraArgs:         e.opts.ExtraArgs,
+		Format:              e.opts.Quality,
+		OutputTemplate:      ytdlp.ApplyPlaylistFields(outPattern, en.raw),
+		MergeOutputFormat:   e.opts.MergeOutputFormat,
+		ConcurrentFragments: e.opts.ConcurrentFragments,
+		ExtraArgs:           e.opts.ExtraArgs,
 	},
 		"--newline",
 		"--progress-template", ytdlp.ProgressTemplate,

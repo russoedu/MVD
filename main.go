@@ -54,6 +54,7 @@ func main() {
 	fmt.Printf("Merge Output Format:      %s\n", cfg.MergeOutputFormat)
 	fmt.Printf("Output Template:          %s\n", cfg.OutputTemplate)
 	fmt.Printf("Max Concurrent Downloads: %d\n", cfg.MaxConcurrentDownloads)
+	fmt.Printf("Concurrent Fragments:     %d\n", cfg.ConcurrentFragments)
 	fmt.Printf("Extra Arguments:          %v\n", cfg.ExtraArgs)
 	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
 	fmt.Printf("Log File:                 %s\n", cfg.LogFile)
@@ -111,15 +112,16 @@ func main() {
 
 	// 7. Build the engine and attach a renderer
 	opts := engine.Options{
-		YtDlp:             ytDlpPath,
-		URLs:              urls,
-		OutputDir:         cfg.OutputDir,
-		OutputTemplate:    cfg.OutputTemplate,
-		Quality:           cfg.Quality,
-		MergeOutputFormat: cfg.MergeOutputFormat,
-		ExtraArgs:         extraArgs,
-		Workers:           cfg.MaxConcurrentDownloads,
-		LogPath:           cfg.LogFile,
+		YtDlp:               ytDlpPath,
+		URLs:                urls,
+		OutputDir:           cfg.OutputDir,
+		OutputTemplate:      cfg.OutputTemplate,
+		Quality:             cfg.Quality,
+		MergeOutputFormat:   cfg.MergeOutputFormat,
+		ConcurrentFragments: cfg.ConcurrentFragments,
+		ExtraArgs:           extraArgs,
+		Workers:             cfg.MaxConcurrentDownloads,
+		LogPath:             cfg.LogFile,
 	}
 	if cfg.DownloadOfficialMusicVideo {
 		resolver := official.NewResolver(nil)
