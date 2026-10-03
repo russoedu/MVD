@@ -30,9 +30,9 @@ func Enabled(noTUIFlag bool) bool {
 	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
-// Run drives the full screen interface until the user quits and returns
+// RunDownload drives the download screen until the user quits and returns
 // the final state for the summary.
-func Run(ctx context.Context, c Controller) (*runstate.State, error) {
+func RunDownload(ctx context.Context, c Controller) (*runstate.State, error) {
 	p := tea.NewProgram(newModel(c), tea.WithAltScreen(), tea.WithContext(ctx))
 	final, err := p.Run()
 	if fm, ok := final.(model); ok {
