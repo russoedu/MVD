@@ -1,8 +1,6 @@
-// MVD, Music Video Downloader: reads playlist URLs from downloads.conf and
-// settings from setup.conf, makes sure yt-dlp and ffmpeg are available and
-// downloads every playlist, optionally swapping auto-generated art tracks
-// for the official music video. This file only wires the slices together;
-// each slice under internal/ owns one outcome.
+// MVD, Music Video Downloader. Settings and the download list live in the OS
+// app-data folder (see internal/appdir); this file wires the slices together:
+// load config, build the engine from it, and drive a renderer.
 package main
 
 import (
@@ -12,29 +10,26 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 
+	"youtube-downloader/internal/appdir"
 	"youtube-downloader/internal/config"
-	"youtube-downloader/internal/cookies"
 	"youtube-downloader/internal/deps"
-	"youtube-downloader/internal/engine"
-	"youtube-downloader/internal/official"
 	"youtube-downloader/internal/plain"
+	"youtube-downloader/internal/runner"
 	"youtube-downloader/internal/runstate"
+	"youtube-downloader/internal/sourcelist"
 	"youtube-downloader/internal/tui"
-	"youtube-downloader/internal/ytdlp"
 )
 
 func main() {
 	noTUI := flag.Bool("no-tui", false, "plain log output instead of the full screen interface")
 	flag.Parse()
 
-	// 1. Auto-check & download any missing dependencies
+	// 1. Auto-check & download any missing dependencies.
 	deps.Ensure()
 
-	setupFile := "setup.conf"
-	downloadsFile := "downloads.conf"
-
-	// 2. Verify yt-dlp location
+	// 2. Verify yt-dlp location.
 	ytDlpPath, err := exec.LookPath("yt-dlp")
 	if err != nil {
 		fmt.Println("Error: 'yt-dlp' executable could not be found or installed.")
@@ -42,122 +37,53 @@ func main() {
 	}
 	fmt.Printf("Found yt-dlp at: %s\n", ytDlpPath)
 
-	// 3. Load settings from setup.conf
-	cfg, err := config.LoadSetup(setupFile)
+	// 3. Locate app-data and load (or create) the config.
+	appDir, err := appdir.Dir()
 	if err != nil {
-		fmt.Printf("Error reading %s: %v\n", setupFile, err)
+		fmt.Printf("Error: cannot open app data directory: %v\n", err)
+		os.Exit(1)
+	}
+	cfgPath := filepath.Join(appDir, "config.conf")
+	listPath := filepath.Join(appDir, "list.txt")
+
+	cfg, created, err := config.LoadOrCreate(cfgPath, appDir, appdir.DefaultDownloadsDir())
+	if err != nil {
+		fmt.Printf("Error reading config %s: %v\n", cfgPath, err)
 		os.Exit(1)
 	}
 
-	fmt.Println("\n--- Downloader Configuration ---")
-	fmt.Printf("Output Directory:         %s\n", cfg.OutputDir)
-	fmt.Printf("Quality:                  %s\n", cfg.Quality)
-	fmt.Printf("Merge Output Format:      %s\n", cfg.MergeOutputFormat)
-	fmt.Printf("Output Template:          %s\n", cfg.OutputTemplate)
-	fmt.Printf("Max Concurrent Downloads: %d\n", cfg.MaxConcurrentDownloads)
-	fmt.Printf("Concurrent Fragments:     %d\n", cfg.ConcurrentFragments)
-	fmt.Printf("Extra Arguments:          %v\n", cfg.ExtraArgs)
-	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
-	fmt.Printf("Auto Retry:               %v\n", cfg.AutoRetry)
-	fmt.Printf("Log File:                 %s\n", cfg.LogFile)
-	fmt.Printf("Cookies From Browser:     %s\n", cookieSource(cfg))
-	fmt.Printf("Cookies File:             %s\n", orNone(cfg.CookiesFile))
-	fmt.Println("--------------------------------")
+	// 4. Load the saved list, importing a legacy ./downloads.conf once.
+	urls, _ := sourcelist.Load(listPath)
+	if len(urls) == 0 {
+		if legacy, _ := sourcelist.Load("downloads.conf"); len(legacy) > 0 {
+			urls = legacy
+			sourcelist.Save(listPath, urls)
+		}
+	}
 
-	// 4. Ensure output directory exists
-	if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
+	printBanner(cfg, cfgPath, listPath)
+
+	if created {
+		fmt.Printf("\nCreated a default config at %s\n", cfgPath)
+	}
+	if len(urls) == 0 {
+		fmt.Printf("\nNo playlists or videos yet. Add them (one URL per line) to:\n  %s\nthen run MVD again.\n", listPath)
+		return
+	}
+
+	if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
 		fmt.Printf("Error creating output directory '%s': %v\n", cfg.OutputDir, err)
 		os.Exit(1)
 	}
 
-	// 5. Load URLs from downloads.conf
-	urls, err := config.LoadDownloads(downloadsFile)
-	if err != nil {
-		fmt.Printf("Error reading %s: %v\n", downloadsFile, err)
-		os.Exit(1)
-	}
-
-	if len(urls) == 0 {
-		fmt.Printf("No valid playlist URLs found in '%s'.\n", downloadsFile)
-		return
-	}
-
-	fmt.Printf("Found %d playlist(s) to process (%d parallel download(s)).\n\n", len(urls), cfg.MaxConcurrentDownloads)
+	fmt.Printf("\nDownloading %d item(s), %d in parallel.\n\n", len(urls), cfg.MaxConcurrentDownloads)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	// 6. Browser cookies, so every yt-dlp run and the official video resolver
-	//    carry a YouTube login. A pinned browser is re-exported each run; auto
-	//    mode reuses an existing cookie file and otherwise tries every browser.
-	extraArgs := append([]string(nil), cfg.ExtraArgs...)
-	_, cookieStatErr := os.Stat(cfg.CookiesFile)
-	cookieFileMissing := cookieStatErr != nil
-	switch {
-	case cfg.CookiesFromBrowser != "":
-		if cfg.CookiesFile == "" {
-			fmt.Println("Error: cookies_from_browser needs cookies_file to store the exported cookies.")
-			os.Exit(1)
-		}
-		fmt.Printf("Exporting cookies from %s...\n", cfg.CookiesFromBrowser)
-		if err := ytdlp.ExportCookies(ctx, ytDlpPath, cfg.CookiesFromBrowser, cfg.CookiesFile, urls[0], extraArgs); err != nil {
-			fmt.Printf("Warning: %v\n", err)
-		}
-	case cfg.AutoCookies && cfg.CookiesFile != "" && cookieFileMissing:
-		fmt.Println("Looking for YouTube cookies in your browsers...")
-		if b, ok := cookies.Acquire(ctx, ytDlpPath, cfg.CookiesFile, urls[0], extraArgs, cookies.InstalledBrowsers(), func(f string, a ...interface{}) {
-			fmt.Printf("  "+f+"\n", a...)
-		}); ok {
-			fmt.Printf("Found a YouTube login in %s.\n", b)
-		} else {
-			fmt.Println("No usable browser cookies found; continuing without them. Firefox is the most reliable source; delete " + cfg.CookiesFile + " to retry.")
-		}
-	}
-	cookiesActive := false
-	if cfg.CookiesFile != "" {
-		if _, err := os.Stat(cfg.CookiesFile); err == nil {
-			extraArgs = append(extraArgs, ytdlp.CookieArgs(cfg.CookiesFile)...)
-			cookiesActive = true
-			fmt.Printf("Using cookies from %s\n", cfg.CookiesFile)
-		}
-	}
-	fmt.Println()
-
-	// 7. Build the engine and attach a renderer
-	opts := engine.Options{
-		YtDlp:               ytDlpPath,
-		URLs:                urls,
-		OutputDir:           cfg.OutputDir,
-		OutputTemplate:      cfg.OutputTemplate,
-		Quality:             cfg.Quality,
-		MergeOutputFormat:   cfg.MergeOutputFormat,
-		ConcurrentFragments: cfg.ConcurrentFragments,
-		ExtraArgs:           extraArgs,
-		Workers:             cfg.MaxConcurrentDownloads,
-		LogPath:             cfg.LogFile,
-		AutoRetry:           cfg.AutoRetry,
-	}
-	if cfg.DownloadOfficialMusicVideo {
-		resolver := official.NewResolver(nil)
-		if cookiesActive {
-			if n, err := resolver.UseCookies(cfg.CookiesFile); err != nil {
-				fmt.Printf("Warning: resolver cannot use cookies: %v\n", err)
-			} else {
-				fmt.Printf("Official video resolver loaded %d cookies\n", n)
-			}
-		}
-		resolver.Dumper = func(videoID string) ([]official.DumpedPage, error) {
-			pages, err := ytdlp.DumpPages(ctx, ytDlpPath, "https://www.youtube.com/watch?v="+videoID, extraArgs)
-			out := make([]official.DumpedPage, 0, len(pages))
-			for _, p := range pages {
-				out = append(out, official.DumpedPage{URL: p.URL, Body: p.Body})
-			}
-			return out, err
-		}
-		opts.Resolver = resolver
-	}
-
-	eng, err := engine.New(opts)
+	eng, err := runner.BuildEngine(ctx, ytDlpPath, cfg, urls, func(f string, a ...interface{}) {
+		fmt.Printf(f+"\n", a...)
+	})
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
@@ -171,15 +97,13 @@ func main() {
 
 	var tally runstate.Tally
 	if tui.Enabled(*noTUI) {
-		state, err := tui.Run(ctx, eng)
+		state, rerr := tui.Run(ctx, eng)
 		cancel()
-		// Unblock the engine so it can shut down, then print the summary
-		// into the normal screen buffer where it stays in the scrollback.
 		for range eng.Events() {
 		}
 		<-engineDone
-		if err != nil {
-			fmt.Printf("Interface error: %v\n", err)
+		if rerr != nil {
+			fmt.Printf("Interface error: %v\n", rerr)
 		}
 		if state != nil {
 			tally = state.Tally()
@@ -190,20 +114,35 @@ func main() {
 		<-engineDone
 	}
 
+	// When the whole list was processed, clear it so the next run starts fresh.
+	if tally.Total > 0 && tally.Queued == 0 && tally.Running == 0 {
+		sourcelist.Clear(listPath)
+	}
+
 	if tally.Failed > 0 {
 		os.Exit(1)
 	}
 }
 
-func orNone(s string) string {
-	if s == "" {
-		return "(none)"
-	}
-	return s
+func printBanner(cfg config.Config, cfgPath, listPath string) {
+	fmt.Println("\n--- MVD Configuration ---")
+	fmt.Printf("Config file:              %s\n", cfgPath)
+	fmt.Printf("List file:                %s\n", listPath)
+	fmt.Printf("Output Directory:         %s\n", cfg.OutputDir)
+	fmt.Printf("Video / Audio Quality:    %s / %s\n", cfg.VideoQuality, cfg.AudioQuality)
+	fmt.Printf("Format (-f):              %s\n", cfg.Format())
+	fmt.Printf("Merge Output Format:      %s\n", cfg.MergeOutputFormat)
+	fmt.Printf("Output Template:          %s\n", cfg.OutputTemplate)
+	fmt.Printf("Max Concurrent Downloads: %d\n", cfg.MaxConcurrentDownloads)
+	fmt.Printf("Concurrent Fragments:     %d\n", cfg.ConcurrentFragments)
+	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
+	fmt.Printf("Auto Retry:               %v\n", cfg.AutoRetry)
+	fmt.Printf("Cookies:                  %s\n", cookieDescription(cfg))
+	fmt.Printf("Log File:                 %s\n", orNone(cfg.LogFile()))
+	fmt.Println("-------------------------")
 }
 
-// cookieSource describes where cookies come from for the config banner.
-func cookieSource(cfg config.Config) string {
+func cookieDescription(cfg config.Config) string {
 	switch {
 	case cfg.CookiesFromBrowser != "":
 		return cfg.CookiesFromBrowser + " (pinned)"
@@ -212,4 +151,11 @@ func cookieSource(cfg config.Config) string {
 	default:
 		return "off"
 	}
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "(none)"
+	}
+	return s
 }
