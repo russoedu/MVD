@@ -36,11 +36,23 @@ func TestLoadSetup(t *testing.T) {
 	if cfg.ConcurrentFragments != 8 {
 		t.Errorf("concurrent_fragments not read: %+v", cfg)
 	}
-	if cfg.CookiesFromBrowser != "edge" || cfg.CookiesFile != "my.txt" {
-		t.Errorf("cookie settings not read: %+v", cfg)
+	if cfg.CookiesFromBrowser != "edge" || cfg.CookiesFile != "my.txt" || cfg.AutoCookies {
+		t.Errorf("pinned browser should set the name and turn auto off: %+v", cfg)
 	}
 	if Default().DownloadOfficialMusicVideo || Default().LogFile != "mvd.log" || Default().CookiesFromBrowser != "" || Default().CookiesFile != "cookies.txt" {
 		t.Error("unexpected defaults")
+	}
+	if !Default().AutoCookies || !Default().AutoRetry {
+		t.Error("auto cookies and auto retry should default on")
+	}
+
+	// off disables auto cookies; all / unset keep it on.
+	for val, wantAuto := range map[string]bool{"off": false, "all": true} {
+		c := filepath.Join(dir, "ck_"+val+".conf")
+		os.WriteFile(c, []byte("cookies_from_browser="+val+"\n"), 0644)
+		if got, _ := LoadSetup(c); got.AutoCookies != wantAuto || got.CookiesFromBrowser != "" {
+			t.Errorf("cookies_from_browser=%s: auto=%v browser=%q", val, got.AutoCookies, got.CookiesFromBrowser)
+		}
 	}
 	if Default().MaxConcurrentDownloads != 4 || Default().ConcurrentFragments != 4 {
 		t.Errorf("unexpected speed defaults: %+v", Default())

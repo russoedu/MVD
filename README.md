@@ -15,6 +15,8 @@ A lightweight, zero-setup, concurrent Go application that automatically reads pl
 * **Parallel Downloads**: Downloads multiple playlists concurrently using Go goroutines and a worker semaphore pool.
 * **YouTube 403 Bypass**: Pre-configured with IPv4 enforcement and JS runtime options to prevent HTTP 403 Forbidden errors.
 * **Official Music Video Mode**: Optionally swaps auto-generated "`<Artist> - Topic`" audio tracks for the official music video that YouTube links from the description's **Music** card.
+* **Automatic browser cookies**: Finds a browser you're signed into YouTube with and uses its cookies to clear bot checks and `429` errors, with no configuration.
+* **Auto-retry**: Retries one-off failures at once and rate-limited ones in a sweep after the backlog finishes; never retries permanently gone videos.
 * **Full Screen Interface**: A fixed terminal UI shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead.
 
 ---
@@ -70,7 +72,7 @@ Terminals narrower than 100 columns show only the lists; press `l` for the outpu
 
 Emoji in playlist and video titles are not drawn, because terminals disagree on their width and one wrong guess shifts the whole layout. The interface uses Unicode box drawing and status glyphs, so use a terminal with a font that has them (Windows Terminal, iTerm2, GNOME Terminal, kitty, VS Code and most others are fine). A terminal that does not answer colour queries can add a five second pause at start-up; `--no-tui` avoids it.
 
-Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order.
+Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order. Each video also fetches `concurrent_fragments` fragments in parallel.
 
 ## ⚙️ Configuration Files
 
@@ -92,8 +94,14 @@ merge_output_format=mp4
 # Output filename template for yt-dlp (-o option)
 output_template=%(title)s.%(ext)s
 
-# Number of videos to download in parallel
-max_concurrent_downloads=3
+# Number of videos to download in parallel (default 4)
+max_concurrent_downloads=4
+
+# Parallel fragments per video, the main per-video speedup ("off" disables)
+concurrent_fragments=4
+
+# Auto-retry failed downloads ("off" to fail and move on)
+auto_retry=on
 
 # Replace auto-generated "- Topic" tracks with the official music video
 download_official_music_video=false
@@ -101,7 +109,7 @@ download_official_music_video=false
 # Full output log ("off" to disable)
 log_file=mvd.log
 
-# Browser to take YouTube cookies from (edge, chrome, firefox, ...)
+# Browser cookies: empty/"all" tries every browser; a name pins one; "off" disables
 cookies_from_browser=
 
 # Where the exported cookies are kept, or an existing Netscape cookie file
@@ -115,15 +123,21 @@ extra_args=-4 --js-runtimes deno,node
 
 #### Browser cookies
 
-YouTube rate limits heavy use and answers with `Sign in to confirm you're not a bot` or `HTTP Error 429`. The way around it is to let the app use the cookies of a browser where you are signed in:
+YouTube rate limits heavy use and answers with `Sign in to confirm you're not a bot` or `HTTP Error 429`. The way around it is to run as a signed-in user by borrowing a browser's cookies. **This is on by default and needs no configuration**: at start the app tries every installed browser and uses the first one with a live YouTube login, saving it to `cookies_file` (default `cookies.txt`, ignored by git, keep it private: it holds your session). Later runs reuse that file; delete it to refresh. Every yt-dlp run and the official video resolver use it.
+
+To pin one browser, set its name; to turn cookies off, set `off`:
 
 ```ini
-cookies_from_browser=edge
+cookies_from_browser=firefox   # or: edge, chrome, brave, chromium, opera, vivaldi, firefox:default
 ```
 
-At start the app asks yt-dlp to read that browser's cookie store once and save it to `cookies_file` (default `cookies.txt`, ignored by git, keep it private: it holds your session). Every yt-dlp run and the official video resolver then reuse that file. You can also skip `cookies_from_browser` and drop a cookie file exported with a browser extension at `cookies_file`.
+You can also drop your own cookie file (exported with a browser extension) at `cookies_file`; an existing file is reused as-is.
 
-Close nothing: yt-dlp copies the browser's database before reading it. On Windows, Chrome and Edge may still refuse while they are running; close the browser for the first run if the export fails.
+**Caveat:** Chrome and Edge 127+ encrypt their cookies (App-Bound Encryption) and yt-dlp often cannot read them, even with the browser closed. **Firefox is the reliable source.** If auto mode finds nothing, sign in to YouTube in Firefox, or export a cookie file manually.
+
+#### Auto-retry
+
+Failed downloads are retried automatically (`auto_retry=on` by default). A one-off glitch is retried immediately; a rate-limited failure (`429`, bot check) is retried in a single sweep after the whole backlog finishes, once a cooldown lets the limit window reset; a permanent failure (private, removed, geo-blocked) is never retried. The header and summary show a **Retried** count. Set `auto_retry=off` to fail and move on instead.
 
 #### Official music video mode
 
@@ -157,7 +171,8 @@ The code follows vertical feature slices: `main.go` at the root only wires thing
 |---|---|
 | `internal/config` | Load `setup.conf` and `downloads.conf`. |
 | `internal/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading them into `./bin` when missing. |
-| `internal/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template. |
+| `internal/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
+| `internal/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
 | `internal/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
 | `internal/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
 | `internal/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |

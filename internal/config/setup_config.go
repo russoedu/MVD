@@ -29,9 +29,12 @@ type Config struct {
 	AutoRetry bool
 	// LogFile receives every line of output. Empty disables it.
 	LogFile string
-	// CookiesFromBrowser is a yt-dlp browser specification such as "edge"
-	// or "firefox:default". Empty means no browser cookies.
+	// CookiesFromBrowser pins one yt-dlp browser specification such as "edge"
+	// or "firefox:default". Empty means no specific browser is pinned.
 	CookiesFromBrowser string
+	// AutoCookies tries every installed browser and uses the first with a
+	// live YouTube login. Ignored when CookiesFromBrowser pins one.
+	AutoCookies bool
 	// CookiesFile is a Netscape cookie file. With CookiesFromBrowser set
 	// the browser cookies are exported here at start; otherwise it is used
 	// as is when it exists.
@@ -48,6 +51,7 @@ func Default() Config {
 		MaxConcurrentDownloads: 4,
 		ConcurrentFragments:    4,
 		AutoRetry:              true,
+		AutoCookies:            true,
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno,node"},
 		LogFile:                "mvd.log",
 		CookiesFile:            "cookies.txt",
@@ -132,9 +136,14 @@ func LoadSetup(path string) (Config, error) {
 			}
 		case "cookies_from_browser":
 			switch strings.ToLower(val) {
-			case "", "off", "none", "false":
+			case "", "all", "auto":
+				cfg.AutoCookies = true
+				cfg.CookiesFromBrowser = ""
+			case "off", "none", "false":
+				cfg.AutoCookies = false
 				cfg.CookiesFromBrowser = ""
 			default:
+				cfg.AutoCookies = false
 				cfg.CookiesFromBrowser = val
 			}
 		case "cookies_file":

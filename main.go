@@ -14,6 +14,7 @@ import (
 	"os/signal"
 
 	"youtube-downloader/internal/config"
+	"youtube-downloader/internal/cookies"
 	"youtube-downloader/internal/deps"
 	"youtube-downloader/internal/engine"
 	"youtube-downloader/internal/official"
@@ -59,7 +60,7 @@ func main() {
 	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
 	fmt.Printf("Auto Retry:               %v\n", cfg.AutoRetry)
 	fmt.Printf("Log File:                 %s\n", cfg.LogFile)
-	fmt.Printf("Cookies From Browser:     %s\n", orNone(cfg.CookiesFromBrowser))
+	fmt.Printf("Cookies From Browser:     %s\n", cookieSource(cfg))
 	fmt.Printf("Cookies File:             %s\n", orNone(cfg.CookiesFile))
 	fmt.Println("--------------------------------")
 
@@ -86,10 +87,14 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	// 6. Browser cookies: export them once through yt-dlp, then let every
-	//    yt-dlp run and the official video resolver reuse the file.
+	// 6. Browser cookies, so every yt-dlp run and the official video resolver
+	//    carry a YouTube login. A pinned browser is re-exported each run; auto
+	//    mode reuses an existing cookie file and otherwise tries every browser.
 	extraArgs := append([]string(nil), cfg.ExtraArgs...)
-	if cfg.CookiesFromBrowser != "" {
+	_, cookieStatErr := os.Stat(cfg.CookiesFile)
+	cookieFileMissing := cookieStatErr != nil
+	switch {
+	case cfg.CookiesFromBrowser != "":
 		if cfg.CookiesFile == "" {
 			fmt.Println("Error: cookies_from_browser needs cookies_file to store the exported cookies.")
 			os.Exit(1)
@@ -98,6 +103,15 @@ func main() {
 		if err := ytdlp.ExportCookies(ctx, ytDlpPath, cfg.CookiesFromBrowser, cfg.CookiesFile, urls[0], extraArgs); err != nil {
 			fmt.Printf("Warning: %v\n", err)
 		}
+	case cfg.AutoCookies && cfg.CookiesFile != "" && cookieFileMissing:
+		fmt.Println("Looking for YouTube cookies in your browsers...")
+		if b, ok := cookies.Acquire(ctx, ytDlpPath, cfg.CookiesFile, urls[0], extraArgs, cookies.InstalledBrowsers(), func(f string, a ...interface{}) {
+			fmt.Printf("  "+f+"\n", a...)
+		}); ok {
+			fmt.Printf("Found a YouTube login in %s.\n", b)
+		} else {
+			fmt.Println("No usable browser cookies found; continuing without them. Firefox is the most reliable source; delete " + cfg.CookiesFile + " to retry.")
+		}
 	}
 	cookiesActive := false
 	if cfg.CookiesFile != "" {
@@ -105,8 +119,6 @@ func main() {
 			extraArgs = append(extraArgs, ytdlp.CookieArgs(cfg.CookiesFile)...)
 			cookiesActive = true
 			fmt.Printf("Using cookies from %s\n", cfg.CookiesFile)
-		} else if cfg.CookiesFromBrowser != "" {
-			fmt.Println("Warning: no cookie file available, continuing without cookies.")
 		}
 	}
 	fmt.Println()
@@ -188,4 +200,16 @@ func orNone(s string) string {
 		return "(none)"
 	}
 	return s
+}
+
+// cookieSource describes where cookies come from for the config banner.
+func cookieSource(cfg config.Config) string {
+	switch {
+	case cfg.CookiesFromBrowser != "":
+		return cfg.CookiesFromBrowser + " (pinned)"
+	case cfg.AutoCookies:
+		return "auto (all browsers)"
+	default:
+		return "off"
+	}
 }
