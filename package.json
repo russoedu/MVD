@@ -16,7 +16,8 @@
     "mvd-cli:qa": "nx run mvd-cli:lint && nx run mvd-cli:test",
     "mvd-cli:build": "nx run mvd-cli:build",
     "mvd-cli:start": "nx run mvd-cli:start",
-    "mvd-core:qa": "nx run mvd-core:lint && nx run mvd-core:test"
+    "mvd-core:qa": "nx run mvd-core:lint && nx run mvd-core:test",
+    "mvd-server:qa": "nx run mvd-server:lint && nx run mvd-server:test"
   },
   "private": true,
   "devDependencies": {

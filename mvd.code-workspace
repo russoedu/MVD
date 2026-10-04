@@ -95,6 +95,13 @@
         "script": "mvd-core:qa",
         "problemMatcher": [],
         "group": "qa"
+      },
+      {
+        "label": "mvd-server: qa",
+        "type": "npm",
+        "script": "mvd-server:qa",
+        "problemMatcher": [],
+        "group": "qa"
       }
     ]
   },
