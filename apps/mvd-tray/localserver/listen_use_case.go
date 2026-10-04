@@ -1,4 +1,4 @@
-package main
+package localserver
 
 import (
 	"encoding/json"
@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-// defaultAddress is where the app lives when nothing says otherwise. Loopback only:
+// DefaultAddress is where the app lives when nothing says otherwise. Loopback only:
 // the downloads belong to this user on this machine, and the API can queue work.
-const defaultAddress = "127.0.0.1:8421"
+const DefaultAddress = "127.0.0.1:8421"
 
-// listen opens the address. If it is taken it says whether the occupant is another
+// Listen opens the address. If it is taken it says whether the occupant is another
 // MVD (so the caller can open that one instead of starting a second), and if it is
 // something else it takes any free port on the same host.
-func listen(address string) (listener net.Listener, runningHere string, err error) {
+func Listen(address string) (listener net.Listener, runningHere string, err error) {
 	listener, err = net.Listen("tcp", address)
 	if err == nil {
 		return listener, "", nil

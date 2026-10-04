@@ -1,4 +1,4 @@
-package main
+package localserver
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"youtube-downloader/libs/mvd-server/session"
 )
 
-// newEngineFactory returns what the session calls when the first URLs arrive.
+// NewEngineFactory returns what the session calls when the first URLs arrive.
 //
 // The config is read then, not at start-up, so a setting changed since the app
 // opened is the one the run uses.
-func newEngineFactory(ytDlpPath, appDir string, logf func(string, ...interface{})) session.Factory {
+func NewEngineFactory(ytDlpPath, appDir string, logf func(string, ...interface{})) session.Factory {
 	return func(ctx context.Context, urls []string) (session.Engine, error) {
-		cfg, _, err := config.LoadOrCreate(configPath(appDir), appDir, appdir.DefaultDownloadsDir())
+		cfg, _, err := config.LoadOrCreate(ConfigPath(appDir), appDir, appdir.DefaultDownloadsDir())
 		if err != nil {
 			return nil, fmt.Errorf("cannot read the settings: %w", err)
 		}

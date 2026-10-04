@@ -19,6 +19,7 @@ import (
 	"youtube-downloader/apps/mvd-tray/console"
 	"youtube-downloader/apps/mvd-tray/folderdialog"
 	"youtube-downloader/apps/mvd-tray/install"
+	"youtube-downloader/apps/mvd-tray/localserver"
 	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/apps/mvd-tray/toolupdates"
 	"youtube-downloader/apps/mvd-tray/tray"
@@ -33,7 +34,7 @@ var version = "dev"
 func main() {
 	console.AttachParent()
 
-	address := flag.String("addr", defaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
+	address := flag.String("addr", localserver.DefaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
@@ -76,7 +77,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		return errors.New("'yt-dlp' could not be found or installed")
 	}
 
-	listener, existing, err := listen(address)
+	listener, existing, err := localserver.Listen(address)
 	if err != nil {
 		return fmt.Errorf("cannot listen on %s: %w", address, err)
 	}
@@ -101,11 +102,11 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		func() int { return sessions.RetryFailed() },
 		notify, logf, time.Now,
 	)
-	sessions = session.New(ctx, newEngineFactory(ytDlpPath, appDir, logf), session.WithFailureHook(updates.AfterFailure))
+	sessions = session.New(ctx, localserver.NewEngineFactory(ytDlpPath, appDir, logf), session.WithFailureHook(updates.AfterFailure))
 	defer sessions.Close()
 
 	server := &http.Server{
-		Handler:           newAppHandler(sessions, settings.NewRepository(configPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}),
+		Handler:           localserver.NewHandler(sessions, settings.NewRepository(localserver.ConfigPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}),
 		ReadHeaderTimeout: 10 * time.Second,
 		// Open event streams end when the app does, so shutting down is not held up.
 		BaseContext: func(net.Listener) context.Context { return ctx },

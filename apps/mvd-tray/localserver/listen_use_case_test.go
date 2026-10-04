@@ -1,4 +1,4 @@
-package main
+package localserver
 
 import (
 	"net"
@@ -17,7 +17,7 @@ func occupy(t *testing.T, handler http.Handler) string {
 }
 
 func TestAFreeAddressIsListenedOnDirectly(t *testing.T) {
-	listener, existing, err := listen("127.0.0.1:0")
+	listener, existing, err := Listen("127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestAnotherMVDOnTheAddressIsReportedSoItCanBeOpenedInstead(t *testing.T) {
 		_, _ = w.Write([]byte(`{"version":12,"idle":false,"tally":{"total":0}}`))
 	}))
 
-	listener, existing, err := listen(address)
+	listener, existing, err := Listen(address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestSomethingElseOnTheAddressIsLeftAloneAndAnotherPortIsTaken(t *testing.T)
 	for name, handler := range cases {
 		address := occupy(t, handler)
 
-		listener, existing, err := listen(address)
+		listener, existing, err := Listen(address)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -75,7 +75,7 @@ func TestSomethingElseOnTheAddressIsLeftAloneAndAnotherPortIsTaken(t *testing.T)
 }
 
 func TestAnAddressThatCannotBeListenedOnIsAnError(t *testing.T) {
-	if _, _, err := listen("not an address"); err == nil {
+	if _, _, err := Listen("not an address"); err == nil {
 		t.Fatal("expected an error")
 	}
 }

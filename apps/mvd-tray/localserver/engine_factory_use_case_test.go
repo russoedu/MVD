@@ -1,4 +1,4 @@
-package main
+package localserver
 
 import (
 	"context"
@@ -19,7 +19,7 @@ func TestTheFactoryReadsTheSettingsWhenItIsCalledAndCreatesTheDownloadFolder(t *
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	eng, err := newEngineFactory("yt-dlp", appDir, nil)(ctx, []string{"https://a.example/p"})
+	eng, err := NewEngineFactory("yt-dlp", appDir, nil)(ctx, []string{"https://a.example/p"})
 
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestAnUnreadableSettingsFileIsReportedNotSwallowed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := newEngineFactory("yt-dlp", appDir, nil)(context.Background(), nil)
+	_, err := NewEngineFactory("yt-dlp", appDir, nil)(context.Background(), nil)
 
 	if err == nil || !strings.Contains(err.Error(), "settings") {
 		t.Errorf("err = %v", err)
