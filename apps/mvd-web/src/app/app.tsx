@@ -3,6 +3,7 @@ import { AddSourcesForm } from '../add-sources'
 import { QueueView } from '../queue'
 import { useRun } from '../run'
 import { SettingsForm } from '../settings'
+import { UninstallSection } from '../uninstall'
 
 const CONNECTION_TEXT = {
   connecting: 'Connecting...',
@@ -38,7 +39,12 @@ export function App () {
         )}
       </section>
 
-      {view === 'settings' && <SettingsForm runStarted={(snapshot?.playlists.length ?? 0) > 0} />}
+      {view === 'settings' && (
+        <>
+          <SettingsForm runStarted={(snapshot?.playlists.length ?? 0) > 0} />
+          <UninstallSection />
+        </>
+      )}
     </main>
   )
 }

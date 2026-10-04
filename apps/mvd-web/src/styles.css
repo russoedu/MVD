@@ -218,3 +218,20 @@ button:disabled {
   align-items: center;
   gap: 0.75rem;
 }
+
+button.danger {
+  background: var(--danger);
+}
+
+button.secondary {
+  background: transparent;
+  color: inherit;
+}
+
+.remove-app {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
