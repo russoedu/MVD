@@ -1,5 +1,5 @@
 // MVD, Music Video Downloader. Settings and the download list live in the OS
-// app-data folder (see internal/appdir). In a terminal it runs interactive
+// app-data folder (see libs/mvd-core/appdir). In a terminal it runs interactive
 // screens (list, preferences, download); piped or with --no-tui it runs a
 // plain headless download of the saved list.
 package main
