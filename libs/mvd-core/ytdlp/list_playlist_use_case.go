@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
 // ListPlaylist asks yt-dlp for the contents of a playlist without
@@ -15,6 +17,7 @@ func ListPlaylist(ctx context.Context, bin, playlistURL string, extraArgs []stri
 	args = append(args, playlistURL)
 
 	cmd := exec.CommandContext(ctx, bin, args...)
+	procwindow.Hide(cmd)
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
 // ExportCookies asks yt-dlp to read the browser's cookies and save them as
@@ -23,6 +25,7 @@ func ExportCookies(ctx context.Context, bin, browserSpec, file, probeURL string,
 	args = append(args, probeURL)
 
 	cmd := exec.CommandContext(ctx, bin, args...)
+	procwindow.Hide(cmd)
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

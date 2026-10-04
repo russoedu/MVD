@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
 // Page is one response yt-dlp fetched while extracting a URL.
@@ -25,6 +27,7 @@ func DumpPages(ctx context.Context, bin, url string, extraArgs []string) ([]Page
 	args = append(args, url)
 
 	cmd := exec.CommandContext(ctx, bin, args...)
+	procwindow.Hide(cmd)
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

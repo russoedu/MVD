@@ -24,6 +24,8 @@ import (
 var version = "dev"
 
 func main() {
+	attachParentConsole()
+
 	address := flag.String("addr", defaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
@@ -31,6 +33,7 @@ func main() {
 
 	if err := run(*address, !*noBrowser, !*noTray); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		showFatal(err.Error())
 		os.Exit(1)
 	}
 }
@@ -98,6 +101,7 @@ func run(address string, open, tray bool) error {
 		runTray(ctx, url, openBrowser, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
+			trayUnavailable(url)
 		}
 	}
 	<-ctx.Done()
