@@ -1,26 +1,99 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestOnWindowsTheAppBelongsInProgramsUnderLocalAppData(t *testing.T) {
-	got := installFolder("windows", `C:\Users\me\AppData\Local`)
+var places = installPlaces{
+	ProgramFiles: filepath.Join("C:", "Program Files"),
+	LocalAppData: filepath.Join("C:", "Users", "me", "AppData", "Local"),
+	Home:         filepath.Join("home", "me"),
+}
 
-	if want := `C:\Users\me\AppData\Local\Programs\MVD`; !strings.EqualFold(strings.ReplaceAll(got, "/", `\`), want) {
-		t.Errorf("got %q, want %q", got, want)
+func TestWindowsOffersProgramFilesForEveryoneThenTheOwnProgramsFolder(t *testing.T) {
+	targets := installTargets("windows", places)
+
+	if len(targets) != 2 {
+		t.Fatalf("targets = %+v", targets)
+	}
+	system, user := targets[0], targets[1]
+	if system.Kind != kindWindowsSystem || !system.Everyone || system.Folder != filepath.Join(places.ProgramFiles, "MVD") {
+		t.Errorf("system = %+v", system)
+	}
+	if system.Program != filepath.Join(system.Folder, "mvd-tray.exe") {
+		t.Errorf("system program = %s", system.Program)
+	}
+	if user.Kind != kindWindowsUser || user.Everyone || user.Folder != filepath.Join(places.LocalAppData, "Programs", "MVD") {
+		t.Errorf("user = %+v", user)
 	}
 }
 
-func TestElsewhereTheAppHasNoFolderOfItsOwn(t *testing.T) {
-	for _, goos := range []string{"darwin", "linux"} {
-		if got := installFolder(goos, "/home/me"); got != "" {
-			t.Errorf("%s: got %q", goos, got)
+func TestWindowsWithoutProgramFilesStillHasTheOwnFolder(t *testing.T) {
+	targets := installTargets("windows", installPlaces{LocalAppData: places.LocalAppData})
+
+	if len(targets) != 1 || targets[0].Kind != kindWindowsUser {
+		t.Errorf("targets = %+v", targets)
+	}
+}
+
+func TestMacOffersApplicationsForEveryoneThenTheOwnApplicationsFolderAsBundles(t *testing.T) {
+	targets := installTargets("darwin", places)
+
+	if len(targets) != 2 {
+		t.Fatalf("targets = %+v", targets)
+	}
+	system, user := targets[0], targets[1]
+	if system.Kind != kindMacBundle || !system.Everyone || system.Folder != filepath.Join("/Applications", "MVD.app") {
+		t.Errorf("system = %+v", system)
+	}
+	if want := filepath.Join(system.Folder, "Contents", "MacOS", "mvd-tray"); system.Program != want {
+		t.Errorf("system program = %s, want %s", system.Program, want)
+	}
+	if user.Everyone || user.Folder != filepath.Join(places.Home, "Applications", "MVD.app") {
+		t.Errorf("user = %+v", user)
+	}
+}
+
+func TestLinuxHasOnlyTheOwnLocalBinFolder(t *testing.T) {
+	targets := installTargets("linux", places)
+
+	if len(targets) != 1 || targets[0].Kind != kindLinuxUser || targets[0].Everyone {
+		t.Fatalf("targets = %+v", targets)
+	}
+	if want := filepath.Join(places.Home, ".local", "bin", "mvd-tray"); targets[0].Program != want {
+		t.Errorf("program = %s, want %s", targets[0].Program, want)
+	}
+}
+
+func TestAMachineWithNowhereToPutItGetsNoTargets(t *testing.T) {
+	if got := installTargets("linux", installPlaces{}); len(got) != 0 {
+		t.Errorf("linux without a home: %+v", got)
+	}
+	if got := installTargets("freebsd", places); len(got) != 0 {
+		t.Errorf("an unknown system: %+v", got)
+	}
+}
+
+func TestAProgramInAnyOfTheTargetFoldersCountsAsInstalledEvenIfRenamed(t *testing.T) {
+	targets := installTargets("windows", places)
+
+	for _, folder := range []string{targets[0].Folder, targets[1].Folder} {
+		if !isInstalled("windows", filepath.Join(folder, "mvd-tray (1).exe"), targets) {
+			t.Errorf("%s was not recognised as installed", folder)
 		}
 	}
-	if got := installFolder("windows", "  "); got != "" {
-		t.Errorf("without a local app data folder: got %q", got)
+	if isInstalled("windows", filepath.Join("C:", "Users", "me", "Downloads", "mvd-tray.exe"), targets) {
+		t.Error("Downloads is not an install folder")
+	}
+}
+
+func TestInsideAnAppBundleCountsAsInstalledOnMac(t *testing.T) {
+	targets := installTargets("darwin", places)
+
+	if !isInstalled("darwin", targets[1].Program, targets) || !isInstalled("darwin", targets[0].Program, targets) {
+		t.Error("the programs inside the bundles were not recognised as installed")
 	}
 }
 
@@ -38,10 +111,7 @@ func TestWindowsPathsAreComparedWithoutRegardToCase(t *testing.T) {
 }
 
 func situation() moveSituation {
-	return moveSituation{
-		GOOS: "windows", Version: "0.0.7", Tray: true,
-		ExeFolder: `C:\Users\me\Downloads`, Target: `C:\Users\me\AppData\Local\Programs\MVD`,
-	}
+	return moveSituation{Version: "0.0.7", Tray: true, HasTarget: true}
 }
 
 func TestTheMoveIsOfferedWhenAReleaseRunsFromSomewhereElseForTheFirstTime(t *testing.T) {
@@ -52,12 +122,12 @@ func TestTheMoveIsOfferedWhenAReleaseRunsFromSomewhereElseForTheFirstTime(t *tes
 
 func TestTheMoveIsNotOfferedInEachOfTheCasesWhereItWouldBeWrong(t *testing.T) {
 	cases := map[string]func(*moveSituation){
-		"there is no folder on this system": func(s *moveSituation) { s.Target = "" },
-		"it is a developer's build":         func(s *moveSituation) { s.Version = "dev" },
-		"it runs without a tray icon":       func(s *moveSituation) { s.Tray = false },
-		"it is the copy a move just made":   func(s *moveSituation) { s.MovedFrom = `C:\Users\me\Downloads\mvd-tray.exe` },
-		"the person was already asked":      func(s *moveSituation) { s.Asked = true },
-		"it is already where it belongs":    func(s *moveSituation) { s.ExeFolder = `c:\users\me\appdata\local\programs\mvd` },
+		"there is nowhere to move to":     func(s *moveSituation) { s.HasTarget = false },
+		"it is a developer's build":       func(s *moveSituation) { s.Version = "dev" },
+		"it runs without a tray icon":     func(s *moveSituation) { s.Tray = false },
+		"it is the copy a move just made": func(s *moveSituation) { s.MovedFrom = "mvd-tray.exe" },
+		"the person was already asked":    func(s *moveSituation) { s.Asked = true },
+		"it is already installed":         func(s *moveSituation) { s.Installed = true },
 	}
 	for name, change := range cases {
 		s := situation()

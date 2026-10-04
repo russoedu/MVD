@@ -94,7 +94,13 @@ The first run downloads them from their official GitHub releases (on Windows abo
 
 Limits: ffmpeg is kept current on Windows only (the project that publishes the builds has no macOS build and ships Linux ones in a format this does not unpack yet, so those fetch a pinned 4.4.1 once). deno is fetched once and never updated. The terminal app keeps using `./bin` and the tools on your `PATH`, and does not update them.
 
-**Where it lives.** The first time a release of the Windows app is started from somewhere else (your Downloads folder, say), it asks once whether to move itself to `%LocalAppData%\Programs\MVD`, the folder per-user programs such as VS Code use, which needs no administrator rights. Yes copies it there, adds an MVD shortcut to the Start menu, starts the copy and removes the old file. No leaves it where it is, and it never asks again. It does not ask when started with `-no-tray` (a terminal or script), from a development build, or from the installed folder. macOS and Linux do not have this yet: macOS applications are `.app` bundles and this app ships as a bare program.
+**Where it lives.** The first time a release of the tray app is started from somewhere else (your Downloads folder, say), it asks once whether to move itself to the place your system keeps programs. Yes copies it there, adds it to the menu, starts the copy and removes the old file. No leaves it where it is, and it never asks again. It does not ask when started with `-no-tray` (a terminal or script), from a development build, or from the installed place.
+
+- **Windows:** `%LocalAppData%\Programs\MVD` with a Start menu shortcut, which needs no administrator rights. If the app was started as an administrator it offers a choice: *For everyone* (`C:\Program Files\MVD`, with a shortcut for every account) or *Just for me*. The app never asks Windows for administrator rights itself: an unsigned program that can start an administrator step is removed by Windows' antivirus (`Trojan:Win32/Bearfoos.A!ml`), so to install for everyone, right-click the app and choose Run as administrator. A signed build could offer that with one click.
+- **macOS:** `~/Applications/MVD.app`, or `/Applications/MVD.app` for everyone, as a menu-bar-only app bundle built on the spot.
+- **Linux:** `~/.local/bin/mvd-tray` with an entry in the applications menu.
+
+The macOS and Linux paths are covered by unit tests only; they have not been run on a real machine.
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 

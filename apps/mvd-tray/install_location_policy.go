@@ -5,27 +5,89 @@ import (
 	"strings"
 )
 
-// installFolderName is the folder the app lives in once it has been moved.
+// installFolderName is the folder (or, on macOS, the .app bundle) the app lives in.
 const installFolderName = "MVD"
 
-// installFolder is the folder the app belongs in on goos, or "" where it does not
-// manage its own location.
-//
-// On Windows that is Programs under the person's local app data, which is where
-// per-user programs (VS Code, Obsidian, browsers) go: it needs no administrator rights
-// and can always be written to, unlike Program Files. macOS applications are .app
-// bundles and this app ships as a bare program, so it has no place to move to there,
-// and Linux has no single applications folder.
-func installFolder(goos, localAppData string) string {
-	if goos != "windows" || strings.TrimSpace(localAppData) == "" {
-		return ""
-	}
+// installKind says how the app is put in place, which differs by system.
+type installKind int
 
-	return filepath.Join(localAppData, "Programs", installFolderName)
+const (
+	// kindWindowsSystem is Program Files. Windows protects it, so it is only offered when
+	// the app was started as an administrator, which is when a plain copy works.
+	kindWindowsSystem installKind = iota
+	// kindWindowsUser is the person's own Programs folder.
+	kindWindowsUser
+	// kindMacBundle is an MVD.app bundle, in /Applications or in ~/Applications.
+	kindMacBundle
+	// kindLinuxUser is ~/.local/bin, with an entry in the applications menu.
+	kindLinuxUser
+)
+
+// installTarget is one place the app can be moved to.
+type installTarget struct {
+	Kind installKind
+	// Everyone is true for a place that serves every account on the computer.
+	Everyone bool
+	// Folder is where it goes: a folder, or the .app bundle on macOS.
+	Folder string
+	// Program is the path of the program once it is there.
+	Program string
 }
 
-// samePlace reports whether two paths are the same folder. Windows paths are not case
-// sensitive.
+// installPlaces are the folders of the machine that the targets are built from. Any may
+// be empty, which leaves out the target that needs it. ProgramFiles is only filled in
+// when the app may write there.
+type installPlaces struct {
+	ProgramFiles string
+	LocalAppData string
+	Home         string
+}
+
+// installTargets lists where the app belongs on goos, the place for everyone first and
+// the person's own place after it.
+//
+//   - Windows: Program Files, and Programs under the local app data folder, where
+//     per-user programs (VS Code, Obsidian, browsers) go.
+//   - macOS: /Applications, and ~/Applications. Applications there are .app bundles, so
+//     the app builds one around itself.
+//   - Linux: ~/.local/bin only. There is no single applications folder, and a place for
+//     everyone (such as /opt) would need root.
+func installTargets(goos string, places installPlaces) []installTarget {
+	var targets []installTarget
+
+	switch goos {
+	case "windows":
+		if places.ProgramFiles != "" {
+			folder := filepath.Join(places.ProgramFiles, installFolderName)
+			targets = append(targets, installTarget{Kind: kindWindowsSystem, Everyone: true, Folder: folder, Program: filepath.Join(folder, "mvd-tray.exe")})
+		}
+		if places.LocalAppData != "" {
+			folder := filepath.Join(places.LocalAppData, "Programs", installFolderName)
+			targets = append(targets, installTarget{Kind: kindWindowsUser, Folder: folder, Program: filepath.Join(folder, "mvd-tray.exe")})
+		}
+	case "darwin":
+		bundle := func(root string) installTarget {
+			folder := filepath.Join(root, installFolderName+".app")
+
+			return installTarget{Kind: kindMacBundle, Folder: folder, Program: filepath.Join(folder, "Contents", "MacOS", "mvd-tray")}
+		}
+		system := bundle("/Applications")
+		system.Everyone = true
+		targets = append(targets, system)
+		if places.Home != "" {
+			targets = append(targets, bundle(filepath.Join(places.Home, "Applications")))
+		}
+	case "linux":
+		if places.Home != "" {
+			folder := filepath.Join(places.Home, ".local", "bin")
+			targets = append(targets, installTarget{Kind: kindLinuxUser, Folder: folder, Program: filepath.Join(folder, "mvd-tray")})
+		}
+	}
+
+	return targets
+}
+
+// samePlace reports whether two paths are the same. Windows paths are not case sensitive.
 func samePlace(goos, a, b string) bool {
 	a, b = filepath.Clean(a), filepath.Clean(b)
 	if goos == "windows" {
@@ -35,9 +97,19 @@ func samePlace(goos, a, b string) bool {
 	return a == b
 }
 
+// isInstalled reports whether the program at exe is in one of the targets' folders.
+func isInstalled(goos, exe string, targets []installTarget) bool {
+	for _, target := range targets {
+		if samePlace(goos, filepath.Dir(exe), filepath.Dir(target.Program)) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // moveSituation is everything that decides whether to offer moving the app.
 type moveSituation struct {
-	GOOS string
 	// Version is "dev" for a build made on a developer's machine.
 	Version string
 	// Tray is false when the app was asked to run without a tray icon, which is how it
@@ -47,10 +119,10 @@ type moveSituation struct {
 	MovedFrom string
 	// Asked is whether the person has been offered the move before.
 	Asked bool
-	// ExeFolder is the folder the running program is in.
-	ExeFolder string
-	// Target is the folder it belongs in, or "" if it has none on this OS.
-	Target string
+	// HasTarget is false on a system with nowhere to move to.
+	HasTarget bool
+	// Installed is true when the program is already in one of the targets.
+	Installed bool
 }
 
 // shouldOfferMove reports whether to ask the person to move the app. It asks once, the
@@ -58,7 +130,7 @@ type moveSituation struct {
 // script, or the copy a move has just started.
 func shouldOfferMove(s moveSituation) bool {
 	switch {
-	case s.Target == "":
+	case !s.HasTarget:
 		return false
 	case s.Version == "dev":
 		return false
@@ -68,7 +140,7 @@ func shouldOfferMove(s moveSituation) bool {
 		return false
 	case s.Asked:
 		return false
-	case samePlace(s.GOOS, s.ExeFolder, s.Target):
+	case s.Installed:
 		return false
 	}
 
