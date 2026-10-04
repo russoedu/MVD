@@ -94,8 +94,36 @@ func TestApplyPlaylistFields(t *testing.T) {
 			t.Errorf("template %q:\n want %q\n got  %q", in, want, got)
 		}
 	}
-	if got := ApplyPlaylistFields("%(playlist_title|Singles)s/%(playlist_index)02d.%(ext)s", PlaylistEntry{}); got != "Singles/NA.%(ext)s" {
+	if got := ApplyPlaylistFields("%(playlist_title|Singles)s/%(playlist_index)02d.%(ext)s", PlaylistEntry{}); got != "Singles/.%(ext)s" {
 		t.Errorf("defaults: got %q", got)
+	}
+}
+
+func TestAVideoGivenOnItsOwnIsNamedAfterItselfWithNoPlaylistFolderOrNumber(t *testing.T) {
+	alone := PlaylistEntry{ID: "jNQXAC9IVRw", Title: "Me at the zoo"}
+	cases := map[string]string{
+		"%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s": "%(title)s.%(ext)s",
+		"%(playlist_index)02d - %(title)s.%(ext)s":                              "%(title)s.%(ext)s",
+		"%(playlist_title)s/%(playlist_index)s - %(title)s [%(id)s].%(ext)s":    "%(title)s [%(id)s].%(ext)s",
+		"Music/%(playlist_title,playlist)s/%(title)s.%(ext)s":                   "Music/%(title)s.%(ext)s",
+		"%(title)s.%(ext)s":                                                     "%(title)s.%(ext)s",
+		"%(playlist_title|Singles)s/%(title)s.%(ext)s":                          "Singles/%(title)s.%(ext)s",
+		"%(playlist_index)02d":                                                  "%(title)s.%(ext)s",
+	}
+	for in, want := range cases {
+		if got := ApplyPlaylistFields(in, alone); got != want {
+			t.Errorf("template %q:\n want %q\n got  %q", in, want, got)
+		}
+	}
+}
+
+func TestAnEntryOfARealPlaylistKeepsNAForAFieldThatIsMissing(t *testing.T) {
+	inPlaylist := PlaylistEntry{ID: "x", PlaylistTitle: "Best of"}
+
+	got := ApplyPlaylistFields("%(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s", inPlaylist)
+
+	if want := "Best of/NA - %(title)s.%(ext)s"; got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 

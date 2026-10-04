@@ -488,10 +488,10 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	target := en.targetID
 	e.mu.Unlock()
 
-	outPattern := filepath.Join(e.opts.OutputDir, e.opts.OutputTemplate)
+	outPattern := filepath.Join(e.opts.OutputDir, ytdlp.ApplyPlaylistFields(e.opts.OutputTemplate, en.raw))
 	args := ytdlp.DownloadArgs(ytdlp.DownloadOptions{
 		Format:              e.opts.Quality,
-		OutputTemplate:      ytdlp.ApplyPlaylistFields(outPattern, en.raw),
+		OutputTemplate:      outPattern,
 		MergeOutputFormat:   e.opts.MergeOutputFormat,
 		ConcurrentFragments: e.opts.ConcurrentFragments,
 		ExtraArgs:           e.opts.ExtraArgs,
