@@ -102,6 +102,48 @@
         "script": "mvd-server:qa",
         "problemMatcher": [],
         "group": "qa"
+      },
+      {
+        "label": "mvd-web: qa",
+        "type": "npm",
+        "script": "mvd-web:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-web: build",
+        "type": "npm",
+        "script": "mvd-web:build",
+        "problemMatcher": [],
+        "group": "build"
+      },
+      {
+        "label": "mvd-web: start",
+        "type": "npm",
+        "script": "mvd-web:start",
+        "problemMatcher": [],
+        "isBackground": true
+      },
+      {
+        "label": "mvd-tray: qa",
+        "type": "npm",
+        "script": "mvd-tray:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-tray: build",
+        "type": "npm",
+        "script": "mvd-tray:build",
+        "problemMatcher": [],
+        "group": "build"
+      },
+      {
+        "label": "mvd-tray: start",
+        "type": "npm",
+        "script": "mvd-tray:start",
+        "problemMatcher": [],
+        "isBackground": true
       }
     ]
   },

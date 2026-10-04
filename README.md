@@ -78,6 +78,20 @@ Emoji in playlist and video titles are not drawn, because terminals disagree on 
 
 Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order. Each video also fetches `concurrent_fragments` fragments in parallel.
 
+## 🌐 The browser app (`mvd-tray`)
+
+`apps/mvd-tray` is a second front end for the same engine. It runs until you close it, serves a page on `http://127.0.0.1:8421` and opens it in your browser. Paste links into the page at any time, including while it is downloading, and watch the queue fill and progress live. It reads the same `config.conf` as the terminal app.
+
+```powershell
+npx nx run mvd-tray:build          # builds the React page, embeds it, builds the binary
+./dist/apps/mvd-tray/mvd-tray      # flags: -addr 127.0.0.1:8421  -no-browser
+npx nx run mvd-tray:dev            # development: Vite on :4200 proxying /api to the Go app
+```
+
+Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
+
+The page is `apps/mvd-web` (React); the HTTP API is `libs/mvd-server`: `GET /api/state`, `GET /api/events` (server-sent snapshots), `POST /api/sources`, `POST /api/entries/{id}/retry`, `POST /api/playlists/{index}/retry`. It does not yet have a tray icon, a native folder picker or a settings page; change settings in the terminal app or `config.conf`.
+
 ## ⚙️ Configuration
 
 Config and the download list live in your OS preferences folder, created on first run — nothing sits next to the binary:
@@ -139,7 +153,7 @@ Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_in
 
 ## 🗂️ Code Layout
 
-The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (today `apps/mvd-cli`, the terminal app) and `libs/` the code they share (`libs/mvd-core`), so a second front end can reuse the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
+The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd-cli`, the terminal app; `apps/mvd-tray`, the browser app, with its React page in `apps/mvd-web`) and `libs/` the code they share (`libs/mvd-core`, the engine; `libs/mvd-server`, what the browser app adds), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
 
 The code follows vertical feature slices: `apps/mvd-cli/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
 
@@ -157,6 +171,9 @@ The code follows vertical feature slices: `apps/mvd-cli/main.go` only wires thin
 | `libs/mvd-core/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
 | `libs/mvd-core/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
 | `libs/mvd-core/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
+| `libs/mvd-server/snapshot` | Turn the run state into a versioned, JSON-friendly snapshot for browsers. |
+| `libs/mvd-server/session` | Own the one long-lived engine: start it on the first URLs, accept more while it runs, publish each change. |
+| `libs/mvd-server/api` | The localhost HTTP API and its request guard. |
 
 Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it; `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
 
