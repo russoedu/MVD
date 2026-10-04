@@ -3,6 +3,8 @@ package main
 import (
 	"strconv"
 	"strings"
+
+	"youtube-downloader/apps/mvd-tray/oscommand"
 )
 
 // questionCommand picks the way to put a question with 2 or 3 choices to the person on
@@ -11,36 +13,36 @@ import (
 // that means "leave it". ok is false when there is no way to ask.
 //
 // The words travel as arguments, never inside a script.
-func questionCommand(goos, title, text string, choices []string, has func(string) bool) (cmd dialogCommand, ok bool) {
+func questionCommand(goos, title, text string, choices []string, has func(string) bool) (cmd oscommand.Command, ok bool) {
 	if len(choices) < 2 || len(choices) > 3 {
-		return dialogCommand{}, false
+		return oscommand.Command{}, false
 	}
 
 	switch goos {
 	case "darwin":
 		if !has("osascript") {
-			return dialogCommand{}, false
+			return oscommand.Command{}, false
 		}
 
-		return dialogCommand{name: "osascript", args: macQuestionArguments(title, text, choices)}, true
+		return oscommand.Command{Name: "osascript", Args: macQuestionArguments(title, text, choices)}, true
 	case "linux":
 		if len(choices) != 2 {
-			return dialogCommand{}, false
+			return oscommand.Command{}, false
 		}
 		switch {
 		case has("zenity"):
-			return dialogCommand{name: "zenity", args: []string{
+			return oscommand.Command{Name: "zenity", Args: []string{
 				"--question", "--no-markup", "--title=" + title, "--text=" + text,
 				"--ok-label=" + choices[0], "--cancel-label=" + choices[1],
 			}}, true
 		case has("kdialog"):
-			return dialogCommand{name: "kdialog", args: []string{
+			return oscommand.Command{Name: "kdialog", Args: []string{
 				"--title", title, "--yes-label", choices[0], "--no-label", choices[1], "--yesno", text,
 			}}, true
 		}
 	}
 
-	return dialogCommand{}, false
+	return oscommand.Command{}, false
 }
 
 // macQuestionArguments builds the osascript command line. AppleScript lays the buttons

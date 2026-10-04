@@ -98,8 +98,8 @@ func makeShortcut(link, target string) error {
 		return err
 	}
 	command := shortcutCommand(link, target)
-	cmd := exec.Command(command.name, command.args...)
-	cmd.Env = append(os.Environ(), command.env...)
+	cmd := exec.Command(command.Name, command.Args...)
+	cmd.Env = append(os.Environ(), command.Env...)
 	procwindow.Hide(cmd)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%w: %s", err, output)

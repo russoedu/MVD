@@ -13,52 +13,52 @@ func TestWindowsShowsABalloonWithTheWordsInTheEnvironmentNotTheScript(t *testing
 
 	cmd, ok := notificationCommand("windows", notice, installed("powershell"))
 
-	if !ok || cmd.name != "powershell" {
+	if !ok || cmd.Name != "powershell" {
 		t.Fatalf("ok=%v cmd=%+v", ok, cmd)
 	}
-	if got := strings.Join(cmd.args, " "); strings.Contains(got, "Remove-Item") || strings.Contains(got, "calc") {
+	if got := strings.Join(cmd.Args, " "); strings.Contains(got, "Remove-Item") || strings.Contains(got, "calc") {
 		t.Errorf("the words reached the arguments: %s", got)
 	}
-	if decodePowerShell(t, cmd.args) != windowsNoticeScript {
+	if decodePowerShell(t, cmd.Args) != windowsNoticeScript {
 		t.Error("the encoded script is not the fixed script")
 	}
-	env := strings.Join(cmd.env, "\n")
+	env := strings.Join(cmd.Env, "\n")
 	if !strings.Contains(env, noticeTitleEnv+"=") || !strings.Contains(env, noticeTextEnv+"=") || !strings.Contains(env, noticeIconEnv+"=Info") {
-		t.Errorf("env = %v", cmd.env)
+		t.Errorf("env = %v", cmd.Env)
 	}
 }
 
 func TestAFailureIsDrawnAsAnError(t *testing.T) {
 	win, _ := notificationCommand("windows", userNotice{Title: "t", Text: "x", Failure: true}, installed("powershell"))
-	if !strings.Contains(strings.Join(win.env, "\n"), noticeIconEnv+"=Error") {
-		t.Errorf("windows env = %v", win.env)
+	if !strings.Contains(strings.Join(win.Env, "\n"), noticeIconEnv+"=Error") {
+		t.Errorf("windows env = %v", win.Env)
 	}
 	linux, _ := notificationCommand("linux", userNotice{Title: "t", Text: "x", Failure: true}, installed("notify-send"))
-	if !contains(linux.args, "--urgency=critical") {
-		t.Errorf("linux args = %v", linux.args)
+	if !contains(linux.Args, "--urgency=critical") {
+		t.Errorf("linux args = %v", linux.Args)
 	}
 }
 
 func TestMacAndLinuxPassTheWordsAsArgumentsAfterEverythingThatIsCode(t *testing.T) {
 	mac, ok := notificationCommand("darwin", userNotice{Title: "Title", Text: hostileWords}, installed("osascript"))
-	if !ok || mac.name != "osascript" {
+	if !ok || mac.Name != "osascript" {
 		t.Fatalf("mac = %+v", mac)
 	}
-	if n := len(mac.args); mac.args[n-1] != "Title" || mac.args[n-2] != hostileWords {
-		t.Errorf("mac args end with %q", mac.args[len(mac.args)-2:])
+	if n := len(mac.Args); mac.Args[n-1] != "Title" || mac.Args[n-2] != hostileWords {
+		t.Errorf("mac args end with %q", mac.Args[len(mac.Args)-2:])
 	}
-	for _, a := range mac.args[:len(mac.args)-2] {
+	for _, a := range mac.Args[:len(mac.Args)-2] {
 		if strings.Contains(a, "Remove-Item") {
 			t.Errorf("the words reached the script: %q", a)
 		}
 	}
 
 	linux, ok := notificationCommand("linux", userNotice{Title: "Title", Text: hostileWords}, installed("notify-send"))
-	if !ok || linux.name != "notify-send" {
+	if !ok || linux.Name != "notify-send" {
 		t.Fatalf("linux = %+v", linux)
 	}
-	if n := len(linux.args); linux.args[n-3] != "--" || linux.args[n-2] != "Title" || linux.args[n-1] != hostileWords {
-		t.Errorf("a title that starts with '-' could be read as an option; args = %v", linux.args)
+	if n := len(linux.Args); linux.Args[n-3] != "--" || linux.Args[n-2] != "Title" || linux.Args[n-1] != hostileWords {
+		t.Errorf("a title that starts with '-' could be read as an option; args = %v", linux.Args)
 	}
 }
 
@@ -75,7 +75,7 @@ func TestLongWordsAreCutToWhatABalloonCanShowWithoutBreakingACharacter(t *testin
 
 	cmd, _ := notificationCommand("windows", userNotice{Title: long, Text: long}, installed("powershell"))
 
-	for _, kv := range cmd.env {
+	for _, kv := range cmd.Env {
 		name, value, _ := strings.Cut(kv, "=")
 		limit := map[string]int{noticeTitleEnv: noticeTitleLimit, noticeTextEnv: noticeTextLimit}[name]
 		if limit == 0 {

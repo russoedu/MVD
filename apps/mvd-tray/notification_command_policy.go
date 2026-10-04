@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"strings"
+
+	"youtube-downloader/apps/mvd-tray/oscommand"
+)
 
 // Windows' balloon notifications cut the title at 63 characters and the text at 255.
 const (
@@ -32,21 +36,21 @@ $icon.Dispose()
 
 // notificationCommand picks the way to show n on goos, using only the programs has
 // reports as installed. ok is false when there is none.
-func notificationCommand(goos string, n userNotice, has func(string) bool) (cmd dialogCommand, ok bool) {
+func notificationCommand(goos string, n userNotice, has func(string) bool) (cmd oscommand.Command, ok bool) {
 	switch goos {
 	case "windows":
 		if !has("powershell") {
-			return dialogCommand{}, false
+			return oscommand.Command{}, false
 		}
 		icon := "Info"
 		if n.Failure {
 			icon = "Error"
 		}
 
-		return dialogCommand{
-			name: "powershell",
-			args: []string{"-NoProfile", "-NonInteractive", "-EncodedCommand", encodePowerShell(windowsNoticeScript)},
-			env: []string{
+		return oscommand.Command{
+			Name: "powershell",
+			Args: []string{"-NoProfile", "-NonInteractive", "-EncodedCommand", oscommand.EncodePowerShell(windowsNoticeScript)},
+			Env: []string{
 				noticeTitleEnv + "=" + clip(n.Title, noticeTitleLimit),
 				noticeTextEnv + "=" + clip(n.Text, noticeTextLimit),
 				noticeIconEnv + "=" + icon,
@@ -54,11 +58,11 @@ func notificationCommand(goos string, n userNotice, has func(string) bool) (cmd 
 		}, true
 	case "darwin":
 		if !has("osascript") {
-			return dialogCommand{}, false
+			return oscommand.Command{}, false
 		}
 
 		// The words are argv, not part of the AppleScript text.
-		return dialogCommand{name: "osascript", args: []string{
+		return oscommand.Command{Name: "osascript", Args: []string{
 			"-e", "on run argv",
 			"-e", "display notification (item 1 of argv) with title (item 2 of argv)",
 			"-e", "end run",
@@ -66,14 +70,14 @@ func notificationCommand(goos string, n userNotice, has func(string) bool) (cmd 
 		}}, true
 	default:
 		if !has("notify-send") {
-			return dialogCommand{}, false
+			return oscommand.Command{}, false
 		}
 		urgency := "normal"
 		if n.Failure {
 			urgency = "critical"
 		}
 
-		return dialogCommand{name: "notify-send", args: []string{"--app-name=MVD", "--urgency=" + urgency, "--", n.Title, n.Text}}, true
+		return oscommand.Command{Name: "notify-send", Args: []string{"--app-name=MVD", "--urgency=" + urgency, "--", n.Title, n.Text}}, true
 	}
 }
 

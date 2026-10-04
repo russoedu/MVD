@@ -144,19 +144,19 @@ func TestTheShortcutCommandPassesPathsInTheEnvironmentNotTheScript(t *testing.T)
 
 	cmd := shortcutCommand(`C:\Menu\MVD.lnk`, hostile)
 
-	if cmd.name != "powershell" {
-		t.Fatalf("name = %q", cmd.name)
+	if cmd.Name != "powershell" {
+		t.Fatalf("name = %q", cmd.Name)
 	}
-	if got := strings.Join(cmd.args, " "); strings.Contains(got, "Remove-Item") {
+	if got := strings.Join(cmd.Args, " "); strings.Contains(got, "Remove-Item") {
 		t.Errorf("the path reached the arguments: %s", got)
 	}
-	if decodePowerShell(t, cmd.args) != shortcutScript {
+	if decodePowerShell(t, cmd.Args) != shortcutScript {
 		t.Error("the encoded script is not the fixed script")
 	}
-	env := strings.Join(cmd.env, "\n")
+	env := strings.Join(cmd.Env, "\n")
 	for _, want := range []string{`MVD_SHORTCUT=C:\Menu\MVD.lnk`, "MVD_TARGET=" + hostile} {
 		if !strings.Contains(env, want) {
-			t.Errorf("env is missing %q: %v", want, cmd.env)
+			t.Errorf("env is missing %q: %v", want, cmd.Env)
 		}
 	}
 }

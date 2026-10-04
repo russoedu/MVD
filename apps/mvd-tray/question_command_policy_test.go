@@ -12,15 +12,15 @@ func TestMacAsksThroughOsascriptWithEverythingTheWordsAreAsArguments(t *testing.
 
 	cmd, ok := questionCommand("darwin", "MVD", hostileQuestion, choices, installed("osascript"))
 
-	if !ok || cmd.name != "osascript" {
+	if !ok || cmd.Name != "osascript" {
 		t.Fatalf("ok=%v cmd=%+v", ok, cmd)
 	}
-	script := strings.Join(cmd.args[:8], " ")
+	script := strings.Join(cmd.Args[:8], " ")
 	if strings.Contains(script, "rm -rf") {
 		t.Errorf("the text reached the script: %s", script)
 	}
 	// After the script: the text, the title, then the labels in reverse.
-	tail := cmd.args[8:]
+	tail := cmd.Args[8:]
 	want := []string{hostileQuestion, "MVD", "Leave it here", "Just for me", "For everyone"}
 	if strings.Join(tail, "|") != strings.Join(want, "|") {
 		t.Errorf("arguments after the script = %q, want %q", tail, want)
@@ -33,7 +33,7 @@ func TestMacAsksThroughOsascriptWithEverythingTheWordsAreAsArguments(t *testing.
 func TestMacWithTwoChoicesUsesTwoButtonsAndTheRightDefault(t *testing.T) {
 	cmd, _ := questionCommand("darwin", "MVD", "Move it?", []string{"Move it", "Leave it here"}, installed("osascript"))
 
-	script := strings.Join(cmd.args[:8], " ")
+	script := strings.Join(cmd.Args[:8], " ")
 	if !strings.Contains(script, "buttons {item 3 of argv, item 4 of argv}") || !strings.Contains(script, "default button (item 4 of argv)") {
 		t.Errorf("script = %s", script)
 	}
@@ -43,12 +43,12 @@ func TestLinuxAsksWithZenityElseKdialogAndTheLabelsAreArguments(t *testing.T) {
 	choices := []string{"Move it", "Leave it here"}
 
 	zenity, ok := questionCommand("linux", "MVD", "Move?", choices, installed("kdialog", "zenity"))
-	if !ok || zenity.name != "zenity" || !contains(zenity.args, "--ok-label=Move it") || !contains(zenity.args, "--cancel-label=Leave it here") {
+	if !ok || zenity.Name != "zenity" || !contains(zenity.Args, "--ok-label=Move it") || !contains(zenity.Args, "--cancel-label=Leave it here") {
 		t.Errorf("zenity = %+v", zenity)
 	}
 
 	kde, ok := questionCommand("linux", "MVD", "Move?", choices, installed("kdialog"))
-	if !ok || kde.name != "kdialog" || kde.args[len(kde.args)-2] != "--yesno" {
+	if !ok || kde.Name != "kdialog" || kde.Args[len(kde.Args)-2] != "--yesno" {
 		t.Errorf("kdialog = %+v", kde)
 	}
 }

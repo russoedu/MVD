@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"strings"
+
+	"youtube-downloader/apps/mvd-tray/oscommand"
+)
 
 // startEnv is the variable the Windows script reads the starting folder from.
 const startEnv = "MVD_START"
@@ -26,21 +30,21 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write(
 
 // folderDialogCommand picks the way to show a folder chooser on goos, using only the
 // programs has reports as installed. ok is false when there is none.
-func folderDialogCommand(goos, start string, has func(string) bool) (cmd dialogCommand, ok bool) {
+func folderDialogCommand(goos, start string, has func(string) bool) (cmd oscommand.Command, ok bool) {
 	switch goos {
 	case "windows":
 		if !has("powershell") {
-			return dialogCommand{}, false
+			return oscommand.Command{}, false
 		}
 
-		return dialogCommand{
-			name: "powershell",
-			args: []string{"-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", encodePowerShell(windowsScript)},
-			env:  []string{startEnv + "=" + start},
+		return oscommand.Command{
+			Name: "powershell",
+			Args: []string{"-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", oscommand.EncodePowerShell(windowsScript)},
+			Env:  []string{startEnv + "=" + start},
 		}, true
 	case "darwin":
 		if !has("osascript") {
-			return dialogCommand{}, false
+			return oscommand.Command{}, false
 		}
 		// The folder is argv, not part of the AppleScript text.
 		script := []string{
@@ -55,7 +59,7 @@ func folderDialogCommand(goos, start string, has func(string) bool) (cmd dialogC
 			script = append(script, start)
 		}
 
-		return dialogCommand{name: "osascript", args: script}, true
+		return oscommand.Command{Name: "osascript", Args: script}, true
 	default:
 		switch {
 		case has("zenity"):
@@ -64,16 +68,16 @@ func folderDialogCommand(goos, start string, has func(string) bool) (cmd dialogC
 				args = append(args, "--filename="+strings.TrimRight(start, "/")+"/")
 			}
 
-			return dialogCommand{name: "zenity", args: args}, true
+			return oscommand.Command{Name: "zenity", Args: args}, true
 		case has("kdialog"):
 			args := []string{"--getexistingdirectory"}
 			if start != "" {
 				args = append(args, start)
 			}
 
-			return dialogCommand{name: "kdialog", args: args}, true
+			return oscommand.Command{Name: "kdialog", Args: args}, true
 		}
 
-		return dialogCommand{}, false
+		return oscommand.Command{}, false
 	}
 }

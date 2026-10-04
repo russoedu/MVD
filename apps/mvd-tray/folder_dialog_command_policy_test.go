@@ -11,56 +11,56 @@ const hostile = `C:\x"; Remove-Item -Recurse C:\ #'$(calc)`
 func TestWindowsUsesPowerShellWithTheStartFolderInTheEnvironmentNotTheScript(t *testing.T) {
 	cmd, ok := folderDialogCommand("windows", hostile, installed("powershell"))
 
-	if !ok || cmd.name != "powershell" {
+	if !ok || cmd.Name != "powershell" {
 		t.Fatalf("ok=%v cmd=%+v", ok, cmd)
 	}
-	if got := strings.Join(cmd.args, " "); strings.Contains(got, "Remove-Item") || strings.Contains(got, "calc") {
+	if got := strings.Join(cmd.Args, " "); strings.Contains(got, "Remove-Item") || strings.Contains(got, "calc") {
 		t.Errorf("the folder reached the arguments: %s", got)
 	}
-	if len(cmd.env) != 1 || cmd.env[0] != "MVD_START="+hostile {
-		t.Errorf("env = %v", cmd.env)
+	if len(cmd.Env) != 1 || cmd.Env[0] != "MVD_START="+hostile {
+		t.Errorf("env = %v", cmd.Env)
 	}
 
-	script := decodePowerShell(t, cmd.args)
+	script := decodePowerShell(t, cmd.Args)
 	if script != windowsScript {
 		t.Error("the encoded script is not the fixed script")
 	}
-	if !strings.Contains(strings.Join(cmd.args, " "), "-STA") {
+	if !strings.Contains(strings.Join(cmd.Args, " "), "-STA") {
 		t.Error("a Windows dialog needs a single-threaded apartment")
 	}
 }
 
 func TestMacPassesTheStartFolderAsAnArgumentAndOmitsItWhenThereIsNone(t *testing.T) {
 	with, ok := folderDialogCommand("darwin", hostile, installed("osascript"))
-	if !ok || with.name != "osascript" {
+	if !ok || with.Name != "osascript" {
 		t.Fatalf("ok=%v cmd=%+v", ok, with)
 	}
-	if last := with.args[len(with.args)-1]; last != hostile {
+	if last := with.Args[len(with.Args)-1]; last != hostile {
 		t.Errorf("the start folder is not the final argument: %q", last)
 	}
-	for _, a := range with.args[:len(with.args)-1] {
+	for _, a := range with.Args[:len(with.Args)-1] {
 		if strings.Contains(a, "Remove-Item") {
 			t.Errorf("the folder reached the script: %q", a)
 		}
 	}
 
 	without, _ := folderDialogCommand("darwin", "", installed("osascript"))
-	if len(without.args) != len(with.args)-1 {
-		t.Errorf("an empty start should add no argument: %v", without.args)
+	if len(without.Args) != len(with.Args)-1 {
+		t.Errorf("an empty start should add no argument: %v", without.Args)
 	}
 }
 
 func TestLinuxPrefersZenityThenKdialogThenNothing(t *testing.T) {
 	both, ok := folderDialogCommand("linux", "/home/me/Music/", installed("kdialog", "zenity"))
-	if !ok || both.name != "zenity" {
+	if !ok || both.Name != "zenity" {
 		t.Fatalf("both installed: %+v", both)
 	}
-	if !contains(both.args, "--filename=/home/me/Music/") {
-		t.Errorf("zenity args = %v", both.args)
+	if !contains(both.Args, "--filename=/home/me/Music/") {
+		t.Errorf("zenity args = %v", both.Args)
 	}
 
 	kde, ok := folderDialogCommand("linux", "/home/me", installed("kdialog"))
-	if !ok || kde.name != "kdialog" || kde.args[len(kde.args)-1] != "/home/me" {
+	if !ok || kde.Name != "kdialog" || kde.Args[len(kde.Args)-1] != "/home/me" {
 		t.Errorf("kdialog = %+v", kde)
 	}
 
