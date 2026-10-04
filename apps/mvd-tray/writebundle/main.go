@@ -18,11 +18,11 @@ func main() {
 	flag.Parse()
 
 	if *program == "" || *out == "" {
-		fmt.Fprintln(os.Stderr, "usage: writebundle -program <file> -out <MVD.app> [-version <v>] [-icon <file.icns>]")
+		_, _ = fmt.Fprintln(os.Stderr, "usage: writebundle -program <file> -out <MVD.app> [-version <v>] [-icon <file.icns>]")
 		os.Exit(2)
 	}
 	if err := macbundle.Write(*out, *program, *version, *icon); err != nil {
-		fmt.Fprintln(os.Stderr, "writebundle:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "writebundle:", err)
 		os.Exit(1)
 	}
 }
