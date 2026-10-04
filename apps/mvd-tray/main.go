@@ -30,21 +30,31 @@ func main() {
 	address := flag.String("addr", defaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
+	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	flag.Parse()
 
-	if err := run(*address, !*noBrowser, !*noTray); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		showFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(address string, open, tray bool) error {
+func run(address string, open, tray bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
 	if err != nil {
 		return fmt.Errorf("cannot open the app data folder: %w", err)
+	}
+
+	// The first time it is started from somewhere it does not belong, it offers to move
+	// itself, and if that is accepted the moved copy takes over and this one is done.
+	if offerMoveHere(appDir, tray, movedFrom) {
+		return nil
+	}
+	if movedFrom != "" {
+		go cleanUpMovedProgram(movedFrom)
 	}
 
 	// The tools live in the app-data folder: the same place on every start, and one the
