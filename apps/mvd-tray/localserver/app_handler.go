@@ -14,9 +14,9 @@ func ConfigPath(appDir string) string {
 
 // NewHandler is the whole site: the API under /api/ and the built frontend for
 // everything else.
-func NewHandler(sessions api.Sessions, settings api.SettingsStore, folders api.FolderPicker) http.Handler {
+func NewHandler(sessions api.Sessions, settings api.SettingsStore, folders api.FolderPicker, uninstaller api.Uninstaller) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/api/", api.New(sessions, api.Options{Settings: settings, Folders: folders}))
+	mux.Handle("/api/", api.New(sessions, api.Options{Settings: settings, Folders: folders, Uninstall: uninstaller}))
 	mux.Handle("/", webHandler())
 
 	return mux

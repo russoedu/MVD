@@ -2,9 +2,23 @@ package api
 
 import (
 	"context"
+	"errors"
 
 	"youtube-downloader/libs/mvd-server/settings"
 )
+
+// ErrUninstallDeclined is what an Uninstaller returns when the person said no.
+var ErrUninstallDeclined = errors.New("the person declined to remove the app")
+
+// Uninstaller removes the app from the machine, after the person has agreed.
+type Uninstaller interface {
+	// Confirm puts what will be removed to the person on the machine's own screen and
+	// waits. deletePreferences says whether the stored preferences go too, or nil to ask
+	// the person as well. It returns ErrUninstallDeclined when they say no and
+	// ErrNoDialog when there is no way to ask. Otherwise it returns the removal, which
+	// the caller runs once it has answered the page: it ends with the app quitting.
+	Confirm(deletePreferences *bool) (remove func(), err error)
+}
 
 // SettingsStore is where the settings live. *settings.Repository satisfies it.
 type SettingsStore interface {

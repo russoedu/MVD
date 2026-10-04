@@ -53,9 +53,9 @@ func OfferMoveHere(appDir string, tray bool, movedFrom, version string) bool {
 func installOnThisMachine(target installTarget, exe, version string) error {
 	switch target.Kind {
 	case kindWindowsSystem:
-		return installWindowsSystem(target, exe, allUsersStartMenuLink(), makeShortcut)
+		return installWindowsSystem(target, exe, allUsersStartMenuLink(), makeShortcut, func(t installTarget) error { return registerUninstallEntry(t, version) })
 	case kindWindowsUser:
-		return installWindowsUser(target, exe, userStartMenu(), makeShortcut)
+		return installWindowsUser(target, exe, userStartMenu(), makeShortcut, func(t installTarget) error { return registerUninstallEntry(t, version) })
 	case kindMacBundle:
 		return installMacBundle(target, exe, version)
 	case kindLinuxUser:
@@ -63,6 +63,14 @@ func installOnThisMachine(target installTarget, exe, version string) error {
 	}
 
 	return errors.New("this kind of place is not supported")
+}
+
+// FootprintHere is what the installer can have put on this machine.
+func FootprintHere() Footprint {
+	home, _ := os.UserHomeDir()
+	places := installPlaces{ProgramFiles: os.Getenv("ProgramFiles"), LocalAppData: os.Getenv("LOCALAPPDATA"), Home: home}
+
+	return footprintOf(runtime.GOOS, places, userStartMenu(), allUsersStartMenuLink(), userApplicationsMenu())
 }
 
 // allUsersStartMenuLink is where the Start menu shortcut for every account goes.

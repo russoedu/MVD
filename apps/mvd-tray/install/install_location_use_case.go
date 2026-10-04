@@ -138,26 +138,28 @@ func moveQuestion(from string, targets []installTarget, adminHint bool) (string,
 	return text, []string{"For everyone", "Just for me", "Leave it here"}
 }
 
-// installWindowsUser puts the program in the person's own Programs folder and adds a
-// shortcut for them to the Start menu. A missing shortcut is a loss of convenience, not
-// a reason to undo the install.
-func installWindowsUser(target installTarget, exe, startMenu string, shortcut func(link, target string) error) error {
+// installWindowsUser puts the program in the person's own Programs folder, adds a
+// shortcut for them to the Start menu and lists it in Settings > Apps. A missing
+// shortcut or entry is a loss of convenience, not a reason to undo the install.
+func installWindowsUser(target installTarget, exe, startMenu string, shortcut func(link, target string) error, register func(installTarget) error) error {
 	if err := programfile.Place(exe, target.Program); err != nil {
 		return err
 	}
 	_ = shortcut(filepath.Join(startMenu, "MVD.lnk"), target.Program)
+	_ = register(target)
 
 	return nil
 }
 
-// installWindowsSystem puts the program in Program Files and adds a shortcut for every
-// account. It is a plain copy: it only works, and is only offered, when the app was
-// started as an administrator.
-func installWindowsSystem(target installTarget, exe, allUsersLink string, shortcut func(link, target string) error) error {
+// installWindowsSystem puts the program in Program Files, adds a shortcut for every
+// account and lists it in Settings > Apps. It is a plain copy: it only works, and is
+// only offered, when the app was started as an administrator.
+func installWindowsSystem(target installTarget, exe, allUsersLink string, shortcut func(link, target string) error, register func(installTarget) error) error {
 	if err := programfile.Place(exe, target.Program); err != nil {
 		return err
 	}
 	_ = shortcut(allUsersLink, target.Program)
+	_ = register(target)
 
 	return nil
 }
