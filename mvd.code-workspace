@@ -69,23 +69,23 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "mvd-cli: qa",
+        "label": "mvd-tui: qa",
         "type": "npm",
-        "script": "mvd-cli:qa",
+        "script": "mvd-tui:qa",
         "problemMatcher": [],
         "group": "qa"
       },
       {
-        "label": "mvd-cli: build",
+        "label": "mvd-tui: build",
         "type": "npm",
-        "script": "mvd-cli:build",
+        "script": "mvd-tui:build",
         "problemMatcher": [],
         "group": "build"
       },
       {
-        "label": "mvd-cli: start",
+        "label": "mvd-tui: start",
         "type": "npm",
-        "script": "mvd-cli:start",
+        "script": "mvd-tui:start",
         "problemMatcher": [],
         "isBackground": true
       },

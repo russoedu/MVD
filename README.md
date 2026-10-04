@@ -26,7 +26,7 @@ A lightweight, zero-setup, concurrent Go application with interactive terminal s
 Build and run; on first launch it creates a default config in your preferences folder and opens the **preferences** screen:
 
 ```powershell
-go build -o mvd.exe ./apps/mvd-cli
+go build -o mvd.exe ./apps/mvd-tui
 .\mvd.exe
 ```
 
@@ -173,9 +173,9 @@ Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_in
 
 ## 🗂️ Code Layout
 
-The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd-cli`, the terminal app; `apps/mvd-tray`, the browser app, with its React page in `apps/mvd-web`) and `libs/` the code they share (`libs/mvd-core`, the engine; `libs/mvd-server`, what the browser app adds), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
+The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd-tui`, the terminal app; `apps/mvd-tray`, the browser app, with its React page in `apps/mvd-web`) and `libs/` the code they share (`libs/mvd-core`, the engine; `libs/mvd-server`, what the browser app adds), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
 
-The code follows vertical feature slices: `apps/mvd-cli/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
+The code follows vertical feature slices: `apps/mvd-tui/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
 
 | Slice | Outcome |
 |---|---|
@@ -202,7 +202,7 @@ Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `officia
 
 ```powershell
 # Build for your OS
-go build -o downloader.exe ./apps/mvd-cli
+go build -o downloader.exe ./apps/mvd-tui
 
 # Run the tests (Nx runs each project from its own folder; a bare `go test ./...`
 # from the root would also walk node_modules once `npm install` has run)
@@ -214,4 +214,4 @@ npx nx run-many -t test
 
 GitHub Releases are automatically created via GitHub Actions on every new tag push (e.g., `v1.0.0`).
 
-Two things release, separately. The terminal app is built by `release.yml` on every `v*` tag as before (it tests only `mvd-cli` and `libs`, because `mvd-tray` cannot compile until its React page has been built into `apps/mvd-tray/localserver/web`). The browser app is released by `ci.yml` (mnci): a push to `main` versions `mvd-tray` from conventional commits, tags it and attaches a zip per OS built on a runner of that OS (it is a `--cgo` app, so it is not cross-compiled). Nx therefore leaves `mvd-tray` out of the cross-compiling verify job and builds it in the `native` job instead.
+Two things release, separately. The terminal app is built by `release.yml` on every `v*` tag as before (it tests only `mvd-tui` and `libs`, because `mvd-tray` cannot compile until its React page has been built into `apps/mvd-tray/localserver/web`). The browser app is released by `ci.yml` (mnci): a push to `main` versions `mvd-tray` from conventional commits, tags it and attaches a zip per OS built on a runner of that OS (it is a `--cgo` app, so it is not cross-compiled). Nx therefore leaves `mvd-tray` out of the cross-compiling verify job and builds it in the `native` job instead.

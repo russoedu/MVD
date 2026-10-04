@@ -1,0 +1,83 @@
+{
+  "name": "mvd-tui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/mvd-tui",
+  "tags": [
+    "type:go-app"
+  ],
+  "targets": {
+    "build": {
+      "executor": "@nx-go/nx-go:build",
+      "outputs": [
+        "{workspaceRoot}/dist/apps/mvd-tui"
+      ],
+      "options": {
+        "outputPath": "../../dist/apps/mvd-tui/mvd-tui"
+      }
+    },
+    "test": {
+      "executor": "@nx-go/nx-go:test"
+    },
+    "lint": {
+      "executor": "@nx-go/nx-go:lint",
+      "parallelism": false,
+      "options": {
+        "linter": "golangci-lint",
+        "args": [
+          "run"
+        ]
+      }
+    },
+    "package": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/drop/go-app-mvd-tui.zip"
+      ],
+      "options": {
+        "command": "node -e \"const fs=require('node:fs');fs.mkdirSync('dist/drop',{recursive:true});const A=require('adm-zip');const z=new A();z.addLocalFolder('dist/apps/mvd-tui');z.writeZip('dist/drop/go-app-mvd-tui.zip')\""
+      }
+    },
+    "build-all": {
+      "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/go.mod",
+        "{workspaceRoot}/go.sum",
+        {
+          "env": "VERSION"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/platforms/mvd-tui"
+      ],
+      "options": {
+        "command": "node -e \"const{spawnSync}=require('node:child_process');const v=process.env.VERSION||'dev';for(const p of ['windows/amd64','windows/arm64','linux/amd64','linux/arm64','darwin/amd64','darwin/arm64']){const[os,arch]=p.split('/');const out='../../dist/platforms/mvd-tui/'+os+'-'+arch+'/mvd-tui'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-ldflags','-s -w -X main.version='+v,'-o',out,'.'],{cwd:'apps/mvd-tui',stdio:'inherit',env:{...process.env,CGO_ENABLED:'0',GOOS:os,GOARCH:arch}});if(r.status!==0)process.exit(r.status??1)}\""
+      }
+    },
+    "package-all": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build-all"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/drop/go-app-mvd-tui-*.zip"
+      ],
+      "options": {
+        "command": "node -e \"const fs=require('node:fs');const A=require('adm-zip');fs.mkdirSync('dist/drop',{recursive:true});for(const d of fs.readdirSync('dist/platforms/mvd-tui')){const z=new A();z.addLocalFolder('dist/platforms/mvd-tui/'+d);z.writeZip('dist/drop/go-app-mvd-tui-'+d+'.zip')}\""
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "go run .",
+        "cwd": "apps/mvd-tui"
+      }
+    }
+  }
+}
