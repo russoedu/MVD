@@ -9,7 +9,7 @@ import (
 )
 
 func TestTheProgramIsDeletedAndNothingIsLeftBehind(t *testing.T) {
-	program := filepath.Join(t.TempDir(), "mvd-tray")
+	program := filepath.Join(t.TempDir(), "mvd")
 	if err := os.WriteFile(program, []byte("program"), 0o755); err != nil {
 		t.Fatal(err)
 	}

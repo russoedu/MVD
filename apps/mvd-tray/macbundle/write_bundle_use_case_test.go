@@ -84,7 +84,7 @@ func TestMissingPiecesAreReportedNotIgnored(t *testing.T) {
 func TestPathsInsideTheBundleFollowTheMacOSLayout(t *testing.T) {
 	root := filepath.Join("a", "MVD.app")
 
-	if got, want := ProgramPath(root), filepath.Join(root, "Contents", "MacOS", "mvd-tray"); got != want {
+	if got, want := ProgramPath(root), filepath.Join(root, "Contents", "MacOS", "mvd"); got != want {
 		t.Errorf("program path = %s, want %s", got, want)
 	}
 	if got, want := InfoPlistPath(root), filepath.Join(root, "Contents", "Info.plist"); got != want {

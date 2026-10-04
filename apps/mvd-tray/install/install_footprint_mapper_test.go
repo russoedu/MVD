@@ -37,7 +37,7 @@ func TestMacHasBundlesAndNoShortcuts(t *testing.T) {
 func TestOnLinuxTheBinFolderIsSharedAndTheMenuEntryIsTheOnlyExtra(t *testing.T) {
 	got := footprintOf("linux", installPlaces{Home: "home"}, "", "", "apps")
 
-	if len(got.Places) != 1 || !got.Places[0].Shared || got.Places[0].Program != filepath.Join("home", ".local", "bin", "mvd-tray") {
+	if len(got.Places) != 1 || !got.Places[0].Shared || got.Places[0].Program != filepath.Join("home", ".local", "bin", "mvd") {
 		t.Errorf("places = %+v", got.Places)
 	}
 	if len(got.Entries) != 1 || got.Entries[0] != filepath.Join("apps", "mvd.desktop") {

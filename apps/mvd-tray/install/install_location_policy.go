@@ -61,11 +61,11 @@ func installTargets(goos string, places installPlaces) []installTarget {
 	case "windows":
 		if places.ProgramFiles != "" {
 			folder := filepath.Join(places.ProgramFiles, installFolderName)
-			targets = append(targets, installTarget{Kind: kindWindowsSystem, Everyone: true, Folder: folder, Program: filepath.Join(folder, "mvd-tray.exe")})
+			targets = append(targets, installTarget{Kind: kindWindowsSystem, Everyone: true, Folder: folder, Program: filepath.Join(folder, "mvd.exe")})
 		}
 		if places.LocalAppData != "" {
 			folder := filepath.Join(places.LocalAppData, "Programs", installFolderName)
-			targets = append(targets, installTarget{Kind: kindWindowsUser, Folder: folder, Program: filepath.Join(folder, "mvd-tray.exe")})
+			targets = append(targets, installTarget{Kind: kindWindowsUser, Folder: folder, Program: filepath.Join(folder, "mvd.exe")})
 		}
 	case "darwin":
 		bundle := func(root string) installTarget {
@@ -82,7 +82,7 @@ func installTargets(goos string, places installPlaces) []installTarget {
 	case "linux":
 		if places.Home != "" {
 			folder := filepath.Join(places.Home, ".local", "bin")
-			targets = append(targets, installTarget{Kind: kindLinuxUser, Folder: folder, Program: filepath.Join(folder, "mvd-tray")})
+			targets = append(targets, installTarget{Kind: kindLinuxUser, Folder: folder, Program: filepath.Join(folder, "mvd")})
 		}
 	}
 

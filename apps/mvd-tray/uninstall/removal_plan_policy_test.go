@@ -19,8 +19,8 @@ func windowsFootprint(root string) install.Footprint {
 
 	return install.Footprint{
 		Places: []install.Place{
-			{Folder: system, Program: filepath.Join(system, "mvd-tray.exe")},
-			{Folder: user, Program: filepath.Join(user, "mvd-tray.exe")},
+			{Folder: system, Program: filepath.Join(system, "mvd.exe")},
+			{Folder: user, Program: filepath.Join(user, "mvd.exe")},
 		},
 		Entries: []string{filepath.Join(root, "menu", "MVD.lnk"), filepath.Join(root, "all", "MVD.lnk")},
 	}
@@ -54,7 +54,7 @@ func TestOnlyTheProgramIsRemovedWhenItRunsFromADownloadsFolder(t *testing.T) {
 	root := t.TempDir()
 	foot := windowsFootprint(root)
 	downloads := filepath.Join(root, "Downloads")
-	exe := filepath.Join(downloads, "mvd-tray (1).exe")
+	exe := filepath.Join(downloads, "mvd (1).exe")
 
 	plan := buildPlan(planInput{GOOS: "windows", Exe: exe, Footprint: foot, Exists: nothing})
 
@@ -72,7 +72,7 @@ func TestAPlaceWithNothingInItIsLeftOut(t *testing.T) {
 	root := t.TempDir()
 	foot := windowsFootprint(root)
 
-	plan := buildPlan(planInput{GOOS: "windows", Exe: filepath.Join(root, "elsewhere", "mvd-tray.exe"), Footprint: foot, Exists: nothing})
+	plan := buildPlan(planInput{GOOS: "windows", Exe: filepath.Join(root, "elsewhere", "mvd.exe"), Footprint: foot, Exists: nothing})
 
 	if len(plan.Folders) != 0 || len(plan.Files) != 0 {
 		t.Errorf("plan = %+v", plan)
@@ -90,7 +90,7 @@ func TestADevelopersBuildIsNotRemoved(t *testing.T) {
 func TestOnLinuxTheSharedBinFolderIsNeverRemovedOnlyTheProgramAndTheMenuEntry(t *testing.T) {
 	root := t.TempDir()
 	bin := filepath.Join(root, ".local", "bin")
-	program := filepath.Join(bin, "mvd-tray")
+	program := filepath.Join(bin, "mvd")
 	desktop := filepath.Join(root, "apps", "mvd.desktop")
 	foot := install.Footprint{Places: []install.Place{{Folder: bin, Program: program, Shared: true}}, Entries: []string{desktop}}
 
@@ -106,10 +106,10 @@ func TestOnLinuxTheSharedBinFolderIsNeverRemovedOnlyTheProgramAndTheMenuEntry(t 
 
 func TestOnLinuxAnotherCopyInTheBinFolderIsRemovedToo(t *testing.T) {
 	root := t.TempDir()
-	program := filepath.Join(root, ".local", "bin", "mvd-tray")
+	program := filepath.Join(root, ".local", "bin", "mvd")
 	foot := install.Footprint{Places: []install.Place{{Folder: filepath.Dir(program), Program: program, Shared: true}}}
 
-	plan := buildPlan(planInput{GOOS: "linux", Exe: filepath.Join(root, "Downloads", "mvd-tray"), Footprint: foot, Exists: everything})
+	plan := buildPlan(planInput{GOOS: "linux", Exe: filepath.Join(root, "Downloads", "mvd"), Footprint: foot, Exists: everything})
 
 	if !reflect.DeepEqual(plan.Files, []string{program}) {
 		t.Errorf("files = %v", plan.Files)
@@ -119,7 +119,7 @@ func TestOnLinuxAnotherCopyInTheBinFolderIsRemovedToo(t *testing.T) {
 func TestAMacBundleIsRemovedAsAWhole(t *testing.T) {
 	root := t.TempDir()
 	bundle := filepath.Join(root, "Applications", "MVD.app")
-	program := filepath.Join(bundle, "Contents", "MacOS", "mvd-tray")
+	program := filepath.Join(bundle, "Contents", "MacOS", "mvd")
 	foot := install.Footprint{Places: []install.Place{{Folder: bundle, Program: program, Bundle: true}}}
 
 	plan := buildPlan(planInput{GOOS: "darwin", Exe: program, Footprint: foot, Exists: everything})
@@ -230,7 +230,7 @@ func TestTheAppsOwnDataIsStillRemovedWhenTheDownloadsFolderIsAboveIt(t *testing.
 }
 
 func TestWindowsPathsAreComparedWithoutCase(t *testing.T) {
-	if !within("windows", filepath.Join("C:", "Users", "A", "MVD"), filepath.Join("c:", "users", "a", "mvd", "mvd-tray.exe")) {
+	if !within("windows", filepath.Join("C:", "Users", "A", "MVD"), filepath.Join("c:", "users", "a", "mvd", "mvd.exe")) {
 		t.Error("the folder should contain the program whatever the case")
 	}
 	if within("linux", "/a/MVD", "/a/mvd/x") {
@@ -242,12 +242,12 @@ func TestWindowsPathsAreComparedWithoutCase(t *testing.T) {
 }
 
 func TestTheConfirmationNamesEveryPathAndSaysWhatIsKept(t *testing.T) {
-	plan := removalPlan{Program: "/p/mvd-tray", Folders: []string{"/p/MVD"}, Files: []string{"/m/MVD.lnk"}, Registry: true}
+	plan := removalPlan{Program: "/p/mvd", Folders: []string{"/p/MVD"}, Files: []string{"/m/MVD.lnk"}, Registry: true}
 
 	kept := confirmation(plan, "/data/mvd", false)
 	deleted := confirmation(plan, "/data/mvd", true)
 
-	for _, want := range []string{"/p/mvd-tray", "/p/MVD", "/m/MVD.lnk", "Settings > Apps", "never touched"} {
+	for _, want := range []string{"/p/mvd", "/p/MVD", "/m/MVD.lnk", "Settings > Apps", "never touched"} {
 		if !strings.Contains(kept, want) {
 			t.Errorf("missing %q in:\n%s", want, kept)
 		}

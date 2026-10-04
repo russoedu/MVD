@@ -6,7 +6,7 @@ import (
 )
 
 func TestTheEntryPointsWindowsAtTheInstalledProgramWithTheUninstallFlag(t *testing.T) {
-	target := installTarget{Folder: filepath.Join("C:", "Users", "a", "MVD"), Program: filepath.Join("C:", "Users", "a", "MVD", "mvd-tray.exe")}
+	target := installTarget{Folder: filepath.Join("C:", "Users", "a", "MVD"), Program: filepath.Join("C:", "Users", "a", "MVD", "mvd.exe")}
 
 	entry := uninstallEntryFor(target, "1.2.3")
 

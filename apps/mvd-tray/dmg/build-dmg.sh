@@ -19,9 +19,9 @@ mkdir -p "$work/staging" "$drop"
 # build flags match the build-native target, apart from -H, which is Windows only.
 for arch in arm64 amd64; do
   (cd apps/mvd-tray && GOOS=darwin GOARCH="$arch" CGO_ENABLED=1 \
-    go build -trimpath -ldflags "-s -w -X main.version=$version" -o "../../$work/mvd-tray-$arch" .)
+    go build -trimpath -ldflags "-s -w -X main.version=$version" -o "../../$work/mvd-$arch" .)
 done
-lipo -create -output "$work/mvd-tray" "$work/mvd-tray-arm64" "$work/mvd-tray-amd64"
+lipo -create -output "$work/mvd" "$work/mvd-arm64" "$work/mvd-amd64"
 
 # The icon is best effort: the logo is an SVG, which only the macOS thumbnailer can
 # draw. Without one the app still works and shows the generic icon.
@@ -38,7 +38,7 @@ make_icon() {
     iconutil -c icns "$work/MVD.iconset" -o "$work/MVD.icns"
 }
 
-set -- -program "$work/mvd-tray" -version "$version" -out "$work/staging/MVD.app"
+set -- -program "$work/mvd" -version "$version" -out "$work/staging/MVD.app"
 if make_icon; then
   echo "icon: built from assets/logo.svg"
   set -- "$@" -icon "$work/MVD.icns"
@@ -64,10 +64,10 @@ mkdir -p "$mount"
 hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$drop/MVD.dmg" >/dev/null
 trap 'hdiutil detach "$mount" -quiet >/dev/null 2>&1 || true' EXIT
 
-test -x "$mount/MVD.app/Contents/MacOS/mvd-tray"
+test -x "$mount/MVD.app/Contents/MacOS/mvd"
 plutil -lint "$mount/MVD.app/Contents/Info.plist"
 test -L "$mount/Applications"
 test "$(readlink "$mount/Applications")" = "/Applications"
 codesign --verify --deep --strict "$mount/MVD.app"
-echo "architectures: $(lipo -archs "$mount/MVD.app/Contents/MacOS/mvd-tray")"
+echo "architectures: $(lipo -archs "$mount/MVD.app/Contents/MacOS/mvd")"
 echo "MVD.dmg verified: MVD.app (signed, ad hoc) and an Applications link"

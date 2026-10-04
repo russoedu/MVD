@@ -22,7 +22,7 @@ func TestWindowsOffersProgramFilesForEveryoneThenTheOwnProgramsFolder(t *testing
 	if system.Kind != kindWindowsSystem || !system.Everyone || system.Folder != filepath.Join(places.ProgramFiles, "MVD") {
 		t.Errorf("system = %+v", system)
 	}
-	if system.Program != filepath.Join(system.Folder, "mvd-tray.exe") {
+	if system.Program != filepath.Join(system.Folder, "mvd.exe") {
 		t.Errorf("system program = %s", system.Program)
 	}
 	if user.Kind != kindWindowsUser || user.Everyone || user.Folder != filepath.Join(places.LocalAppData, "Programs", "MVD") {
@@ -48,7 +48,7 @@ func TestMacOffersApplicationsForEveryoneThenTheOwnApplicationsFolderAsBundles(t
 	if system.Kind != kindMacBundle || !system.Everyone || system.Folder != filepath.Join("/Applications", "MVD.app") {
 		t.Errorf("system = %+v", system)
 	}
-	if want := filepath.Join(system.Folder, "Contents", "MacOS", "mvd-tray"); system.Program != want {
+	if want := filepath.Join(system.Folder, "Contents", "MacOS", "mvd"); system.Program != want {
 		t.Errorf("system program = %s, want %s", system.Program, want)
 	}
 	if user.Everyone || user.Folder != filepath.Join(places.Home, "Applications", "MVD.app") {
@@ -62,7 +62,7 @@ func TestLinuxHasOnlyTheOwnLocalBinFolder(t *testing.T) {
 	if len(targets) != 1 || targets[0].Kind != kindLinuxUser || targets[0].Everyone {
 		t.Fatalf("targets = %+v", targets)
 	}
-	if want := filepath.Join(places.Home, ".local", "bin", "mvd-tray"); targets[0].Program != want {
+	if want := filepath.Join(places.Home, ".local", "bin", "mvd"); targets[0].Program != want {
 		t.Errorf("program = %s, want %s", targets[0].Program, want)
 	}
 }
@@ -80,11 +80,11 @@ func TestAProgramInAnyOfTheTargetFoldersCountsAsInstalledEvenIfRenamed(t *testin
 	targets := installTargets("windows", places)
 
 	for _, folder := range []string{targets[0].Folder, targets[1].Folder} {
-		if !isInstalled("windows", filepath.Join(folder, "mvd-tray (1).exe"), targets) {
+		if !isInstalled("windows", filepath.Join(folder, "mvd (1).exe"), targets) {
 			t.Errorf("%s was not recognised as installed", folder)
 		}
 	}
-	if isInstalled("windows", filepath.Join("C:", "Users", "me", "Downloads", "mvd-tray.exe"), targets) {
+	if isInstalled("windows", filepath.Join("C:", "Users", "me", "Downloads", "mvd.exe"), targets) {
 		t.Error("Downloads is not an install folder")
 	}
 }
@@ -125,7 +125,7 @@ func TestTheMoveIsNotOfferedInEachOfTheCasesWhereItWouldBeWrong(t *testing.T) {
 		"there is nowhere to move to":     func(s *moveSituation) { s.HasTarget = false },
 		"it is a developer's build":       func(s *moveSituation) { s.Version = "dev" },
 		"it runs without a tray icon":     func(s *moveSituation) { s.Tray = false },
-		"it is the copy a move just made": func(s *moveSituation) { s.MovedFrom = "mvd-tray.exe" },
+		"it is the copy a move just made": func(s *moveSituation) { s.MovedFrom = "mvd.exe" },
 		"the person was already asked":    func(s *moveSituation) { s.Asked = true },
 		"it is already installed":         func(s *moveSituation) { s.Installed = true },
 	}
@@ -140,7 +140,7 @@ func TestTheMoveIsNotOfferedInEachOfTheCasesWhereItWouldBeWrong(t *testing.T) {
 }
 
 func TestTheShortcutCommandPassesPathsInTheEnvironmentNotTheScript(t *testing.T) {
-	hostile := `C:\x"; Remove-Item -Recurse C:\ #'$(calc)\mvd-tray.exe`
+	hostile := `C:\x"; Remove-Item -Recurse C:\ #'$(calc)\mvd.exe`
 
 	cmd := shortcutCommand(`C:\Menu\MVD.lnk`, hostile)
 
