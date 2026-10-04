@@ -1,4 +1,4 @@
-package main
+package question
 
 import (
 	"strconv"
@@ -74,29 +74,29 @@ func macQuestionArguments(title, text string, choices []string) []string {
 // program prints the label of the button that was pressed and fails if the box was
 // cancelled. On Linux the exit status is the answer: 0 for the first choice, 1 for the
 // second, and anything else means the box could not be shown.
-func parseAnswer(goos string, choices []string, exitCode int, stdout string) answer {
+func parseAnswer(goos string, choices []string, exitCode int, stdout string) Answer {
 	switch goos {
 	case "darwin":
 		if exitCode != 0 {
-			return answerLeave
+			return AnswerLeave
 		}
 		label := strings.TrimSpace(stdout)
 		switch {
 		case len(choices) > 0 && label == choices[0]:
-			return answerFirst
+			return AnswerFirst
 		case len(choices) == 3 && label == choices[1]:
-			return answerSecond
+			return AnswerSecond
 		}
 
-		return answerLeave
+		return AnswerLeave
 	case "linux":
 		switch exitCode {
 		case 0:
-			return answerFirst
+			return AnswerFirst
 		case 1:
-			return answerLeave
+			return AnswerLeave
 		}
 	}
 
-	return answerUnavailable
+	return AnswerUnavailable
 }

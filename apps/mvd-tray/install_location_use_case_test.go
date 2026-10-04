@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"youtube-downloader/apps/mvd-tray/question"
 )
 
 // moveProbe is a moveEnvironment whose every action is recorded, and whose answers and
@@ -14,7 +16,7 @@ import (
 type moveProbe struct {
 	env moveEnvironment
 
-	answers   []answer
+	answers   []question.Answer
 	questions []string
 	choices   [][]string
 	told      []string
@@ -30,7 +32,7 @@ type startedProgram struct {
 	args   []string
 }
 
-func newMoveProbe(t *testing.T, goos string, answers ...answer) *moveProbe {
+func newMoveProbe(t *testing.T, goos string, answers ...question.Answer) *moveProbe {
 	t.Helper()
 	p := &moveProbe{answers: answers}
 	root := t.TempDir()
@@ -44,7 +46,7 @@ func newMoveProbe(t *testing.T, goos string, answers ...answer) *moveProbe {
 		AppDir: t.TempDir(),
 		Exe:    filepath.Join(root, "Downloads", "mvd-tray (1).exe"),
 		Args:   []string{"-addr", "127.0.0.1:9000"},
-		Ask: func(title, question string, choices []string) answer {
+		Ask: func(title, question string, choices []string) question.Answer {
 			p.questions = append(p.questions, question)
 			p.choices = append(p.choices, choices)
 			if len(p.answers) == 0 {
@@ -79,7 +81,7 @@ func newMoveProbe(t *testing.T, goos string, answers ...answer) *moveProbe {
 func (p *moveProbe) targets() []installTarget { return installTargets(p.env.GOOS, p.env.Places) }
 
 func TestChoosingEveryoneInstallsInTheSystemPlaceAndStartsItWithTheSameArgumentsPlusTheOldPath(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerFirst)
+	p := newMoveProbe(t, "windows", question.AnswerFirst)
 
 	if !offerMove(p.env) {
 		t.Fatal("expected the move to happen")
@@ -100,7 +102,7 @@ func TestChoosingEveryoneInstallsInTheSystemPlaceAndStartsItWithTheSameArguments
 }
 
 func TestChoosingJustForMeInstallsInThePersonsOwnPlace(t *testing.T) {
-	p := newMoveProbe(t, "darwin", answerSecond)
+	p := newMoveProbe(t, "darwin", question.AnswerSecond)
 
 	if !offerMove(p.env) {
 		t.Fatal("expected the move to happen")
@@ -112,7 +114,7 @@ func TestChoosingJustForMeInstallsInThePersonsOwnPlace(t *testing.T) {
 }
 
 func TestTheQuestionNamesBothPlacesWhenTheAppMayInstallForEveryone(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerLeave)
+	p := newMoveProbe(t, "windows", question.AnswerLeave)
 
 	offerMove(p.env)
 
@@ -128,7 +130,7 @@ func TestTheQuestionNamesBothPlacesWhenTheAppMayInstallForEveryone(t *testing.T)
 }
 
 func TestWithoutAdministratorRightsOnWindowsOnlyTheOwnFolderIsOfferedAndTheQuestionSaysHowToGetTheOther(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerLeave)
+	p := newMoveProbe(t, "windows", question.AnswerLeave)
 	p.env.Places.ProgramFiles = ""
 	p.env.AdminHint = true
 
@@ -143,13 +145,13 @@ func TestWithoutAdministratorRightsOnWindowsOnlyTheOwnFolderIsOfferedAndTheQuest
 }
 
 func TestTheHintIsLeftOutWhereItDoesNotApply(t *testing.T) {
-	linux := newMoveProbe(t, "linux", answerLeave)
+	linux := newMoveProbe(t, "linux", question.AnswerLeave)
 	offerMove(linux.env)
 	if strings.Contains(linux.questions[0], "administrator") {
 		t.Errorf("the Linux question mentions an administrator:\n%s", linux.questions[0])
 	}
 
-	elevated := newMoveProbe(t, "windows", answerLeave)
+	elevated := newMoveProbe(t, "windows", question.AnswerLeave)
 	offerMove(elevated.env)
 	if strings.Contains(elevated.questions[0], "administrator") {
 		t.Errorf("the question mentions an administrator although the app already runs as one:\n%s", elevated.questions[0])
@@ -157,13 +159,13 @@ func TestTheHintIsLeftOutWhereItDoesNotApply(t *testing.T) {
 }
 
 func TestThereIsNoAdministratorTalkOnMacAndOnlyTwoChoicesOnLinux(t *testing.T) {
-	mac := newMoveProbe(t, "darwin", answerLeave)
+	mac := newMoveProbe(t, "darwin", question.AnswerLeave)
 	offerMove(mac.env)
 	if strings.Contains(mac.questions[0], "administrator") {
 		t.Errorf("macOS question mentions an administrator:\n%s", mac.questions[0])
 	}
 
-	linux := newMoveProbe(t, "linux", answerLeave)
+	linux := newMoveProbe(t, "linux", question.AnswerLeave)
 	offerMove(linux.env)
 	if got := strings.Join(linux.choices[0], "|"); got != "Move it|Leave it here" {
 		t.Errorf("Linux choices = %s", got)
@@ -174,7 +176,7 @@ func TestThereIsNoAdministratorTalkOnMacAndOnlyTwoChoicesOnLinux(t *testing.T) {
 }
 
 func TestLinuxMovesToItsOnlyPlaceOnYes(t *testing.T) {
-	p := newMoveProbe(t, "linux", answerFirst)
+	p := newMoveProbe(t, "linux", question.AnswerFirst)
 
 	if !offerMove(p.env) || len(p.installed) != 1 || p.installed[0].Kind != kindLinuxUser {
 		t.Errorf("installed = %+v", p.installed)
@@ -182,7 +184,7 @@ func TestLinuxMovesToItsOnlyPlaceOnYes(t *testing.T) {
 }
 
 func TestLeavingItDoesNothingAndIsNeverAskedAgain(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerLeave)
+	p := newMoveProbe(t, "windows", question.AnswerLeave)
 
 	if offerMove(p.env) {
 		t.Fatal("moved although the person chose to leave it")
@@ -199,19 +201,19 @@ func TestLeavingItDoesNothingAndIsNeverAskedAgain(t *testing.T) {
 func TestTheQuestionIsRecordedBeforeItIsPutSoACrashCannotMakeItRepeat(t *testing.T) {
 	p := newMoveProbe(t, "windows")
 	marker := filepath.Join(p.env.AppDir, movedMarkerName)
-	p.env.Ask = func(string, string, []string) answer {
+	p.env.Ask = func(string, string, []string) question.Answer {
 		if _, err := os.Stat(marker); err != nil {
 			t.Error("the marker did not exist while the question was on screen")
 		}
 
-		return answerLeave
+		return question.AnswerLeave
 	}
 
 	offerMove(p.env)
 }
 
 func TestWhenNothingCouldShowTheQuestionItIsNotCountedAsAskedAndIsTriedAgainNextTime(t *testing.T) {
-	p := newMoveProbe(t, "linux", answerUnavailable, answerLeave)
+	p := newMoveProbe(t, "linux", question.AnswerUnavailable, question.AnswerLeave)
 
 	if offerMove(p.env) {
 		t.Fatal("moved with no answer")
@@ -241,7 +243,7 @@ func TestNothingHappensWhereTheOfferDoesNotApply(t *testing.T) {
 		},
 	}
 	for name, change := range cases {
-		p := newMoveProbe(t, "windows", answerFirst)
+		p := newMoveProbe(t, "windows", question.AnswerFirst)
 		change(p)
 
 		if offerMove(p.env) || len(p.questions) != 0 {
@@ -251,7 +253,7 @@ func TestNothingHappensWhereTheOfferDoesNotApply(t *testing.T) {
 }
 
 func TestWhenInstallingForEveryoneFailsThePersonIsOfferedTheirOwnPlaceInstead(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerFirst, answerFirst)
+	p := newMoveProbe(t, "windows", question.AnswerFirst, question.AnswerFirst)
 	p.installErrs = []error{errors.New("administrator approval was declined")}
 
 	if !offerMove(p.env) {
@@ -270,7 +272,7 @@ func TestWhenInstallingForEveryoneFailsThePersonIsOfferedTheirOwnPlaceInstead(t 
 }
 
 func TestDecliningTheFallbackLeavesTheAppWhereItIsWithoutNaggingWithAnError(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerFirst, answerLeave)
+	p := newMoveProbe(t, "windows", question.AnswerFirst, question.AnswerLeave)
 	p.installErrs = []error{errors.New("administrator approval was declined")}
 
 	if offerMove(p.env) {
@@ -282,7 +284,7 @@ func TestDecliningTheFallbackLeavesTheAppWhereItIsWithoutNaggingWithAnError(t *t
 }
 
 func TestAFailureOfThePersonsOwnPlaceIsReportedAndTheAppKeepsRunningWhereItIs(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerSecond)
+	p := newMoveProbe(t, "windows", question.AnswerSecond)
 	p.installErrs = []error{errors.New("access denied")}
 
 	if offerMove(p.env) {
@@ -297,7 +299,7 @@ func TestAFailureOfThePersonsOwnPlaceIsReportedAndTheAppKeepsRunningWhereItIs(t 
 }
 
 func TestFailingForEveryoneWithNoPlaceOfTheirOwnIsReported(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerFirst)
+	p := newMoveProbe(t, "windows", question.AnswerFirst)
 	p.env.Places.LocalAppData = ""
 	p.installErrs = []error{errors.New("administrator approval was declined")}
 
@@ -310,7 +312,7 @@ func TestFailingForEveryoneWithNoPlaceOfTheirOwnIsReported(t *testing.T) {
 }
 
 func TestAProgramThatCannotBeStartedFromItsNewPlaceIsReportedAndTheAppKeepsRunningWhereItIs(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerSecond)
+	p := newMoveProbe(t, "windows", question.AnswerSecond)
 	p.startErr = errors.New("blocked by antivirus")
 
 	if offerMove(p.env) {
@@ -322,7 +324,7 @@ func TestAProgramThatCannotBeStartedFromItsNewPlaceIsReportedAndTheAppKeepsRunni
 }
 
 func TestAnUnwritableMarkerMeansNoQuestionRatherThanAQuestionAtEveryStart(t *testing.T) {
-	p := newMoveProbe(t, "windows", answerFirst)
+	p := newMoveProbe(t, "windows", question.AnswerFirst)
 	p.env.AppDir = filepath.Join(p.env.AppDir, "does", "not", "exist")
 
 	if offerMove(p.env) || len(p.questions) != 0 {

@@ -1,4 +1,4 @@
-package main
+package question
 
 import "golang.org/x/sys/windows"
 
@@ -9,11 +9,11 @@ const (
 	idNo     = 7
 )
 
-// askChoice puts a question to the person in a message box and returns their choice.
+// Ask puts a question to the person in a message box and returns their choice.
 // With two choices it is Yes and No; with three it is Yes, No and Cancel, and the box
 // says which button means what. Closing the box counts as the last choice, leaving
 // things as they are.
-func askChoice(title, question string, choices []string) answer {
+func Ask(title, question string, choices []string) Answer {
 	flags := uint32(windows.MB_YESNO)
 	text := question
 	if len(choices) == 3 {
@@ -22,22 +22,22 @@ func askChoice(title, question string, choices []string) answer {
 	}
 	body, err := windows.UTF16PtrFromString(text)
 	if err != nil {
-		return answerLeave
+		return AnswerLeave
 	}
 	caption, err := windows.UTF16PtrFromString(title)
 	if err != nil {
-		return answerLeave
+		return AnswerLeave
 	}
 
 	pressed, _ := windows.MessageBox(0, body, caption, flags|windows.MB_ICONQUESTION|windows.MB_SETFOREGROUND)
 	switch pressed {
 	case idYes:
-		return answerFirst
+		return AnswerFirst
 	case idNo:
 		if len(choices) == 3 {
-			return answerSecond
+			return AnswerSecond
 		}
 	}
 
-	return answerLeave
+	return AnswerLeave
 }

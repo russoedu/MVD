@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package question
 
 import (
 	"bytes"
@@ -12,13 +12,13 @@ import (
 	"youtube-downloader/apps/mvd-tray/oscommand"
 )
 
-// askChoice puts the question to the person with the system's own dialog (osascript on
+// Ask puts the question to the person with the system's own dialog (osascript on
 // macOS, zenity or kdialog on Linux). With no way to show one it says so instead of
 // guessing an answer.
-func askChoice(title, text string, choices []string) answer {
+func Ask(title, text string, choices []string) Answer {
 	command, ok := questionCommand(runtime.GOOS, title, text, choices, oscommand.HasProgram)
 	if !ok {
-		return answerUnavailable
+		return AnswerUnavailable
 	}
 
 	cmd := exec.Command(command.Name, command.Args...)
@@ -30,7 +30,7 @@ func askChoice(title, text string, choices []string) answer {
 	if err := cmd.Run(); err != nil {
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) {
-			return answerUnavailable
+			return AnswerUnavailable
 		}
 		code = exit.ExitCode()
 	}

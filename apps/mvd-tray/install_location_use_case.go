@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"youtube-downloader/apps/mvd-tray/question"
 )
 
 // movedMarkerName is the file in the app-data folder that records the person has been
@@ -29,7 +31,7 @@ type moveEnvironment struct {
 	Args []string
 
 	// Ask puts a question with the given choices, best one first, to the person.
-	Ask func(title, question string, choices []string) answer
+	Ask func(title, question string, choices []string) question.Answer
 	// Tell shows the person a problem.
 	Tell func(text string)
 	// Install puts the program in the target, with whatever else that system needs.
@@ -66,20 +68,20 @@ func offerMove(env moveEnvironment) (moved bool) {
 		return false
 	}
 
-	question, choices := moveQuestion(filepath.Dir(env.Exe), targets, env.AdminHint)
-	picked := env.Ask("MVD", question, choices)
+	prompt, choices := moveQuestion(filepath.Dir(env.Exe), targets, env.AdminHint)
+	picked := env.Ask("MVD", prompt, choices)
 	switch picked {
-	case answerUnavailable:
+	case question.AnswerUnavailable:
 		// Nothing could be shown, so nothing was asked: try again at the next start.
 		_ = os.Remove(marker)
 
 		return false
-	case answerLeave:
+	case question.AnswerLeave:
 		return false
 	}
 
 	chosen := targets[0]
-	if picked == answerSecond && len(targets) > 1 {
+	if picked == question.AnswerSecond && len(targets) > 1 {
 		chosen = targets[1]
 	}
 	err := env.Install(chosen, env.Exe)
@@ -88,7 +90,7 @@ func offerMove(env moveEnvironment) (moved bool) {
 		again := env.Ask("MVD", fmt.Sprintf(
 			"MVD could not be installed for everyone: %v\n\nInstall it just for you instead?\n\n%s", err, fallback.Folder),
 			[]string{"Install just for me", "Leave it here"})
-		if again != answerFirst {
+		if again != question.AnswerFirst {
 			return false
 		}
 		chosen = fallback

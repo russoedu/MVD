@@ -1,4 +1,4 @@
-package main
+package question
 
 import (
 	"strings"
@@ -74,13 +74,13 @@ func TestTheMacAnswerIsTheButtonThatWasPressed(t *testing.T) {
 	cases := []struct {
 		stdout string
 		code   int
-		want   answer
+		want   Answer
 	}{
-		{"For everyone\n", 0, answerFirst},
-		{"Just for me\n", 0, answerSecond},
-		{"Leave it here\n", 0, answerLeave},
-		{"", 1, answerLeave},
-		{"something else\n", 0, answerLeave},
+		{"For everyone\n", 0, AnswerFirst},
+		{"Just for me\n", 0, AnswerSecond},
+		{"Leave it here\n", 0, AnswerLeave},
+		{"", 1, AnswerLeave},
+		{"something else\n", 0, AnswerLeave},
 	}
 	for _, c := range cases {
 		if got := parseAnswer("darwin", choices, c.code, c.stdout); got != c.want {
@@ -91,7 +91,7 @@ func TestTheMacAnswerIsTheButtonThatWasPressed(t *testing.T) {
 
 func TestTheLinuxAnswerIsTheExitStatus(t *testing.T) {
 	choices := []string{"Move it", "Leave it here"}
-	for code, want := range map[int]answer{0: answerFirst, 1: answerLeave, 5: answerUnavailable, 255: answerUnavailable} {
+	for code, want := range map[int]Answer{0: AnswerFirst, 1: AnswerLeave, 5: AnswerUnavailable, 255: AnswerUnavailable} {
 		if got := parseAnswer("linux", choices, code, ""); got != want {
 			t.Errorf("exit %d: got %v, want %v", code, got, want)
 		}
