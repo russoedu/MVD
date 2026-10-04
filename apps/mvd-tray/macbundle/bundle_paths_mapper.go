@@ -4,7 +4,7 @@ import "path/filepath"
 
 // ExecutableName is the program's file name inside the bundle, and what the Info.plist
 // tells macOS to start.
-const ExecutableName = "mvd-tray"
+const ExecutableName = "mvd"
 
 // IconName is the icon file's name without its extension, as the Info.plist gives it.
 const IconName = "MVD"

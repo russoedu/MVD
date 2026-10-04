@@ -44,7 +44,7 @@ func newMoveProbe(t *testing.T, goos string, answers ...question.Answer) *movePr
 			Home:         filepath.Join(root, "home"),
 		},
 		AppDir: t.TempDir(),
-		Exe:    filepath.Join(root, "Downloads", "mvd-tray (1).exe"),
+		Exe:    filepath.Join(root, "Downloads", "mvd (1).exe"),
 		Args:   []string{"-addr", "127.0.0.1:9000"},
 		Ask: func(title, question string, choices []string) question.Answer {
 			p.questions = append(p.questions, question)
@@ -336,7 +336,7 @@ func TestAnUnwritableMarkerMeansNoQuestionRatherThanAQuestionAtEveryStart(t *tes
 
 func writeProgram(t *testing.T, content string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "downloaded", "mvd-tray (1).exe")
+	path := filepath.Join(t.TempDir(), "downloaded", "mvd (1).exe")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}

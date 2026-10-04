@@ -12,7 +12,7 @@ func TestPlaceCopiesTheBytesIntoAFolderItCreatesAndLeavesNothingElse(t *testing.
 	if err := os.WriteFile(src, []byte("program"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	dst := filepath.Join(dir, "new", "folder", "mvd-tray.exe")
+	dst := filepath.Join(dir, "new", "folder", "mvd.exe")
 
 	if err := Place(src, dst); err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestPlaceCopiesTheBytesIntoAFolderItCreatesAndLeavesNothingElse(t *testing.
 func TestPlaceReplacesAnOlderCopy(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "source.exe")
-	dst := filepath.Join(dir, "mvd-tray.exe")
+	dst := filepath.Join(dir, "mvd.exe")
 	if err := os.WriteFile(src, []byte("new"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -50,10 +50,10 @@ func TestPlaceReplacesAnOlderCopy(t *testing.T) {
 func TestPlaceFailsCleanlyWhenThereIsNothingToCopy(t *testing.T) {
 	dir := t.TempDir()
 
-	if err := Place(filepath.Join(dir, "missing.exe"), filepath.Join(dir, "out", "mvd-tray.exe")); err == nil {
+	if err := Place(filepath.Join(dir, "missing.exe"), filepath.Join(dir, "out", "mvd.exe")); err == nil {
 		t.Fatal("expected an error")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "out", "mvd-tray.exe.part")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "out", "mvd.exe.part")); err == nil {
 		t.Error("a partial file was left behind")
 	}
 }

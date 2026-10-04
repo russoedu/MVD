@@ -9,7 +9,7 @@ import (
 
 func TestARenamedProgramLeavesItsFolderFreeToBeRemoved(t *testing.T) {
 	folder := filepath.Join(t.TempDir(), "MVD")
-	program := filepath.Join(folder, "mvd-tray.exe")
+	program := filepath.Join(folder, "mvd.exe")
 	if err := os.MkdirAll(folder, 0o755); err != nil {
 		t.Fatal(err)
 	}

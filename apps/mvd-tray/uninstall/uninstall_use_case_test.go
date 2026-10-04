@@ -45,7 +45,7 @@ func newWorld(t *testing.T, goos string, answers ...question.Answer) *world {
 		downloads: filepath.Join(root, "Downloads"),
 		answers:   answers,
 	}
-	w.program = filepath.Join(w.installed, "mvd-tray.exe")
+	w.program = filepath.Join(w.installed, "mvd.exe")
 	w.video = filepath.Join(w.downloads, "song.mp4")
 	for path, content := range map[string]string{
 		w.program:                                "program",
@@ -290,7 +290,7 @@ func TestADownloadsFolderInsideTheAppDataFolderSurvivesDeletingThePreferences(t 
 
 func TestADevelopersBuildKeepsItsProgram(t *testing.T) {
 	w := newWorld(t, "linux", question.AnswerFirst)
-	devProgram := filepath.Join(w.root, "go-build", "mvd-tray")
+	devProgram := filepath.Join(w.root, "go-build", "mvd")
 	if err := os.MkdirAll(filepath.Dir(devProgram), 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -1,5 +1,5 @@
 // MVD tray app: runs until it is closed, serves a browser UI on localhost, and
-// takes new URLs while it downloads. The terminal app is apps/mvd-cli; both share
+// takes new URLs while it downloads. The terminal app is apps/mvd-tui; both share
 // libs/mvd-core.
 package main
 

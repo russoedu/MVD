@@ -11,7 +11,7 @@ import (
 func TestTheEntryIsWrittenToAndRemovedFromTheRegistry(t *testing.T) {
 	path := fmt.Sprintf(`Software\MVDTest-%d`, os.Getpid())
 	t.Cleanup(func() { _ = registry.DeleteKey(registry.CURRENT_USER, path) })
-	entry := uninstallEntryFor(installTarget{Folder: `C:\x\MVD`, Program: `C:\x\MVD\mvd-tray.exe`}, "4.5.6")
+	entry := uninstallEntryFor(installTarget{Folder: `C:\x\MVD`, Program: `C:\x\MVD\mvd.exe`}, "4.5.6")
 
 	if err := writeUninstallEntry(registry.CURRENT_USER, path, entry); err != nil {
 		t.Fatal(err)

@@ -9,7 +9,7 @@ func TestTheBundleDescribesAMenuBarOnlyApplicationNamedMVD(t *testing.T) {
 	plist := InfoPlist("0.0.7", false)
 
 	for _, want := range []string{
-		"<key>CFBundleExecutable</key>\n\t<string>mvd-tray</string>",
+		"<key>CFBundleExecutable</key>\n\t<string>mvd</string>",
 		"<key>CFBundlePackageType</key>\n\t<string>APPL</string>",
 		"<key>CFBundleIdentifier</key>\n\t<string>" + Identifier + "</string>",
 		"<key>CFBundleShortVersionString</key>\n\t<string>0.0.7</string>",

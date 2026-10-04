@@ -52,7 +52,7 @@ jobs:
           go-version: '1.24'
 
       - name: Test
-        run: go test ./apps/mvd-cli/... ./libs/...
+        run: go test ./apps/mvd-tui/... ./libs/...
 
       - name: Build Binary
         env:
@@ -60,7 +60,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
         run: |
-          go build -ldflags="-s -w" -o ${{ matrix.binary_name }} ./apps/mvd-cli
+          go build -ldflags="-s -w" -o ${{ matrix.binary_name }} ./apps/mvd-tui
 
       - name: Package Windows Asset
         if: matrix.goos == 'windows'
