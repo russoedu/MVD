@@ -20,16 +20,25 @@ const (
 	// EventFailed: Name could not be installed; Err says why. Installing carries on
 	// with the next tool.
 	EventFailed
+	// EventUpToDate: Name was checked and is the newest build there is, or a newer one
+	// is not new enough yet to be worth fetching. Detail says which.
+	EventUpToDate
+	// EventUpdated: Name was replaced by a newer build. Detail is its version.
+	EventUpdated
+	// EventUpdateFailed: Name could not be checked or updated (no connection, GitHub
+	// limiting requests, a bad download). The copy that was there is untouched.
+	EventUpdateFailed
 )
 
-// Event is one step of making the tools available.
+// Event is one step of making the tools available or keeping them current.
 type Event struct {
-	Kind  EventKind
-	Name  string
-	Names []string
-	URL   string
-	Dir   string
-	Err   error
+	Kind   EventKind
+	Name   string
+	Names  []string
+	URL    string
+	Dir    string
+	Detail string
+	Err    error
 }
 
 // Reporter receives the steps as they happen, on the goroutine doing the work.
@@ -47,5 +56,11 @@ func PrintProgress(e Event) {
 		fmt.Printf("    [OK] Successfully installed %s!\n\n", e.Name)
 	case EventFailed:
 		fmt.Printf("    [!] Could not install %s: %v\n", e.Name, e.Err)
+	case EventUpToDate:
+		fmt.Printf("    %s is up to date (%s)\n", e.Name, e.Detail)
+	case EventUpdated:
+		fmt.Printf("    [OK] Updated %s to %s\n", e.Name, e.Detail)
+	case EventUpdateFailed:
+		fmt.Printf("    [!] Could not update %s: %v\n", e.Name, e.Err)
 	}
 }

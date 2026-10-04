@@ -2,7 +2,6 @@ package deps
 
 import (
 	"archive/zip"
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -10,29 +9,53 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
+// managedTools are the tools that can be kept up to date, in the order they are handled.
+var managedTools = []string{"yt-dlp", "ffmpeg"}
+
 // Ensure is what the terminal app calls: tools live in ./bin next to where it was
-// started, and progress is printed.
+// started, a tool is fetched only when nothing on PATH provides it, and progress is
+// printed. It never replaces a tool that is already there.
 func Ensure() {
-	EnsureIn("./bin", PrintProgress)
+	i := newInstaller("./bin", PrintProgress)
+	i.owned = false
+	i.ensure()
 }
 
-// EnsureIn puts binDir on PATH, checks for yt-dlp, ffmpeg and a JavaScript runtime
-// (deno or node), and downloads whatever is missing into binDir, telling report what
-// it is doing. binDir should be a folder the person can always write to, and the same
-// one on every start, or the tools are fetched again each time.
+// EnsureIn is what the tray app calls at start-up. It puts binDir on PATH and makes sure
+// the app has its own copy of yt-dlp and ffmpeg there, whatever is on PATH, and a
+// JavaScript runtime (deno or node) from somewhere. It downloads whatever is missing and
+// tells report what it is doing.
+//
+// binDir should be a folder the person can always write to, and the same one on every
+// start, or the tools are fetched again each time.
 func EnsureIn(binDir string, report Reporter) {
 	newInstaller(binDir, report).ensure()
 }
 
-// installer carries what ensure needs, so a test can replace the network and PATH lookup.
+// UpdateIn checks whether newer builds of yt-dlp and ffmpeg have been published and
+// replaces the app's copy of each that is out of date. It returns the names of the ones
+// it replaced. A check that fails (no connection, GitHub limiting requests) is reported
+// and leaves the copy that is there untouched, and so does an update that fails
+// half way, so a failed update never takes a working tool away.
+func UpdateIn(binDir string, report Reporter) []string {
+	return newInstaller(binDir, report).update()
+}
+
+// installer carries what ensure and update need, so a test can replace the network,
+// the PATH lookup and the list of tools.
 type installer struct {
-	binDir   string
-	goos     string
-	goarch   string
+	binDir    string
+	goos      string
+	goarch    string
+	available map[string]Dep
+	// owned makes yt-dlp and ffmpeg the app's own copies rather than whatever PATH has.
+	owned    bool
 	lookPath func(string) (string, error)
-	fetch    func(url string) ([]byte, error)
+	lookup   func(Source) (AssetInfo, error)
+	fetch    func(url, dest string) (sha256 string, err error)
 	report   Reporter
 }
 
@@ -43,19 +66,31 @@ func newInstaller(binDir string, report Reporter) *installer {
 
 	return &installer{
 		binDir: binDir, goos: runtime.GOOS, goarch: runtime.GOARCH,
-		lookPath: exec.LookPath, fetch: downloadBytes, report: report,
+		available: platformDeps(runtime.GOOS, runtime.GOARCH), owned: true,
+		lookPath: exec.LookPath, lookup: lookupLatest, fetch: downloadFile, report: report,
 	}
+}
+
+func (i *installer) dir() string {
+	dir, err := filepath.Abs(i.binDir)
+	if err != nil {
+		return i.binDir
+	}
+
+	return dir
 }
 
 func (i *installer) ensure() {
 	i.putBinOnPath()
+	dir := i.dir()
+	removeLeftovers(dir)
+	known := loadManifest(dir)
 
 	var missing []string
-	if _, err := i.lookPath("yt-dlp"); err != nil {
-		missing = append(missing, "yt-dlp")
-	}
-	if _, err := i.lookPath("ffmpeg"); err != nil {
-		missing = append(missing, "ffmpeg")
+	for _, name := range managedTools {
+		if i.needsInstall(i.available[name], dir, known) {
+			missing = append(missing, name)
+		}
 	}
 	_, denoErr := i.lookPath("deno")
 	_, nodeErr := i.lookPath("node")
@@ -66,10 +101,6 @@ func (i *installer) ensure() {
 		return
 	}
 
-	dir, err := filepath.Abs(i.binDir)
-	if err != nil {
-		dir = i.binDir
-	}
 	i.report(Event{Kind: EventMissing, Names: missing, Dir: dir})
 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -80,59 +111,183 @@ func (i *installer) ensure() {
 		return
 	}
 
-	available := platformDeps(i.goos, i.goarch)
 	for _, name := range missing {
-		if dep, ok := available[name]; ok {
-			i.install(dep, dir)
+		dep, ok := i.available[name]
+		if !ok {
+			continue
 		}
+		// Asking GitHub first gives the build's identity and checksum. If it cannot be
+		// asked, the tool is still fetched, from the address that serves the newest build.
+		var info *AssetInfo
+		if dep.Source != nil && i.owned {
+			if found, err := i.lookup(*dep.Source); err == nil {
+				info = &found
+			}
+		}
+		if err := i.install(dep, dir, known, info); err != nil {
+			i.report(Event{Kind: EventFailed, Name: dep.Name, URL: dep.URL, Dir: dir, Err: err})
+
+			continue
+		}
+		i.report(Event{Kind: EventInstalled, Name: dep.Name, URL: dep.URL, Dir: dir})
 	}
 
 	i.putBinOnPath()
 }
 
-// install downloads one tool and puts it in dir. The file is written under a temporary
-// name and renamed, so an interrupted run never leaves a half-written program that a
-// later start would find on PATH and try to run.
-func (i *installer) install(dep Dep, dir string) {
-	fail := func(err error) {
-		i.report(Event{Kind: EventFailed, Name: dep.Name, URL: dep.URL, Dir: dir, Err: err})
+// needsInstall says whether a tool has to be fetched now.
+func (i *installer) needsInstall(dep Dep, dir string, known manifest) bool {
+	if dep.Source != nil && i.owned {
+		return !ownsCopy(dep, dir, known)
 	}
-	i.report(Event{Kind: EventDownloading, Name: dep.Name, URL: dep.URL, Dir: dir})
+	_, err := i.lookPath(dep.Name)
 
-	data, err := i.fetch(dep.URL)
-	if err != nil {
-		fail(fmt.Errorf("download failed: %w", err))
+	return err != nil
+}
 
-		return
+// ownsCopy reports whether the app installed this tool into dir and it is still there.
+func ownsCopy(dep Dep, dir string, known manifest) bool {
+	if _, installed := known[dep.Name]; !installed {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(dir, dep.FileName))
+
+	return err == nil
+}
+
+func (i *installer) update() []string {
+	i.putBinOnPath()
+	dir := i.dir()
+	known := loadManifest(dir)
+
+	var updated []string
+	for _, name := range managedTools {
+		dep, ok := i.available[name]
+		if !ok || dep.Source == nil {
+			continue
+		}
+
+		info, err := i.lookup(*dep.Source)
+		if err != nil {
+			i.report(Event{Kind: EventUpdateFailed, Name: dep.Name, Dir: dir, Err: err})
+
+			continue
+		}
+
+		have := known[dep.Name]
+		owned := ownsCopy(dep, dir, known)
+		switch {
+		case owned && have.AssetID == info.ID:
+			i.report(Event{Kind: EventUpToDate, Name: dep.Name, Detail: describeBuild(have.Tag, have.UpdatedAt)})
+
+			continue
+		case owned && dep.MinAge > 0 && info.UpdatedAt.Sub(have.UpdatedAt) < dep.MinAge:
+			i.report(Event{
+				Kind: EventUpToDate, Name: dep.Name,
+				Detail: fmt.Sprintf("%s; a newer build exists, but %s is only replaced by one at least %d days newer",
+					describeBuild(have.Tag, have.UpdatedAt), dep.Name, int(dep.MinAge.Hours()/24)),
+			})
+
+			continue
+		}
+
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			i.report(Event{Kind: EventUpdateFailed, Name: dep.Name, Dir: dir, Err: err})
+
+			continue
+		}
+		if err := i.install(dep, dir, known, &info); err != nil {
+			i.report(Event{Kind: EventUpdateFailed, Name: dep.Name, URL: info.URL, Dir: dir, Err: err})
+
+			continue
+		}
+		if owned {
+			updated = append(updated, dep.Name)
+			i.report(Event{Kind: EventUpdated, Name: dep.Name, URL: info.URL, Dir: dir, Detail: describeBuild(info.Tag, info.UpdatedAt)})
+		} else {
+			i.report(Event{Kind: EventInstalled, Name: dep.Name, URL: info.URL, Dir: dir})
+		}
 	}
 
+	return updated
+}
+
+// describeBuild names a build by its version, or by its date when its release is
+// always called "latest".
+func describeBuild(tag string, updatedAt time.Time) string {
+	if tag == "" || tag == "latest" {
+		return "built " + updatedAt.Format("2006-01-02")
+	}
+
+	return tag
+}
+
+// install downloads one tool and puts it in dir, checking it against the checksum
+// GitHub published when there is one. The download and the file that is put in place
+// both go under temporary names first, so an interrupted or failed run never leaves a
+// half-written program where a later start would find and run it, and never takes the
+// working copy away: replaceFile only swaps in a file that is complete.
+func (i *installer) install(dep Dep, dir string, known manifest, info *AssetInfo) error {
+	url := dep.URL
+	if info != nil && info.URL != "" {
+		url = info.URL
+	}
 	final := filepath.Join(dir, dep.FileName)
+	download := final + ".download"
 	partial := final + ".part"
+	defer func() {
+		_ = os.Remove(download)
+		_ = os.Remove(partial)
+	}()
+
+	i.report(Event{Kind: EventDownloading, Name: dep.Name, URL: url, Dir: dir})
+
+	sum, err := i.fetch(url, download)
+	if err != nil {
+		return fmt.Errorf("download failed: %w", err)
+	}
+	if info != nil && info.SHA256 != "" && sum != info.SHA256 {
+		return fmt.Errorf("the download of %s does not match the checksum GitHub publishes for it, so it was not installed", dep.Name)
+	}
+
 	if dep.IsZip {
-		err = extractZipFile(data, dep.FileName, partial)
+		err = extractZipFile(download, dep.FileName, partial)
 	} else {
-		err = os.WriteFile(partial, data, 0o755)
+		err = os.Rename(download, partial)
 	}
 	if err != nil {
-		_ = os.Remove(partial)
-		fail(fmt.Errorf("cannot write %s: %w", dep.FileName, err))
-
-		return
+		return fmt.Errorf("cannot unpack %s: %w", dep.FileName, err)
 	}
 	if err := os.Chmod(partial, 0o755); err != nil {
-		_ = os.Remove(partial)
-		fail(fmt.Errorf("cannot make %s executable: %w", dep.FileName, err))
-
-		return
+		return fmt.Errorf("cannot make %s executable: %w", dep.FileName, err)
 	}
-	if err := os.Rename(partial, final); err != nil {
-		_ = os.Remove(partial)
-		fail(fmt.Errorf("cannot install %s: %w", dep.FileName, err))
-
-		return
+	if err := replaceFile(partial, final); err != nil {
+		return fmt.Errorf("cannot install %s: %w", dep.FileName, err)
 	}
 
-	i.report(Event{Kind: EventInstalled, Name: dep.Name, URL: dep.URL, Dir: dir})
+	if dep.Source != nil {
+		record := installedTool{SHA256: sum}
+		if info != nil {
+			record.AssetID, record.Tag, record.UpdatedAt = info.ID, info.Tag, info.UpdatedAt
+		}
+		known[dep.Name] = record
+		_ = saveManifest(dir, known)
+	}
+
+	return nil
+}
+
+// removeLeftovers deletes what an interrupted run or an earlier replacement left in dir.
+func removeLeftovers(dir string) {
+	for _, pattern := range []string{"*.part", "*.download", "*.old"} {
+		matches, err := filepath.Glob(filepath.Join(dir, pattern))
+		if err != nil {
+			continue
+		}
+		for _, match := range matches {
+			_ = os.Remove(match)
+		}
+	}
 }
 
 // putBinOnPath puts binDir and binDir/<os> at the front of PATH.
@@ -148,13 +303,14 @@ func (i *installer) putBinOnPath() {
 	}
 }
 
-// extractZipFile writes the first entry of the archive named targetFileName
+// extractZipFile writes the first entry of the archive at zipPath named targetFileName
 // to destPath.
-func extractZipFile(data []byte, targetFileName, destPath string) error {
-	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+func extractZipFile(zipPath, targetFileName, destPath string) error {
+	r, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return err
 	}
+	defer func() { _ = r.Close() }()
 
 	for _, f := range r.File {
 		baseName := filepath.Base(f.Name)

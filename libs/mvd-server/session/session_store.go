@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
 	"youtube-downloader/libs/mvd-server/snapshot"
 )
@@ -15,8 +16,9 @@ var ErrClosed = errors.New("session is closed")
 // Session is the one run a front end watches. The zero engine state is "nothing
 // yet": it is built when the first URLs arrive and then lives until Close.
 type Session struct {
-	factory Factory
-	root    context.Context
+	factory   Factory
+	root      context.Context
+	onFailure func()
 
 	// adding serialises building the engine against adding to it, so two
 	// first pastes cannot build two engines.
@@ -34,16 +36,20 @@ type Session struct {
 }
 
 // New returns a session whose engine, once built, lives as long as root.
-func New(root context.Context, factory Factory) *Session {
+func New(root context.Context, factory Factory, options ...Option) *Session {
 	empty := runstate.New(nil)
 	// Nothing is running, which is what idle means to a viewer.
 	empty.Idle = true
-	return &Session{
+	s := &Session{
 		factory: factory,
 		root:    root,
 		state:   empty,
 		changed: make(chan struct{}),
 	}
+	for _, option := range options {
+		option(s)
+	}
+	return s
 }
 
 // Snapshot is the run as it is now.
@@ -132,8 +138,25 @@ func (s *Session) pump(eng Engine, pumped chan struct{}) {
 		s.state.Apply(ev)
 		s.bumpLocked()
 		s.mu.Unlock()
+
+		if s.onFailure != nil && isFailure(ev) {
+			s.onFailure()
+		}
 	}
 	close(pumped)
+}
+
+// isFailure reports whether ev says something has just failed: a download, or a link
+// that could not even be looked up, which is how a downloader that has gone out of date
+// usually shows itself.
+func isFailure(ev interface{}) bool {
+	switch e := ev.(type) {
+	case engine.EvEntryState:
+		return e.State == engine.StateFailed
+	case engine.EvPlaylistFailed:
+		return true
+	}
+	return false
 }
 
 // engine returns the running engine, or nil when no URLs have arrived yet.

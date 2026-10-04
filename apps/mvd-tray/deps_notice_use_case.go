@@ -8,8 +8,10 @@ import (
 )
 
 // depsReporter turns the installer's steps into log lines and, for the two moments
-// the person needs to know about, a notification: when downloading starts (the app
-// will take a while to appear, and why) and when a tool could not be installed.
+// the person needs to know about while the app is starting, a notification: when
+// downloading starts (the app will take a while to appear, and why) and when a tool
+// could not be installed. Checking for updates only logs; the person is told once, by
+// toolUpdates, if something was actually replaced.
 func depsReporter(logf func(string, ...interface{}), notify func(userNotice)) deps.Reporter {
 	return func(e deps.Event) {
 		switch e.Kind {
@@ -31,6 +33,12 @@ func depsReporter(logf func(string, ...interface{}), notify func(userNotice)) de
 				Text:    fmt.Sprintf("%v. Check your internet connection and start MVD again.", e.Err),
 				Failure: true,
 			})
+		case deps.EventUpToDate:
+			logf("%s is up to date (%s)", e.Name, e.Detail)
+		case deps.EventUpdated:
+			logf("Updated %s to %s", e.Name, e.Detail)
+		case deps.EventUpdateFailed:
+			logf("Could not check or update %s: %v", e.Name, e.Err)
 		}
 	}
 }
