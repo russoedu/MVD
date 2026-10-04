@@ -162,14 +162,9 @@ func installWindowsSystem(target installTarget, exe, allUsersLink string, shortc
 	return nil
 }
 
-// installMacBundle builds MVD.app around the program: the program itself, and the
-// Info.plist that makes macOS treat the folder as an application.
+// installMacBundle builds MVD.app around the program, without an icon.
 func installMacBundle(target installTarget, exe, version string) error {
-	if err := programfile.Place(exe, target.Program); err != nil {
-		return err
-	}
-
-	return os.WriteFile(filepath.Join(target.Folder, "Contents", "Info.plist"), []byte(macbundle.InfoPlist(version)), 0o644)
+	return macbundle.Write(target.Folder, exe, version, "")
 }
 
 // installLinuxUser puts the program in ~/.local/bin and an entry for it in the
