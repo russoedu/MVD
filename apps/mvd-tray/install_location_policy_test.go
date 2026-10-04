@@ -25,10 +25,11 @@ func TestElsewhereTheAppHasNoFolderOfItsOwn(t *testing.T) {
 }
 
 func TestWindowsPathsAreComparedWithoutRegardToCase(t *testing.T) {
-	if !samePlace("windows", `C:\Users\Me\AppData\Local\Programs\MVD`, `c:\users\me\appdata\local\programs\mvd\`) {
+	// Forward slashes, which every host understands: a backslash is only a separator on Windows.
+	if !samePlace("windows", "C:/Users/Me/AppData/Local/Programs/MVD", "c:/users/me/appdata/local/programs/mvd/") {
 		t.Error("the same Windows folder in another case and with a trailing slash should match")
 	}
-	if samePlace("windows", `C:\Users\me\Downloads`, `C:\Users\me\AppData\Local\Programs\MVD`) {
+	if samePlace("windows", "C:/Users/me/Downloads", "C:/Users/me/AppData/Local/Programs/MVD") {
 		t.Error("different folders should not match")
 	}
 	if samePlace("linux", "/opt/MVD", "/opt/mvd") {
