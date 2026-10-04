@@ -106,10 +106,10 @@
         }
       ],
       "outputs": [
-        "{workspaceRoot}/apps/mvd-tray/web"
+        "{workspaceRoot}/apps/mvd-tray/localserver/web"
       ],
       "options": {
-        "command": "node -e \"const fs=require('node:fs');fs.rmSync('apps/mvd-tray/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd-tray/web',{recursive:true})\""
+        "command": "node -e \"const fs=require('node:fs');fs.rmSync('apps/mvd-tray/localserver/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd-tray/localserver/web',{recursive:true})\""
       }
     },
     "dev": {
