@@ -88,7 +88,11 @@ npx nx run mvd-tray:build          # builds the React page, embeds it, builds th
 npx nx run mvd-tray:dev            # development: Vite on :4200 proxying /api to the Go app
 ```
 
-**First run.** If yt-dlp, ffmpeg or a JavaScript runtime (deno or node) is not already on your `PATH`, the app downloads them once from their official GitHub releases into a `bin` folder inside the app-data folder (`%AppData%\mvd\bin` on Windows, `~/Library/Application Support/mvd/bin` on macOS, `~/.config/mvd/bin` on Linux): a folder you can always write to, so no administrator rights are involved, and the same place on every start. That is roughly 220 MB on Windows, so a notification says what is being downloaded and where, and another appears if one of them cannot be fetched. The terminal app keeps using `./bin` next to where it was started.
+**Tools and updates.** The app keeps its own copy of yt-dlp and ffmpeg in a `bin` folder inside the app-data folder (`%AppData%\mvd\bin` on Windows, `~/Library/Application Support/mvd/bin` on macOS, `~/.config/mvd/bin` on Linux), whatever is on your `PATH`, so it can keep them current without touching anything you installed yourself. A folder you can always write to, so no administrator rights are involved, and the same place on every start. deno is added only if you have neither deno nor node.
+
+The first run downloads them from their official GitHub releases (on Windows about 310 MB: yt-dlp 17 MB, ffmpeg 200 MB, deno 93 MB), checks each against the SHA-256 that GitHub publishes for it, and says what it is doing in a notification. After that it looks for newer versions in the background each time it starts, which never holds up the page or a download, and again when a download fails (at most every ten minutes), because an out-of-date yt-dlp is the usual reason a video that worked yesterday does not today. If it replaced something after a failure it queues the failed downloads again and tells you. A new yt-dlp replaces the old one as soon as it is published. ffmpeg is replaced only by a build at least 30 days newer, because its builds are republished daily and are 200 MB. The old program is moved aside rather than deleted, so an update works even while a download is using it, and a check or download that fails changes nothing.
+
+Limits: ffmpeg is kept current on Windows only (the project that publishes the builds has no macOS build and ships Linux ones in a format this does not unpack yet, so those fetch a pinned 4.4.1 once). deno is fetched once and never updated. The terminal app keeps using `./bin` and the tools on your `PATH`, and does not update them.
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 
@@ -165,7 +169,7 @@ The code follows vertical feature slices: `apps/mvd-cli/main.go` only wires thin
 | `libs/mvd-core/config` | Load/create/save the config; compile quality presets to a yt-dlp `-f`. |
 | `libs/mvd-core/sourcelist` | Load/save/clear the saved URL list. |
 | `libs/mvd-core/runner` | Assemble a ready-to-run engine (cookies, resolver, options) from a config. |
-| `libs/mvd-core/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading what is missing into a folder the caller chooses and reporting each step. |
+| `libs/mvd-core/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, check what it downloads against the published checksum, and keep the ones the app owns up to date. |
 | `libs/mvd-core/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
 | `libs/mvd-core/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
 | `libs/mvd-core/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
