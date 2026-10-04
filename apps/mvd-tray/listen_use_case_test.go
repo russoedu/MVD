@@ -21,7 +21,7 @@ func TestAFreeAddressIsListenedOnDirectly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	if existing != "" {
 		t.Errorf("existing = %q", existing)
 	}

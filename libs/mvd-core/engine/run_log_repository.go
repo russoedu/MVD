@@ -25,7 +25,7 @@ func newRunLogger(path string) (*runLogger, error) {
 		return nil, fmt.Errorf("cannot open log file %s: %w", path, err)
 	}
 	l.f = f
-	fmt.Fprintf(f, "\n===== MVD run started %s =====\n", time.Now().Format(time.RFC3339))
+	_, _ = fmt.Fprintf(f, "\n===== MVD run started %s =====\n", time.Now().Format(time.RFC3339))
 	return l, nil
 }
 
@@ -39,11 +39,11 @@ func (l *runLogger) Write(playlist, entry int, line string) {
 	if entry >= 0 {
 		tag = fmt.Sprintf("P%d/E%d", playlist+1, entry)
 	}
-	fmt.Fprintf(l.f, "%s [%s] %s\n", time.Now().Format("15:04:05"), tag, line)
+	_, _ = fmt.Fprintf(l.f, "%s [%s] %s\n", time.Now().Format("15:04:05"), tag, line)
 }
 
 func (l *runLogger) Close() {
 	if l.f != nil {
-		l.f.Close()
+		_ = l.f.Close()
 	}
 }

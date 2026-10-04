@@ -10,19 +10,25 @@ func TestHasYouTubeSession(t *testing.T) {
 	dir := t.TempDir()
 
 	good := filepath.Join(dir, "good.txt")
-	os.WriteFile(good, []byte("# Netscape HTTP Cookie File\n#HttpOnly_.google.com\tTRUE\t/\tTRUE\t0\tSAPISID\tabc123\n"), 0600)
+	if err := os.WriteFile(good, []byte("# Netscape HTTP Cookie File\n#HttpOnly_.google.com\tTRUE\t/\tTRUE\t0\tSAPISID\tabc123\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if !hasYouTubeSession(good) {
 		t.Error("should detect a Google session cookie")
 	}
 
 	bad := filepath.Join(dir, "bad.txt")
-	os.WriteFile(bad, []byte("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tPREF\thl=en\n.example.com\tTRUE\t/\tTRUE\t0\tSID\tnope\n"), 0600)
+	if err := os.WriteFile(bad, []byte("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tPREF\thl=en\n.example.com\tTRUE\t/\tTRUE\t0\tSID\tnope\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if hasYouTubeSession(bad) {
 		t.Error("consent-only youtube cookies and a non-Google SID must not count")
 	}
 
 	empty := filepath.Join(dir, "empty.txt")
-	os.WriteFile(empty, []byte("# Netscape HTTP Cookie File\n.google.com\tTRUE\t/\tTRUE\t0\tSID\t\n"), 0600)
+	if err := os.WriteFile(empty, []byte("# Netscape HTTP Cookie File\n.google.com\tTRUE\t/\tTRUE\t0\tSID\t\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if hasYouTubeSession(empty) {
 		t.Error("a session cookie with no value must not count")
 	}

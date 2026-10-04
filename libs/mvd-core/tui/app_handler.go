@@ -116,7 +116,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch out {
 		case cfgSave:
 			m.cfg = cfg
-			config.Save(m.cfg, m.cfgPath)
+			_ = config.Save(m.cfg, m.cfgPath)
 			m.screen = screenList
 			return m, nil
 		case cfgCancel:
@@ -158,7 +158,7 @@ func (m setupModel) View() string {
 
 func (m setupModel) saveList() {
 	if m.listPath != "" {
-		sourcelist.Save(m.listPath, m.list.urls())
+		_ = sourcelist.Save(m.listPath, m.list.urls())
 	}
 }
 

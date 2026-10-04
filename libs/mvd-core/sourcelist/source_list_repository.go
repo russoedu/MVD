@@ -19,7 +19,7 @@ func Load(path string) ([]string, error) {
 		}
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var urls []string
 	scanner := bufio.NewScanner(file)

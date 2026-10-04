@@ -40,6 +40,6 @@ func Acquire(ctx context.Context, bin, file, probeURL string, extraArgs, browser
 		}
 		return b, true
 	}
-	os.Remove(file)
+	_ = os.Remove(file) // an unusable cookie file is only in the way
 	return "", false
 }

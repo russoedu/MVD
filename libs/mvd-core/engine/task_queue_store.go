@@ -30,8 +30,8 @@ func (q *taskQueue) Push(id int) {
 func (q *taskQueue) Pop(ctx context.Context) (int, bool) {
 	stop := context.AfterFunc(ctx, func() {
 		q.mu.Lock()
-		q.mu.Unlock()
 		q.cond.Broadcast()
+		q.mu.Unlock()
 	})
 	defer stop()
 

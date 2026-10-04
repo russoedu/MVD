@@ -41,7 +41,7 @@ func stubYtDlp(args []string) int {
 			fmt.Fprintln(os.Stderr, "ERROR: could not find nope cookies database")
 			return 1
 		}
-		os.WriteFile(cookiesFile, []byte("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t0\tSID\tsecret\n"), 0600)
+		_ = os.WriteFile(cookiesFile, []byte("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t0\tSID\tsecret\n"), 0600)
 		return 0
 	}
 
@@ -85,7 +85,6 @@ func stubYtDlp(args []string) int {
 
 func useStub(t *testing.T) string {
 	t.Helper()
-	os.Setenv("MVD_STUB_YTDLP", "1")
-	t.Cleanup(func() { os.Unsetenv("MVD_STUB_YTDLP") })
+	t.Setenv("MVD_STUB_YTDLP", "1")
 	return os.Args[0]
 }

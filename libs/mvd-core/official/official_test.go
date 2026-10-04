@@ -159,7 +159,7 @@ func (f *fakeYouTube) server(t *testing.T) (*httptest.Server, *Resolver) {
 		id := r.URL.Query().Get("v")
 		f.hit("watch")
 		if page, ok := f.pages[id]; ok {
-			w.Write([]byte(page))
+			_, _ = w.Write([]byte(page))
 			return
 		}
 		http.NotFound(w, r)
@@ -169,22 +169,22 @@ func (f *fakeYouTube) server(t *testing.T) (*httptest.Server, *Resolver) {
 		var body struct {
 			VideoID string `json:"videoId"`
 		}
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 		if r.Header.Get("X-YouTube-Client-Version") == "" {
 			t.Errorf("next request without client version header")
 		}
 		if resp, ok := f.next[body.VideoID]; ok {
-			w.Write(resp)
+			_, _ = w.Write(resp)
 			return
 		}
-		w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`))
 	})
 	mux.HandleFunc("/oembed", func(w http.ResponseWriter, r *http.Request) {
 		f.hit("oembed")
 		u := r.URL.Query().Get("url")
 		id := u[strings.LastIndex(u, "=")+1:]
 		if author, ok := f.authors[id]; ok {
-			json.NewEncoder(w).Encode(map[string]string{"author_name": author})
+			_ = json.NewEncoder(w).Encode(map[string]string{"author_name": author})
 			return
 		}
 		http.NotFound(w, r)
@@ -320,7 +320,9 @@ func TestLoadCookieJar(t *testing.T) {
 		t.Error("missing file should fail")
 	}
 	empty := t.TempDir() + "/empty.txt"
-	os.WriteFile(empty, []byte("# nothing\n"), 0600)
+	if err := os.WriteFile(empty, []byte("# nothing\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if _, _, err := LoadCookieJar(empty); err == nil {
 		t.Error("file without cookies should fail")
 	}

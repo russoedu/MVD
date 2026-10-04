@@ -19,7 +19,7 @@ func Download(ctx context.Context, bin string, args []string, onLine func(line s
 	cmd.Stderr = pw
 
 	if err := cmd.Start(); err != nil {
-		pw.Close()
+		_ = pw.Close()
 		return fmt.Errorf("cannot start yt-dlp: %w", err)
 	}
 
@@ -42,7 +42,7 @@ func Download(ctx context.Context, bin string, args []string, onLine func(line s
 	}()
 
 	waitErr := cmd.Wait()
-	pw.Close()
+	_ = pw.Close()
 	<-scanDone
 
 	if waitErr != nil {

@@ -115,7 +115,9 @@ func TestCookieSettingRoundTrip(t *testing.T) {
 func TestLegacyKeys(t *testing.T) {
 	dir := t.TempDir()
 	legacy := filepath.Join(dir, "setup.conf")
-	os.WriteFile(legacy, []byte("quality=bestvideo+bestaudio/best\nlog_file=off\ncookies_from_browser=edge\nmax_concurrent_downloads=2\n"), 0o644)
+	if err := os.WriteFile(legacy, []byte("quality=bestvideo+bestaudio/best\nlog_file=off\ncookies_from_browser=edge\nmax_concurrent_downloads=2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg, err := parseInto(legacy, Default(dir, dir))
 	if err != nil {

@@ -113,7 +113,7 @@ func stubAttempt(id string) int {
 		n, _ = strconv.Atoi(strings.TrimSpace(string(b)))
 	}
 	n++
-	os.WriteFile(p, []byte(strconv.Itoa(n)), 0644)
+	_ = os.WriteFile(p, []byte(strconv.Itoa(n)), 0644)
 	return n
 }
 
@@ -137,8 +137,7 @@ func (fakeResolver) ResolveLog(videoID string, logf func(string, ...interface{})
 
 func stubEngine(t *testing.T, official bool, urls ...string) *Engine {
 	t.Helper()
-	os.Setenv("MVD_STUB_YTDLP", "1")
-	t.Cleanup(func() { os.Unsetenv("MVD_STUB_YTDLP") })
+	t.Setenv("MVD_STUB_YTDLP", "1")
 
 	opts := Options{
 		YtDlp:             os.Args[0],
@@ -321,14 +320,10 @@ func TestEngineWithoutResolver(t *testing.T) {
 
 func retryEngine(t *testing.T, autoRetry bool, stateDir string) *Engine {
 	t.Helper()
-	os.Setenv("MVD_STUB_YTDLP", "1")
+	t.Setenv("MVD_STUB_YTDLP", "1")
 	if stateDir != "" {
-		os.Setenv("MVD_STUB_STATE_DIR", stateDir)
+		t.Setenv("MVD_STUB_STATE_DIR", stateDir)
 	}
-	t.Cleanup(func() {
-		os.Unsetenv("MVD_STUB_YTDLP")
-		os.Unsetenv("MVD_STUB_STATE_DIR")
-	})
 	eng, err := New(Options{
 		YtDlp:             os.Args[0],
 		URLs:              []string{"https://youtube.com/playlist?list=R"},
@@ -472,7 +467,7 @@ func TestEngineAddSourceWhileRunning(t *testing.T) {
 		l, is := ev.(EvPlaylistListed)
 		return is && l.Playlist == 1
 	})
-	if added < 0 || listing < 0 || listed < 0 || !(added < listing && listing < listed) {
+	if added < 0 || listing < 0 || listed < 0 || added >= listing || listing >= listed {
 		t.Fatalf("want added < listing < listed for playlist 1, got %d %d %d", added, listing, listed)
 	}
 

@@ -35,18 +35,17 @@ func stubExport(args []string) int {
 		fmt.Fprintln(os.Stderr, "ERROR: could not copy edge cookie database")
 		return 1
 	case "chrome":
-		os.WriteFile(file, []byte("# Netscape HTTP Cookie File\n.google.com\tTRUE\t/\tTRUE\t0\tSID\tsecret\n.youtube.com\tTRUE\t/\tTRUE\t0\tLOGIN_INFO\tyes\n"), 0600)
+		_ = os.WriteFile(file, []byte("# Netscape HTTP Cookie File\n.google.com\tTRUE\t/\tTRUE\t0\tSID\tsecret\n.youtube.com\tTRUE\t/\tTRUE\t0\tLOGIN_INFO\tyes\n"), 0600)
 		return 0
 	default: // firefox and others: consent cookie only, no login
-		os.WriteFile(file, []byte("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tPREF\thl=en\n"), 0600)
+		_ = os.WriteFile(file, []byte("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tPREF\thl=en\n"), 0600)
 		return 0
 	}
 }
 
 func useStub(t *testing.T) string {
 	t.Helper()
-	os.Setenv("MVD_STUB_YTDLP", "1")
-	t.Cleanup(func() { os.Unsetenv("MVD_STUB_YTDLP") })
+	t.Setenv("MVD_STUB_YTDLP", "1")
 	return os.Args[0]
 }
 

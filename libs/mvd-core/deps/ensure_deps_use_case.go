@@ -45,7 +45,9 @@ func setupEnvironmentPaths() {
 		osBinPath := filepath.Join(absBin, runtime.GOOS)
 
 		newPath := absBin + osPathSep + osBinPath + osPathSep + pathEnv
-		os.Setenv("PATH", newPath)
+		if err := os.Setenv("PATH", newPath); err != nil {
+			fmt.Printf("    [!] Could not add ./bin to PATH: %v\n", err)
+		}
 	}
 }
 
@@ -92,7 +94,10 @@ func autoInstall(missing []string) {
 			}
 		}
 
-		os.Chmod(destFile, 0755)
+		if err := os.Chmod(destFile, 0755); err != nil {
+			fmt.Printf("    [!] Could not make %s executable: %v\n", dep.Name, err)
+			continue
+		}
 		fmt.Printf("    [OK] Successfully installed %s!\n\n", dep.Name)
 	}
 
@@ -115,15 +120,16 @@ func extractZipFile(data []byte, targetFileName, destPath string) error {
 			if err != nil {
 				return err
 			}
-			defer rc.Close()
+			defer func() { _ = rc.Close() }()
 
 			out, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
 			if err != nil {
 				return err
 			}
-			defer out.Close()
-
 			_, err = io.Copy(out, rc)
+			if closeErr := out.Close(); err == nil {
+				err = closeErr
+			}
 			return err
 		}
 	}

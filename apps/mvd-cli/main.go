@@ -52,7 +52,7 @@ func main() {
 	if len(urls) == 0 {
 		if legacy, _ := sourcelist.Load("downloads.conf"); len(legacy) > 0 {
 			urls = legacy
-			sourcelist.Save(listPath, urls)
+			_ = sourcelist.Save(listPath, urls) // best effort: the import runs again next launch
 		}
 	}
 
@@ -111,7 +111,9 @@ func runInteractive(ytDlpPath string, cfg config.Config, cfgPath, listPath strin
 		if state != nil {
 			t := state.Tally()
 			if t.Total > 0 && t.Queued == 0 && t.Running == 0 {
-				sourcelist.Clear(listPath)
+				if err := sourcelist.Clear(listPath); err != nil {
+					fmt.Printf("Could not clear the saved list: %v\n", err)
+				}
 				urls = nil
 			}
 		}
@@ -156,7 +158,9 @@ func runHeadless(ytDlpPath string, cfg config.Config, cfgPath, listPath string, 
 	<-done
 
 	if tally.Total > 0 && tally.Queued == 0 && tally.Running == 0 {
-		sourcelist.Clear(listPath)
+		if err := sourcelist.Clear(listPath); err != nil {
+			fmt.Printf("Could not clear the saved list: %v\n", err)
+		}
 	}
 	if tally.Failed > 0 {
 		os.Exit(1)

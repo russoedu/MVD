@@ -34,7 +34,7 @@ func (r *Resolver) do(req *http.Request) ([]byte, int, error) {
 			continue
 		}
 		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			lastErr = err
 			continue

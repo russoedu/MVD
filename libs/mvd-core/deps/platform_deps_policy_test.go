@@ -27,8 +27,12 @@ func TestExtractZipFile(t *testing.T) {
 	var buf bytes.Buffer
 	w := zip.NewWriter(&buf)
 	f, _ := w.Create("ffmpeg-4.4.1/bin/ffmpeg")
-	f.Write([]byte("binary"))
-	w.Close()
+	if _, err := f.Write([]byte("binary")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	dest := filepath.Join(t.TempDir(), "ffmpeg")
 	if err := extractZipFile(buf.Bytes(), "ffmpeg", dest); err != nil {

@@ -23,7 +23,9 @@ func TestRoundTrip(t *testing.T) {
 	}
 
 	// Comments and blanks are ignored on load.
-	os.WriteFile(path, []byte("# header\n\nhttps://c\n"), 0o644)
+	if err := os.WriteFile(path, []byte("# header\n\nhttps://c\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if urls, _ := Load(path); len(urls) != 1 || urls[0] != "https://c" {
 		t.Fatalf("comment handling wrong: %v", urls)
 	}

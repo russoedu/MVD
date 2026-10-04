@@ -19,7 +19,7 @@ func LoadCookieJar(path string) (http.CookieJar, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	jar, err := cookiejar.New(nil)
 	if err != nil {
