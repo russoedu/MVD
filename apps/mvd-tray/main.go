@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"youtube-downloader/libs/mvd-core/appdir"
@@ -39,14 +40,23 @@ func main() {
 }
 
 func run(address string, open, tray bool) error {
-	deps.Ensure()
-	ytDlpPath, err := exec.LookPath("yt-dlp")
-	if err != nil {
-		return errors.New("'yt-dlp' could not be found or installed")
-	}
+	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
+
 	appDir, err := appdir.Dir()
 	if err != nil {
 		return fmt.Errorf("cannot open the app data folder: %w", err)
+	}
+
+	// The tools live in the app-data folder: the same place on every start, and one the
+	// person can always write to, whatever folder the app was started from.
+	notify := func(userNotice) {}
+	if tray {
+		notify = notifyUser
+	}
+	deps.EnsureIn(filepath.Join(appDir, "bin"), depsReporter(logf, notify))
+	ytDlpPath, err := exec.LookPath("yt-dlp")
+	if err != nil {
+		return errors.New("'yt-dlp' could not be found or installed")
 	}
 
 	listener, existing, err := listen(address)
@@ -64,7 +74,6 @@ func run(address string, open, tray bool) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 	sessions := session.New(ctx, newEngineFactory(ytDlpPath, appDir, logf))
 	defer sessions.Close()
 
