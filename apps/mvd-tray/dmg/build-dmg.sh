@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds dist/drop/MVD.dmg: a disk image whose window holds MVD.app and a link to
+# Builds dist/drop/mvd_<version>_macos_universal.dmg: a disk image whose window holds MVD.app and a link to
 # /Applications, so installing is a drag. Runs on macOS only (hdiutil, lipo, codesign).
 # The version stamped in the app is $VERSION, or "dev" when it is not set.
 set -eu
@@ -12,6 +12,8 @@ fi
 version="${VERSION:-dev}"
 work="dist/dmg"
 drop="dist/drop"
+# The file name comes from tools/release-assets.cjs, the one place that decides it.
+dmg="$drop/$(VERSION="$version" node tools/release-assets.cjs name mvd-tray darwin universal dmg)"
 rm -rf "$work"
 mkdir -p "$work/staging" "$drop"
 
@@ -55,13 +57,13 @@ codesign --force --deep --sign - "$work/staging/MVD.app"
 codesign --verify --deep --strict "$work/staging/MVD.app"
 
 ln -s /Applications "$work/staging/Applications"
-rm -f "$drop/MVD.dmg"
-hdiutil create -volname MVD -srcfolder "$work/staging" -ov -format UDZO "$drop/MVD.dmg"
+rm -f "$dmg"
+hdiutil create -volname MVD -srcfolder "$work/staging" -ov -format UDZO "$dmg"
 
 # Open the image the way a person would and check what they will find.
 mount="$PWD/$work/mount"
 mkdir -p "$mount"
-hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$drop/MVD.dmg" >/dev/null
+hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$dmg" >/dev/null
 trap 'hdiutil detach "$mount" -quiet >/dev/null 2>&1 || true' EXIT
 
 test -x "$mount/MVD.app/Contents/MacOS/mvd"
@@ -70,4 +72,4 @@ test -L "$mount/Applications"
 test "$(readlink "$mount/Applications")" = "/Applications"
 codesign --verify --deep --strict "$mount/MVD.app"
 echo "architectures: $(lipo -archs "$mount/MVD.app/Contents/MacOS/mvd")"
-echo "MVD.dmg verified: MVD.app (signed, ad hoc) and an Applications link"
+echo "$dmg verified: MVD.app (signed, ad hoc) and an Applications link"

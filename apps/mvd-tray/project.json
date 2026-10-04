@@ -67,11 +67,18 @@
         "build-native"
       ],
       "outputs": [
-        "{workspaceRoot}/dist/drop/go-app-mvd-tray-*.zip"
+        "{workspaceRoot}/dist/drop/mvd_*.zip"
       ],
       "options": {
-        "command": "node -e \"const fs=require('node:fs');const{spawnSync}=require('node:child_process');const A=require('adm-zip');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const d=os+'-'+arch;fs.mkdirSync('dist/drop',{recursive:true});const z=new A();z.addLocalFolder('dist/platforms/mvd-tray/'+d);z.writeZip('dist/drop/go-app-mvd-tray-'+d+'.zip')\""
-      }
+        "command": "node tools/release-assets.cjs zip mvd-tray"
+      },
+      "inputs": [
+        "default",
+        "^default",
+        {
+          "env": "VERSION"
+        }
+      ]
     },
     "package-dmg": {
       "executor": "nx:run-commands",
@@ -86,7 +93,7 @@
         }
       ],
       "outputs": [
-        "{workspaceRoot}/dist/drop/MVD.dmg"
+        "{workspaceRoot}/dist/drop/mvd_*_macos_universal.dmg"
       ],
       "options": {
         "command": "sh apps/mvd-tray/dmg/build-dmg.sh"

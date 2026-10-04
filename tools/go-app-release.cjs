@@ -12,6 +12,9 @@ const { spawnSync } = require('node:child_process')
 const { existsSync, readdirSync, readFileSync } = require('node:fs')
 const { dirname, join } = require('node:path')
 const { VersionActions } = require('nx/release')
+// LOCAL PATCH (not mnci): release files are named by tools/release-assets.cjs, not go-app-<app>-<os>-<arch>.zip.
+// 'mnci upgrade' overwrites this file; MoNecromanCI/MoNecromanCi issue about configurable asset names tracks it.
+const releaseAssets = require('./release-assets.cjs')
 
 const FIRST_RELEASE_BASE = '0.0.0'
 
@@ -99,9 +102,8 @@ function attachAssets (native) {
     const version = tag.slice(app.length + 1)
     console.log(app + ': ' + (native ? 'building for this OS' : 'building the six platforms') + ' as ' + version)
     nx(['run', app + ':' + target], { VERSION: version })
-    const prefix = 'go-app-' + app + '-'
-    const zips = existsSync('dist/drop') ? readdirSync('dist/drop').filter(each => each.startsWith(prefix) && each.endsWith('.zip')) : []
-    if (zips.length === 0) fail(app + ': ' + target + ' produced no ' + prefix + '*.zip in dist/drop.')
+    const zips = existsSync('dist/drop') ? readdirSync('dist/drop').filter(each => releaseAssets.isReleaseZip(each, app, version)) : []
+    if (zips.length === 0) fail(app + ': ' + target + ' produced no ' + releaseAssets.productName(app) + '_' + version + '_*.zip in dist/drop.')
     const upload = spawnSync('gh', ['release', 'upload', tag, ...zips.map(each => join('dist/drop', each)), '--clobber'], { stdio: 'inherit', shell: process.platform === 'win32' })
     if (upload.status !== 0) fail(app + ': could not attach the zips to the ' + tag + ' release (exit ' + upload.status + ').')
     console.log(app + ': attached ' + zips.length + ' zips to ' + tag)

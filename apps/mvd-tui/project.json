@@ -4,7 +4,8 @@
   "projectType": "application",
   "sourceRoot": "apps/mvd-tui",
   "tags": [
-    "type:go-app"
+    "type:go-app",
+    "release:go"
   ],
   "targets": {
     "build": {
@@ -65,11 +66,18 @@
         "build-all"
       ],
       "outputs": [
-        "{workspaceRoot}/dist/drop/go-app-mvd-tui-*.zip"
+        "{workspaceRoot}/dist/drop/mvd-tui_*.zip"
       ],
       "options": {
-        "command": "node -e \"const fs=require('node:fs');const A=require('adm-zip');fs.mkdirSync('dist/drop',{recursive:true});for(const d of fs.readdirSync('dist/platforms/mvd-tui')){const z=new A();z.addLocalFolder('dist/platforms/mvd-tui/'+d);z.writeZip('dist/drop/go-app-mvd-tui-'+d+'.zip')}\""
-      }
+        "command": "node tools/release-assets.cjs zip mvd-tui"
+      },
+      "inputs": [
+        "default",
+        "^default",
+        {
+          "env": "VERSION"
+        }
+      ]
     },
     "start": {
       "executor": "nx:run-commands",
