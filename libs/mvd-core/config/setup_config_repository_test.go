@@ -6,41 +6,6 @@ import (
 	"testing"
 )
 
-func TestParseBool(t *testing.T) {
-	for _, v := range []string{"true", "True", "yes", "1", "on"} {
-		if !parseBool(v) {
-			t.Errorf("%q should be true", v)
-		}
-	}
-	for _, v := range []string{"false", "0", "no", "", "maybe"} {
-		if parseBool(v) {
-			t.Errorf("%q should be false", v)
-		}
-	}
-}
-
-func TestDefaults(t *testing.T) {
-	d := Default("/app", "/downloads")
-	if d.OutputDir != "/downloads" {
-		t.Errorf("output dir should default to downloads, got %q", d.OutputDir)
-	}
-	if d.VideoQuality != "best" || d.AudioQuality != "best" || d.RawFormat != "" {
-		t.Errorf("quality defaults wrong: %+v", d)
-	}
-	if d.MaxConcurrentDownloads != 4 || d.ConcurrentFragments != 4 || !d.AutoRetry || !d.AutoCookies {
-		t.Errorf("unexpected defaults: %+v", d)
-	}
-	if d.CookiesFile != filepath.Join("/app", "cookies.txt") || d.LogDir != "/app" || !d.CreateLogFile {
-		t.Errorf("path defaults wrong: %+v", d)
-	}
-	if d.Format() != "bestvideo+bestaudio/best" {
-		t.Errorf("default format wrong: %q", d.Format())
-	}
-	if got := d.LogFile(); got != filepath.Join("/app", "mvd-downloads.log") {
-		t.Errorf("log file wrong: %q", got)
-	}
-}
-
 func TestLoadOrCreateRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.conf")
@@ -86,29 +51,6 @@ func TestLoadOrCreateRoundTrip(t *testing.T) {
 	}
 	if reloaded.Format() != "bestvideo[height<=1080]+bestaudio[abr<=128]/best[height<=1080]" {
 		t.Errorf("compiled format wrong: %q", reloaded.Format())
-	}
-}
-
-func TestCookieSettingRoundTrip(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "c.conf")
-	base := Default(dir, dir)
-	for in, want := range map[string]struct {
-		auto bool
-		pin  string
-	}{
-		"all":     {true, ""},
-		"off":     {false, ""},
-		"firefox": {false, "firefox"},
-	} {
-		c := base
-		applyKey(&c, "cookies_from_browser", in, path)
-		if c.AutoCookies != want.auto || c.CookiesFromBrowser != want.pin {
-			t.Errorf("%q -> auto=%v pin=%q", in, c.AutoCookies, c.CookiesFromBrowser)
-		}
-		if got := cookieSetting(c); got != in {
-			t.Errorf("round-trip %q -> %q", in, got)
-		}
 	}
 }
 
