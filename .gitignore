@@ -40,3 +40,49 @@ setup.conf
 
 # Exported browser cookies (session secrets)
 cookies.txt
+
+# Added by mnci (Nx workspace)
+dist
+tmp
+out-tsc
+node_modules
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+.nx/cache
+.nx/workspace-data
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+.claude/worktrees
+.claude/settings.local.json
+.nx/polygraph
+.nx/self-healing
+.nx/migrate-runs
+
+# Added by MoNecromanCI: `npm run format`/`lint` run `eslint --cache`.
+.eslintcache
+
+vite.config.*.timestamp*
+test-output
+
+# MoNecromanCI: keep the committed per-environment Vite config (public VITE_ values)
+!apps/*/.env.dev
+!apps/*/.env.uat
+!apps/*/.env.prod
