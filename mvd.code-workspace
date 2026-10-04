@@ -125,23 +125,23 @@
         "isBackground": true
       },
       {
-        "label": "mvd-tray: qa",
+        "label": "mvd: qa",
         "type": "npm",
-        "script": "mvd-tray:qa",
+        "script": "mvd:qa",
         "problemMatcher": [],
         "group": "qa"
       },
       {
-        "label": "mvd-tray: build",
+        "label": "mvd: build",
         "type": "npm",
-        "script": "mvd-tray:build",
+        "script": "mvd:build",
         "problemMatcher": [],
         "group": "build"
       },
       {
-        "label": "mvd-tray: start",
+        "label": "mvd: start",
         "type": "npm",
-        "script": "mvd-tray:start",
+        "script": "mvd:start",
         "problemMatcher": [],
         "isBackground": true
       }

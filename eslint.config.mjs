@@ -21,6 +21,6 @@ export default [
   {
     // The React build that stage-web copies in for go:embed. Generated, and git-ignored.
     name:    'local/staged-web-build',
-    ignores: ['apps/mvd-tray/localserver/web/**'],
+    ignores: ['apps/mvd/localserver/web/**'],
   },
 ]

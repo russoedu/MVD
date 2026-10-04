@@ -15,20 +15,20 @@
 const { existsSync, mkdirSync, readdirSync } = require('node:fs')
 const { join } = require('node:path')
 
-const PRODUCTS = { 'mvd-tray': 'mvd' }
 const OS_NAMES = { darwin: 'macos' }
 const FILE_NAME = /^(?:mvd|mvd-tui)_\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?_(?:windows|macos|linux)_(?:amd64|arm64|universal)\.(?:zip|dmg)$/
 
-function productName (app) {
-  return PRODUCTS[app] || app
+// A release tag is <app>@<version>. The app name is matched up to the @, so mvd never picks up an mvd-tui tag.
+function releaseTag (tags, app) {
+  return tags.find(each => each.startsWith(app + '@'))
 }
 
 function assetName ({ app, version, os, arch, ext }) {
-  return productName(app) + '_' + version + '_' + (OS_NAMES[os] || os) + '_' + arch + '.' + ext
+  return app + '_' + version + '_' + (OS_NAMES[os] || os) + '_' + arch + '.' + ext
 }
 
 function isReleaseZip (file, app, version) {
-  return file.startsWith(productName(app) + '_' + version + '_') && file.endsWith('.zip')
+  return file.startsWith(app + '_' + version + '_') && file.endsWith('.zip')
 }
 
 function isReleaseFileName (file) {
@@ -65,7 +65,7 @@ function checkDrop () {
   if (bad.length > 0) fail(bad.length + ' file(s) in ' + drop + ' do not match <product>_<version>_<os>_<processor>.<type>.')
 }
 
-module.exports = { assetName, isReleaseFileName, isReleaseZip, productName }
+module.exports = { assetName, isReleaseFileName, isReleaseZip, releaseTag }
 
 if (require.main === module) {
   const [command, app, os, arch, ext] = process.argv.slice(2)

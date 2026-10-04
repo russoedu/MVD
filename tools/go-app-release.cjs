@@ -94,7 +94,7 @@ function attachAssets (native) {
   const tags = run('git', ['tag', '--points-at', 'HEAD']).split(/\r?\n/).filter(Boolean)
   let attached = 0
   for (const app of apps) {
-    const tag = tags.find(each => each.startsWith(app + '@'))
+    const tag = releaseAssets.releaseTag(tags, app)
     if (!tag) {
       console.log(app + ': not released by this run - skipping.')
       continue
@@ -103,7 +103,7 @@ function attachAssets (native) {
     console.log(app + ': ' + (native ? 'building for this OS' : 'building the six platforms') + ' as ' + version)
     nx(['run', app + ':' + target], { VERSION: version })
     const zips = existsSync('dist/drop') ? readdirSync('dist/drop').filter(each => releaseAssets.isReleaseZip(each, app, version)) : []
-    if (zips.length === 0) fail(app + ': ' + target + ' produced no ' + releaseAssets.productName(app) + '_' + version + '_*.zip in dist/drop.')
+    if (zips.length === 0) fail(app + ': ' + target + ' produced no ' + app + '_' + version + '_*.zip in dist/drop.')
     const upload = spawnSync('gh', ['release', 'upload', tag, ...zips.map(each => join('dist/drop', each)), '--clobber'], { stdio: 'inherit', shell: process.platform === 'win32' })
     if (upload.status !== 0) fail(app + ': could not attach the zips to the ' + tag + ' release (exit ' + upload.status + ').')
     console.log(app + ': attached ' + zips.length + ' zips to ' + tag)

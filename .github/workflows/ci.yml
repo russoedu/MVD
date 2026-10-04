@@ -355,7 +355,7 @@ jobs:
       - run: |
           rm -rf dist/drop
           npx nx run-many -t package-native --projects=tag:build:cgo --skip-nx-cache
-          if [ "$RUNNER_OS" = "macOS" ]; then npx nx run mvd-tray:package-dmg --skip-nx-cache; fi
+          if [ "$RUNNER_OS" = "macOS" ]; then npx nx run mvd:package-dmg --skip-nx-cache; fi
           node tools/release-assets.cjs check
         name: Check the release file names (and the macOS disk image)
         shell: bash
@@ -379,14 +379,14 @@ jobs:
       # Same release the zips go to, stamped with the tag's version. The tools script
       # above only attaches zips, so the disk image is attached here.
       - run: |
-          tag=$(git tag --points-at HEAD | grep '^mvd-tray@' | head -n 1 || true)
+          tag=$(git tag --points-at HEAD | grep '^mvd@' | head -n 1 || true)
           if [ -z "$tag" ]; then
-            echo "mvd-tray was not released by this run - skipping."
+            echo "mvd was not released by this run - skipping."
             exit 0
           fi
-          export VERSION="${tag#mvd-tray@}"
-          npx nx run mvd-tray:package-dmg
-          gh release upload "$tag" "dist/drop/$(node tools/release-assets.cjs name mvd-tray darwin universal dmg)" --clobber
+          export VERSION="${tag#mvd@}"
+          npx nx run mvd:package-dmg
+          gh release upload "$tag" "dist/drop/$(node tools/release-assets.cjs name mvd darwin universal dmg)" --clobber
         name: Attach the macOS disk image to the GitHub Release
         if: ${{ runner.os == 'macOS' && github.event_name == 'push' && github.ref_name == 'main' }}
         env:
