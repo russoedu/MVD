@@ -65,6 +65,14 @@ func installOnThisMachine(target installTarget, exe, version string) error {
 	return errors.New("this kind of place is not supported")
 }
 
+// FootprintHere is what the installer can have put on this machine.
+func FootprintHere() Footprint {
+	home, _ := os.UserHomeDir()
+	places := installPlaces{ProgramFiles: os.Getenv("ProgramFiles"), LocalAppData: os.Getenv("LOCALAPPDATA"), Home: home}
+
+	return footprintOf(runtime.GOOS, places, userStartMenu(), allUsersStartMenuLink(), userApplicationsMenu())
+}
+
 // allUsersStartMenuLink is where the Start menu shortcut for every account goes.
 func allUsersStartMenuLink() string {
 	return filepath.Join(os.Getenv("ProgramData"), "Microsoft", "Windows", "Start Menu", "Programs", "MVD.lnk")
