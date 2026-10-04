@@ -191,7 +191,7 @@ func TestAnInstallFolderThatHoldsTheDownloadsLosesOnlyItsProgram(t *testing.T) {
 	}
 }
 
-func TestNothingInThePlanIsOrContainsAKeptFolder(t *testing.T) {
+func TestNothingInThePlanIsOrHoldsAKeptFolder(t *testing.T) {
 	root := t.TempDir()
 	keep := filepath.Join(root, "Music Videos")
 	appDir := filepath.Join(root, "mvd")
@@ -208,9 +208,24 @@ func TestNothingInThePlanIsOrContainsAKeptFolder(t *testing.T) {
 		if path == "" {
 			continue
 		}
-		if within("windows", path, keep) || within("windows", keep, path) {
-			t.Errorf("%s overlaps the kept folder %s", path, keep)
+		if within("windows", path, keep) {
+			t.Errorf("%s is or holds the kept folder %s", path, keep)
 		}
+	}
+}
+
+func TestTheAppsOwnDataIsStillRemovedWhenTheDownloadsFolderIsAboveIt(t *testing.T) {
+	root := t.TempDir()
+	appDir := filepath.Join(root, "AppData", "mvd")
+	foot := windowsFootprint(root)
+
+	plan := buildPlan(planInput{
+		GOOS: "windows", Exe: foot.Places[1].Program, AppDir: appDir, DeletePreferences: true, Keep: []string{root},
+		AppDirEntries: []string{"config.conf"}, Footprint: foot, Exists: everything,
+	})
+
+	if len(plan.AppDataEntries) != 1 || len(plan.Folders) != 2 || len(plan.Kept) != 0 {
+		t.Errorf("plan = %+v", plan)
 	}
 }
 

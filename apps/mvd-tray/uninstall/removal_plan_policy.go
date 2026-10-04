@@ -57,7 +57,9 @@ type removalPlan struct {
 //   - the shortcuts and menu entries the installer writes;
 //   - with DeletePreferences, what is inside the app-data folder;
 //
-// and it leaves out anything that is, contains or sits inside a Keep folder.
+// and it leaves out anything that is or contains a Keep folder, because removing it
+// would remove the person's files. Something that merely sits inside a Keep folder (the
+// app's own data under a downloads folder set to the home folder, say) is the app's.
 func buildPlan(in planInput) removalPlan {
 	var plan removalPlan
 	same := func(a, b string) bool { return samePath(in.GOOS, a, b) }
@@ -86,7 +88,7 @@ func buildPlan(in planInput) removalPlan {
 
 			continue
 		}
-		if keeps := overlapping(in.GOOS, in.Keep, place.Folder); keeps != "" {
+		if keeps := holding(in.GOOS, in.Keep, place.Folder); keeps != "" {
 			plan.Kept = append(plan.Kept, fmt.Sprintf("%s holds your files (%s), so only the program in it is removed", place.Folder, keeps))
 			addFile(place.Program)
 
@@ -106,7 +108,7 @@ func buildPlan(in planInput) removalPlan {
 		plan.AppData = in.AppDir
 		for _, name := range in.AppDirEntries {
 			entry := filepath.Join(in.AppDir, name)
-			if keeps := overlapping(in.GOOS, in.Keep, entry); keeps != "" {
+			if keeps := holding(in.GOOS, in.Keep, entry); keeps != "" {
 				plan.Kept = append(plan.Kept, fmt.Sprintf("%s holds your files (%s), so it is kept", entry, keeps))
 
 				continue
@@ -181,14 +183,11 @@ func within(goos, dir, path string) bool {
 	return strings.HasPrefix(path, strings.TrimSuffix(dir, string(filepath.Separator))+string(filepath.Separator))
 }
 
-// overlapping returns the first of keeps that is, contains or sits inside path, or an
-// empty string when none does.
-func overlapping(goos string, keeps []string, path string) string {
+// holding returns the first of keeps that is path or sits inside it, which removing path
+// would remove, or an empty string when there is none.
+func holding(goos string, keeps []string, path string) string {
 	for _, keep := range keeps {
-		if keep == "" {
-			continue
-		}
-		if within(goos, keep, path) || within(goos, path, keep) {
+		if keep != "" && within(goos, path, keep) {
 			return keep
 		}
 	}
