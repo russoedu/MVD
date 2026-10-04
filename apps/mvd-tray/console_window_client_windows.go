@@ -58,6 +58,25 @@ func showFatal(message string) {
 	_, _ = windows.MessageBox(0, text, title, windows.MB_OK|windows.MB_ICONERROR|windows.MB_SETFOREGROUND)
 }
 
+// idYes is what a message box returns when the person pressed Yes (IDYES).
+const idYes = 6
+
+// askYesNo puts a question in a message box and reports whether the person said yes.
+// Closing the box counts as no.
+func askYesNo(title, question string) bool {
+	text, err := windows.UTF16PtrFromString(question)
+	if err != nil {
+		return false
+	}
+	caption, err := windows.UTF16PtrFromString(title)
+	if err != nil {
+		return false
+	}
+	answer, _ := windows.MessageBox(0, text, caption, windows.MB_YESNO|windows.MB_ICONQUESTION|windows.MB_SETFOREGROUND)
+
+	return answer == idYes
+}
+
 // trayUnavailable is what to do when the tray icon could not be created: a windowed
 // program then has neither an icon nor a console, so the page is the only way left to
 // reach it, and it is opened whatever -no-browser said.
