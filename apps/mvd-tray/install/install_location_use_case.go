@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"youtube-downloader/apps/mvd-tray/macbundle"
 	"youtube-downloader/apps/mvd-tray/programfile"
 	"youtube-downloader/apps/mvd-tray/question"
 )
@@ -168,7 +169,7 @@ func installMacBundle(target installTarget, exe, version string) error {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(target.Folder, "Contents", "Info.plist"), []byte(infoPlist(version)), 0o644)
+	return os.WriteFile(filepath.Join(target.Folder, "Contents", "Info.plist"), []byte(macbundle.InfoPlist(version)), 0o644)
 }
 
 // installLinuxUser puts the program in ~/.local/bin and an entry for it in the
