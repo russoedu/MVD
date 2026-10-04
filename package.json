@@ -16,7 +16,14 @@
     "mvd-cli:qa": "nx run mvd-cli:lint && nx run mvd-cli:test",
     "mvd-cli:build": "nx run mvd-cli:build",
     "mvd-cli:start": "nx run mvd-cli:start",
-    "mvd-core:qa": "nx run mvd-core:lint && nx run mvd-core:test"
+    "mvd-core:qa": "nx run mvd-core:lint && nx run mvd-core:test",
+    "mvd-server:qa": "nx run mvd-server:lint && nx run mvd-server:test",
+    "mvd-web:qa": "nx run mvd-web:lint && nx run mvd-web:test",
+    "mvd-web:build": "nx run mvd-web:build",
+    "mvd-web:start": "nx run mvd-web:serve",
+    "mvd-tray:qa": "nx run mvd-tray:lint && nx run mvd-tray:test",
+    "mvd-tray:build": "nx run mvd-tray:build",
+    "mvd-tray:start": "nx run mvd-tray:start"
   },
   "private": true,
   "devDependencies": {
@@ -26,21 +33,40 @@
     "@nx-go/nx-go": "^4.1.1",
     "@nx/eslint": "23.2.0",
     "@nx/eslint-plugin": "23.2.0",
+    "@nx/jest": "23.2.0",
     "@nx/js": "23.2.0",
+    "@nx/react": "^23.2.0",
+    "@nx/vite": "23.2.0",
+    "@nx/web": "23.2.0",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/react": "16.3.0",
+    "@types/jest": "~30.0.0",
     "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitejs/plugin-react": "^6.0.0",
     "adm-zip": "^0.6.1",
+    "babel-jest": "~30.3.0",
     "eslint": "^10.8.0",
     "husky": "^9.1.7",
+    "jest": "~30.3.0",
+    "jest-environment-jsdom": "~30.3.0",
+    "jest-util": "~30.3.0",
+    "jiti": "2.4.2",
     "nx": "23.2.0",
+    "ts-jest": "^29.4.7",
+    "ts-node": "10.9.1",
     "tslib": "^2.3.0",
-    "typescript": "npm:@typescript/typescript6@^6.0.2"
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.0.0"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "overrides": {
     "eslint-plugin-jsx-a11y": {
