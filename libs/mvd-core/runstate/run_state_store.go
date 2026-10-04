@@ -73,6 +73,15 @@ func appendBounded(lines []string, line string) []string {
 // entry the event concerned, or -1.
 func (s *State) Apply(ev interface{}) int {
 	switch e := ev.(type) {
+	case engine.EvPlaylistAdded:
+		// New knows the sources the engine was built with; later ones arrive here.
+		// The engine gives each the next free index, so anything else is an event
+		// already folded in, and is ignored rather than duplicated.
+		if e.Source.Index == len(s.Playlists) {
+			s.Playlists = append(s.Playlists, &Playlist{Index: e.Source.Index, URL: e.Source.URL, Title: e.Source.URL})
+		}
+		// There is work again, so a finished run is not finished any more.
+		s.Idle = false
 	case engine.EvPlaylistListed:
 		pl := s.Playlists[e.Playlist]
 		pl.Title = e.Title

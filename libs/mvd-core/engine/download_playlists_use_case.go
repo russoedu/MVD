@@ -66,6 +66,9 @@ type Engine struct {
 	pending  int                    // queued + in flight
 	listing  bool                   // producer still listing playlists
 	idleSent bool
+	toList   []int         // sources waiting to be listed, in the order they arrived
+	wake     chan struct{} // pinged when AddSource gives a waiting producer work
+	closed   bool          // Run has finished: no more events will be sent
 }
 
 // New builds an engine. It opens the log file right away.
@@ -80,10 +83,12 @@ func New(opts Options) (*Engine, error) {
 		queue:   newTaskQueue(),
 		logger:  logger,
 		drained: make(chan struct{}, 1),
+		wake:    make(chan struct{}, 1),
 		claims:  make(map[int]map[string]int),
 	}
 	for i, u := range opts.URLs {
 		e.sources = append(e.sources, PlaylistSource{Index: i, URL: u})
+		e.toList = append(e.toList, i)
 	}
 	return e, nil
 }
@@ -91,8 +96,61 @@ func New(opts Options) (*Engine, error) {
 // Events returns the channel renderers read from.
 func (e *Engine) Events() <-chan interface{} { return e.events }
 
-// Sources returns the playlists in order.
-func (e *Engine) Sources() []PlaylistSource { return e.sources }
+// Sources returns the playlists in order, including any added while running.
+func (e *Engine) Sources() []PlaylistSource {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]PlaylistSource(nil), e.sources...)
+}
+
+// AddSource queues one more playlist or video for an engine that is already
+// running, or one that has not started yet. It gets the next free index, so
+// indices stay stable, and renderers learn of it from an EvPlaylistAdded event
+// before its listing starts.
+//
+// It returns false, and queues nothing, once Run has finished: the events
+// channel is closed by then. A caller that serves requests should stop
+// accepting them before it cancels the engine, because a call that is already
+// past that check can still lose the race with the close.
+func (e *Engine) AddSource(url string) (PlaylistSource, bool) {
+	e.mu.Lock()
+	if e.closed {
+		e.mu.Unlock()
+		return PlaylistSource{}, false
+	}
+	src := PlaylistSource{Index: len(e.sources), URL: url}
+	e.sources = append(e.sources, src)
+	e.toList = append(e.toList, src.Index)
+	// The producer has work again, so a quiet period that was announced is
+	// over and the engine is not idle until this is listed and downloaded.
+	// Both flags change under the lock the producer takes to look for work,
+	// so no idle event can slip in between the add and the listing.
+	e.idleSent = false
+	e.listing = true
+	e.mu.Unlock()
+
+	e.emit(EvPlaylistAdded{Source: src})
+	select {
+	case e.wake <- struct{}{}:
+	default:
+	}
+	return src, true
+}
+
+// nextToList hands the producer the next source to list. When there is none it
+// marks listing as finished, under the same lock AddSource takes.
+func (e *Engine) nextToList() (PlaylistSource, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if len(e.toList) == 0 {
+		e.listing = false
+		return PlaylistSource{}, false
+	}
+	idx := e.toList[0]
+	e.toList = e.toList[1:]
+	e.listing = true
+	return e.sources[idx], true
+}
 
 // LogPath returns the path of the log file, or "" when disabled.
 func (e *Engine) LogPath() string { return e.logger.path }
@@ -135,23 +193,28 @@ func (e *Engine) Run(ctx context.Context) {
 
 	// Producer: list playlists in order, feeding the queue as each one
 	// comes back so downloads start while later playlists are still listed.
-	for _, src := range e.sources {
-		if ctx.Err() != nil {
-			break
+	// When there is nothing left to list it waits, so AddSource can feed an
+	// engine that is already running; it stops only when ctx is cancelled.
+	for ctx.Err() == nil {
+		src, ok := e.nextToList()
+		if ok {
+			e.listPlaylist(ctx, src)
+			continue
 		}
-		e.listPlaylist(ctx, src)
+		e.signalDrain()
+		select {
+		case <-e.wake:
+		case <-ctx.Done():
+		}
 	}
 
-	e.mu.Lock()
-	e.listing = false
-	e.mu.Unlock()
-	e.signalDrain()
-
-	<-ctx.Done()
 	e.queue.Close()
 	wg.Wait()
 	<-coordDone
 	e.logger.Close()
+	e.mu.Lock()
+	e.closed = true
+	e.mu.Unlock()
 	close(e.events)
 }
 

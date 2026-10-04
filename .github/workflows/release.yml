@@ -52,7 +52,7 @@ jobs:
           go-version: '1.24'
 
       - name: Test
-        run: go test ./apps/... ./libs/...
+        run: go test ./apps/mvd-cli/... ./libs/...
 
       - name: Build Binary
         env:

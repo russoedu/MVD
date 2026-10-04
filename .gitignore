@@ -78,3 +78,11 @@ testem.log
 
 # Added by MoNecromanCI: `npm run format`/`lint` run `eslint --cache`.
 .eslintcache
+
+vite.config.*.timestamp*
+test-output
+
+# MoNecromanCI: keep the committed per-environment Vite config (public VITE_ values)
+!apps/*/.env.dev
+!apps/*/.env.uat
+!apps/*/.env.prod
