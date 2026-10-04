@@ -12,6 +12,11 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    groups:
+      nx:
+        patterns:
+          - "nx"
+          - "@nx/*"
 
   - package-ecosystem: github-actions
     directory: "/"
