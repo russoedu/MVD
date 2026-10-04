@@ -1,4 +1,4 @@
-package main
+package install
 
 import (
 	"errors"
@@ -12,9 +12,9 @@ import (
 	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
-// offerMoveHere is offerMove against the real machine. It reports true when the app has
+// OfferMoveHere is offerMove against the real machine. It reports true when the app has
 // been moved and started from its new place, and the caller should exit.
-func offerMoveHere(appDir string, tray bool, movedFrom string) bool {
+func OfferMoveHere(appDir string, tray bool, movedFrom, version string) bool {
 	exe, err := os.Executable()
 	if err != nil {
 		return false
@@ -41,13 +41,15 @@ func offerMoveHere(appDir string, tray bool, movedFrom string) bool {
 		Args:      os.Args[1:],
 		Ask:       question.Ask,
 		Tell:      console.ShowFatal,
-		Install:   installOnThisMachine,
-		Start:     startInstalled,
+		Install: func(target installTarget, exe string) error {
+			return installOnThisMachine(target, exe, version)
+		},
+		Start: startInstalled,
 	})
 }
 
 // installOnThisMachine puts the program in target in the way that system needs.
-func installOnThisMachine(target installTarget, exe string) error {
+func installOnThisMachine(target installTarget, exe, version string) error {
 	switch target.Kind {
 	case kindWindowsSystem:
 		return installWindowsSystem(target, exe, allUsersStartMenuLink(), makeShortcut)
@@ -83,9 +85,9 @@ func userApplicationsMenu() string {
 	return filepath.Join(data, "applications")
 }
 
-// cleanUpMovedProgram removes the copy a move left behind, once it has exited. It never
+// CleanUpMovedProgram removes the copy a move left behind, once it has exited. It never
 // removes the program that is running it.
-func cleanUpMovedProgram(path string) {
+func CleanUpMovedProgram(path string) {
 	if exe, err := os.Executable(); err == nil && samePlace(runtime.GOOS, exe, path) {
 		return
 	}

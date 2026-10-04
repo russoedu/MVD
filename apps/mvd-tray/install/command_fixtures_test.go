@@ -1,22 +1,10 @@
-package main
+package install
 
 import (
 	"encoding/base64"
 	"testing"
 	"unicode/utf16"
 )
-
-func installed(names ...string) func(string) bool {
-	return func(name string) bool {
-		for _, n := range names {
-			if n == name {
-				return true
-			}
-		}
-
-		return false
-	}
-}
 
 func decodePowerShell(t *testing.T, args []string) string {
 	t.Helper()
@@ -37,14 +25,4 @@ func decodePowerShell(t *testing.T, args []string) string {
 	t.Fatal("no -EncodedCommand")
 
 	return ""
-}
-
-func contains(list []string, want string) bool {
-	for _, item := range list {
-		if item == want {
-			return true
-		}
-	}
-
-	return false
 }

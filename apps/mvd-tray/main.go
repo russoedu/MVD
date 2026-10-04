@@ -18,6 +18,7 @@ import (
 	"youtube-downloader/apps/mvd-tray/browser"
 	"youtube-downloader/apps/mvd-tray/console"
 	"youtube-downloader/apps/mvd-tray/folderdialog"
+	"youtube-downloader/apps/mvd-tray/install"
 	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/apps/mvd-tray/toolupdates"
 	"youtube-downloader/apps/mvd-tray/tray"
@@ -55,11 +56,11 @@ func run(address string, open, withTray bool, movedFrom string) error {
 
 	// The first time it is started from somewhere it does not belong, it offers to move
 	// itself, and if that is accepted the moved copy takes over and this one is done.
-	if offerMoveHere(appDir, withTray, movedFrom) {
+	if install.OfferMoveHere(appDir, withTray, movedFrom, version) {
 		return nil
 	}
 	if movedFrom != "" {
-		go cleanUpMovedProgram(movedFrom)
+		go install.CleanUpMovedProgram(movedFrom)
 	}
 
 	// The tools live in the app-data folder: the same place on every start, and one the
