@@ -10,13 +10,6 @@ import (
 	"runtime"
 )
 
-// attachParentConsole does nothing here: only a windowed Windows program lacks the
-// terminal that started it.
-func attachParentConsole() {}
-
-// showFatal does nothing here: the error was already printed to the terminal.
-func showFatal(string) {}
-
 // askChoice puts the question to the person with the system's own dialog (osascript on
 // macOS, zenity or kdialog on Linux). With no way to show one it says so instead of
 // guessing an answer.
@@ -42,6 +35,3 @@ func askChoice(title, text string, choices []string) answer {
 
 	return parseAnswer(runtime.GOOS, choices, code, stdout.String())
 }
-
-// trayUnavailable does nothing here: the terminal says what happened and how to quit.
-func trayUnavailable(string) {}

@@ -1,20 +1,6 @@
 package main
 
-import (
-	"encoding/base64"
-	"strings"
-	"unicode/utf16"
-)
-
-// dialogCommand is a program that shows a folder chooser and prints the choice.
-type dialogCommand struct {
-	name string
-	args []string
-	// env is added to the program's environment. The starting folder travels here (or
-	// as a separate argument), never inside the script text, so a folder name can
-	// never be read as code.
-	env []string
-}
+import "strings"
 
 // startEnv is the variable the Windows script reads the starting folder from.
 const startEnv = "MVD_START"
@@ -90,16 +76,4 @@ func folderDialogCommand(goos, start string, has func(string) bool) (cmd dialogC
 
 		return dialogCommand{}, false
 	}
-}
-
-// encodePowerShell is the form -EncodedCommand takes: the script as UTF-16LE, in
-// base64. It avoids every quoting rule between this program and PowerShell.
-func encodePowerShell(script string) string {
-	units := utf16.Encode([]rune(script))
-	raw := make([]byte, 0, len(units)*2)
-	for _, u := range units {
-		raw = append(raw, byte(u), byte(u>>8))
-	}
-
-	return base64.StdEncoding.EncodeToString(raw)
 }

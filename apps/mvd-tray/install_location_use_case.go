@@ -11,20 +11,6 @@ import (
 // asked to move the app, whatever they answered.
 const movedMarkerName = "install-offered"
 
-// answer is what the person chose in the question about moving the app.
-type answer int
-
-const (
-	// answerLeave is No, Cancel, or closing the box.
-	answerLeave answer = iota
-	// answerFirst is the first choice offered (everyone, or the only move there is).
-	answerFirst
-	// answerSecond is the second choice offered (just for me).
-	answerSecond
-	// answerUnavailable means there was no way to ask, so nothing was asked.
-	answerUnavailable
-)
-
 // moveEnvironment is what moving the app needs from the machine, so that every branch
 // can be tested without a screen or a real installation.
 type moveEnvironment struct {

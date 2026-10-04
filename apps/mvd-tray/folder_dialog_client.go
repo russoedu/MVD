@@ -18,12 +18,6 @@ import (
 // api.FolderPicker of the real app: the page asks, the person answers on their screen.
 type folderDialog struct{}
 
-func hasProgram(name string) bool {
-	_, err := exec.LookPath(name)
-
-	return err == nil
-}
-
 // Pick runs the chooser and waits. Cancelling the context (the page went away)
 // closes it.
 func (folderDialog) Pick(ctx context.Context, start string) (string, bool, error) {
