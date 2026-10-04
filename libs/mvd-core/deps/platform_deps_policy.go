@@ -71,15 +71,15 @@ func platformDeps(targetOS, targetArch string) map[string]Dep {
 	if targetOS == "windows" {
 		ffmpegName = "ffmpeg.exe"
 	}
-	switch {
-	case targetOS == "windows":
+	switch targetOS {
+	case "windows":
 		asset := "ffmpeg-master-latest-win64-gpl.zip"
 		if targetArch == "arm64" {
 			asset = "ffmpeg-master-latest-winarm64-gpl.zip"
 		}
 		source := Source{Repo: "yt-dlp/FFmpeg-Builds", Asset: asset}
 		deps["ffmpeg"] = Dep{Name: "ffmpeg", URL: source.downloadURL(), IsZip: true, FileName: ffmpegName, Source: &source, MinAge: ffmpegMinAge}
-	case targetOS == "darwin":
+	case "darwin":
 		deps["ffmpeg"] = Dep{Name: "ffmpeg", URL: "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-osx-64.zip", IsZip: true, FileName: ffmpegName}
 	default: // linux
 		deps["ffmpeg"] = Dep{Name: "ffmpeg", URL: "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-64.zip", IsZip: true, FileName: ffmpegName}
