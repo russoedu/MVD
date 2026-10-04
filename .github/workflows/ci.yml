@@ -308,6 +308,12 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      # The Ubuntu runner ships Go, but macOS does not put it on PATH, so install the
+      # version go.mod asks for rather than depend on what a runner image happens to hold.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
       - run: node -e "if(!require('node:fs').existsSync('go.mod')){console.log('No Go projects - skipping.');process.exit(0)}process.exit(require('node:child_process').spawnSync('go',['mod','download'],{stdio:'inherit'}).status ?? 1)"
         name: Download Go module dependencies
 

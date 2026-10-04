@@ -93,7 +93,7 @@ func inTriangle(px, py, ax, ay, bx, by, cx, cy float64) bool {
 	negative := d1 < 0 || d2 < 0 || d3 < 0
 	positive := d1 > 0 || d2 > 0 || d3 > 0
 
-	return !(negative && positive)
+	return !negative || !positive
 }
 
 func clamp(value, low, high float64) float64 {
