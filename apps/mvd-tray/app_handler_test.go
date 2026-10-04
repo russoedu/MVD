@@ -26,7 +26,7 @@ func fetch(t *testing.T, path, host string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(http.MethodGet, path, nil)
 	r.Host = host
 	w := httptest.NewRecorder()
-	newAppHandler(stubSessions{}).ServeHTTP(w, r)
+	newAppHandler(stubSessions{}, nil, nil).ServeHTTP(w, r)
 	return w
 }
 

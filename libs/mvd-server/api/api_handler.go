@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Options tune the handler. The zero value is what the app uses.
+// Options tune the handler and say which optional parts of the API exist.
 type Options struct {
 	// Throttle is the shortest gap between two pushes on the event stream. A busy
 	// download changes the run many times a second and a browser gains nothing from
@@ -15,10 +15,17 @@ type Options struct {
 	// Keepalive is how long the stream may stay silent before it sends a comment, so
 	// a proxy or the browser does not decide it has died. Default 15s.
 	Keepalive time.Duration
+	// Settings, when set, adds GET and PUT /api/settings.
+	Settings SettingsStore
+	// Folders, when set, adds POST /api/folders/pick.
+	Folders FolderPicker
 }
 
 type handler struct {
 	sessions  Sessions
+	settings  SettingsStore
+	folders   FolderPicker
+	pick      chan struct{}
 	throttle  time.Duration
 	keepalive time.Duration
 }
@@ -26,7 +33,11 @@ type handler struct {
 // New returns the API, to be mounted at /api/. Every route goes through the request
 // guard first, so nothing here can be reached by a page on another site.
 func New(sessions Sessions, options Options) http.Handler {
-	h := &handler{sessions: sessions, throttle: options.Throttle, keepalive: options.Keepalive}
+	h := &handler{
+		sessions: sessions, settings: options.Settings, folders: options.Folders,
+		pick:     make(chan struct{}, 1),
+		throttle: options.Throttle, keepalive: options.Keepalive,
+	}
 	if h.throttle <= 0 {
 		h.throttle = 250 * time.Millisecond
 	}
@@ -40,6 +51,13 @@ func New(sessions Sessions, options Options) http.Handler {
 	mux.HandleFunc("POST /api/sources", h.addSources)
 	mux.HandleFunc("POST /api/entries/{id}/retry", h.retryEntry)
 	mux.HandleFunc("POST /api/playlists/{index}/retry", h.retryPlaylist)
+	if h.settings != nil {
+		mux.HandleFunc("GET /api/settings", h.getSettings)
+		mux.HandleFunc("PUT /api/settings", h.putSettings)
+	}
+	if h.folders != nil {
+		mux.HandleFunc("POST /api/folders/pick", h.pickFolder)
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if reason := refusal(r); reason != "" {
@@ -50,9 +68,11 @@ func New(sessions Sessions, options Options) http.Handler {
 	})
 }
 
-// errorBody is every error the API returns.
+// errorBody is every error the API returns. Fields, when present, names what is wrong
+// with each input by its JSON key, so a form can mark the right box.
 type errorBody struct {
-	Error string `json:"error"`
+	Error  string            `json:"error"`
+	Fields map[string]string `json:"fields,omitempty"`
 }
 
 // writeJSON sends a JSON body. The run changes by the second, so nothing is cacheable.

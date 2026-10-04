@@ -1,6 +1,8 @@
-import { AddSourcesForm } from '../add-sources/add-sources-form.component'
-import { QueueView } from '../queue/queue-view.component'
+import { useState } from 'react'
+import { AddSourcesForm } from '../add-sources'
+import { QueueView } from '../queue'
 import { useRun } from '../run'
+import { SettingsForm } from '../settings'
 
 const CONNECTION_TEXT = {
   connecting: 'Connecting...',
@@ -10,21 +12,33 @@ const CONNECTION_TEXT = {
 
 export function App () {
   const { snapshot, connection } = useRun()
+  const [view, setView] = useState<'queue' | 'settings'>('queue')
 
   return (
     <main>
-      <h1>MVD</h1>
+      <header className='app-header'>
+        <h1>MVD</h1>
+        <nav>
+          <button type='button' className='tab' aria-pressed={view === 'queue'} onClick={() => setView('queue')}>Queue</button>
+          <button type='button' className='tab' aria-pressed={view === 'settings'} onClick={() => setView('settings')}>Settings</button>
+        </nav>
+      </header>
       {CONNECTION_TEXT[connection] !== '' && <p className='message error' role='alert'>{CONNECTION_TEXT[connection]}</p>}
-      <AddSourcesForm />
-      {snapshot && (
-        <>
-          <p className='tally'>
-            {snapshot.tally.done} done · {snapshot.tally.running} running · {snapshot.tally.queued} queued
-            {snapshot.tally.failed > 0 && ` · ${snapshot.tally.failed} failed`}
-          </p>
-          <QueueView snapshot={snapshot} />
-        </>
-      )}
+
+      <section hidden={view !== 'queue'}>
+        <AddSourcesForm />
+        {snapshot && (
+          <>
+            <p className='tally'>
+              {snapshot.tally.done} done · {snapshot.tally.running} running · {snapshot.tally.queued} queued
+              {snapshot.tally.failed > 0 && ` · ${snapshot.tally.failed} failed`}
+            </p>
+            <QueueView snapshot={snapshot} />
+          </>
+        )}
+      </section>
+
+      {view === 'settings' && <SettingsForm runStarted={(snapshot?.playlists.length ?? 0) > 0} />}
     </main>
   )
 }
