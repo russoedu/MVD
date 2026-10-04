@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"time"
 	"youtube-downloader/apps/mvd-tray/browser"
+	"youtube-downloader/apps/mvd-tray/console"
 	"youtube-downloader/apps/mvd-tray/folderdialog"
 	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/apps/mvd-tray/toolupdates"
@@ -29,7 +30,7 @@ import (
 var version = "dev"
 
 func main() {
-	attachParentConsole()
+	console.AttachParent()
 
 	address := flag.String("addr", defaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
@@ -39,7 +40,7 @@ func main() {
 
 	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		showFatal(err.Error())
+		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }

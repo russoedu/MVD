@@ -1,10 +1,10 @@
-package main
+package console
 
 import "golang.org/x/sys/windows"
 
-// showFatal tells the person why the app could not start, in a message box, because
+// ShowFatal tells the person why the app could not start, in a message box, because
 // a windowed program may have nowhere else to print.
-func showFatal(message string) {
+func ShowFatal(message string) {
 	text, err := windows.UTF16PtrFromString(message)
 	if err != nil {
 		return

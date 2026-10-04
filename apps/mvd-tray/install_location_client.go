@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"youtube-downloader/apps/mvd-tray/console"
 	"youtube-downloader/apps/mvd-tray/question"
 	"youtube-downloader/libs/mvd-core/procwindow"
 )
@@ -39,7 +40,7 @@ func offerMoveHere(appDir string, tray bool, movedFrom string) bool {
 		Exe:       exe,
 		Args:      os.Args[1:],
 		Ask:       question.Ask,
-		Tell:      showFatal,
+		Tell:      console.ShowFatal,
 		Install:   installOnThisMachine,
 		Start:     startInstalled,
 	})

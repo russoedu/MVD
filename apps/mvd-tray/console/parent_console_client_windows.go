@@ -1,4 +1,4 @@
-package main
+package console
 
 import (
 	"os"
@@ -11,15 +11,15 @@ const attachParentProcess = ^uint32(0)
 
 var attachConsoleProc = windows.NewLazySystemDLL("kernel32.dll").NewProc("AttachConsole")
 
-// attachParentConsole lets a windowed program print to the terminal that started it.
+// AttachParent lets a windowed program print to the terminal that started it.
 //
 // The release build is linked as a windowed program (-H=windowsgui), which has no
 // console and so no standard output. Started from a terminal it should still talk to
 // that terminal, so it attaches to it and points any standard stream that is not
 // already redirected at the console. Started from Explorer there is no terminal to
 // attach to, and nothing changes. Nothing depends on this working: start-up errors
-// also go to showFatal.
-func attachParentConsole() {
+// also go to ShowFatal.
+func AttachParent() {
 	if attached, _, _ := attachConsoleProc.Call(uintptr(attachParentProcess)); attached == 0 {
 		return
 	}
