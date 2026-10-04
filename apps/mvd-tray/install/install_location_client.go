@@ -53,9 +53,9 @@ func OfferMoveHere(appDir string, tray bool, movedFrom, version string) bool {
 func installOnThisMachine(target installTarget, exe, version string) error {
 	switch target.Kind {
 	case kindWindowsSystem:
-		return installWindowsSystem(target, exe, allUsersStartMenuLink(), makeShortcut)
+		return installWindowsSystem(target, exe, allUsersStartMenuLink(), makeShortcut, func(t installTarget) error { return registerUninstallEntry(t, version) })
 	case kindWindowsUser:
-		return installWindowsUser(target, exe, userStartMenu(), makeShortcut)
+		return installWindowsUser(target, exe, userStartMenu(), makeShortcut, func(t installTarget) error { return registerUninstallEntry(t, version) })
 	case kindMacBundle:
 		return installMacBundle(target, exe, version)
 	case kindLinuxUser:

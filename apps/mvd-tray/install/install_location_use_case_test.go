@@ -404,9 +404,14 @@ func TestInstallingForEveryoneOnWindowsIsAPlainCopyPlusAShortcutForEveryAccount(
 	target := installTargets("windows", installPlaces{ProgramFiles: t.TempDir()})[0]
 	link := filepath.Join(t.TempDir(), "ProgramData", "Start Menu", "MVD.lnk")
 	var links [][2]string
+	var registered []installTarget
 
 	err := installWindowsSystem(target, exe, link, func(l, to string) error {
 		links = append(links, [2]string{l, to})
+
+		return nil
+	}, func(t installTarget) error {
+		registered = append(registered, t)
 
 		return nil
 	})
@@ -420,15 +425,24 @@ func TestInstallingForEveryoneOnWindowsIsAPlainCopyPlusAShortcutForEveryAccount(
 	if len(links) != 1 || links[0] != [2]string{link, target.Program} {
 		t.Errorf("shortcut = %v", links)
 	}
+	if len(registered) != 1 || registered[0] != target {
+		t.Errorf("Settings > Apps entry = %v", registered)
+	}
 }
 
 func TestInstallingForEveryoneFailsCleanlyWhenTheCopyFails(t *testing.T) {
 	target := installTargets("windows", installPlaces{ProgramFiles: t.TempDir()})[0]
 
-	err := installWindowsSystem(target, filepath.Join(t.TempDir(), "missing.exe"), "x.lnk", func(string, string) error { return nil })
+	registered := false
+
+	err := installWindowsSystem(target, filepath.Join(t.TempDir(), "missing.exe"), "x.lnk", func(string, string) error { return nil },
+		func(installTarget) error { registered = true; return nil })
 
 	if err == nil {
 		t.Error("expected an error")
+	}
+	if registered {
+		t.Error("a program that was never installed must not be listed in Settings > Apps")
 	}
 }
 
@@ -437,15 +451,23 @@ func TestOnWindowsTheOwnProgramsFolderGetsTheProgramAndAShortcutButAMissingShort
 	target := installTargets("windows", installPlaces{LocalAppData: t.TempDir()})[0]
 	startMenu := filepath.Join(t.TempDir(), "Start Menu")
 	var links [][2]string
+	registered := false
 
 	err := installWindowsUser(target, exe, startMenu, func(link, to string) error {
 		links = append(links, [2]string{link, to})
 
 		return errors.New("no PowerShell")
+	}, func(installTarget) error {
+		registered = true
+
+		return errors.New("no registry")
 	})
 
 	if err != nil {
-		t.Fatalf("a missing shortcut must not fail the install: %v", err)
+		t.Fatalf("a missing shortcut or entry must not fail the install: %v", err)
+	}
+	if !registered {
+		t.Error("the Settings > Apps entry was not attempted")
 	}
 	if len(links) != 1 || links[0] != [2]string{filepath.Join(startMenu, "MVD.lnk"), target.Program} {
 		t.Errorf("shortcut = %v", links)
