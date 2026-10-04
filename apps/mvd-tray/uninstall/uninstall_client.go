@@ -11,9 +11,10 @@ import (
 	"youtube-downloader/apps/mvd-tray/question"
 )
 
-// Here is the service against the real machine. keep says which folders hold the
-// person's own files, quit ends the app once it has been removed, and it may be nil.
-func Here(version, appDir string, keep func() []string, quit func()) Service {
+// Here is the service against the real machine. configPath is the settings file, which
+// says where the person's downloads are, and quit ends the app once it has been removed
+// (it may be nil, where the process ends anyway).
+func Here(version, appDir, configPath string, quit func()) Service {
 	exe, _ := os.Executable()
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
@@ -21,7 +22,7 @@ func Here(version, appDir string, keep func() []string, quit func()) Service {
 
 	return Service{Env: Environment{
 		GOOS: runtime.GOOS, Version: version, Exe: exe, AppDir: appDir,
-		Keep:      keep,
+		Keep:      keptFolders(configPath, appDir),
 		Footprint: install.FootprintHere,
 		Ask:       question.Ask,
 		Inform:    inform,
