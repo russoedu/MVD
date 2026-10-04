@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"time"
 	"youtube-downloader/apps/mvd-tray/browser"
+	"youtube-downloader/apps/mvd-tray/folderdialog"
 	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/apps/mvd-tray/toolupdates"
 	"youtube-downloader/apps/mvd-tray/tray"
@@ -102,7 +103,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	defer sessions.Close()
 
 	server := &http.Server{
-		Handler:           newAppHandler(sessions, settings.NewRepository(configPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderDialog{}),
+		Handler:           newAppHandler(sessions, settings.NewRepository(configPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}),
 		ReadHeaderTimeout: 10 * time.Second,
 		// Open event streams end when the app does, so shutting down is not held up.
 		BaseContext: func(net.Listener) context.Context { return ctx },

@@ -1,4 +1,4 @@
-package main
+package folderdialog
 
 import (
 	"strings"

@@ -1,4 +1,4 @@
-package main
+package folderdialog
 
 import (
 	"bytes"
@@ -14,13 +14,13 @@ import (
 	"youtube-downloader/libs/mvd-server/api"
 )
 
-// folderDialog shows the operating system's own folder chooser. It is the
+// Dialog shows the operating system's own folder chooser. It is the
 // api.FolderPicker of the real app: the page asks, the person answers on their screen.
-type folderDialog struct{}
+type Dialog struct{}
 
 // Pick runs the chooser and waits. Cancelling the context (the page went away)
 // closes it.
-func (folderDialog) Pick(ctx context.Context, start string) (string, bool, error) {
+func (Dialog) Pick(ctx context.Context, start string) (string, bool, error) {
 	command, ok := folderDialogCommand(runtime.GOOS, start, oscommand.HasProgram)
 	if !ok {
 		return "", false, api.ErrNoDialog
