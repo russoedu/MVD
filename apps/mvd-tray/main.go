@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"time"
 	"youtube-downloader/apps/mvd-tray/browser"
+	"youtube-downloader/apps/mvd-tray/tray"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-server/session"
@@ -40,7 +41,7 @@ func main() {
 	}
 }
 
-func run(address string, open, tray bool, movedFrom string) error {
+func run(address string, open, withTray bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -50,7 +51,7 @@ func run(address string, open, tray bool, movedFrom string) error {
 
 	// The first time it is started from somewhere it does not belong, it offers to move
 	// itself, and if that is accepted the moved copy takes over and this one is done.
-	if offerMoveHere(appDir, tray, movedFrom) {
+	if offerMoveHere(appDir, withTray, movedFrom) {
 		return nil
 	}
 	if movedFrom != "" {
@@ -60,7 +61,7 @@ func run(address string, open, tray bool, movedFrom string) error {
 	// The tools live in the app-data folder: the same place on every start, and one the
 	// person can always write to, whatever folder the app was started from.
 	notify := func(userNotice) {}
-	if tray {
+	if withTray {
 		notify = notifyUser
 	}
 	binDir := filepath.Join(appDir, "bin")
@@ -105,7 +106,7 @@ func run(address string, open, tray bool, movedFrom string) error {
 
 	url := "http://" + listener.Addr().String()
 	quitHint := "Ctrl+C to quit"
-	if tray {
+	if withTray {
 		quitHint = "use the tray icon or Ctrl+C to quit"
 	}
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
@@ -126,11 +127,11 @@ func run(address string, open, tray bool, movedFrom string) error {
 		stop()
 	}()
 
-	if tray {
-		runTray(ctx, url, browser.Open, stop)
+	if withTray {
+		tray.Run(ctx, url, browser.Open, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
-			trayUnavailable(url)
+			tray.Unavailable(url)
 		}
 	}
 	<-ctx.Done()

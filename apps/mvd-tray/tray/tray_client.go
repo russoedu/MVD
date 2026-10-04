@@ -1,4 +1,4 @@
-package main
+package tray
 
 import (
 	"context"
@@ -17,14 +17,14 @@ const (
 	quitLabel = "Quit"
 )
 
-// runTray puts an icon in the system tray and blocks until it is gone. Clicking the
+// Run puts an icon in the system tray and blocks until it is gone. Clicking the
 // icon or "Open MVD" opens url; "Quit" calls quit and removes the icon. When ctx ends
-// (Ctrl+C, or the server stopped) the icon is removed and runTray returns. If the tray
+// (Ctrl+C, or the server stopped) the icon is removed and Run returns. If the tray
 // cannot start (no desktop, no tray host) it returns at once without calling quit, and
 // the caller carries on without an icon.
 //
 // It must be called on the main goroutine.
-func runTray(ctx context.Context, url string, open func(string) error, quit func()) {
+func Run(ctx context.Context, url string, open func(string) error, quit func()) {
 	systray.Run(func() {
 		systray.SetIcon(trayIcon(runtime.GOOS))
 		systray.SetTitle("MVD")
