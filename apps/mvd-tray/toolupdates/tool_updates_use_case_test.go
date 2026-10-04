@@ -1,4 +1,4 @@
-package main
+package toolupdates
 
 import (
 	"errors"
@@ -11,9 +11,9 @@ import (
 	"youtube-downloader/libs/mvd-core/deps"
 )
 
-// updatesProbe is a toolUpdates over a fake checker, with a clock the test moves.
+// updatesProbe is an Updates over a fake checker, with a clock the test moves.
 type updatesProbe struct {
-	updates *toolUpdates
+	updates *Updates
 	runs    atomic.Int32
 	retries atomic.Int32
 
@@ -30,7 +30,7 @@ type updatesProbe struct {
 
 func newUpdatesProbe(result ...string) *updatesProbe {
 	p := &updatesProbe{result: result, now: time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC), done: make(chan struct{}, 8)}
-	p.updates = newToolUpdates(
+	p.updates = New(
 		func() []string {
 			p.runs.Add(1)
 			if p.release != nil {
@@ -70,7 +70,7 @@ func (p *updatesProbe) noticeList() []notification.Notice {
 func TestACheckAtStartRunsAndTellsThePersonWhatWasUpdatedWithoutRetryingAnything(t *testing.T) {
 	p := newUpdatesProbe("yt-dlp", "ffmpeg")
 
-	p.updates.atStart()
+	p.updates.AtStart()
 	p.wait(t)
 
 	if p.runs.Load() != 1 || p.retries.Load() != 0 {
@@ -85,9 +85,9 @@ func TestACheckAtStartRunsAndTellsThePersonWhatWasUpdatedWithoutRetryingAnything
 func TestACheckThatFindsNothingNewSaysNothingAndRetriesNothing(t *testing.T) {
 	p := newUpdatesProbe()
 
-	p.updates.atStart()
+	p.updates.AtStart()
 	p.wait(t)
-	p.updates.afterFailure()
+	p.updates.AfterFailure()
 	p.wait(t)
 
 	if len(p.noticeList()) != 0 || p.retries.Load() != 0 {
@@ -98,7 +98,7 @@ func TestACheckThatFindsNothingNewSaysNothingAndRetriesNothing(t *testing.T) {
 func TestAfterAFailureAnUpdateQueuesTheFailedDownloadsAgainAndSaysHowMany(t *testing.T) {
 	p := newUpdatesProbe("yt-dlp")
 
-	p.updates.afterFailure()
+	p.updates.AfterFailure()
 	p.wait(t)
 
 	if p.retries.Load() != 1 {
@@ -115,7 +115,7 @@ func TestFailuresThatPileUpWhileACheckIsRunningStartOnlyOneCheck(t *testing.T) {
 	p.release = make(chan struct{})
 
 	for range 50 {
-		p.updates.afterFailure()
+		p.updates.AfterFailure()
 	}
 	close(p.release)
 	p.wait(t)
@@ -128,7 +128,7 @@ func TestFailuresThatPileUpWhileACheckIsRunningStartOnlyOneCheck(t *testing.T) {
 func TestAFailureRightAfterACheckDoesNotStartAnotherUntilTheGapHasPassed(t *testing.T) {
 	p := newUpdatesProbe()
 
-	p.updates.afterFailure()
+	p.updates.AfterFailure()
 	p.wait(t)
 
 	p.advance(failureCheckGap - time.Second)
@@ -169,7 +169,7 @@ func TestOnlyOneCheckRunsAtATimeWhateverStartedIt(t *testing.T) {
 
 func TestACheckAtStartIsNotLimitedByTheGapThatFollowsAFailureCheck(t *testing.T) {
 	p := newUpdatesProbe()
-	p.updates.afterFailure()
+	p.updates.AfterFailure()
 	p.wait(t)
 
 	if !p.updates.begin(false) {
@@ -180,7 +180,7 @@ func TestACheckAtStartIsNotLimitedByTheGapThatFollowsAFailureCheck(t *testing.T)
 func TestCheckingForUpdatesOnlyLogsAndNeverNotifiesByItself(t *testing.T) {
 	var notices []notification.Notice
 	var logs []string
-	report := depsReporter(
+	report := Reporter(
 		func(format string, a ...interface{}) { logs = append(logs, format) },
 		func(n notification.Notice) { notices = append(notices, n) },
 	)

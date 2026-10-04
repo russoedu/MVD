@@ -1,4 +1,4 @@
-package main
+package toolupdates
 
 import (
 	"fmt"
@@ -14,13 +14,13 @@ import (
 // can be asked, so one check covers them all.
 const failureCheckGap = 10 * time.Minute
 
-// toolUpdates decides when to look for newer builds of yt-dlp and ffmpeg: once at
+// Updates decides when to look for newer builds of yt-dlp and ffmpeg: once at
 // start-up, and again when a download fails, since an out-of-date yt-dlp is the usual
 // reason a download that worked yesterday does not today.
 //
 // Checks run in the background and never hold up the page or a download. At most one
 // runs at a time.
-type toolUpdates struct {
+type Updates struct {
 	// run checks for and installs newer builds, and returns the names it replaced.
 	run func() []string
 	// retry queues every failed download again and says how many it queued.
@@ -36,29 +36,29 @@ type toolUpdates struct {
 	done func()
 }
 
-func newToolUpdates(run func() []string, retry func() int, notify func(notification.Notice), logf func(string, ...interface{}), now func() time.Time) *toolUpdates {
-	return &toolUpdates{run: run, retry: retry, notify: notify, logf: logf, now: now}
+func New(run func() []string, retry func() int, notify func(notification.Notice), logf func(string, ...interface{}), now func() time.Time) *Updates {
+	return &Updates{run: run, retry: retry, notify: notify, logf: logf, now: now}
 }
 
-// atStart looks for updates in the background.
-func (t *toolUpdates) atStart() {
+// AtStart looks for updates in the background.
+func (t *Updates) AtStart() {
 	if t.begin(false) {
 		go t.check(false)
 	}
 }
 
-// afterFailure looks for updates in the background, unless a check is already running or
+// AfterFailure looks for updates in the background, unless a check is already running or
 // one that a failure started finished less than failureCheckGap ago. It is cheap and
 // returns at once, because the session calls it from the goroutine that keeps the page
 // up to date.
-func (t *toolUpdates) afterFailure() {
+func (t *Updates) AfterFailure() {
 	if t.begin(true) {
 		go t.check(true)
 	}
 }
 
 // begin claims the right to run a check, and says whether it was granted.
-func (t *toolUpdates) begin(fromFailure bool) bool {
+func (t *Updates) begin(fromFailure bool) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -78,7 +78,7 @@ func (t *toolUpdates) begin(fromFailure bool) bool {
 
 // check runs one check. When it replaced something after a failure, the failed
 // downloads are queued again, since they may well work now.
-func (t *toolUpdates) check(fromFailure bool) {
+func (t *Updates) check(fromFailure bool) {
 	defer func() {
 		t.mu.Lock()
 		t.running = false

@@ -17,6 +17,7 @@ import (
 	"time"
 	"youtube-downloader/apps/mvd-tray/browser"
 	"youtube-downloader/apps/mvd-tray/notification"
+	"youtube-downloader/apps/mvd-tray/toolupdates"
 	"youtube-downloader/apps/mvd-tray/tray"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
@@ -66,7 +67,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		notify = notification.Notify
 	}
 	binDir := filepath.Join(appDir, "bin")
-	deps.EnsureIn(binDir, depsReporter(logf, notify))
+	deps.EnsureIn(binDir, toolupdates.Reporter(logf, notify))
 	ytDlpPath, err := exec.LookPath("yt-dlp")
 	if err != nil {
 		return errors.New("'yt-dlp' could not be found or installed")
@@ -90,12 +91,14 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	// yt-dlp and ffmpeg are kept up to date: checked in the background at start, and again
 	// when a download fails, after which the failed downloads are tried again.
 	var sessions *session.Session
-	updates := newToolUpdates(
-		func() []string { return deps.UpdateIn(binDir, depsReporter(logf, func(notification.Notice) {})) },
+	updates := toolupdates.New(
+		func() []string {
+			return deps.UpdateIn(binDir, toolupdates.Reporter(logf, func(notification.Notice) {}))
+		},
 		func() int { return sessions.RetryFailed() },
 		notify, logf, time.Now,
 	)
-	sessions = session.New(ctx, newEngineFactory(ytDlpPath, appDir, logf), session.WithFailureHook(updates.afterFailure))
+	sessions = session.New(ctx, newEngineFactory(ytDlpPath, appDir, logf), session.WithFailureHook(updates.AfterFailure))
 	defer sessions.Close()
 
 	server := &http.Server{
@@ -111,7 +114,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		quitHint = "use the tray icon or Ctrl+C to quit"
 	}
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
-	updates.atStart()
+	updates.AtStart()
 	if open {
 		if err := browser.Open(url); err != nil {
 			fmt.Printf("Open %s in your browser.\n", url)

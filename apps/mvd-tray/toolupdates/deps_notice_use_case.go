@@ -1,4 +1,4 @@
-package main
+package toolupdates
 
 import (
 	"fmt"
@@ -7,12 +7,12 @@ import (
 	"youtube-downloader/libs/mvd-core/deps"
 )
 
-// depsReporter turns the installer's steps into log lines and, for the two moments
+// Reporter turns the installer's steps into log lines and, for the two moments
 // the person needs to know about while the app is starting, a notification: when
 // downloading starts (the app will take a while to appear, and why) and when a tool
 // could not be installed. Checking for updates only logs; the person is told once, by
-// toolUpdates, if something was actually replaced.
-func depsReporter(logf func(string, ...interface{}), notify func(notification.Notice)) deps.Reporter {
+// Updates, if something was actually replaced.
+func Reporter(logf func(string, ...interface{}), notify func(notification.Notice)) deps.Reporter {
 	return func(e deps.Event) {
 		switch e.Kind {
 		case deps.EventMissing:

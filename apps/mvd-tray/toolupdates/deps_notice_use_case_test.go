@@ -1,4 +1,4 @@
-package main
+package toolupdates
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 func TestDependencyEventsBecomeLogLinesAndOnlyTwoKindsOfNotification(t *testing.T) {
 	var notices []notification.Notice
 	var logs []string
-	report := depsReporter(
+	report := Reporter(
 		func(format string, a ...interface{}) { logs = append(logs, format) },
 		func(n notification.Notice) { notices = append(notices, n) },
 	)
