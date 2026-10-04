@@ -26,8 +26,8 @@ A lightweight, zero-setup, concurrent Go application with interactive terminal s
 Build and run; on first launch it creates a default config in your preferences folder and opens the **preferences** screen:
 
 ```powershell
-go build -o mvd.exe ./apps/mvd-tui
-.\mvd.exe
+go build -o mvd-tui.exe ./apps/mvd-tui
+.\mvd-tui.exe
 ```
 
 Then: paste your playlist/video URLs on the **list** screen (one per line), press `Ctrl+S` to start, and the **download** dashboard takes over. Everything is kept in the app-data folder (see below) — there are no config files next to the binary.
@@ -35,7 +35,7 @@ Then: paste your playlist/video URLs on the **list** screen (one per line), pres
 For an unattended/headless run (pipes, CI, cron) it downloads the saved list with a plain log instead of the screens:
 
 ```powershell
-.\mvd.exe --no-tui
+.\mvd-tui.exe --no-tui
 ```
 
 ---
@@ -78,13 +78,13 @@ Emoji in playlist and video titles are not drawn, because terminals disagree on 
 
 Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order. Each video also fetches `concurrent_fragments` fragments in parallel.
 
-## 🌐 The browser app (`mvd-tray`)
+## 🌐 The desktop app (`mvd`)
 
-`apps/mvd-tray` is a second front end for the same engine. It runs until you quit it from its tray icon (or press Ctrl+C in the console), serves a page on `http://127.0.0.1:8421` and opens it in your browser. Paste links into the page at any time, including while it is downloading, and watch the queue fill and progress live. It reads the same `config.conf` as the terminal app.
+`apps/mvd-tray` builds the program `mvd`, a second front end for the same engine (the terminal app is `mvd-tui`). It runs until you quit it from its tray icon (or press Ctrl+C in the console), serves a page on `http://127.0.0.1:8421` and opens it in your browser. Paste links into the page at any time, including while it is downloading, and watch the queue fill and progress live. It reads the same `config.conf` as the terminal app.
 
 ```powershell
 npx nx run mvd-tray:build          # builds the React page, embeds it, builds the binary
-./dist/apps/mvd-tray/mvd-tray      # flags: -addr 127.0.0.1:8421  -no-browser  -no-tray
+./dist/apps/mvd-tray/mvd           # flags: -addr 127.0.0.1:8421  -no-browser  -no-tray
 npx nx run mvd-tray:dev            # development: Vite on :4200 proxying /api to the Go app
 ```
 
@@ -97,16 +97,16 @@ Limits: ffmpeg is kept current on Windows only (the project that publishes the b
 **Where it lives.** The first time a release of the tray app is started from somewhere else (your Downloads folder, say), it asks once whether to move itself to the place your system keeps programs. Yes copies it there, adds it to the menu, starts the copy and removes the old file. No leaves it where it is, and it never asks again. It does not ask when started with `-no-tray` (a terminal or script), from a development build, or from the installed place.
 
 - **Windows:** `%LocalAppData%\Programs\MVD` with a Start menu shortcut, which needs no administrator rights. If the app was started as an administrator it offers a choice: *For everyone* (`C:\Program Files\MVD`, with a shortcut for every account) or *Just for me*. The app never asks Windows for administrator rights itself: an unsigned program that can start an administrator step is removed by Windows' antivirus (`Trojan:Win32/Bearfoos.A!ml`), so to install for everyone, right-click the app and choose Run as administrator. A signed build could offer that with one click.
-- **macOS:** the release has an `MVD.dmg`. Open it and drag **MVD** onto the **Applications** link in the same window. The app is not notarized by Apple, so the first launch needs a right-click on MVD and **Open**; on newer macOS, if it still refuses, open System Settings, Privacy & Security and choose **Open Anyway**. An MVD started from anywhere else offers to move itself to `/Applications/MVD.app` (everyone) or `~/Applications/MVD.app` (just you).
-- **Linux:** `~/.local/bin/mvd-tray` with an entry in the applications menu.
+- **macOS:** the release has an `mvd_<version>_macos_universal.dmg`. Open it and drag **MVD** onto the **Applications** link in the same window. The app is not notarized by Apple, so the first launch needs a right-click on MVD and **Open**; on newer macOS, if it still refuses, open System Settings, Privacy & Security and choose **Open Anyway**. An MVD started from anywhere else offers to move itself to `/Applications/MVD.app` (everyone) or `~/Applications/MVD.app` (just you).
+- **Linux:** `~/.local/bin/mvd` with an entry in the applications menu.
 
 The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only; they have not been run on a real machine.
 
-**Uninstalling.** Settings has a *Remove MVD* button, and `mvd-tray -uninstall` does the same from a terminal. On Windows the app is also listed in Settings > Apps, whose Uninstall button runs `-uninstall`; if MVD is running, that one is asked to remove itself so its tray icon goes too. Whichever way it starts, MVD first shows a window on your computer listing exactly what it will remove, and nothing is removed unless you say yes there. You choose whether your preferences (settings, list and the tools MVD downloaded) go too. Your downloaded videos and their folder are never touched.
+**Uninstalling.** Settings has a *Remove MVD* button, and `mvd -uninstall` does the same from a terminal. On Windows the app is also listed in Settings > Apps, whose Uninstall button runs `-uninstall`; if MVD is running, that one is asked to remove itself so its tray icon goes too. Whichever way it starts, MVD first shows a window on your computer listing exactly what it will remove, and nothing is removed unless you say yes there. You choose whether your preferences (settings, list and the tools MVD downloaded) go too. Your downloaded videos and their folder are never touched.
 
 - **Windows:** the program, its install folder when that is MVD's own (`%LocalAppData%\Programs\MVD` or `C:\Program Files\MVD`; a copy running from Downloads loses only the program), the Start menu shortcuts and the Settings > Apps entry. The running program cannot delete itself, so it is moved into the temporary folder, which Windows empties. Removing the system-wide copy needs MVD to be started as an administrator; it never asks for those rights itself.
 - **macOS:** the `MVD.app` it runs from, or the one in `/Applications` or `~/Applications`. If that is refused, MVD says so and you drag it to the Trash.
-- **Linux:** `~/.local/bin/mvd-tray` and the menu entry.
+- **Linux:** `~/.local/bin/mvd` and the menu entry.
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 
@@ -202,16 +202,18 @@ Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `officia
 
 ```powershell
 # Build for your OS
-go build -o downloader.exe ./apps/mvd-tui
+go build -o mvd-tui.exe ./apps/mvd-tui
 
 # Run the tests (Nx runs each project from its own folder; a bare `go test ./...`
 # from the root would also walk node_modules once `npm install` has run)
 npx nx run-many -t test
 
 # Plain log output (no full screen interface)
-.\downloader.exe --no-tui
+.\mvd-tui.exe --no-tui
 ```
 
 GitHub Releases are automatically created via GitHub Actions on every new tag push (e.g., `v1.0.0`).
 
-Two things release, separately. The terminal app is built by `release.yml` on every `v*` tag as before (it tests only `mvd-tui` and `libs`, because `mvd-tray` cannot compile until its React page has been built into `apps/mvd-tray/localserver/web`). The browser app is released by `ci.yml` (mnci): a push to `main` versions `mvd-tray` from conventional commits, tags it and attaches a zip per OS built on a runner of that OS (it is a `--cgo` app, so it is not cross-compiled). Nx therefore leaves `mvd-tray` out of the cross-compiling verify job and builds it in the `native` job instead.
+Both apps release from `ci.yml` (mnci): a push to `main` versions each from conventional commits, tags it (`mvd-tray@x.y.z`, `mvd-tui@x.y.z`) and attaches its files to that GitHub Release. The files are named `<product>_<version>_<os>_<processor>.<type>` (`mvd_0.0.9_windows_amd64.zip`, `mvd_0.0.9_macos_universal.dmg`, `mvd-tui_0.1.0_linux_arm64.zip`), where the product is `mvd` for the desktop app (the project `mvd-tray`) and `mvd-tui` for the terminal app, and macOS is always written `macos`. `tools/release-assets.cjs` is the one place that decides the names, and CI builds every file with a fixed version and fails if one breaks the rule. The desktop app is a `--cgo` app, so its zip is built on a runner of each OS (the macOS image holds one universal program); the terminal app is cross-compiled for the six platforms. Nx therefore leaves `mvd-tray` out of the cross-compiling verify job and builds it in the `native` job instead.
+
+An older workflow, `release.yml`, still builds the terminal app on a `v*` tag under the name `youtube-downloader-<os>-<arch>`; it predates the mnci release and does not follow the naming above (it tests only `mvd-tui` and `libs`, because `mvd-tray` cannot compile until its React page has been built into `apps/mvd-tray/localserver/web`).
