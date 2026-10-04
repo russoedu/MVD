@@ -1,4 +1,4 @@
-package main
+package notification
 
 import (
 	"strings"
@@ -9,7 +9,7 @@ import (
 const hostileWords = `"; Remove-Item -Recurse C:\ #'$(calc) ` + "`n"
 
 func TestWindowsShowsABalloonWithTheWordsInTheEnvironmentNotTheScript(t *testing.T) {
-	notice := userNotice{Title: hostileWords, Text: hostileWords}
+	notice := Notice{Title: hostileWords, Text: hostileWords}
 
 	cmd, ok := notificationCommand("windows", notice, installed("powershell"))
 
@@ -29,18 +29,18 @@ func TestWindowsShowsABalloonWithTheWordsInTheEnvironmentNotTheScript(t *testing
 }
 
 func TestAFailureIsDrawnAsAnError(t *testing.T) {
-	win, _ := notificationCommand("windows", userNotice{Title: "t", Text: "x", Failure: true}, installed("powershell"))
+	win, _ := notificationCommand("windows", Notice{Title: "t", Text: "x", Failure: true}, installed("powershell"))
 	if !strings.Contains(strings.Join(win.Env, "\n"), noticeIconEnv+"=Error") {
 		t.Errorf("windows env = %v", win.Env)
 	}
-	linux, _ := notificationCommand("linux", userNotice{Title: "t", Text: "x", Failure: true}, installed("notify-send"))
+	linux, _ := notificationCommand("linux", Notice{Title: "t", Text: "x", Failure: true}, installed("notify-send"))
 	if !contains(linux.Args, "--urgency=critical") {
 		t.Errorf("linux args = %v", linux.Args)
 	}
 }
 
 func TestMacAndLinuxPassTheWordsAsArgumentsAfterEverythingThatIsCode(t *testing.T) {
-	mac, ok := notificationCommand("darwin", userNotice{Title: "Title", Text: hostileWords}, installed("osascript"))
+	mac, ok := notificationCommand("darwin", Notice{Title: "Title", Text: hostileWords}, installed("osascript"))
 	if !ok || mac.Name != "osascript" {
 		t.Fatalf("mac = %+v", mac)
 	}
@@ -53,7 +53,7 @@ func TestMacAndLinuxPassTheWordsAsArgumentsAfterEverythingThatIsCode(t *testing.
 		}
 	}
 
-	linux, ok := notificationCommand("linux", userNotice{Title: "Title", Text: hostileWords}, installed("notify-send"))
+	linux, ok := notificationCommand("linux", Notice{Title: "Title", Text: hostileWords}, installed("notify-send"))
 	if !ok || linux.Name != "notify-send" {
 		t.Fatalf("linux = %+v", linux)
 	}
@@ -64,7 +64,7 @@ func TestMacAndLinuxPassTheWordsAsArgumentsAfterEverythingThatIsCode(t *testing.
 
 func TestAMachineWithoutTheToolShowsNothing(t *testing.T) {
 	for _, goos := range []string{"windows", "darwin", "linux"} {
-		if _, ok := notificationCommand(goos, userNotice{Title: "t", Text: "x"}, installed()); ok {
+		if _, ok := notificationCommand(goos, Notice{Title: "t", Text: "x"}, installed()); ok {
 			t.Errorf("%s: found a way to notify with nothing installed", goos)
 		}
 	}
@@ -73,7 +73,7 @@ func TestAMachineWithoutTheToolShowsNothing(t *testing.T) {
 func TestLongWordsAreCutToWhatABalloonCanShowWithoutBreakingACharacter(t *testing.T) {
 	long := strings.Repeat("é", 400)
 
-	cmd, _ := notificationCommand("windows", userNotice{Title: long, Text: long}, installed("powershell"))
+	cmd, _ := notificationCommand("windows", Notice{Title: long, Text: long}, installed("powershell"))
 
 	for _, kv := range cmd.Env {
 		name, value, _ := strings.Cut(kv, "=")

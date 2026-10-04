@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
+	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/libs/mvd-core/deps"
 )
 
@@ -18,7 +18,7 @@ type updatesProbe struct {
 	retries atomic.Int32
 
 	mu      sync.Mutex
-	notices []userNotice
+	notices []notification.Notice
 	now     time.Time
 
 	// result is what each check returns.
@@ -40,7 +40,7 @@ func newUpdatesProbe(result ...string) *updatesProbe {
 			return p.result
 		},
 		func() int { p.retries.Add(1); return 3 },
-		func(n userNotice) { p.mu.Lock(); p.notices = append(p.notices, n); p.mu.Unlock() },
+		func(n notification.Notice) { p.mu.Lock(); p.notices = append(p.notices, n); p.mu.Unlock() },
 		func(string, ...interface{}) {},
 		func() time.Time { p.mu.Lock(); defer p.mu.Unlock(); return p.now },
 	)
@@ -60,11 +60,11 @@ func (p *updatesProbe) wait(t *testing.T) {
 	}
 }
 
-func (p *updatesProbe) noticeList() []userNotice {
+func (p *updatesProbe) noticeList() []notification.Notice {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	return append([]userNotice(nil), p.notices...)
+	return append([]notification.Notice(nil), p.notices...)
 }
 
 func TestACheckAtStartRunsAndTellsThePersonWhatWasUpdatedWithoutRetryingAnything(t *testing.T) {
@@ -178,11 +178,11 @@ func TestACheckAtStartIsNotLimitedByTheGapThatFollowsAFailureCheck(t *testing.T)
 }
 
 func TestCheckingForUpdatesOnlyLogsAndNeverNotifiesByItself(t *testing.T) {
-	var notices []userNotice
+	var notices []notification.Notice
 	var logs []string
 	report := depsReporter(
 		func(format string, a ...interface{}) { logs = append(logs, format) },
-		func(n userNotice) { notices = append(notices, n) },
+		func(n notification.Notice) { notices = append(notices, n) },
 	)
 
 	report(deps.Event{Kind: deps.EventUpToDate, Name: "yt-dlp", Detail: "2026.08.19"})

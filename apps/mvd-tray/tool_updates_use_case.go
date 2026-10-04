@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"youtube-downloader/apps/mvd-tray/notification"
 )
 
 // failureCheckGap is the shortest time between two checks that a failed download
@@ -23,7 +25,7 @@ type toolUpdates struct {
 	run func() []string
 	// retry queues every failed download again and says how many it queued.
 	retry  func() int
-	notify func(userNotice)
+	notify func(notification.Notice)
 	logf   func(string, ...interface{})
 	now    func() time.Time
 
@@ -34,7 +36,7 @@ type toolUpdates struct {
 	done func()
 }
 
-func newToolUpdates(run func() []string, retry func() int, notify func(userNotice), logf func(string, ...interface{}), now func() time.Time) *toolUpdates {
+func newToolUpdates(run func() []string, retry func() int, notify func(notification.Notice), logf func(string, ...interface{}), now func() time.Time) *toolUpdates {
 	return &toolUpdates{run: run, retry: retry, notify: notify, logf: logf, now: now}
 }
 
@@ -103,5 +105,5 @@ func (t *toolUpdates) check(fromFailure bool) {
 			text = "A download had failed. Add it again to try it with the new version."
 		}
 	}
-	t.notify(userNotice{Title: "MVD updated " + list, Text: text})
+	t.notify(notification.Notice{Title: "MVD updated " + list, Text: text})
 }

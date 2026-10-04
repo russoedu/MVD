@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"time"
 	"youtube-downloader/apps/mvd-tray/browser"
+	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/apps/mvd-tray/tray"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
@@ -60,9 +61,9 @@ func run(address string, open, withTray bool, movedFrom string) error {
 
 	// The tools live in the app-data folder: the same place on every start, and one the
 	// person can always write to, whatever folder the app was started from.
-	notify := func(userNotice) {}
+	notify := func(notification.Notice) {}
 	if withTray {
-		notify = notifyUser
+		notify = notification.Notify
 	}
 	binDir := filepath.Join(appDir, "bin")
 	deps.EnsureIn(binDir, depsReporter(logf, notify))
@@ -90,7 +91,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	// when a download fails, after which the failed downloads are tried again.
 	var sessions *session.Session
 	updates := newToolUpdates(
-		func() []string { return deps.UpdateIn(binDir, depsReporter(logf, func(userNotice) {})) },
+		func() []string { return deps.UpdateIn(binDir, depsReporter(logf, func(notification.Notice) {})) },
 		func() int { return sessions.RetryFailed() },
 		notify, logf, time.Now,
 	)

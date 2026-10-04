@@ -1,4 +1,4 @@
-package main
+package notification
 
 import (
 	"strings"
@@ -36,7 +36,7 @@ $icon.Dispose()
 
 // notificationCommand picks the way to show n on goos, using only the programs has
 // reports as installed. ok is false when there is none.
-func notificationCommand(goos string, n userNotice, has func(string) bool) (cmd oscommand.Command, ok bool) {
+func notificationCommand(goos string, n Notice, has func(string) bool) (cmd oscommand.Command, ok bool) {
 	switch goos {
 	case "windows":
 		if !has("powershell") {

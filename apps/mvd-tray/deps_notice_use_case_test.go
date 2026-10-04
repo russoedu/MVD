@@ -4,16 +4,16 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
+	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/libs/mvd-core/deps"
 )
 
 func TestDependencyEventsBecomeLogLinesAndOnlyTwoKindsOfNotification(t *testing.T) {
-	var notices []userNotice
+	var notices []notification.Notice
 	var logs []string
 	report := depsReporter(
 		func(format string, a ...interface{}) { logs = append(logs, format) },
-		func(n userNotice) { notices = append(notices, n) },
+		func(n notification.Notice) { notices = append(notices, n) },
 	)
 
 	report(deps.Event{Kind: deps.EventMissing, Names: []string{"yt-dlp", "ffmpeg"}, Dir: `C:\Users\me\AppData\Roaming\mvd\bin`})
