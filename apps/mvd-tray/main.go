@@ -15,7 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"time"
-
+	"youtube-downloader/apps/mvd-tray/browser"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-server/session"
@@ -77,7 +77,7 @@ func run(address string, open, tray bool, movedFrom string) error {
 	if existing != "" {
 		fmt.Printf("MVD is already running at http://%s\n", existing)
 		if open {
-			_ = openBrowser("http://" + existing)
+			_ = browser.Open("http://" + existing)
 		}
 		return nil
 	}
@@ -111,7 +111,7 @@ func run(address string, open, tray bool, movedFrom string) error {
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	updates.atStart()
 	if open {
-		if err := openBrowser(url); err != nil {
+		if err := browser.Open(url); err != nil {
 			fmt.Printf("Open %s in your browser.\n", url)
 		}
 	}
@@ -127,7 +127,7 @@ func run(address string, open, tray bool, movedFrom string) error {
 	}()
 
 	if tray {
-		runTray(ctx, url, openBrowser, stop)
+		runTray(ctx, url, browser.Open, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
 			trayUnavailable(url)

@@ -1,13 +1,13 @@
-package main
+package browser
 
 import (
 	"os/exec"
 	"runtime"
 )
 
-// openBrowser shows url in the user's default browser. The url is always one this
+// Open shows url in the user's default browser. The url is always one this
 // program built (http on loopback), never user input.
-func openBrowser(url string) error {
+func Open(url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
