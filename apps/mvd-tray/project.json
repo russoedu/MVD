@@ -55,7 +55,7 @@
         "{workspaceRoot}/dist/platforms/mvd-tray"
       ],
       "options": {
-        "command": "node -e \"const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd-tray/'+os+'-'+arch+'/mvd-tray'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-ldflags','-s -w -X main.version='+v,'-o',out,'.'],{cwd:'apps/mvd-tray',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)\""
+        "command": "node -e \"const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd-tray/'+os+'-'+arch+'/mvd-tray'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd-tray',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)\""
       },
       "dependsOn": [
         "stage-web"

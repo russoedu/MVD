@@ -7,6 +7,8 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+
+	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
 // Download runs yt-dlp with the given arguments and hands every line of its
@@ -14,6 +16,7 @@ import (
 // error carries its last "ERROR:" line.
 func Download(ctx context.Context, bin string, args []string, onLine func(line string)) error {
 	cmd := exec.CommandContext(ctx, bin, args...)
+	procwindow.Hide(cmd)
 	pr, pw := io.Pipe()
 	cmd.Stdout = pw
 	cmd.Stderr = pw

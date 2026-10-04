@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"youtube-downloader/libs/mvd-core/procwindow"
 	"youtube-downloader/libs/mvd-server/api"
 )
 
@@ -32,6 +33,7 @@ func (folderDialog) Pick(ctx context.Context, start string) (string, bool, error
 	}
 
 	cmd := exec.CommandContext(ctx, command.name, command.args...)
+	procwindow.Hide(cmd)
 	cmd.Env = append(os.Environ(), command.env...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
