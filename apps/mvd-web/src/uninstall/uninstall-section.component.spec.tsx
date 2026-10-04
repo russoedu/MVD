@@ -56,16 +56,14 @@ describe('UninstallSection', () => {
   })
 
   it('says it is waiting for the answer on the computer while the question is open', async () => {
-    const answer = Promise.withResolvers<Reply>()
-    serve(() => answer.promise)
+    serve(() => new Promise<Reply>(resolve => setTimeout(() => resolve({ status: 202, body: { status: 'removing' } }), 100)))
     render(<UninstallSection />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove MVD...' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remove MVD' }))
 
-    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('window that opened on this computer'))
+    expect(screen.getByRole('status').textContent).toContain('window that opened on this computer')
     expect(screen.getByRole('button', { name: 'Waiting for your answer...' }).hasAttribute('disabled')).toBe(true)
-    answer.resolve({ status: 202, body: { status: 'removing' } })
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('has been removed'))
   })
 
