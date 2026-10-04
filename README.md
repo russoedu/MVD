@@ -26,7 +26,7 @@ A lightweight, zero-setup, concurrent Go application with interactive terminal s
 Build and run; on first launch it creates a default config in your preferences folder and opens the **preferences** screen:
 
 ```powershell
-go build -o mvd.exe .
+go build -o mvd.exe ./apps/mvd-cli
 .\mvd.exe
 ```
 
@@ -77,6 +77,20 @@ Terminals narrower than 100 columns show only the lists; press `l` for the outpu
 Emoji in playlist and video titles are not drawn, because terminals disagree on their width and one wrong guess shifts the whole layout. The interface uses Unicode box drawing and status glyphs, so use a terminal with a font that has them (Windows Terminal, iTerm2, GNOME Terminal, kitty, VS Code and most others are fine). A terminal that does not answer colour queries can add a five second pause at start-up; `--no-tui` avoids it.
 
 Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order. Each video also fetches `concurrent_fragments` fragments in parallel.
+
+## 🌐 The browser app (`mvd-tray`)
+
+`apps/mvd-tray` is a second front end for the same engine. It runs until you quit it from its tray icon (or press Ctrl+C in the console), serves a page on `http://127.0.0.1:8421` and opens it in your browser. Paste links into the page at any time, including while it is downloading, and watch the queue fill and progress live. It reads the same `config.conf` as the terminal app.
+
+```powershell
+npx nx run mvd-tray:build          # builds the React page, embeds it, builds the binary
+./dist/apps/mvd-tray/mvd-tray      # flags: -addr 127.0.0.1:8421  -no-browser  -no-tray
+npx nx run mvd-tray:dev            # development: Vite on :4200 proxying /api to the Go app
+```
+
+Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
+
+The page is `apps/mvd-web` (React); the HTTP API is `libs/mvd-server`: `GET /api/state`, `GET /api/events` (server-sent snapshots), `POST /api/sources`, `POST /api/entries/{id}/retry`, `POST /api/playlists/{index}/retry`. The **Settings** tab edits the same `config.conf` as the terminal app: folders (with a Browse button that opens the operating system's own folder chooser: PowerShell on Windows, `osascript` on macOS, `zenity` or `kdialog` on Linux; if none is present you type the path), quality, file format and name template, how many downloads run at once, cookies, retries and the log. Raw yt-dlp arguments and the cookie file path are not shown and are never changed by saving. The running downloads keep the settings they started with, so the page tells you to restart MVD for a change to reach them. `GET`/`PUT /api/settings` and `POST /api/folders/pick` back this tab. The tray icon opens the page when clicked and has **Open MVD** and **Quit**; where there is no system tray (a server, a bare window manager) it says so and runs until Ctrl+C, and `-no-tray` does that on purpose. The icon is drawn in code, so there is no image to ship. On macOS the tray needs a C toolchain to build (it is native Cocoa), which is why the app is built on a runner of each OS; Windows and Linux build without one. The Windows build still opens a console window next to the tray icon.
 
 ## ⚙️ Configuration
 
@@ -139,22 +153,28 @@ Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_in
 
 ## 🗂️ Code Layout
 
-The code follows vertical feature slices: `main.go` at the root only wires things together, and every folder under `internal/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
+The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd-cli`, the terminal app; `apps/mvd-tray`, the browser app, with its React page in `apps/mvd-web`) and `libs/` the code they share (`libs/mvd-core`, the engine; `libs/mvd-server`, what the browser app adds), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
+
+The code follows vertical feature slices: `apps/mvd-cli/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
 
 | Slice | Outcome |
 |---|---|
-| `internal/appdir` | Locate the OS app-data folder and the Downloads folder. |
-| `internal/config` | Load/create/save the config; compile quality presets to a yt-dlp `-f`. |
-| `internal/sourcelist` | Load/save/clear the saved URL list. |
-| `internal/runner` | Assemble a ready-to-run engine (cookies, resolver, options) from a config. |
-| `internal/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading them into `./bin` when missing. |
-| `internal/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
-| `internal/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
-| `internal/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
-| `internal/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
-| `internal/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
-| `internal/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
-| `internal/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
+| `libs/mvd-core/appdir` | Locate the OS app-data folder and the Downloads folder. |
+| `libs/mvd-core/config` | Load/create/save the config; compile quality presets to a yt-dlp `-f`. |
+| `libs/mvd-core/sourcelist` | Load/save/clear the saved URL list. |
+| `libs/mvd-core/runner` | Assemble a ready-to-run engine (cookies, resolver, options) from a config. |
+| `libs/mvd-core/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, downloading them into `./bin` when missing. |
+| `libs/mvd-core/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
+| `libs/mvd-core/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
+| `libs/mvd-core/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
+| `libs/mvd-core/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
+| `libs/mvd-core/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
+| `libs/mvd-core/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
+| `libs/mvd-core/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
+| `libs/mvd-server/snapshot` | Turn the run state into a versioned, JSON-friendly snapshot for browsers. |
+| `libs/mvd-server/session` | Own the one long-lived engine: start it on the first URLs, accept more while it runs, publish each change. |
+| `libs/mvd-server/settings` | Read, validate and save the common settings in `config.conf`, keeping the advanced ones. |
+| `libs/mvd-server/api` | The localhost HTTP API and its request guard. |
 
 Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it; `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
 
@@ -162,13 +182,16 @@ Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `officia
 
 ```powershell
 # Build for your OS
-go build -o downloader.exe .
+go build -o downloader.exe ./apps/mvd-cli
 
-# Run the tests
-go test ./...
+# Run the tests (Nx runs each project from its own folder; a bare `go test ./...`
+# from the root would also walk node_modules once `npm install` has run)
+npx nx run-many -t test
 
 # Plain log output (no full screen interface)
 .\downloader.exe --no-tui
 ```
 
 GitHub Releases are automatically created via GitHub Actions on every new tag push (e.g., `v1.0.0`).
+
+Two things release, separately. The terminal app is built by `release.yml` on every `v*` tag as before (it tests only `mvd-cli` and `libs`, because `mvd-tray` cannot compile until its React page has been built into `apps/mvd-tray/web`). The browser app is released by `ci.yml` (mnci): a push to `main` versions `mvd-tray` from conventional commits, tags it and attaches a zip per OS built on a runner of that OS (it is a `--cgo` app, so it is not cross-compiled). Nx therefore leaves `mvd-tray` out of the cross-compiling verify job and builds it in the `native` job instead.
