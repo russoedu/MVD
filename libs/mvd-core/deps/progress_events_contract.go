@@ -1,11 +1,5 @@
 package deps
 
-import (
-	"fmt"
-	"runtime"
-	"strings"
-)
-
 // EventKind says what an Event reports.
 type EventKind int
 
@@ -43,24 +37,3 @@ type Event struct {
 
 // Reporter receives the steps as they happen, on the goroutine doing the work.
 type Reporter func(Event)
-
-// PrintProgress writes each step to the terminal.
-func PrintProgress(e Event) {
-	switch e.Kind {
-	case EventMissing:
-		fmt.Printf("\n[!] Missing dependency/dependencies detected: %s\n", strings.Join(e.Names, ", "))
-		fmt.Printf("[+] Automatically downloading dependencies for [%s/%s] into %s...\n\n", runtime.GOOS, runtime.GOARCH, e.Dir)
-	case EventDownloading:
-		fmt.Printf("    Downloading %s from %s...\n", e.Name, e.URL)
-	case EventInstalled:
-		fmt.Printf("    [OK] Successfully installed %s!\n\n", e.Name)
-	case EventFailed:
-		fmt.Printf("    [!] Could not install %s: %v\n", e.Name, e.Err)
-	case EventUpToDate:
-		fmt.Printf("    %s is up to date (%s)\n", e.Name, e.Detail)
-	case EventUpdated:
-		fmt.Printf("    [OK] Updated %s to %s\n", e.Name, e.Detail)
-	case EventUpdateFailed:
-		fmt.Printf("    [!] Could not update %s: %v\n", e.Name, e.Err)
-	}
-}
