@@ -26,15 +26,16 @@ var version = "dev"
 func main() {
 	address := flag.String("addr", defaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
+	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
 	flag.Parse()
 
-	if err := run(*address, !*noBrowser); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(address string, open bool) error {
+func run(address string, open, tray bool) error {
 	deps.Ensure()
 	ytDlpPath, err := exec.LookPath("yt-dlp")
 	if err != nil {
@@ -72,22 +73,40 @@ func run(address string, open bool) error {
 	}
 
 	url := "http://" + listener.Addr().String()
-	fmt.Printf("MVD %s at %s (Ctrl+C to quit)\n", version, url)
+	quitHint := "Ctrl+C to quit"
+	if tray {
+		quitHint = "use the tray icon or Ctrl+C to quit"
+	}
+	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	if open {
 		if err := openBrowser(url); err != nil {
 			fmt.Printf("Open %s in your browser.\n", url)
 		}
 	}
 
-	served := make(chan error, 1)
-	go func() { served <- server.Serve(listener) }()
+	serveErr := make(chan error, 1)
+	go func() {
+		err := server.Serve(listener)
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		}
+		serveErr <- err
+		stop()
+	}()
 
-	select {
-	case err := <-served:
-		return err
-	case <-ctx.Done():
+	if tray {
+		runTray(ctx, url, openBrowser, stop)
+		if ctx.Err() == nil {
+			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
+		}
 	}
+	<-ctx.Done()
+
 	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return server.Shutdown(shutdown)
+	if err := server.Shutdown(shutdown); err != nil {
+		return err
+	}
+
+	return <-serveErr
 }

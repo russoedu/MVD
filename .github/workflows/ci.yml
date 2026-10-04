@@ -160,7 +160,7 @@ jobs:
       # below, so adding it back as its own step would only duplicate work — and
       # on a pull request it would re-lint every project, discarding the point
       # of this.
-      - run: node -e "const cp=require('node:child_process');const T='lint,typecheck,test,build';const all=()=>process.exit(cp.spawnSync('npx nx run-many -t '+T,{stdio:'inherit',shell:true}).status ?? 1);const ref=process.env.GITHUB_BASE_REF||process.env.SYSTEM_PULLREQUEST_TARGETBRANCH||'';if(!ref){console.log('Not a pull request - verifying EVERY project.');all()}const target=ref.replace('refs/heads/','');const mergeBase=r=>{const o=cp.spawnSync('git',['merge-base',r,'HEAD'],{encoding:'utf8'});return o.status===0?o.stdout.trim():''};let base=mergeBase('origin/'+target);if(!base){console.log('No origin/'+target+' ref - fetching it to resolve a merge-base.');cp.spawnSync('git',['fetch','--no-tags','origin',target],{stdio:'inherit'});base=mergeBase('FETCH_HEAD')}if(!base){console.log('Could not resolve a merge-base with '+target+' - verifying EVERY project.');all()}console.log('Pull request against '+target+' - verifying projects affected since '+base);process.exit(cp.spawnSync('npx nx affected -t '+T+' --base='+base,{stdio:'inherit',shell:true}).status ?? 1)"
+      - run: node -e "const cp=require('node:child_process');const T='lint,typecheck,test,build';const all=()=>process.exit(cp.spawnSync('npx nx run-many -t '+T+' --exclude=tag:build:cgo',{stdio:'inherit',shell:true}).status ?? 1);const ref=process.env.GITHUB_BASE_REF||process.env.SYSTEM_PULLREQUEST_TARGETBRANCH||'';if(!ref){console.log('Not a pull request - verifying EVERY project.');all()}const target=ref.replace('refs/heads/','');const mergeBase=r=>{const o=cp.spawnSync('git',['merge-base',r,'HEAD'],{encoding:'utf8'});return o.status===0?o.stdout.trim():''};let base=mergeBase('origin/'+target);if(!base){console.log('No origin/'+target+' ref - fetching it to resolve a merge-base.');cp.spawnSync('git',['fetch','--no-tags','origin',target],{stdio:'inherit'});base=mergeBase('FETCH_HEAD')}if(!base){console.log('Could not resolve a merge-base with '+target+' - verifying EVERY project.');all()}console.log('Pull request against '+target+' - verifying projects affected since '+base);process.exit(cp.spawnSync('npx nx affected -t '+T+' --base='+base+' --exclude=tag:build:cgo',{stdio:'inherit',shell:true}).status ?? 1)"
         name: Verify (affected on a PR, every project on main)
 
       # Pack every app into dist/drop/<type>-<name>.zip via each app's 'package'
@@ -271,6 +271,73 @@ jobs:
       # nothing, and a workspace without one skips the step.
       - run: node tools/go-app-release.cjs assets
         name: Attach the per-platform zips to the GitHub Release (releasable Go apps)
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' && hashFiles('tools/go-app-release.cjs') != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Apps that need a C toolchain (mnci add go-app --cgo) cannot be cross-compiled
+  # from the job above, so each is linted, tested, built and packaged here, on a
+  # runner of every OS it ships for, and is left out of that job's verify step.
+  native:
+    name: native (${{ matrix.os }})
+    needs: ci
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The release tags name the version a native build is stamped with.
+      - run: git fetch --all --prune --tags
+        name: Fetch branches and release tags
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm install -g npm@11
+        name: Pin npm to the major mnci verifies against
+
+      - run: npm ci
+        name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - run: node -e "if(!require('node:fs').existsSync('go.mod')){console.log('No Go projects - skipping.');process.exit(0)}process.exit(require('node:child_process').spawnSync('go',['mod','download'],{stdio:'inherit'}).status ?? 1)"
+        name: Download Go module dependencies
+
+      - run: node -e "const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');if(!fs.existsSync('go.mod')){console.log('No Go projects - skipping.');process.exit(0)}if(cp.spawnSync('golangci-lint',['--version'],{stdio:'ignore'}).status===0){console.log('golangci-lint already installed - skipping.');process.exit(0)}const v='2.14.0';const fallback=reason=>{console.log('Prebuilt golangci-lint '+v+' unavailable ('+reason+') - building it with go install instead.');process.exit(cp.spawnSync('go',['install','github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v'+v],{stdio:'inherit'}).status ?? 1)};const plat={linux:'linux',darwin:'darwin',win32:'windows'}[process.platform],arch={x64:'amd64',arm64:'arm64'}[process.arch];if(!plat||!arch)fallback('no prebuilt release for '+process.platform+'/'+process.arch);const gopath=cp.spawnSync('go',['env','GOPATH'],{encoding:'utf8'});if(gopath.status!==0)fallback('go env GOPATH failed');const name='golangci-lint-'+v+'-'+plat+'-'+arch,file=name+(plat==='windows'?'.zip':'.tar.gz'),base='https://github.com/golangci/golangci-lint/releases/download/v'+v+'/';const get=async u=>{const r=await fetch(u,{signal:AbortSignal.timeout(60000)});if(!r.ok)throw new Error('HTTP '+r.status+' for '+u);return Buffer.from(await r.arrayBuffer())};(async()=>{const sums=(await get(base+'golangci-lint-'+v+'-checksums.txt')).toString('utf8').split('\n').map(l=>l.trim().split(' ').filter(Boolean));const entry=sums.find(p=>p[1]===file);if(!entry)throw new Error(file+' is not in the release checksums');const archive=await get(base+file);if(crypto.createHash('sha256').update(archive).digest('hex')!==entry[0])throw new Error('checksum mismatch for '+file);const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'golangci-lint-')),archivePath=path.join(tmp,file);fs.writeFileSync(archivePath,archive);const tar=plat==='windows'?path.join(process.env.SystemRoot||'','System32','tar.exe'):'tar';const x=cp.spawnSync(tar,['-xf',archivePath,'-C',tmp],{stdio:'inherit'});if(x.status!==0)throw new Error('could not extract '+file);const exe='golangci-lint'+(plat==='windows'?'.exe':''),bin=path.join(gopath.stdout.trim(),'bin');fs.mkdirSync(bin,{recursive:true});fs.copyFileSync(path.join(tmp,name,exe),path.join(bin,exe));fs.chmodSync(path.join(bin,exe),0o755);fs.rmSync(tmp,{recursive:true,force:true});console.log('golangci-lint '+v+' installed from its checksum-verified prebuilt release into '+bin)})().catch(error=>fallback(error.message))"
+        name: Install golangci-lint
+
+      - run: node -e "const fs=require('node:fs'),cp=require('node:child_process');if(!fs.existsSync('go.mod')){console.log('No Go projects - skipping.');process.exit(0)}const r=cp.spawnSync('go',['env','GOPATH'],{encoding:'utf8'});if(r.status!==0){console.log('Could not resolve GOPATH - skipping.');process.exit(0)}const bin=require('node:path').join(r.stdout.trim(),'bin');if(!process.env.GITHUB_PATH){console.log('Not running in GitHub Actions - skipping.');process.exit(0)}fs.appendFileSync(process.env.GITHUB_PATH,bin+'\n')"
+        name: Add Go tool bin to PATH
+
+      # A C compiler and pkg-config, which is all mnci can know a cgo app needs.
+      # Add the -dev packages your app links to this line, for example
+      # libgtk-3-dev and libayatana-appindicator3-dev for a system-tray icon.
+      # macOS and Windows runners ship their toolchains.
+      - run: sudo apt-get update && sudo apt-get install -y gcc pkg-config
+        name: Install native prerequisites (Linux)
+        if: ${{ runner.os == 'Linux' }}
+
+      - run: npx nx run-many -t lint,test,build-native,package-native --projects=tag:build:cgo
+        name: Lint, test, build and package the native apps
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.os }}
+          path: dist/drop
+          if-no-files-found: ignore
+
+      # A releasable native app (--cgo with --release) gets this OS's zip attached to
+      # the GitHub Release the ci job just created, stamped with the tag's version.
+      - run: node tools/go-app-release.cjs assets --native
+        name: Attach this OS's zip to the GitHub Release (releasable native apps)
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' && hashFiles('tools/go-app-release.cjs') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
