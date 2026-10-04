@@ -95,9 +95,16 @@ func run(address string, open, tray bool) error {
 	}()
 
 	if tray {
+		// Everything that can fail at start-up has been reported by now, so the
+		// console (Windows only, and only if this app owns it) is no longer needed.
+		consoleHidden := hideOwnConsole()
 		runTray(ctx, url, openBrowser, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
+			if consoleHidden {
+				// No icon and no console: the page is the only way left to reach the app.
+				_ = openBrowser(url)
+			}
 		}
 	}
 	<-ctx.Done()
