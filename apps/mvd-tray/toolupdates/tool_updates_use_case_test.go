@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
 	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/libs/mvd-core/deps"
 )

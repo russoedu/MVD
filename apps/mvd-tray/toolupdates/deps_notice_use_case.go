@@ -3,6 +3,7 @@ package toolupdates
 import (
 	"fmt"
 	"strings"
+
 	"youtube-downloader/apps/mvd-tray/notification"
 	"youtube-downloader/libs/mvd-core/deps"
 )

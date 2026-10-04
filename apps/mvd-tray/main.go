@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"time"
+
 	"youtube-downloader/apps/mvd-tray/browser"
 	"youtube-downloader/apps/mvd-tray/console"
 	"youtube-downloader/apps/mvd-tray/folderdialog"
