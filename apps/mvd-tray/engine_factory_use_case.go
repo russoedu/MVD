@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
@@ -18,7 +17,7 @@ import (
 // opened is the one the run uses.
 func newEngineFactory(ytDlpPath, appDir string, logf func(string, ...interface{})) session.Factory {
 	return func(ctx context.Context, urls []string) (session.Engine, error) {
-		cfg, _, err := config.LoadOrCreate(filepath.Join(appDir, "config.conf"), appDir, appdir.DefaultDownloadsDir())
+		cfg, _, err := config.LoadOrCreate(configPath(appDir), appDir, appdir.DefaultDownloadsDir())
 		if err != nil {
 			return nil, fmt.Errorf("cannot read the settings: %w", err)
 		}

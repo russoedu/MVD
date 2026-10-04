@@ -18,6 +18,7 @@ import (
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-server/session"
+	"youtube-downloader/libs/mvd-server/settings"
 )
 
 var version = "dev"
@@ -64,7 +65,7 @@ func run(address string, open bool) error {
 	defer sessions.Close()
 
 	server := &http.Server{
-		Handler:           newAppHandler(sessions),
+		Handler:           newAppHandler(sessions, settings.NewRepository(configPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderDialog{}),
 		ReadHeaderTimeout: 10 * time.Second,
 		// Open event streams end when the app does, so shutting down is not held up.
 		BaseContext: func(net.Listener) context.Context { return ctx },

@@ -155,3 +155,66 @@ button:disabled {
 .entry-detail {
   grid-column: 1 / -1;
 }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.tab {
+  background: transparent;
+  color: inherit;
+}
+
+.tab[aria-pressed='true'] {
+  background: var(--accent);
+  color: white;
+}
+
+.settings {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.field input[type='text'],
+.field input[type='number'],
+.field select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.folder-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.folder-input input {
+  flex: 1;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}

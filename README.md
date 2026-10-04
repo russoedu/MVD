@@ -90,7 +90,7 @@ npx nx run mvd-tray:dev            # development: Vite on :4200 proxying /api to
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 
-The page is `apps/mvd-web` (React); the HTTP API is `libs/mvd-server`: `GET /api/state`, `GET /api/events` (server-sent snapshots), `POST /api/sources`, `POST /api/entries/{id}/retry`, `POST /api/playlists/{index}/retry`. It does not yet have a tray icon, a native folder picker or a settings page; change settings in the terminal app or `config.conf`.
+The page is `apps/mvd-web` (React); the HTTP API is `libs/mvd-server`: `GET /api/state`, `GET /api/events` (server-sent snapshots), `POST /api/sources`, `POST /api/entries/{id}/retry`, `POST /api/playlists/{index}/retry`. The **Settings** tab edits the same `config.conf` as the terminal app: folders (with a Browse button that opens the operating system's own folder chooser: PowerShell on Windows, `osascript` on macOS, `zenity` or `kdialog` on Linux; if none is present you type the path), quality, file format and name template, how many downloads run at once, cookies, retries and the log. Raw yt-dlp arguments and the cookie file path are not shown and are never changed by saving. The running downloads keep the settings they started with, so the page tells you to restart MVD for a change to reach them. `GET`/`PUT /api/settings` and `POST /api/folders/pick` back this tab. It does not yet have a tray icon.
 
 ## ⚙️ Configuration
 
@@ -173,6 +173,7 @@ The code follows vertical feature slices: `apps/mvd-cli/main.go` only wires thin
 | `libs/mvd-core/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
 | `libs/mvd-server/snapshot` | Turn the run state into a versioned, JSON-friendly snapshot for browsers. |
 | `libs/mvd-server/session` | Own the one long-lived engine: start it on the first URLs, accept more while it runs, publish each change. |
+| `libs/mvd-server/settings` | Read, validate and save the common settings in `config.conf`, keeping the advanced ones. |
 | `libs/mvd-server/api` | The localhost HTTP API and its request guard. |
 
 Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it; `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
