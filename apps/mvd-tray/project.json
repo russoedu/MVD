@@ -1,0 +1,135 @@
+{
+  "name": "mvd-tray",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/mvd-tray",
+  "tags": [
+    "type:go-app",
+    "build:cgo",
+    "release:go"
+  ],
+  "targets": {
+    "build": {
+      "executor": "@nx-go/nx-go:build",
+      "outputs": [
+        "{workspaceRoot}/dist/apps/mvd-tray"
+      ],
+      "options": {
+        "outputPath": "../../dist/apps/mvd-tray/mvd-tray"
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "test": {
+      "executor": "@nx-go/nx-go:test",
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "lint": {
+      "executor": "@nx-go/nx-go:lint",
+      "parallelism": false,
+      "options": {
+        "linter": "golangci-lint",
+        "args": [
+          "run"
+        ]
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "build-native": {
+      "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/go.mod",
+        "{workspaceRoot}/go.sum",
+        {
+          "env": "VERSION"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/platforms/mvd-tray"
+      ],
+      "options": {
+        "command": "node -e \"const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd-tray/'+os+'-'+arch+'/mvd-tray'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-ldflags','-s -w -X main.version='+v,'-o',out,'.'],{cwd:'apps/mvd-tray',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)\""
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "package-native": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build-native"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/drop/go-app-mvd-tray-*.zip"
+      ],
+      "options": {
+        "command": "node -e \"const fs=require('node:fs');const{spawnSync}=require('node:child_process');const A=require('adm-zip');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const d=os+'-'+arch;fs.mkdirSync('dist/drop',{recursive:true});const z=new A();z.addLocalFolder('dist/platforms/mvd-tray/'+d);z.writeZip('dist/drop/go-app-mvd-tray-'+d+'.zip')\""
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "go run .",
+        "cwd": "apps/mvd-tray"
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "nx-release-publish": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('Published by its git tag; the platform zips are attached to the GitHub Release by tools/go-app-release.cjs assets.')\""
+      }
+    },
+    "stage-web": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": [
+            "@mvd/mvd-web"
+          ],
+          "target": "build"
+        }
+      ],
+      "inputs": [
+        {
+          "dependentTasksOutputFiles": "**/*"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/apps/mvd-tray/web"
+      ],
+      "options": {
+        "command": "node -e \"const fs=require('node:fs');fs.rmSync('apps/mvd-tray/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd-tray/web',{recursive:true})\""
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "nx run @mvd/mvd-web:serve",
+          "nx run mvd-tray:start"
+        ],
+        "parallel": true
+      }
+    }
+  },
+  "release": {
+    "version": {
+      "versionActions": "tools/go-app-release.cjs",
+      "currentVersionResolver": "git-tag"
+    }
+  },
+  "implicitDependencies": [
+    "@mvd/mvd-web"
+  ]
+}

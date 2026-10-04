@@ -1,0 +1,59 @@
+{
+  "name": "@mvd/mvd-web",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "targets": {
+      "build-dev": {
+        "executor": "nx:run-commands",
+        "outputs": [
+          "{workspaceRoot}/apps/mvd-web/dist-dev"
+        ],
+        "options": {
+          "command": "vite build --mode dev --outDir dist-dev",
+          "cwd": "apps/mvd-web"
+        }
+      },
+      "build-uat": {
+        "executor": "nx:run-commands",
+        "outputs": [
+          "{workspaceRoot}/apps/mvd-web/dist-uat"
+        ],
+        "options": {
+          "command": "vite build --mode uat --outDir dist-uat",
+          "cwd": "apps/mvd-web"
+        }
+      },
+      "build-prod": {
+        "executor": "nx:run-commands",
+        "outputs": [
+          "{workspaceRoot}/apps/mvd-web/dist-prod"
+        ],
+        "options": {
+          "command": "vite build --mode prod --outDir dist-prod",
+          "cwd": "apps/mvd-web"
+        }
+      },
+      "package": {
+        "executor": "nx:run-commands",
+        "dependsOn": [
+          "build-dev",
+          "build-uat",
+          "build-prod"
+        ],
+        "outputs": [
+          "{workspaceRoot}/dist/drop/react-app-mvd-web-dev.zip",
+          "{workspaceRoot}/dist/drop/react-app-mvd-web-uat.zip",
+          "{workspaceRoot}/dist/drop/react-app-mvd-web-prod.zip"
+        ],
+        "options": {
+          "command": "node -e \"const fs=require('node:fs');fs.mkdirSync('dist/drop',{recursive:true});const A=require('adm-zip');let z;z=new A();z.addLocalFolder('apps/mvd-web/dist-dev');z.writeZip('dist/drop/react-app-mvd-web-dev.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-uat');z.writeZip('dist/drop/react-app-mvd-web-uat.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-prod');z.writeZip('dist/drop/react-app-mvd-web-prod.zip')\""
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
