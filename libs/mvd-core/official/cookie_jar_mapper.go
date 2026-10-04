@@ -2,25 +2,19 @@ package official
 
 import (
 	"bufio"
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// LoadCookieJar reads a Netscape cookie file (the format browsers export
-// and yt-dlp writes) into a cookie jar usable by an http.Client.
-func LoadCookieJar(path string) (http.CookieJar, int, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer func() { _ = f.Close() }()
-
+// cookieJarFromNetscape reads a Netscape cookie file (the format browsers export
+// and yt-dlp writes) into a cookie jar usable by an http.Client, and reports how
+// many cookies it held.
+func cookieJarFromNetscape(r io.Reader) (http.CookieJar, int, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, 0, err
@@ -28,7 +22,7 @@ func LoadCookieJar(path string) (http.CookieJar, int, error) {
 
 	count := 0
 	byHost := map[string][]*http.Cookie{}
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for scanner.Scan() {
 		line := strings.TrimRight(scanner.Text(), "\r")
@@ -66,19 +60,6 @@ func LoadCookieJar(path string) (http.CookieJar, int, error) {
 		u := &url.URL{Scheme: "https", Host: host, Path: "/"}
 		jar.SetCookies(u, cookies)
 	}
-	if count == 0 {
-		return nil, 0, fmt.Errorf("no cookies found in %s", path)
-	}
-	return jar, count, nil
-}
 
-// UseCookies makes every request of the resolver carry the cookies from a
-// Netscape cookie file. It returns how many cookies were loaded.
-func (r *Resolver) UseCookies(path string) (int, error) {
-	jar, n, err := LoadCookieJar(path)
-	if err != nil {
-		return 0, err
-	}
-	r.Client.Jar = jar
-	return n, nil
+	return jar, count, nil
 }
