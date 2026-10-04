@@ -2,10 +2,11 @@ package install
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
+	"youtube-downloader/apps/mvd-tray/macbundle"
+	"youtube-downloader/apps/mvd-tray/programfile"
 	"youtube-downloader/apps/mvd-tray/question"
 )
 
@@ -141,7 +142,7 @@ func moveQuestion(from string, targets []installTarget, adminHint bool) (string,
 // shortcut for them to the Start menu. A missing shortcut is a loss of convenience, not
 // a reason to undo the install.
 func installWindowsUser(target installTarget, exe, startMenu string, shortcut func(link, target string) error) error {
-	if err := copyExecutable(exe, target.Program); err != nil {
+	if err := programfile.Place(exe, target.Program); err != nil {
 		return err
 	}
 	_ = shortcut(filepath.Join(startMenu, "MVD.lnk"), target.Program)
@@ -153,7 +154,7 @@ func installWindowsUser(target installTarget, exe, startMenu string, shortcut fu
 // account. It is a plain copy: it only works, and is only offered, when the app was
 // started as an administrator.
 func installWindowsSystem(target installTarget, exe, allUsersLink string, shortcut func(link, target string) error) error {
-	if err := copyExecutable(exe, target.Program); err != nil {
+	if err := programfile.Place(exe, target.Program); err != nil {
 		return err
 	}
 	_ = shortcut(allUsersLink, target.Program)
@@ -161,20 +162,15 @@ func installWindowsSystem(target installTarget, exe, allUsersLink string, shortc
 	return nil
 }
 
-// installMacBundle builds MVD.app around the program: the program itself, and the
-// Info.plist that makes macOS treat the folder as an application.
+// installMacBundle builds MVD.app around the program, without an icon.
 func installMacBundle(target installTarget, exe, version string) error {
-	if err := copyExecutable(exe, target.Program); err != nil {
-		return err
-	}
-
-	return os.WriteFile(filepath.Join(target.Folder, "Contents", "Info.plist"), []byte(infoPlist(version)), 0o644)
+	return macbundle.Write(target.Folder, exe, version, "")
 }
 
 // installLinuxUser puts the program in ~/.local/bin and an entry for it in the
 // applications menu.
 func installLinuxUser(target installTarget, exe, applicationsDir string) error {
-	if err := copyExecutable(exe, target.Program); err != nil {
+	if err := programfile.Place(exe, target.Program); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(applicationsDir, 0o755); err != nil {
@@ -182,49 +178,4 @@ func installLinuxUser(target installTarget, exe, applicationsDir string) error {
 	}
 
 	return os.WriteFile(filepath.Join(applicationsDir, "mvd.desktop"), []byte(desktopEntry(target.Program)), 0o644)
-}
-
-// copyExecutable copies the program at src to dst, creating dst's folder. It writes to a
-// temporary name first, so a copy that is interrupted never leaves half a program where
-// a shortcut points. An existing program at dst is replaced, which fails, saying so, if
-// it is running.
-func copyExecutable(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = in.Close() }()
-
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
-	}
-	partial := dst + ".part"
-	out, err := os.OpenFile(partial, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(out, in)
-	if closeErr := out.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		_ = os.Remove(partial)
-
-		return err
-	}
-
-	if _, statErr := os.Stat(dst); statErr == nil {
-		if err := os.Remove(dst); err != nil {
-			_ = os.Remove(partial)
-
-			return fmt.Errorf("the copy already there cannot be replaced, probably because it is running: %w", err)
-		}
-	}
-	if err := os.Rename(partial, dst); err != nil {
-		_ = os.Remove(partial)
-
-		return err
-	}
-
-	return nil
 }

@@ -334,6 +334,13 @@ jobs:
       - run: npx nx run-many -t lint,test,build-native,package-native --projects=tag:build:cgo
         name: Lint, test, build and package the native apps
 
+      # The macOS download: MVD.dmg holds MVD.app and a link to Applications to drag it
+      # to. It is built, mounted and checked on every run, so a pull request proves it
+      # still works; only the release step below publishes it.
+      - run: npx nx run mvd-tray:package-dmg
+        name: Build and check the macOS disk image
+        if: ${{ runner.os == 'macOS' }}
+
       - uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.os }}
@@ -345,5 +352,20 @@ jobs:
       - run: node tools/go-app-release.cjs assets --native
         name: Attach this OS's zip to the GitHub Release (releasable native apps)
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' && hashFiles('tools/go-app-release.cjs') != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same release the zips go to, stamped with the tag's version. The tools script
+      # above only attaches zips, so the disk image is attached here.
+      - run: |
+          tag=$(git tag --points-at HEAD | grep '^mvd-tray@' | head -n 1 || true)
+          if [ -z "$tag" ]; then
+            echo "mvd-tray was not released by this run - skipping."
+            exit 0
+          fi
+          VERSION="${tag#mvd-tray@}" npx nx run mvd-tray:package-dmg
+          gh release upload "$tag" dist/drop/MVD.dmg --clobber
+        name: Attach the macOS disk image to the GitHub Release
+        if: ${{ runner.os == 'macOS' && github.event_name == 'push' && github.ref_name == 'main' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

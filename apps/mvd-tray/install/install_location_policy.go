@@ -3,6 +3,8 @@ package install
 import (
 	"path/filepath"
 	"strings"
+
+	"youtube-downloader/apps/mvd-tray/macbundle"
 )
 
 // installFolderName is the folder (or, on macOS, the .app bundle) the app lives in.
@@ -69,7 +71,7 @@ func installTargets(goos string, places installPlaces) []installTarget {
 		bundle := func(root string) installTarget {
 			folder := filepath.Join(root, installFolderName+".app")
 
-			return installTarget{Kind: kindMacBundle, Folder: folder, Program: filepath.Join(folder, "Contents", "MacOS", "mvd-tray")}
+			return installTarget{Kind: kindMacBundle, Folder: folder, Program: macbundle.ProgramPath(folder)}
 		}
 		system := bundle("/Applications")
 		system.Everyone = true

@@ -97,10 +97,10 @@ Limits: ffmpeg is kept current on Windows only (the project that publishes the b
 **Where it lives.** The first time a release of the tray app is started from somewhere else (your Downloads folder, say), it asks once whether to move itself to the place your system keeps programs. Yes copies it there, adds it to the menu, starts the copy and removes the old file. No leaves it where it is, and it never asks again. It does not ask when started with `-no-tray` (a terminal or script), from a development build, or from the installed place.
 
 - **Windows:** `%LocalAppData%\Programs\MVD` with a Start menu shortcut, which needs no administrator rights. If the app was started as an administrator it offers a choice: *For everyone* (`C:\Program Files\MVD`, with a shortcut for every account) or *Just for me*. The app never asks Windows for administrator rights itself: an unsigned program that can start an administrator step is removed by Windows' antivirus (`Trojan:Win32/Bearfoos.A!ml`), so to install for everyone, right-click the app and choose Run as administrator. A signed build could offer that with one click.
-- **macOS:** `~/Applications/MVD.app`, or `/Applications/MVD.app` for everyone, as a menu-bar-only app bundle built on the spot.
+- **macOS:** the release has an `MVD.dmg`. Open it and drag **MVD** onto the **Applications** link in the same window. The app is not notarized by Apple, so the first launch needs a right-click on MVD and **Open**; on newer macOS, if it still refuses, open System Settings, Privacy & Security and choose **Open Anyway**. An MVD started from anywhere else offers to move itself to `/Applications/MVD.app` (everyone) or `~/Applications/MVD.app` (just you).
 - **Linux:** `~/.local/bin/mvd-tray` with an entry in the applications menu.
 
-The macOS and Linux paths are covered by unit tests only; they have not been run on a real machine.
+The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only; they have not been run on a real machine.
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 
