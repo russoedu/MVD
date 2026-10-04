@@ -19,24 +19,29 @@ type Options struct {
 	Settings SettingsStore
 	// Folders, when set, adds POST /api/folders/pick.
 	Folders FolderPicker
+	// Uninstall, when set, adds POST /api/uninstall.
+	Uninstall Uninstaller
 }
 
 type handler struct {
-	sessions  Sessions
-	settings  SettingsStore
-	folders   FolderPicker
-	pick      chan struct{}
-	throttle  time.Duration
-	keepalive time.Duration
+	sessions    Sessions
+	settings    SettingsStore
+	folders     FolderPicker
+	uninstaller Uninstaller
+	pick        chan struct{}
+	confirming  chan struct{}
+	throttle    time.Duration
+	keepalive   time.Duration
 }
 
 // New returns the API, to be mounted at /api/. Every route goes through the request
 // guard first, so nothing here can be reached by a page on another site.
 func New(sessions Sessions, options Options) http.Handler {
 	h := &handler{
-		sessions: sessions, settings: options.Settings, folders: options.Folders,
-		pick:     make(chan struct{}, 1),
-		throttle: options.Throttle, keepalive: options.Keepalive,
+		sessions: sessions, settings: options.Settings, folders: options.Folders, uninstaller: options.Uninstall,
+		pick:       make(chan struct{}, 1),
+		confirming: make(chan struct{}, 1),
+		throttle:   options.Throttle, keepalive: options.Keepalive,
 	}
 	if h.throttle <= 0 {
 		h.throttle = 250 * time.Millisecond
@@ -57,6 +62,9 @@ func New(sessions Sessions, options Options) http.Handler {
 	}
 	if h.folders != nil {
 		mux.HandleFunc("POST /api/folders/pick", h.pickFolder)
+	}
+	if h.uninstaller != nil {
+		mux.HandleFunc("POST /api/uninstall", h.uninstall)
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
