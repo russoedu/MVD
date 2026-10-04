@@ -1,0 +1,164 @@
+{
+  "name": "mvd",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/mvd",
+  "tags": [
+    "type:go-app",
+    "build:cgo",
+    "release:go"
+  ],
+  "targets": {
+    "build": {
+      "executor": "@nx-go/nx-go:build",
+      "outputs": [
+        "{workspaceRoot}/dist/apps/mvd"
+      ],
+      "options": {
+        "outputPath": "../../dist/apps/mvd/mvd"
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "test": {
+      "executor": "@nx-go/nx-go:test",
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "lint": {
+      "executor": "@nx-go/nx-go:lint",
+      "parallelism": false,
+      "options": {
+        "linter": "golangci-lint",
+        "args": [
+          "run"
+        ]
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "build-native": {
+      "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/go.mod",
+        "{workspaceRoot}/go.sum",
+        {
+          "env": "VERSION"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/platforms/mvd"
+      ],
+      "options": {
+        "command": "node -e \"const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)\""
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "package-native": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "build-native"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/drop/mvd_*.zip"
+      ],
+      "options": {
+        "command": "node tools/release-assets.cjs zip mvd"
+      },
+      "inputs": [
+        "default",
+        "^default",
+        {
+          "env": "VERSION"
+        }
+      ]
+    },
+    "package-dmg": {
+      "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/go.mod",
+        "{workspaceRoot}/go.sum",
+        "{workspaceRoot}/assets/logo.svg",
+        {
+          "env": "VERSION"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/drop/mvd_*_macos_universal.dmg"
+      ],
+      "options": {
+        "command": "sh apps/mvd/dmg/build-dmg.sh"
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "go run .",
+        "cwd": "apps/mvd"
+      },
+      "dependsOn": [
+        "stage-web"
+      ]
+    },
+    "nx-release-publish": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('Published by its git tag; the platform zips are attached to the GitHub Release by tools/go-app-release.cjs assets.')\""
+      }
+    },
+    "stage-web": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": [
+            "@mvd/mvd-web"
+          ],
+          "target": "build"
+        }
+      ],
+      "inputs": [
+        {
+          "dependentTasksOutputFiles": "**/*"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/apps/mvd/localserver/web"
+      ],
+      "options": {
+        "command": "node -e \"const fs=require('node:fs');fs.rmSync('apps/mvd/localserver/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd/localserver/web',{recursive:true})\""
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "nx run @mvd/mvd-web:serve",
+          "nx run mvd:start"
+        ],
+        "parallel": true
+      }
+    }
+  },
+  "release": {
+    "version": {
+      "versionActions": "tools/go-app-release.cjs",
+      "currentVersionResolver": "git-tag"
+    }
+  },
+  "implicitDependencies": [
+    "@mvd/mvd-web"
+  ]
+}

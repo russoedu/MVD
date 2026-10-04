@@ -21,9 +21,9 @@
     "mvd-web:qa": "nx run mvd-web:lint && nx run mvd-web:test",
     "mvd-web:build": "nx run mvd-web:build",
     "mvd-web:start": "nx run mvd-web:serve",
-    "mvd-tray:qa": "nx run mvd-tray:lint && nx run mvd-tray:test",
-    "mvd-tray:build": "nx run mvd-tray:build",
-    "mvd-tray:start": "nx run mvd-tray:start"
+    "mvd:qa": "nx run mvd:lint && nx run mvd:test",
+    "mvd:build": "nx run mvd:build",
+    "mvd:start": "nx run mvd:start"
   },
   "private": true,
   "devDependencies": {
