@@ -10,7 +10,7 @@ test('names a file <product>_<version>_<os>_<processor>.<type>', () => {
     [{ app: 'mvd-tray', version: '0.0.9', os: 'darwin', arch: 'arm64', ext: 'zip' }, 'mvd_0.0.9_macos_arm64.zip'],
     [{ app: 'mvd-tray', version: '0.0.9', os: 'darwin', arch: 'universal', ext: 'dmg' }, 'mvd_0.0.9_macos_universal.dmg'],
     [{ app: 'mvd-tui', version: '0.1.0', os: 'darwin', arch: 'amd64', ext: 'zip' }, 'mvd-tui_0.1.0_macos_amd64.zip'],
-    [{ app: 'mvd-tui', version: '1.2.3-rc.1', os: 'windows', arch: 'arm64', ext: 'zip' }, 'mvd-tui_1.2.3-rc.1_windows_arm64.zip']
+    [{ app: 'mvd-tui', version: '1.2.3-rc.1', os: 'windows', arch: 'arm64', ext: 'zip' }, 'mvd-tui_1.2.3-rc.1_windows_arm64.zip'],
   ]
   for (const [input, want] of cases) assert.equal(assetName(input), want)
 })

@@ -17,7 +17,7 @@ const { join } = require('node:path')
 
 const PRODUCTS = { 'mvd-tray': 'mvd' }
 const OS_NAMES = { darwin: 'macos' }
-const FILE_NAME = /^(mvd|mvd-tui)_\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?_(windows|macos|linux)_(amd64|arm64|universal)\.(zip|dmg)$/
+const FILE_NAME = /^(?:mvd|mvd-tui)_\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?_(?:windows|macos|linux)_(?:amd64|arm64|universal)\.(?:zip|dmg)$/
 
 function productName (app) {
   return PRODUCTS[app] || app
@@ -46,7 +46,7 @@ function zipPlatforms (app, version) {
   if (!existsSync(root)) fail(app + ': nothing built in ' + root)
   mkdirSync(join('dist', 'drop'), { recursive: true })
   for (const dir of readdirSync(root)) {
-    const [os, arch] = dir.split('-')
+    const [os, arch] = dir.split('-', 2)
     const zip = new AdmZip()
     zip.addLocalFolder(join(root, dir))
     const name = assetName({ app, version, os, arch, ext: 'zip' })
