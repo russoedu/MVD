@@ -1,0 +1,199 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "mvd"
+    }
+  ],
+  "settings": {
+    "eslint.validate": [
+      "javascript",
+      "javascriptreact",
+      "typescript",
+      "typescriptreact",
+      "json",
+      "jsonc",
+      "yaml",
+      "markdown",
+      "css",
+      "html",
+      "toml"
+    ],
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.formatOnSave": true,
+    "[javascript]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[javascriptreact]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[json]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[jsonc]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[yaml]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[markdown]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[css]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[html]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    },
+    "[toml]": {
+      "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "nrwl.angular-console",
+      "firsttris.vscode-jest-runner"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "mvd-cli: qa",
+        "type": "npm",
+        "script": "mvd-cli:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-cli: build",
+        "type": "npm",
+        "script": "mvd-cli:build",
+        "problemMatcher": [],
+        "group": "build"
+      },
+      {
+        "label": "mvd-cli: start",
+        "type": "npm",
+        "script": "mvd-cli:start",
+        "problemMatcher": [],
+        "isBackground": true
+      },
+      {
+        "label": "mvd-core: qa",
+        "type": "npm",
+        "script": "mvd-core:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-server: qa",
+        "type": "npm",
+        "script": "mvd-server:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-web: qa",
+        "type": "npm",
+        "script": "mvd-web:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-web: build",
+        "type": "npm",
+        "script": "mvd-web:build",
+        "problemMatcher": [],
+        "group": "build"
+      },
+      {
+        "label": "mvd-web: start",
+        "type": "npm",
+        "script": "mvd-web:start",
+        "problemMatcher": [],
+        "isBackground": true
+      },
+      {
+        "label": "mvd-tray: qa",
+        "type": "npm",
+        "script": "mvd-tray:qa",
+        "problemMatcher": [],
+        "group": "qa"
+      },
+      {
+        "label": "mvd-tray: build",
+        "type": "npm",
+        "script": "mvd-tray:build",
+        "problemMatcher": [],
+        "group": "build"
+      },
+      {
+        "label": "mvd-tray: start",
+        "type": "npm",
+        "script": "mvd-tray:start",
+        "problemMatcher": [],
+        "isBackground": true
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node-terminal",
+        "request": "launch",
+        "name": "mnci: build",
+        "command": "npm run build",
+        "cwd": "${workspaceFolder:mvd}",
+        "presentation": {
+          "group": "mnci",
+          "order": 1
+        }
+      },
+      {
+        "type": "node-terminal",
+        "request": "launch",
+        "name": "mnci: test",
+        "command": "npm run test",
+        "cwd": "${workspaceFolder:mvd}",
+        "presentation": {
+          "group": "mnci",
+          "order": 2
+        }
+      },
+      {
+        "type": "node-terminal",
+        "request": "launch",
+        "name": "mnci: lint",
+        "command": "npm run lint",
+        "cwd": "${workspaceFolder:mvd}",
+        "presentation": {
+          "group": "mnci",
+          "order": 3
+        }
+      },
+      {
+        "type": "node-terminal",
+        "request": "launch",
+        "name": "mnci: typecheck",
+        "command": "npm run typecheck",
+        "cwd": "${workspaceFolder:mvd}",
+        "presentation": {
+          "group": "mnci",
+          "order": 4
+        }
+      }
+    ]
+  }
+}
