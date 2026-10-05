@@ -68,7 +68,7 @@ function checkDrop () {
 // The desktop app was released as mvd-tray@x.y.z until 0.0.10 and is mvd@x.y.z from then on. Until the
 // first mvd@ tag exists, its version continues from the highest mvd-tray@ tag instead of restarting at 0.0.0.
 function legacyVersion (tags, app) {
-  if (app !== 'mvd') return undefined
+  if (app !== 'mvd') return
   const versions = tags
     .map(tag => /^mvd-tray@(\d+)\.(\d+)\.(\d+)$/.exec(tag))
     .filter(Boolean)
