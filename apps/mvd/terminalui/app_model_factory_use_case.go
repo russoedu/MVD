@@ -4,8 +4,6 @@
 package terminalui
 
 import (
-	"context"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"youtube-downloader/libs/mvd-core/appdir"
@@ -22,10 +20,9 @@ type Files struct {
 
 // NewModelFactory returns what the server calls when the first window connects
 // (and again after the user quits the app from it). Each start reads the files
-// again, so a change made elsewhere since is the one it shows. A downloads run
-// started from the screens uses ytDlpPath and lives until the user leaves its
-// screen, or ctx ends.
-func NewModelFactory(ctx context.Context, appDir, ytDlpPath string, files Files, logf func(string, ...interface{})) func() tea.Model {
+// again, so a change made elsewhere since is the one it shows. A download run
+// started from the screens is started by start.
+func NewModelFactory(appDir string, files Files, start tui.RunStarter, logf func(string, ...interface{})) func() tea.Model {
 	return func() tea.Model {
 		cfg, created, err := config.LoadOrCreate(files.Config, appDir, appdir.DefaultDownloadsDir())
 		if err != nil {
@@ -36,7 +33,7 @@ func NewModelFactory(ctx context.Context, appDir, ytDlpPath string, files Files,
 
 		return accessibleApp{tui.NewAppModel(tui.AppInput{
 			Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created},
-			Start: StartDownloadRun(ctx, ytDlpPath, logf),
+			Start: start,
 		})}
 	}
 }

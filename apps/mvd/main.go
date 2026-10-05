@@ -117,22 +117,25 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 	// yt-dlp and ffmpeg are kept up to date: checked in the background at start, and again
 	// when a download fails, after which the failed downloads are tried again.
 	var sessions *session.Session
+	var terminalRuns *terminalui.Runs
 	updates := toolupdates.New(
 		func() []string {
 			return deps.UpdateIn(binDir, toolupdates.Reporter(logf, func(notification.Notice) {}))
 		},
-		func() int { return sessions.RetryFailed() },
+		// Whichever interface started the failed downloads, they are tried again.
+		func() int { return sessions.RetryFailed() + terminalRuns.RetryFailed() },
 		notify, logf, time.Now,
 	)
 	sessions = session.New(ctx, localserver.NewEngineFactory(ytDlpPath, appDir, logf), session.WithFailureHook(updates.AfterFailure))
 	defer sessions.Close()
+	terminalRuns = terminalui.NewRuns(updates.AfterFailure)
 
 	removal := uninstall.Here(version, appDir, localserver.ConfigPath(appDir), stop)
 	// The terminal-style interface: the same screens as the terminal app, in a window.
-	terminal := terminalui.NewHandler(terminalui.NewModelFactory(ctx, appDir, ytDlpPath, terminalui.Files{
+	terminal := terminalui.NewHandler(terminalui.NewModelFactory(appDir, terminalui.Files{
 		Config: localserver.ConfigPath(appDir),
 		List:   filepath.Join(appDir, "list.txt"),
-	}, logf), []string{"localhost:4200"})
+	}, terminalRuns.Start(ctx, ytDlpPath, logf), logf), []string{"localhost:4200"})
 	server := &http.Server{
 		Handler:           localserver.NewHandler(sessions, settings.NewRepository(localserver.ConfigPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}, removal, terminal),
 		ReadHeaderTimeout: 10 * time.Second,
