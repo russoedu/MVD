@@ -66,6 +66,20 @@ type setupModel struct {
 	config        configModel
 	advanced      advancedModel
 	result        SetupResult
+	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
+}
+
+// setupFinishedMsg tells the app model the user left the setup screens.
+type setupFinishedMsg struct{ result SetupResult }
+
+// finish ends the screens: the program in RunSetup, or the screens alone when
+// the model is part of an app model.
+func (m setupModel) finish() tea.Cmd {
+	if m.embedded {
+		res := m.result
+		return func() tea.Msg { return setupFinishedMsg{result: res} }
+	}
+	return tea.Quit
 }
 
 func newSetupModel(in SetupInput) setupModel {
@@ -103,7 +117,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case listStart:
 			m.saveList()
 			m.result = SetupResult{Action: ActionStart, Cfg: m.cfg, URLs: m.list.urls()}
-			return m, tea.Quit
+			return m, m.finish()
 		case listPrefs:
 			m.saveList()
 			m.config = newConfigModel(m.cfg).setSize(m.width, m.height)
@@ -112,7 +126,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case listQuit:
 			m.saveList()
 			m.result = SetupResult{Action: ActionQuit, Cfg: m.cfg, URLs: m.list.urls()}
-			return m, tea.Quit
+			return m, m.finish()
 		}
 		return m, cmd
 	case screenConfig:
