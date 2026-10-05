@@ -1,4 +1,4 @@
-import { TTY } from '@treactui/tty'
+import { TTY as Terminal } from '@treactui/tty'
 import { terminalUrl } from './terminal-url.algorithm'
 
 /**
@@ -8,7 +8,7 @@ import { terminalUrl } from './terminal-url.algorithm'
 export function TerminalWindow () {
   return (
     <main className='terminal-window'>
-      <TTY url={terminalUrl(window.location)} label='MVD' />
+      <Terminal url={terminalUrl(location)} label='MVD' />
     </main>
   )
 }

@@ -8,10 +8,8 @@ const root = ReactDOM.createRoot(
 )
 
 // The app serves one page for every path; /terminal is the terminal-style interface.
-const Screen = window.location.pathname === '/terminal' ? TerminalWindow : App
-
 root.render(
   <StrictMode>
-    <Screen />
+    {location.pathname === '/terminal' ? <TerminalWindow /> : <App />}
   </StrictMode>,
 )
