@@ -103,12 +103,12 @@ func TestAVideoGivenOnItsOwnIsNamedAfterItselfWithNoPlaylistFolderOrNumber(t *te
 	alone := PlaylistEntry{ID: "jNQXAC9IVRw", Title: "Me at the zoo"}
 	cases := map[string]string{
 		"%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s": "%(title)s.%(ext)s",
-		"%(playlist_index)02d - %(title)s.%(ext)s":                              "%(title)s.%(ext)s",
-		"%(playlist_title)s/%(playlist_index)s - %(title)s [%(id)s].%(ext)s":    "%(title)s [%(id)s].%(ext)s",
-		"Music/%(playlist_title,playlist)s/%(title)s.%(ext)s":                   "Music/%(title)s.%(ext)s",
-		"%(title)s.%(ext)s":                                                     "%(title)s.%(ext)s",
-		"%(playlist_title|Singles)s/%(title)s.%(ext)s":                          "Singles/%(title)s.%(ext)s",
-		"%(playlist_index)02d":                                                  "%(title)s.%(ext)s",
+		"%(playlist_index)02d - %(title)s.%(ext)s":                             "%(title)s.%(ext)s",
+		"%(playlist_title)s/%(playlist_index)s - %(title)s [%(id)s].%(ext)s":   "%(title)s [%(id)s].%(ext)s",
+		"Music/%(playlist_title,playlist)s/%(title)s.%(ext)s":                  "Music/%(title)s.%(ext)s",
+		"%(title)s.%(ext)s":                            "%(title)s.%(ext)s",
+		"%(playlist_title|Singles)s/%(title)s.%(ext)s": "Singles/%(title)s.%(ext)s",
+		"%(playlist_index)02d":                         "%(title)s.%(ext)s",
 	}
 	for in, want := range cases {
 		if got := ApplyPlaylistFields(in, alone); got != want {
