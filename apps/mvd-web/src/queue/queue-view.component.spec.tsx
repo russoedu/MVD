@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { EntryView, RunSnapshot } from '../run'
 import { QueueView } from './queue-view.component'
 
@@ -76,5 +76,49 @@ describe('QueueView', () => {
   it('says it is still reading a playlist that has not been listed', () => {
     render(<QueueView snapshot={snapshot([], { listed: false, title: '' })} />)
     expect(screen.getByText('reading the list...')).toBeTruthy()
+  })
+
+  describe('with thousands of entries', () => {
+    const many = Array.from({ length: 5000 }, (_, i) => entry({ id: i + 1, index: i, videoId: `v${i + 1}`, title: `Song ${i + 1}` }))
+
+    beforeEach(() => {
+      jest.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
+    })
+
+    afterEach(() => {
+      jest.restoreAllMocks()
+    })
+
+    it('mounts only a screenful of rows, not the whole queue', () => {
+      render(<QueueView snapshot={snapshot(many)} />)
+
+      expect(screen.getByRole('heading', { name: 'Best of' })).toBeTruthy()
+      expect(screen.getByText('Song 1')).toBeTruthy()
+      expect(screen.getAllByRole('listitem').length).toBeLessThan(60)
+      expect(screen.queryByText('Song 5000')).toBeNull()
+    })
+
+    it('shows the entries around the scroll position and offers retry for a failed one there', async () => {
+      const failing = many.map(e => e.id === 3000 ? { ...e, state: 'failed' as const, err: 'HTTP 403' } : e)
+      render(<QueueView snapshot={snapshot(failing)} />)
+
+      const list = screen.getByRole('list')
+      list.scrollTop = 52 + 2999 * 46
+      fireEvent.scroll(list)
+
+      await waitFor(() => { expect(screen.getByText('Song 3000')).toBeTruthy() })
+      expect(screen.getByText('HTTP 403')).toBeTruthy()
+      expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+      expect(screen.queryByText('Song 1')).toBeNull()
+    })
+
+    it('updates the row whose progress changed when the next snapshot arrives', () => {
+      const running = many.map(e => e.id === 2 ? { ...e, state: 'downloading' as const, percent: 10 } : e)
+      const { rerender } = render(<QueueView snapshot={snapshot(running)} />)
+
+      rerender(<QueueView snapshot={snapshot(running.map(e => e.id === 2 ? { ...e, percent: 55 } : { ...e }))} />)
+
+      expect(screen.getByLabelText<HTMLProgressElement>('Song 2 progress').value).toBe(55)
+    })
   })
 })
