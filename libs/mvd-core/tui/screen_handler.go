@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
 
@@ -77,6 +78,8 @@ type model struct {
 	status        string // transient message shown in the key bar
 	statusUntil   time.Time
 	embedded      bool // inside an app model: ends with downloadFinishedMsg instead of quitting
+	adding        bool // the box for adding links is open
+	links         textarea.Model
 }
 
 // downloadFinishedMsg tells the app model the user left the download screen.
@@ -152,6 +155,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseMsg:
 		return m.mouse(msg)
 	}
+	if m.adding {
+		// The text area's cursor blinks on messages of its own.
+		var cmd tea.Cmd
+		m.links, cmd = m.links.Update(msg)
+		return m, cmd
+	}
 	return m, nil
 }
 
@@ -163,6 +172,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if key == "ctrl+l" {
 		return m, tea.ClearScreen
+	}
+	if m.adding {
+		return m.updateAdding(msg)
 	}
 
 	if m.confirmQuit {
@@ -188,6 +200,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.confirmQuit = true
 	case "?":
 		m.showHelp = true
+	case "a":
+		return m.startAdding()
 	case "tab":
 		m.focus = (m.focus + 1) % 3
 		if m.focus == paneOutput && !m.outputVisible() {

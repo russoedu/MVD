@@ -9,6 +9,8 @@ type ScreenOutline struct {
 	// current folder on the folder picker; HasText says whether the screen has one.
 	Text    string
 	HasText bool
+	// TextLabel names the text, when it is not the download list.
+	TextLabel string
 	// ItemsLabel names what Items are: "Settings", "Sub-folders", "Downloads".
 	ItemsLabel string
 	Items      []OutlineItem
