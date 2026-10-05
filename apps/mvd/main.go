@@ -22,6 +22,7 @@ import (
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/localserver"
 	"youtube-downloader/apps/mvd/notification"
+	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
 	"youtube-downloader/apps/mvd/tray"
 	"youtube-downloader/apps/mvd/uninstall"
@@ -40,6 +41,7 @@ func main() {
 	address := flag.String("addr", localserver.DefaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
+	terminalWindow := flag.Bool("terminal-window", false, "open the terminal-style interface in a window of its own, instead of the page in the browser")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
@@ -54,14 +56,14 @@ func main() {
 		return
 	}
 
-	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray, *terminalWindow, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(address string, open, withTray bool, movedFrom string) error {
+func run(address string, open, withTray, terminalWindow bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -91,6 +93,12 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		return errors.New("'yt-dlp' could not be found or installed")
 	}
 
+	// The page is shown in the browser, or the terminal-style interface in a window of its own.
+	show, page := browser.Open, ""
+	if terminalWindow {
+		show, page = browser.OpenWindow, "/terminal"
+	}
+
 	listener, existing, err := localserver.Listen(address)
 	if err != nil {
 		return fmt.Errorf("cannot listen on %s: %w", address, err)
@@ -98,7 +106,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	if existing != "" {
 		fmt.Printf("MVD is already running at http://%s\n", existing)
 		if open {
-			_ = browser.Open("http://" + existing)
+			_ = show("http://" + existing + page)
 		}
 		return nil
 	}
@@ -120,8 +128,13 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	defer sessions.Close()
 
 	removal := uninstall.Here(version, appDir, localserver.ConfigPath(appDir), stop)
+	// The terminal-style interface: the same screens as the terminal app, in a window.
+	terminal := terminalui.NewHandler(terminalui.NewModelFactory(ctx, appDir, ytDlpPath, terminalui.Files{
+		Config: localserver.ConfigPath(appDir),
+		List:   filepath.Join(appDir, "list.txt"),
+	}, logf), []string{"localhost:4200"})
 	server := &http.Server{
-		Handler:           localserver.NewHandler(sessions, settings.NewRepository(localserver.ConfigPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}, removal),
+		Handler:           localserver.NewHandler(sessions, settings.NewRepository(localserver.ConfigPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}, removal, terminal),
 		ReadHeaderTimeout: 10 * time.Second,
 		// Open event streams end when the app does, so shutting down is not held up.
 		BaseContext: func(net.Listener) context.Context { return ctx },
@@ -135,8 +148,8 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	updates.AtStart()
 	if open {
-		if err := browser.Open(url); err != nil {
-			fmt.Printf("Open %s in your browser.\n", url)
+		if err := show(url + page); err != nil {
+			fmt.Printf("Open %s in your browser.\n", url+page)
 		}
 	}
 
@@ -151,7 +164,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	}()
 
 	if withTray {
-		tray.Run(ctx, url, browser.Open, stop)
+		tray.Run(ctx, url+page, show, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
 			tray.Unavailable(url)

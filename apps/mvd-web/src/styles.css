@@ -267,3 +267,12 @@ button.secondary {
   padding-top: 1.25rem;
   border-top: 1px solid var(--line);
 }
+
+/* The terminal-style interface fills the window. */
+main.terminal-window {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
