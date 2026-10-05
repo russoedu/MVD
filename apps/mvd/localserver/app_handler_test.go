@@ -26,7 +26,7 @@ func fetch(t *testing.T, path, host string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(http.MethodGet, path, nil)
 	r.Host = host
 	w := httptest.NewRecorder()
-	NewHandler(stubSessions{}, nil, nil, nil).ServeHTTP(w, r)
+	NewHandler(stubSessions{}, nil, nil, nil, nil).ServeHTTP(w, r)
 	return w
 }
 
@@ -55,5 +55,21 @@ func TestAnUnknownAPIPathIsNotFoundRatherThanTheFrontendPage(t *testing.T) {
 func TestTheAPIStillRefusesAForeignHostThroughTheMountedSite(t *testing.T) {
 	if w := fetch(t, "/api/state", "evil.example"); w.Code != http.StatusForbidden {
 		t.Errorf("status = %d", w.Code)
+	}
+}
+
+func TestTheTerminalInterfaceIsMountedOnlyWhenThereIsOne(t *testing.T) {
+	terminal := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("terminal")) })
+	serve := func(handler http.Handler) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, TerminalPath, nil))
+		return w
+	}
+
+	if w := serve(NewHandler(stubSessions{}, nil, nil, nil, terminal)); w.Body.String() != "terminal" {
+		t.Errorf("with a terminal interface %s should reach it, got %q", TerminalPath, w.Body)
+	}
+	if w := serve(NewHandler(stubSessions{}, nil, nil, nil, nil)); strings.Contains(w.Body.String(), "terminal") {
+		t.Errorf("without one %s should fall through to the page", TerminalPath)
 	}
 }
