@@ -338,13 +338,14 @@ func (m configModel) view(width, height int) string {
 		body += "\n\n" + styDim.Render("Template uses yt-dlp fields, e.g. %(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s")
 	}
 
-	var bar string
+	return screenFrame(width, height, "MVD · Preferences", body, keyBar(width, m.hints()))
+}
+
+func (m configModel) hints() []keyHint {
 	if m.mode != editNone {
-		bar = keyBar(width, []keyHint{{"enter", "apply"}, {"esc", "cancel"}})
-	} else {
-		bar = keyBar(width, []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"s", "save"}, {"esc", "cancel"}})
+		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
 	}
-	return screenFrame(width, height, "MVD · Preferences", body, bar)
+	return []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"s", "save"}, {"esc", "cancel"}}
 }
 
 func (m configModel) editorView() string {

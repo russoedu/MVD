@@ -45,6 +45,11 @@ func RunSetup(in SetupInput) (SetupResult, error) {
 	return SetupResult{Action: ActionQuit, Cfg: in.Cfg, URLs: in.URLs}, err
 }
 
+// NewSetupModel returns the list + config screens as a Bubble Tea model, for a
+// host that runs the program itself (for example over the web). The returned
+// model also has an Outline method (see ScreenOutline).
+func NewSetupModel(in SetupInput) tea.Model { return newSetupModel(in) }
+
 const (
 	screenList = iota
 	screenConfig

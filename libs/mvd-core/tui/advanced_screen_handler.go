@@ -150,6 +150,13 @@ func (m advancedModel) display(i int) string {
 	return ""
 }
 
+func (m advancedModel) hints() []keyHint {
+	if m.mode != editNone {
+		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
+	}
+	return []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"s", "save"}, {"esc", "back"}}
+}
+
 func (m advancedModel) view(width, height int) string {
 	labelW := 0
 	for _, l := range advLabels {
@@ -176,11 +183,5 @@ func (m advancedModel) view(width, height int) string {
 	body := strings.Join(rows, "\n") + "\n\n" +
 		styDim.Render("These are passed straight to yt-dlp. Parallel fragments and the cookie\nflags are already handled; only add things you understand.")
 
-	var bar string
-	if m.mode != editNone {
-		bar = keyBar(width, []keyHint{{"enter", "apply"}, {"esc", "cancel"}})
-	} else {
-		bar = keyBar(width, []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"s", "save"}, {"esc", "back"}})
-	}
-	return screenFrame(width, height, "MVD · Advanced", body, bar)
+	return screenFrame(width, height, "MVD · Advanced", body, keyBar(width, m.hints()))
 }

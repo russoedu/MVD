@@ -101,12 +101,16 @@ func (m listModel) view(width, height int) string {
 	if m.confirmQuit {
 		bar = fit(" "+styRed.Render("Discard the list and quit? ")+styKey.Render("y")+styDim.Render("/")+styKey.Render("n"), width)
 	} else {
-		bar = keyBar(width, []keyHint{
-			{"ctrl+s", "start"}, {"ctrl+p", "preferences"},
-			{"ctrl+r", "reset"}, {"ctrl+q", "quit"},
-		})
+		bar = keyBar(width, m.hints())
 	}
 	return screenFrame(width, height, title, m.ta.View(), bar)
+}
+
+func (m listModel) hints() []keyHint {
+	return []keyHint{
+		{"ctrl+s", "start"}, {"ctrl+p", "preferences"},
+		{"ctrl+r", "reset"}, {"ctrl+q", "quit"},
+	}
 }
 
 func plural(n int) string {
