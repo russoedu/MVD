@@ -54,7 +54,7 @@ func (m configModel) outline() ScreenOutline {
 			item.Value = m.input.Value()
 		}
 	}
-	return ScreenOutline{Title: "MVD · Preferences", Items: items, Keys: outlineKeys(m.hints())}
+	return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Keys: outlineKeys(m.hints())}
 }
 
 func (m advancedModel) outline() ScreenOutline {
@@ -66,7 +66,7 @@ func (m advancedModel) outline() ScreenOutline {
 		items[m.cursor].Editing = true
 		items[m.cursor].Value = m.input.Value()
 	}
-	return ScreenOutline{Title: "MVD · Advanced", Items: items, Keys: outlineKeys(m.hints())}
+	return ScreenOutline{Title: "MVD · Advanced", ItemsLabel: "Settings", Items: items, Keys: outlineKeys(m.hints())}
 }
 
 func (m folderModel) outline() ScreenOutline {
@@ -74,7 +74,7 @@ func (m folderModel) outline() ScreenOutline {
 	for i, name := range m.entries {
 		items[i] = OutlineItem{Label: name, Selected: i == m.cursor}
 	}
-	out := ScreenOutline{Title: "MVD · Choose folder", Text: m.dir, HasText: true, Items: items, Keys: outlineKeys(m.hints())}
+	out := ScreenOutline{Title: "MVD · Choose folder", Text: m.dir, HasText: true, ItemsLabel: "Sub-folders", Items: items, Keys: outlineKeys(m.hints())}
 	if m.err != "" {
 		out.Prompt = m.err
 	}

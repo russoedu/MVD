@@ -41,6 +41,11 @@ func RunDownload(ctx context.Context, c Controller) (*runstate.State, error) {
 	return nil, err
 }
 
+// NewDownloadModel returns the download screen as a Bubble Tea model, for a
+// host that runs the program itself. The returned model also has an Outline
+// method (see ScreenOutline). It quits when the user leaves the screen.
+func NewDownloadModel(c Controller) tea.Model { return newModel(c) }
+
 const (
 	paneLists = iota
 	paneEntries
@@ -71,6 +76,19 @@ type model struct {
 	spin          int
 	status        string // transient message shown in the key bar
 	statusUntil   time.Time
+	embedded      bool // inside an app model: ends with downloadFinishedMsg instead of quitting
+}
+
+// downloadFinishedMsg tells the app model the user left the download screen.
+type downloadFinishedMsg struct{}
+
+// quit ends the screen: the program in RunDownload, or the screen alone when
+// the model is part of an app model.
+func (m model) quit() tea.Cmd {
+	if m.embedded {
+		return func() tea.Msg { return downloadFinishedMsg{} }
+	}
+	return tea.Quit
 }
 
 func newModel(c Controller) model {
@@ -126,7 +144,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitEvent(m.events)
 
 	case evClosed:
-		return m, tea.Quit
+		return m, m.quit()
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -138,7 +156,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	if key == "ctrl+c" {
-		return m, tea.Quit
+		return m, m.quit()
 	}
 	if key == "ctrl+l" {
 		return m, tea.ClearScreen
@@ -147,7 +165,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.confirmQuit {
 		switch key {
 		case "y", "Y", "enter":
-			return m, tea.Quit
+			return m, m.quit()
 		default:
 			m.confirmQuit = false
 		}
@@ -162,7 +180,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key {
 	case "q", "esc":
 		if m.state.Idle {
-			return m, tea.Quit
+			return m, m.quit()
 		}
 		m.confirmQuit = true
 	case "?":

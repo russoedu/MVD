@@ -325,6 +325,15 @@ func (m model) renderBar(en *runstate.Entry, w int) string {
 	return bar + "  " + styYellow.Render(info)
 }
 
+// hints lists the keys the download screen offers now. The key bar and the
+// outline both read it, so they cannot drift apart.
+func (m model) hints() []keyHint {
+	if m.state.Idle {
+		return []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"f", "failed"}, {"r", "retry failed"}, {"l", "full log"}, {"q", "quit"}}
+	}
+	return []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"⏎", "follow"}, {"f", "failed"}, {"r", "retry"}, {"l", "full log"}, {"?", "help"}, {"q", "quit"}}
+}
+
 func (m model) renderKeyBar(w int) string {
 	if m.confirmQuit {
 		return fit(styRed.Render(" Downloads are still running. Quit? ")+styKey.Render("y")+styDim.Render("/")+styKey.Render("n"), w)
@@ -332,18 +341,14 @@ func (m model) renderKeyBar(w int) string {
 	if m.status != "" && time.Now().Before(m.statusUntil) {
 		return fit(" "+styMagenta.Render(m.status), w)
 	}
-	type kb struct{ k, d string }
-	keys := []kb{{"↑↓", "move"}, {"tab", "pane"}, {"⏎", "follow"}, {"f", "failed"}, {"r", "retry"}, {"l", "full log"}, {"?", "help"}, {"q", "quit"}}
-	if m.state.Idle {
-		keys = []kb{{"↑↓", "move"}, {"tab", "pane"}, {"f", "failed"}, {"r", "retry failed"}, {"l", "full log"}, {"q", "quit"}}
-	}
+	keys := m.hints()
 	var b strings.Builder
 	b.WriteString(" ")
 	for i, k := range keys {
 		if i > 0 {
 			b.WriteString("  ")
 		}
-		b.WriteString(styKey.Render(k.k) + " " + styDim.Render(k.d))
+		b.WriteString(styKey.Render(k.key) + " " + styDim.Render(k.desc))
 	}
 	if m.state.Idle {
 		b.WriteString("   " + styGreen.Render("all done"))
