@@ -2,9 +2,9 @@
   <img src="assets/logo.svg" alt="MVD - Music Video Downloader" width="480">
 </p>
 
-# YouTube Playlist Downloader (Go + yt-dlp)
+# Music Video Downloader (Go + yt-dlp)
 
-A lightweight, zero-setup, concurrent Go application with interactive terminal screens: paste a list of playlists/videos, tune settings in a preferences screen, and watch a live download dashboard. It self-diagnoses and installs missing dependencies, borrows your browser's YouTube cookies automatically, downloads in parallel, and keeps its config and list in your OS preferences folder.
+A lightweight, zero-setup, concurrent Go application with two front ends, a tray app with a browser page (`mvd`) and a terminal app (`mvd-tui`). The terminal app has interactive screens: paste a list of playlists/videos, tune settings in a preferences screen, and watch a live download dashboard. It self-diagnoses and installs missing dependencies, borrows your browser's YouTube cookies automatically, downloads in parallel, and keeps its config and list in your OS preferences folder.
 
 ---
 
@@ -21,7 +21,41 @@ A lightweight, zero-setup, concurrent Go application with interactive terminal s
 
 ---
 
-## 🚀 Quick Start
+## 🌐 The tray app (`mvd`)
+
+`apps/mvd` builds the program `mvd`, the main app: a tray icon and a page in your browser, on the same engine as the terminal app (`mvd-tui`, described after this section). It runs until you quit it from its tray icon (or press Ctrl+C in the console), serves a page on `http://127.0.0.1:8421` and opens it in your browser. Paste links into the page at any time, including while it is downloading, and watch the queue fill and progress live. It reads the same `config.conf` as the terminal app.
+
+```powershell
+npx nx run mvd:build          # builds the React page, embeds it, builds the binary
+./dist/apps/mvd/mvd           # flags: -addr 127.0.0.1:8421  -no-browser  -no-tray
+npx nx run mvd:dev            # development: Vite on :4200 proxying /api to the Go app
+```
+
+**Tools and updates.** The app keeps its own copy of yt-dlp and ffmpeg in a `bin` folder inside the app-data folder (`%AppData%\mvd\bin` on Windows, `~/Library/Application Support/mvd/bin` on macOS, `~/.config/mvd/bin` on Linux), whatever is on your `PATH`, so it can keep them current without touching anything you installed yourself. A folder you can always write to, so no administrator rights are involved, and the same place on every start. deno is added only if you have neither deno nor node.
+
+The first run downloads them from their official GitHub releases (on Windows about 310 MB: yt-dlp 17 MB, ffmpeg 200 MB, deno 93 MB), checks each against the SHA-256 that GitHub publishes for it, and says what it is doing in a notification. After that it looks for newer versions in the background each time it starts, which never holds up the page or a download, and again when a download fails (at most every ten minutes), because an out-of-date yt-dlp is the usual reason a video that worked yesterday does not today. If it replaced something after a failure it queues the failed downloads again and tells you. A new yt-dlp replaces the old one as soon as it is published. ffmpeg is replaced only by a build at least 30 days newer, because its builds are republished daily and are 200 MB. The old program is moved aside rather than deleted, so an update works even while a download is using it, and a check or download that fails changes nothing.
+
+Limits: ffmpeg is kept current on Windows only (the project that publishes the builds has no macOS build and ships Linux ones in a format this does not unpack yet, so those fetch a pinned 4.4.1 once). deno is fetched once and never updated. The terminal app keeps using `./bin` and the tools on your `PATH`, and does not update them.
+
+**Where it lives.** The first time a release of the tray app is started from somewhere else (your Downloads folder, say), it asks once whether to move itself to the place your system keeps programs. Yes copies it there, adds it to the menu, starts the copy and removes the old file. No leaves it where it is, and it never asks again. It does not ask when started with `-no-tray` (a terminal or script), from a development build, or from the installed place.
+
+- **Windows:** `%LocalAppData%\Programs\MVD` with a Start menu shortcut, which needs no administrator rights. If the app was started as an administrator it offers a choice: *For everyone* (`C:\Program Files\MVD`, with a shortcut for every account) or *Just for me*. The app never asks Windows for administrator rights itself: an unsigned program that can start an administrator step is removed by Windows' antivirus (`Trojan:Win32/Bearfoos.A!ml`), so to install for everyone, right-click the app and choose Run as administrator. A signed build could offer that with one click.
+- **macOS:** the release has an `mvd_<version>_macos_universal.dmg`. Open it and drag **MVD** onto the **Applications** link in the same window. The app is not notarized by Apple, so the first launch needs a right-click on MVD and **Open**; on newer macOS, if it still refuses, open System Settings, Privacy & Security and choose **Open Anyway**. An MVD started from anywhere else offers to move itself to `/Applications/MVD.app` (everyone) or `~/Applications/MVD.app` (just you).
+- **Linux:** `~/.local/bin/mvd` with an entry in the applications menu.
+
+The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only; they have not been run on a real machine.
+
+**Uninstalling.** Settings has a *Remove MVD* button, and `mvd -uninstall` does the same from a terminal. On Windows the app is also listed in Settings > Apps, whose Uninstall button runs `-uninstall`; if MVD is running, that one is asked to remove itself so its tray icon goes too. Whichever way it starts, MVD first shows a window on your computer listing exactly what it will remove, and nothing is removed unless you say yes there. You choose whether your preferences (settings, list and the tools MVD downloaded) go too. Your downloaded videos and their folder are never touched.
+
+- **Windows:** the program, its install folder when that is MVD's own (`%LocalAppData%\Programs\MVD` or `C:\Program Files\MVD`; a copy running from Downloads loses only the program), the Start menu shortcuts and the Settings > Apps entry. The running program cannot delete itself, so it is moved into the temporary folder, which Windows empties. Removing the system-wide copy needs MVD to be started as an administrator; it never asks for those rights itself.
+- **macOS:** the `MVD.app` it runs from, or the one in `/Applications` or `~/Applications`. If that is refused, MVD says so and you drag it to the Trash.
+- **Linux:** `~/.local/bin/mvd` and the menu entry.
+
+Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
+
+The page is `apps/mvd-web` (React); the HTTP API is `libs/mvd-server`: `GET /api/state`, `GET /api/events` (server-sent snapshots), `POST /api/sources`, `POST /api/entries/{id}/retry`, `POST /api/playlists/{index}/retry`. The **Settings** tab edits the same `config.conf` as the terminal app: folders (with a Browse button that opens the operating system's own folder chooser: PowerShell on Windows, `osascript` on macOS, `zenity` or `kdialog` on Linux; if none is present you type the path), quality, file format and name template, how many downloads run at once, cookies, retries and the log. Raw yt-dlp arguments and the cookie file path are not shown and are never changed by saving. The running downloads keep the settings they started with, so the page tells you to restart MVD for a change to reach them. `GET`/`PUT /api/settings`, `POST /api/folders/pick` and `POST /api/uninstall` back this tab. The tray icon opens the page when clicked and has **Open MVD** and **Quit**; where there is no system tray (a server, a bare window manager) it says so and runs until Ctrl+C, and `-no-tray` does that on purpose. The icon is the MVD logo (`assets/logo.png` scaled to 128 px as `apps/mvd/tray/tray_icon.png`, embedded in the program); when the logo changes, replace that file. On macOS the tray needs a C toolchain to build (it is native Cocoa), which is why the app is built on a runner of each OS; Windows and Linux build without one. The Windows release is a windowed program, so no console window opens next to the icon; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` target of `apps/mvd/project.json`, which is edited by hand (mnci cannot pass the flag yet), and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `nx run mvd:build` and `go run` stay console builds, so you see the logs.
+
+## 🚀 Quick Start (terminal app)
 
 Build and run; on first launch it creates a default config in your preferences folder and opens the **preferences** screen:
 
@@ -40,7 +74,7 @@ For an unattended/headless run (pipes, CI, cron) it downloads the saved list wit
 
 ---
 
-## 🖥️ The Interface
+## 🖥️ The terminal app interface (`mvd-tui`)
 
 ```
 ╭─ MVD · Music Video Downloader ──────────────────────────────────────── 00:12:41 ─╮
@@ -77,40 +111,6 @@ Terminals narrower than 100 columns show only the lists; press `l` for the outpu
 Emoji in playlist and video titles are not drawn, because terminals disagree on their width and one wrong guess shifts the whole layout. The interface uses Unicode box drawing and status glyphs, so use a terminal with a font that has them (Windows Terminal, iTerm2, GNOME Terminal, kitty, VS Code and most others are fine). A terminal that does not answer colour queries can add a five second pause at start-up; `--no-tui` avoids it.
 
 Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order. Each video also fetches `concurrent_fragments` fragments in parallel.
-
-## 🌐 The desktop app (`mvd`)
-
-`apps/mvd` builds the program `mvd`, a second front end for the same engine (the terminal app is `mvd-tui`). It runs until you quit it from its tray icon (or press Ctrl+C in the console), serves a page on `http://127.0.0.1:8421` and opens it in your browser. Paste links into the page at any time, including while it is downloading, and watch the queue fill and progress live. It reads the same `config.conf` as the terminal app.
-
-```powershell
-npx nx run mvd:build          # builds the React page, embeds it, builds the binary
-./dist/apps/mvd/mvd           # flags: -addr 127.0.0.1:8421  -no-browser  -no-tray
-npx nx run mvd:dev            # development: Vite on :4200 proxying /api to the Go app
-```
-
-**Tools and updates.** The app keeps its own copy of yt-dlp and ffmpeg in a `bin` folder inside the app-data folder (`%AppData%\mvd\bin` on Windows, `~/Library/Application Support/mvd/bin` on macOS, `~/.config/mvd/bin` on Linux), whatever is on your `PATH`, so it can keep them current without touching anything you installed yourself. A folder you can always write to, so no administrator rights are involved, and the same place on every start. deno is added only if you have neither deno nor node.
-
-The first run downloads them from their official GitHub releases (on Windows about 310 MB: yt-dlp 17 MB, ffmpeg 200 MB, deno 93 MB), checks each against the SHA-256 that GitHub publishes for it, and says what it is doing in a notification. After that it looks for newer versions in the background each time it starts, which never holds up the page or a download, and again when a download fails (at most every ten minutes), because an out-of-date yt-dlp is the usual reason a video that worked yesterday does not today. If it replaced something after a failure it queues the failed downloads again and tells you. A new yt-dlp replaces the old one as soon as it is published. ffmpeg is replaced only by a build at least 30 days newer, because its builds are republished daily and are 200 MB. The old program is moved aside rather than deleted, so an update works even while a download is using it, and a check or download that fails changes nothing.
-
-Limits: ffmpeg is kept current on Windows only (the project that publishes the builds has no macOS build and ships Linux ones in a format this does not unpack yet, so those fetch a pinned 4.4.1 once). deno is fetched once and never updated. The terminal app keeps using `./bin` and the tools on your `PATH`, and does not update them.
-
-**Where it lives.** The first time a release of the tray app is started from somewhere else (your Downloads folder, say), it asks once whether to move itself to the place your system keeps programs. Yes copies it there, adds it to the menu, starts the copy and removes the old file. No leaves it where it is, and it never asks again. It does not ask when started with `-no-tray` (a terminal or script), from a development build, or from the installed place.
-
-- **Windows:** `%LocalAppData%\Programs\MVD` with a Start menu shortcut, which needs no administrator rights. If the app was started as an administrator it offers a choice: *For everyone* (`C:\Program Files\MVD`, with a shortcut for every account) or *Just for me*. The app never asks Windows for administrator rights itself: an unsigned program that can start an administrator step is removed by Windows' antivirus (`Trojan:Win32/Bearfoos.A!ml`), so to install for everyone, right-click the app and choose Run as administrator. A signed build could offer that with one click.
-- **macOS:** the release has an `mvd_<version>_macos_universal.dmg`. Open it and drag **MVD** onto the **Applications** link in the same window. The app is not notarized by Apple, so the first launch needs a right-click on MVD and **Open**; on newer macOS, if it still refuses, open System Settings, Privacy & Security and choose **Open Anyway**. An MVD started from anywhere else offers to move itself to `/Applications/MVD.app` (everyone) or `~/Applications/MVD.app` (just you).
-- **Linux:** `~/.local/bin/mvd` with an entry in the applications menu.
-
-The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only; they have not been run on a real machine.
-
-**Uninstalling.** Settings has a *Remove MVD* button, and `mvd -uninstall` does the same from a terminal. On Windows the app is also listed in Settings > Apps, whose Uninstall button runs `-uninstall`; if MVD is running, that one is asked to remove itself so its tray icon goes too. Whichever way it starts, MVD first shows a window on your computer listing exactly what it will remove, and nothing is removed unless you say yes there. You choose whether your preferences (settings, list and the tools MVD downloaded) go too. Your downloaded videos and their folder are never touched.
-
-- **Windows:** the program, its install folder when that is MVD's own (`%LocalAppData%\Programs\MVD` or `C:\Program Files\MVD`; a copy running from Downloads loses only the program), the Start menu shortcuts and the Settings > Apps entry. The running program cannot delete itself, so it is moved into the temporary folder, which Windows empties. Removing the system-wide copy needs MVD to be started as an administrator; it never asks for those rights itself.
-- **macOS:** the `MVD.app` it runs from, or the one in `/Applications` or `~/Applications`. If that is refused, MVD says so and you drag it to the Trash.
-- **Linux:** `~/.local/bin/mvd` and the menu entry.
-
-Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
-
-The page is `apps/mvd-web` (React); the HTTP API is `libs/mvd-server`: `GET /api/state`, `GET /api/events` (server-sent snapshots), `POST /api/sources`, `POST /api/entries/{id}/retry`, `POST /api/playlists/{index}/retry`. The **Settings** tab edits the same `config.conf` as the terminal app: folders (with a Browse button that opens the operating system's own folder chooser: PowerShell on Windows, `osascript` on macOS, `zenity` or `kdialog` on Linux; if none is present you type the path), quality, file format and name template, how many downloads run at once, cookies, retries and the log. Raw yt-dlp arguments and the cookie file path are not shown and are never changed by saving. The running downloads keep the settings they started with, so the page tells you to restart MVD for a change to reach them. `GET`/`PUT /api/settings`, `POST /api/folders/pick` and `POST /api/uninstall` back this tab. The tray icon opens the page when clicked and has **Open MVD** and **Quit**; where there is no system tray (a server, a bare window manager) it says so and runs until Ctrl+C, and `-no-tray` does that on purpose. The icon is drawn in code, so there is no image to ship. On macOS the tray needs a C toolchain to build (it is native Cocoa), which is why the app is built on a runner of each OS; Windows and Linux build without one. The Windows release is a windowed program, so no console window opens next to the icon; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` target of `apps/mvd/project.json`, which is edited by hand (mnci cannot pass the flag yet), and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `nx run mvd:build` and `go run` stay console builds, so you see the logs.
 
 ## ⚙️ Configuration
 
