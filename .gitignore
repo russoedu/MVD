@@ -86,3 +86,6 @@ test-output
 !apps/*/.env.dev
 !apps/*/.env.uat
 !apps/*/.env.prod
+
+# Playwright MCP scratch output
+/.playwright-mcp/
