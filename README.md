@@ -10,6 +10,16 @@ Remember the 90s? Back when music videos were an absolute cultural obsession, ki
 
 **MVD (Music Video Downloader)** is built for that exact flavor of raw visual nostalgia—minus the ear-bleeding 56k modem noise. Written in Go and powered by `yt-dlp`, it’s designed to snatch back the golden, unfiltered era of music television with zero setup friction.
 
+[**Go on, download it, I know you need it**](https://github.com/russoedu/MVD/releases/latest)
+
+
+<a href="https://github.com/russoedu/MVD/releases/latest" target="_blank" align="center">
+  <img src="assets/download-01.gif" alt="Download" width="200">
+  <img src="assets/download-02.gif" alt="Download" width="200">
+</a>
+
+---
+
 <p align="center">
   <img src="assets/under-construction.gif" alt="MVD - Music Video Downloader">
 </p>
