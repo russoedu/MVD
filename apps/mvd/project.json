@@ -87,7 +87,7 @@
         "^default",
         "{workspaceRoot}/go.mod",
         "{workspaceRoot}/go.sum",
-        "{workspaceRoot}/assets/logo.svg",
+        "{workspaceRoot}/assets/mvd-logo.svg",
         {
           "env": "VERSION"
         }

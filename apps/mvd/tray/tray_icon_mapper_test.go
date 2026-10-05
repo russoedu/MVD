@@ -7,44 +7,53 @@ import (
 	"testing"
 )
 
-func TestTheEmbeddedLogoIsASquarePNGOfTheIconSize(t *testing.T) {
-	img, err := png.Decode(bytes.NewReader(logoPNG))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if b := img.Bounds(); b.Dx() != iconSize || b.Dy() != iconSize {
-		t.Fatalf("size = %v, want %dx%d", b, iconSize, iconSize)
-	}
-}
-
-func TestWindowsGetsAnICOHoldingTheSamePNGAndEveryoneElseThePNG(t *testing.T) {
-	if !bytes.Equal(trayIcon("linux"), logoPNG) || !bytes.Equal(trayIcon("darwin"), logoPNG) {
-		t.Error("non-Windows platforms should get the PNG as is")
-	}
-
+func TestWindowsGetsAnICOWithTheSizesTheTrayNeeds(t *testing.T) {
 	ico := trayIcon("windows")
+
 	var header struct{ Reserved, Type, Count uint16 }
 	if err := binary.Read(bytes.NewReader(ico), binary.LittleEndian, &header); err != nil {
 		t.Fatal(err)
 	}
-	if header.Reserved != 0 || header.Type != 1 || header.Count != 1 {
-		t.Errorf("header = %+v", header)
+	if header.Reserved != 0 || header.Type != 1 || header.Count < 2 {
+		t.Fatalf("header = %+v, want an icon with several images", header)
 	}
-	var entry struct {
-		Width, Height, Colours, Reserved uint8
-		Planes, BitsPerPixel             uint16
-		Bytes, Offset                    uint32
+
+	sizes := map[int]bool{}
+	for i := 0; i < int(header.Count); i++ {
+		var entry struct {
+			Width, Height, Colours, Reserved uint8
+			Planes, BitsPerPixel             uint16
+			Bytes, Offset                    uint32
+		}
+		if err := binary.Read(bytes.NewReader(ico[6+16*i:]), binary.LittleEndian, &entry); err != nil {
+			t.Fatal(err)
+		}
+		if int(entry.Offset+entry.Bytes) > len(ico) {
+			t.Errorf("image %d runs past the end of the file", i)
+		}
+		sizes[int(entry.Width)] = true
 	}
-	if err := binary.Read(bytes.NewReader(ico[6:]), binary.LittleEndian, &entry); err != nil {
-		t.Fatal(err)
+	for _, want := range []int{16, 32} {
+		if !sizes[want] {
+			t.Errorf("no %d px image; has %v", want, sizes)
+		}
 	}
-	if entry.Width != iconSize || entry.Height != iconSize || entry.Planes != 1 || entry.BitsPerPixel != 32 {
-		t.Errorf("entry = %+v", entry)
+}
+
+func TestMacAndLinuxGetAPNGOfTheSizeTheirTrayShows(t *testing.T) {
+	for goos, wantHeight := range map[string]int{"darwin": 44, "linux": 44} {
+		img, err := png.Decode(bytes.NewReader(trayIcon(goos)))
+		if err != nil {
+			t.Fatalf("%s: %v", goos, err)
+		}
+		if got := img.Bounds().Dy(); got != wantHeight {
+			t.Errorf("%s: %d px tall, want %d", goos, got, wantHeight)
+		}
 	}
-	if entry.Offset != 22 || int(entry.Offset+entry.Bytes) != len(ico) {
-		t.Errorf("offset %d + bytes %d does not end the %d byte file", entry.Offset, entry.Bytes, len(ico))
-	}
-	if !bytes.Equal(ico[entry.Offset:], logoPNG) {
-		t.Error("the payload is not the PNG")
+}
+
+func TestAnyOtherSystemGetsTheLinuxIcon(t *testing.T) {
+	if !bytes.Equal(trayIcon("freebsd"), trayIcon("linux")) {
+		t.Error("other systems should get the PNG a Linux tray gets")
 	}
 }
