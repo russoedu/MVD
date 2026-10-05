@@ -10,7 +10,15 @@ Remember the 90s? Back when music videos were an absolute cultural obsession, ki
 
 **MVD (Music Video Downloader)** is built for that exact flavor of raw visual nostalgia—minus the ear-bleeding 56k modem noise. Written in Go and powered by `yt-dlp`, it’s designed to snatch back the golden, unfiltered era of music television with zero setup friction.
 
+<p align="center">
+  <img src="assets/under-construction.gif" alt="MVD - Music Video Downloader">
+</p>
+
 ---
+
+<p align="center">
+  <img src="assets/the-concept.gif" alt="MVD - Music Video Downloader" width="480">
+</p>
 
 ### 💡 The Concept
 
@@ -22,6 +30,10 @@ Whether you’re setting up an offline media wall, fueling a chaotic 90s house p
 
 ---
 
+<p align="center">
+  <img src="assets/the-aesthetic.gif" alt="MVD - Music Video Downloader" width="480">
+</p>
+
 ### 🎨 The Aesthetic: Unapologetic 90s Chaos
 
 We didn't just write a tool; we embraced the total, gloriously ugly anarchy of early web aesthetics and terminal grit.
@@ -31,6 +43,9 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
 * **TUI Madness (`mvd-tui`):** Modern Web3 rounded buttons and pastel design systems? Absolute trash. MVD serves up pure, hard-edged ASCII terminal UI (TUI) box-drawing energy. Run it straight in your terminal or render the full interactive TUI right inside a browser viewport via TReactUI.
 
 ---
+<p align="center">
+  <img src="assets/features.gif" alt="MVD - Music Video Downloader" width="480">
+</p>
 
 ### ⚡ Heavyweight Feature Arsenal
 
@@ -44,9 +59,20 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
 
 ---
 
+<p align="center">
+  <img src="assets/why.gif" alt="MVD - Music Video Downloader" width="480">
+</p>
+
 ### 🕶️ Why?
 
 Because modern music apps treat music videos like second-class garbage. MVD treats them like the sacred, radical 90s art form they are. Fire up your playlists, launch the app, and crank the visual volume!
+
+---
+
+<p align="left">
+  <img src="assets/clip-1.gif" alt="MVD - Music Video Downloader" width="220" style="float: left; padding: 10px;">
+  <img src="assets/clip-2.gif" alt="MVD - Music Video Downloader" width="220" style="float: left; padding: 10px;">
+</p>
 
 ### 🖹 The normal "README.md" (not this one)
 
