@@ -139,6 +139,16 @@ func (m folderModel) update(msg tea.Msg) (folderModel, tea.Cmd, folderOutcome) {
 	return m, nil, folderNone
 }
 
+func (m folderModel) hints() []keyHint {
+	if m.creating {
+		return []keyHint{{"enter", "create"}, {"esc", "cancel"}}
+	}
+	return []keyHint{
+		{"↑↓", "move"}, {"→", "open"}, {"←", "up"},
+		{"n", "new folder"}, {"enter", "choose this folder"}, {"esc", "cancel"},
+	}
+}
+
 func (m folderModel) view(width, height int) string {
 	var rows []string
 	for i, name := range m.entries {
@@ -159,15 +169,8 @@ func (m folderModel) view(width, height int) string {
 	}
 	body := head + "\n\n" + strings.Join(rows, "\n")
 
-	var bar string
 	if m.creating {
 		body += "\n\n" + m.input.View()
-		bar = keyBar(width, []keyHint{{"enter", "create"}, {"esc", "cancel"}})
-	} else {
-		bar = keyBar(width, []keyHint{
-			{"↑↓", "move"}, {"→", "open"}, {"←", "up"},
-			{"n", "new folder"}, {"enter", "choose this folder"}, {"esc", "cancel"},
-		})
 	}
-	return screenFrame(width, height, "MVD · Choose folder", body, bar)
+	return screenFrame(width, height, "MVD · Choose folder", body, keyBar(width, m.hints()))
 }
