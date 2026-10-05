@@ -57,7 +57,7 @@ func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if m.confirmQuit {
+	if m.confirmQuit || m.adding {
 		return m, nil
 	}
 	l, ok := m.layout()

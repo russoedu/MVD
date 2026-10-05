@@ -43,6 +43,9 @@ func (m model) View() string {
 
 	view := lipgloss.JoinVertical(lipgloss.Left, header, body, keys)
 
+	if m.adding {
+		return m.renderAddBox()
+	}
 	if m.showHelp {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.renderHelp(), lipgloss.WithWhitespaceChars(" "))
 	}
@@ -328,10 +331,19 @@ func (m model) renderBar(en *runstate.Entry, w int) string {
 // hints lists the keys the download screen offers now. The key bar and the
 // outline both read it, so they cannot drift apart.
 func (m model) hints() []keyHint {
+	var hints []keyHint
 	if m.state.Idle {
-		return []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"f", "failed"}, {"r", "retry failed"}, {"l", "full log"}, {"q", "quit"}}
+		hints = []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"f", "failed"}, {"r", "retry failed"}, {"l", "full log"}}
+	} else {
+		hints = []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"⏎", "follow"}, {"f", "failed"}, {"r", "retry"}, {"l", "full log"}}
 	}
-	return []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"⏎", "follow"}, {"f", "failed"}, {"r", "retry"}, {"l", "full log"}, {"?", "help"}, {"q", "quit"}}
+	if m.canAdd() {
+		hints = append(hints, keyHint{"a", "add links"})
+	}
+	if !m.state.Idle {
+		hints = append(hints, keyHint{"?", "help"})
+	}
+	return append(hints, keyHint{"q", "quit"})
 }
 
 func (m model) renderKeyBar(w int) string {
@@ -370,6 +382,7 @@ func (m model) renderHelp() string {
 		styKey.Render("f") + "           show only failed entries",
 		styKey.Render("r") + "           retry the selected failed entry, or all failed in the playlist",
 		styKey.Render("l") + "           toggle full screen output",
+		styKey.Render("a") + "           add more links to this run",
 		styKey.Render("q") + "           quit (asks for confirmation while running)",
 		styKey.Render("ctrl+c") + "      quit immediately",
 		styKey.Render("ctrl+l") + "      redraw the screen",

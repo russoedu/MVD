@@ -50,3 +50,13 @@ func TestDownloadsAreListedUnderTheirOwnLabel(t *testing.T) {
 		t.Fatalf("unexpected listbox %+v", listbox)
 	}
 }
+
+func TestTheAddLinksBoxIsATextboxWithItsOwnLabel(t *testing.T) {
+	snapshot := snapshotFromOutline(tui.ScreenOutline{
+		Title: "MVD · Add links", Text: "https://b", HasText: true, TextLabel: "Links to add, one per line",
+	})
+
+	if box := snapshot.Nodes[0]; box.Role != "textbox" || box.Label != "Links to add, one per line" || box.Value != "https://b" {
+		t.Fatalf("unexpected textbox %+v", box)
+	}
+}

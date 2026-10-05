@@ -17,7 +17,11 @@ func snapshotFromOutline(out tui.ScreenOutline) ttygo.Snapshot {
 		nodes = append(nodes, ttygo.A11yNode{Role: "status", Value: out.Prompt})
 	}
 	if out.HasText && len(out.Items) == 0 {
-		nodes = append(nodes, ttygo.A11yNode{Role: "textbox", Label: "Download list, one URL per line", Value: out.Text, Focused: true})
+		label := out.TextLabel
+		if label == "" {
+			label = "Download list, one URL per line"
+		}
+		nodes = append(nodes, ttygo.A11yNode{Role: "textbox", Label: label, Value: out.Text, Focused: true})
 	} else if out.HasText {
 		nodes = append(nodes, ttygo.A11yNode{Role: "text", Value: "Current folder: " + out.Text})
 	}

@@ -6,14 +6,16 @@ import (
 	"os"
 
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runner"
 	"youtube-downloader/libs/mvd-core/tui"
 )
 
 // engineRun is a download run the app model can close: Close cancels it and
 // waits until the engine has stopped and its events are drained, as mvd-tui does.
+// It is the engine itself, so the download screen can also add links to it.
 type engineRun struct {
-	tui.Controller
+	*engine.Engine
 	cancel context.CancelFunc
 	events <-chan interface{}
 	done   chan struct{}
@@ -42,6 +44,6 @@ func StartDownloadRun(parent context.Context, ytDlpPath string, logf func(string
 		done := make(chan struct{})
 		go func() { eng.Run(ctx); close(done) }()
 
-		return engineRun{Controller: eng, cancel: cancel, events: eng.Events(), done: done}, nil
+		return engineRun{Engine: eng, cancel: cancel, events: eng.Events(), done: done}, nil
 	}
 }

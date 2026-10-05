@@ -32,6 +32,9 @@ func (m appModel) Outline() ScreenOutline {
 // Outline describes the download screen: the totals and playlist in the title,
 // the selected playlist's entries (a window around the selection) as items.
 func (m model) Outline() ScreenOutline {
+	if m.adding {
+		return m.addingOutline()
+	}
 	t := m.state.Tally()
 	title := fmt.Sprintf("MVD · Downloads: %d done, %d running, %d queued, %d failed", t.Done+t.Duplicate, t.Running, t.Queued, t.Failed)
 	if m.state.Idle {
