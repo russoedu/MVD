@@ -107,6 +107,8 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.config = m.config.setSize(msg.Width, msg.Height)
 		m.advanced = m.advanced.setSize(msg.Width, msg.Height)
 		return m, nil
+	case tea.MouseMsg:
+		return m.mouse(msg)
 	}
 
 	switch m.screen {

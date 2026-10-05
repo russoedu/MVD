@@ -60,13 +60,7 @@ func window(rows []string, sel, h int) []string {
 	if h <= 0 || len(rows) <= h {
 		return rows
 	}
-	start := sel - h/2
-	if start < 0 {
-		start = 0
-	}
-	if start+h > len(rows) {
-		start = len(rows) - h
-	}
+	start := windowStart(len(rows), sel, h)
 	return rows[start : start+h]
 }
 
