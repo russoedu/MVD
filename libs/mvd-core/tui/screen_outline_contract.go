@@ -9,8 +9,10 @@ type ScreenOutline struct {
 	// current folder on the folder picker; HasText says whether the screen has one.
 	Text    string
 	HasText bool
-	Items   []OutlineItem
-	Keys    []OutlineKey
+	// ItemsLabel names what Items are: "Settings", "Sub-folders", "Downloads".
+	ItemsLabel string
+	Items      []OutlineItem
+	Keys       []OutlineKey
 	// Prompt is a question waiting for an answer, such as the quit confirmation.
 	Prompt string
 }

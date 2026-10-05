@@ -41,7 +41,7 @@ func (m model) Outline() ScreenOutline {
 		title += " · " + display(m.state.Playlists[m.selPlaylist].Title)
 	}
 
-	out := ScreenOutline{Title: title, Keys: outlineKeys(m.hints())}
+	out := ScreenOutline{Title: title, ItemsLabel: "Downloads", Keys: outlineKeys(m.hints())}
 	if m.confirmQuit {
 		out.Prompt = "Downloads are still running. Quit? y/n"
 	}
