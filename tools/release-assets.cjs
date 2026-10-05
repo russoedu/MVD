@@ -74,7 +74,7 @@ function legacyVersion (tags, app) {
     .filter(Boolean)
     .map(match => match.slice(1).map(Number))
     .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
-  const latest = versions[versions.length - 1]
+  const latest = versions.at(-1)
 
   return latest ? latest.join('.') : undefined
 }
