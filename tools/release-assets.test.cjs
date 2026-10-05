@@ -1,7 +1,7 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { assetName, isReleaseFileName, isReleaseZip, releaseTag } = require('./release-assets.cjs')
+const { assetName, isReleaseFileName, isReleaseZip, legacyVersion, releaseTag } = require('./release-assets.cjs')
 
 test('names a file <product>_<version>_<os>_<processor>.<type>', () => {
   const cases = [
@@ -51,4 +51,15 @@ test('picks only the zips of that app and that version to attach', () => {
   assert.ok(!isReleaseZip('mvd_0.0.10_linux_amd64.zip', 'mvd', '0.0.1'))
   assert.ok(isReleaseZip('mvd-tui_0.0.1_linux_amd64.zip', 'mvd-tui', '0.0.1'))
   assert.ok(!isReleaseZip('mvd-tui_0.0.1_linux_amd64.zip', 'mvd', '0.0.1'))
+})
+
+test('mvd continues from the highest old mvd-tray tag and compares numbers, not text', () => {
+  assert.equal(legacyVersion(['mvd-tray@0.0.9', 'mvd-tray@0.0.10', 'mvd-tray@0.0.2'], 'mvd'), '0.0.10')
+  assert.equal(legacyVersion(['mvd-tray@0.1.0', 'mvd-tray@0.0.10'], 'mvd'), '0.1.0')
+})
+
+test('only mvd uses the old tags, and nothing is invented when there are none', () => {
+  assert.equal(legacyVersion(['mvd-tray@0.0.10'], 'mvd-tui'), undefined)
+  assert.equal(legacyVersion([], 'mvd'), undefined)
+  assert.equal(legacyVersion(['mvd@0.0.11', 'mvd-tui@0.0.1', 'mvd-tray@1.0'], 'mvd'), undefined)
 })

@@ -65,7 +65,21 @@ function checkDrop () {
   if (bad.length > 0) fail(bad.length + ' file(s) in ' + drop + ' do not match <product>_<version>_<os>_<processor>.<type>.')
 }
 
-module.exports = { assetName, isReleaseFileName, isReleaseZip, releaseTag }
+// The desktop app was released as mvd-tray@x.y.z until 0.0.10 and is mvd@x.y.z from then on. Until the
+// first mvd@ tag exists, its version continues from the highest mvd-tray@ tag instead of restarting at 0.0.0.
+function legacyVersion (tags, app) {
+  if (app !== 'mvd') return undefined
+  const versions = tags
+    .map(tag => /^mvd-tray@(\d+)\.(\d+)\.(\d+)$/.exec(tag))
+    .filter(Boolean)
+    .map(match => match.slice(1).map(Number))
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
+  const latest = versions[versions.length - 1]
+
+  return latest ? latest.join('.') : undefined
+}
+
+module.exports = { assetName, isReleaseFileName, isReleaseZip, legacyVersion, releaseTag }
 
 if (require.main === module) {
   const [command, app, os, arch, ext] = process.argv.slice(2)

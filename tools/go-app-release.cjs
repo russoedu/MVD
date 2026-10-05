@@ -27,7 +27,11 @@ class GoAppVersionActions extends VersionActions {
 
   async readCurrentVersionFromSourceManifest () {
     // Reached only as the fallback of the git-tag resolver, i.e. before the first tag.
-    return { currentVersion: FIRST_RELEASE_BASE, manifestPath: 'none (a Go app is versioned by its git tag)' }
+    // LOCAL PATCH (not mnci): mvd continues from the old mvd-tray@ tags (see legacyVersion in release-assets.cjs).
+    const legacy = releaseAssets.legacyVersion(run('git', ['tag', '--list', 'mvd-tray@*']).split(/?
+/).filter(Boolean), this.projectGraphNode && this.projectGraphNode.name)
+
+    return { currentVersion: legacy || FIRST_RELEASE_BASE, manifestPath: 'none (a Go app is versioned by its git tag)' }
   }
 
   async readCurrentVersionFromRegistry () {
