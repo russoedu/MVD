@@ -1,9 +1,13 @@
 package tui
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -197,5 +201,47 @@ func TestDownloadOutlineWindowsALongList(t *testing.T) {
 	m.selEntry = 250
 	if n := len(m.Outline().Items); n != 2*outlineEntryWindow+1 {
 		t.Errorf("want a window of %d, got %d", 2*outlineEntryWindow+1, n)
+	}
+}
+
+// lockedBuffer is a bytes.Buffer a running program can write to while the test reads it.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// A host starts the program before the browser has reported its size, so the
+// text area's cursor blinks while the screens have no size. The list must still
+// start at its first line once the size arrives.
+func TestAppModelShowsTheWholeListWhenTheSizeArrivesAfterTheProgramStarted(t *testing.T) {
+	dir := t.TempDir()
+	long := []string{"https://www.youtube.com/playlist?list=PL-example-playlist", "https://www.youtube.com/watch?v=example"}
+	out := &lockedBuffer{}
+	input, _ := io.Pipe()
+	p := tea.NewProgram(NewAppModel(AppInput{Setup: SetupInput{
+		Cfg: config.Default(dir, dir), URLs: long,
+		CfgPath: filepath.Join(dir, "config.conf"), ListPath: filepath.Join(dir, "list.txt"),
+	}}), tea.WithInput(input), tea.WithOutput(out), tea.WithoutSignalHandler())
+	go func() { _, _ = p.Run() }()
+	defer p.Kill()
+
+	time.Sleep(800 * time.Millisecond) // longer than the cursor's blink interval
+	p.Send(tea.WindowSizeMsg{Width: 120, Height: 40})
+	time.Sleep(300 * time.Millisecond)
+
+	if !strings.Contains(out.String(), "1 https://www.youtube.com/playlist") {
+		t.Error("the list should start at its first line")
 	}
 }

@@ -44,6 +44,11 @@ func (m appModel) newSetup(openConfig bool) setupModel {
 	in.Cfg, in.URLs, in.OpenConfig = m.cfg, m.urls, openConfig
 	s := newSetupModel(in)
 	s.embedded = true
+	if m.width == 0 {
+		// The size is not known yet. Sizing the screens to nothing would wrap
+		// the list into a sliver and leave it scrolled when the real size comes.
+		return s
+	}
 	next, _ := s.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 	return next.(setupModel)
 }
