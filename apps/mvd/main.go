@@ -37,12 +37,8 @@ func main() {
 	console.AttachParent()
 
 	address := flag.String("addr", localserver.DefaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
-	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
+	noBrowser := flag.Bool("no-browser", false, "do not open the window on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
-	// The page these two chose between is gone; they are still accepted so that a shortcut
-	// that has them keeps starting.
-	flag.Bool("classic", false, "ignored: there is only the terminal-style window now")
-	flag.Bool("terminal-window", true, "ignored: it is the only window now")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
