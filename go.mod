@@ -4,11 +4,12 @@ go 1.24
 
 require (
 	fyne.io/systray v1.12.2
-	github.com/TReactUI/TReactUI v0.0.0-20261005222612-36f4e3ae89e6
+	github.com/TReactUI/TReactUI/packages/tty-go v0.0.1
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.8.0
+	github.com/coder/websocket v1.8.15
 	github.com/mattn/go-runewidth v0.0.16
 	golang.org/x/sys v0.31.0
 	golang.org/x/term v0.30.0
@@ -21,7 +22,6 @@ require (
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
-	github.com/coder/websocket v1.8.15 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
