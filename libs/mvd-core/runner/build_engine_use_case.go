@@ -23,7 +23,8 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		}
 	}
 
-	extraArgs := append([]string(nil), cfg.ExtraArgs...)
+	// A config written for an older yt-dlp may have flags in a form it no longer accepts.
+	extraArgs := ytdlp.NormalizeArgs(cfg.ExtraArgs)
 	probe := ""
 	if len(urls) > 0 {
 		probe = urls[0]
