@@ -28,10 +28,10 @@ lipo -create -output "$work/mvd" "$work/mvd-arm64" "$work/mvd-amd64"
 # The icon is best effort: the logo is an SVG, which only the macOS thumbnailer can
 # draw. Without one the app still works and shows the generic icon.
 make_icon() {
-  qlmanage -t -s 1024 -o "$work" assets/logo.svg >/dev/null 2>&1 &&
-    [ -f "$work/logo.svg.png" ] &&
+  qlmanage -t -s 1024 -o "$work" assets/mvd-logo.svg >/dev/null 2>&1 &&
+    [ -f "$work/mvd-logo.svg.png" ] &&
     mkdir "$work/MVD.iconset" &&
-    sips --padToHeightWidth 1024 1024 --padColor FFFFFF "$work/logo.svg.png" --out "$work/square.png" >/dev/null &&
+    sips --padToHeightWidth 1024 1024 --padColor FFFFFF "$work/mvd-logo.svg.png" --out "$work/square.png" >/dev/null &&
     for size in 16 32 128 256 512; do
       sips -z "$size" "$size" "$work/square.png" --out "$work/MVD.iconset/icon_${size}x${size}.png" >/dev/null &&
         sips -z "$((size * 2))" "$((size * 2))" "$work/square.png" --out "$work/MVD.iconset/icon_${size}x${size}@2x.png" >/dev/null ||
@@ -42,7 +42,7 @@ make_icon() {
 
 set -- -program "$work/mvd" -version "$version" -out "$work/staging/MVD.app"
 if make_icon; then
-  echo "icon: built from assets/logo.svg"
+  echo "icon: built from assets/mvd-logo.svg"
   set -- "$@" -icon "$work/MVD.icns"
 else
   echo "icon: none, the logo could not be rendered here"
