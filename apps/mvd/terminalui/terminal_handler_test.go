@@ -34,7 +34,7 @@ func testFiles(t *testing.T, urls ...string) (string, Files) {
 
 func TestTheAppStartsOnTheSavedList(t *testing.T) {
 	dir, files := testFiles(t, "https://a", "https://b")
-	model := NewModelFactory(dir, files, noRun, t.Logf)()
+	model := NewModelFactory(dir, files, noRun, nil, t.Logf)()
 
 	snapshot := model.(accessibleApp).Accessible()
 	if snapshot.Title != "MVD · Download list (2 items)" {
@@ -45,7 +45,7 @@ func TestTheAppStartsOnTheSavedList(t *testing.T) {
 func TestTheAppOpensThePreferencesOnTheFirstRun(t *testing.T) {
 	dir := t.TempDir()
 	files := Files{Config: filepath.Join(dir, "config.conf"), List: filepath.Join(dir, "list.txt")}
-	model := NewModelFactory(dir, files, noRun, t.Logf)()
+	model := NewModelFactory(dir, files, noRun, nil, t.Logf)()
 
 	if title := model.(accessibleApp).Accessible().Title; title != "MVD · Preferences" {
 		t.Errorf("the first run should open the preferences, got %q", title)
@@ -54,7 +54,7 @@ func TestTheAppOpensThePreferencesOnTheFirstRun(t *testing.T) {
 
 func TestAWindowThatConnectsIsGreetedAndShownTheApp(t *testing.T) {
 	dir, files := testFiles(t, "https://a")
-	server := httptest.NewServer(NewHandler(NewModelFactory(dir, files, noRun, t.Logf), nil))
+	server := httptest.NewServer(NewHandler(NewModelFactory(dir, files, noRun, nil, t.Logf), nil))
 	defer server.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -80,7 +80,7 @@ func TestAWindowThatConnectsIsGreetedAndShownTheApp(t *testing.T) {
 
 func TestAPageFromAnotherSiteIsRefused(t *testing.T) {
 	dir, files := testFiles(t)
-	server := httptest.NewServer(NewHandler(NewModelFactory(dir, files, noRun, t.Logf), nil))
+	server := httptest.NewServer(NewHandler(NewModelFactory(dir, files, noRun, nil, t.Logf), nil))
 	defer server.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

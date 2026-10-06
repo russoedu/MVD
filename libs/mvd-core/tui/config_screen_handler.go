@@ -27,6 +27,7 @@ const (
 	editNumber
 	editRadio
 	editFolder
+	editPicking // the operating system's folder chooser is open
 )
 
 const cfgItemCount = 10
@@ -44,6 +45,7 @@ type configModel struct {
 	radioOpts     []string
 	radioIdx      int
 	folder        folderModel
+	pick          FolderPicker // nil when the host has no native chooser
 	width, height int
 }
 
@@ -51,6 +53,12 @@ func newConfigModel(cfg config.Config) configModel {
 	ti := textinput.New()
 	ti.Prompt = "> "
 	return configModel{cfg: cfg, input: ti}
+}
+
+// withFolderPicker makes the folder settings open the host's own chooser.
+func (m configModel) withFolderPicker(pick FolderPicker) configModel {
+	m.pick = pick
+	return m
 }
 
 func (m configModel) init() tea.Cmd { return textinput.Blink }
@@ -87,14 +95,15 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 		case "esc":
 			return m, nil, cfgCancel, m.cfg
 		case "enter", " ":
-			m.activate()
+			return m, m.activate(), cfgNone, m.cfg
 		}
 	}
 	return m, nil, cfgNone, m.cfg
 }
 
-// activate opens the editor for the selected item (or toggles a boolean).
-func (m *configModel) activate() {
+// activate opens the editor for the selected item (or toggles a boolean). A folder
+// setting opens the host's chooser when there is one, which the returned command waits on.
+func (m *configModel) activate() tea.Cmd {
 	switch m.cursor {
 	case 6:
 		m.cfg.DownloadOfficialMusicVideo = !m.cfg.DownloadOfficialMusicVideo
@@ -106,15 +115,56 @@ func (m *configModel) activate() {
 	case 5:
 		m.beginInput(strconv.Itoa(m.cfg.MaxConcurrentDownloads))
 		m.mode = editNumber
-	case 0:
-		m.folder = newFolderModel(m.cfg.OutputDir).setSize(m.width, m.height)
-		m.mode = editFolder
-	case 9:
-		m.folder = newFolderModel(m.cfg.LogDir).setSize(m.width, m.height)
-		m.mode = editFolder
+	case 0, 9:
+		return m.chooseFolder()
 	default: // 4 text
 		m.beginInput(m.textValue())
 		m.mode = editText
+	}
+	return nil
+}
+
+// folderOfItem is the folder the selected setting holds now.
+func (m configModel) folderOfItem() string {
+	if m.cursor == 0 {
+		return m.cfg.OutputDir
+	}
+	return m.cfg.LogDir
+}
+
+// chooseFolder opens the host's chooser, or the built-in folder browser without one.
+func (m *configModel) chooseFolder() tea.Cmd {
+	start := m.folderOfItem()
+	if m.pick == nil {
+		m.browseFolders(start)
+		return nil
+	}
+	m.mode = editPicking
+	item, pick := m.cursor, m.pick
+	return func() tea.Msg {
+		path, chosen, err := pick(start)
+		return folderPickedMsg{item: item, path: path, chosen: chosen, err: err}
+	}
+}
+
+func (m *configModel) browseFolders(start string) {
+	m.folder = newFolderModel(start).setSize(m.width, m.height)
+	m.mode = editFolder
+}
+
+// finishPicking takes the chooser's answer. When it could not be shown, the built-in
+// browser is opened instead, so the setting can still be changed.
+func (m *configModel) finishPicking(picked folderPickedMsg) {
+	m.mode = editNone
+	switch {
+	case picked.err != nil:
+		m.browseFolders(m.folderOfItem())
+	case picked.chosen:
+		if picked.item == 0 {
+			m.cfg.OutputDir = picked.path
+		} else {
+			m.cfg.LogDir = picked.path
+		}
 	}
 }
 
@@ -125,6 +175,13 @@ func (m *configModel) beginInput(val string) {
 }
 
 func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyMsg, isKey bool) tea.Cmd {
+	if m.mode == editPicking {
+		// Nothing to do but wait: the chooser is a window of its own.
+		if picked, ok := msg.(folderPickedMsg); ok {
+			m.finishPicking(picked)
+		}
+		return nil
+	}
 	if m.mode == editFolder {
 		next, cmd, out := m.folder.update(msg)
 		m.folder = next
@@ -342,6 +399,9 @@ func (m configModel) view(width, height int) string {
 }
 
 func (m configModel) hints() []keyHint {
+	if m.mode == editPicking {
+		return nil
+	}
 	if m.mode != editNone {
 		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
 	}
@@ -360,6 +420,8 @@ func (m configModel) editorView() string {
 			}
 		}
 		return strings.Join(parts, " ")
+	case editPicking:
+		return styDim.Render("choose a folder in the window that opened...")
 	default:
 		return m.input.View()
 	}
