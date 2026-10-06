@@ -44,6 +44,9 @@ func (m configModel) outline() ScreenOutline {
 	for i, label := range cfgLabels {
 		items[i] = OutlineItem{Label: label, Value: m.display(i), Selected: i == m.cursor}
 	}
+	if m.mode == editPicking {
+		return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: "Choose a folder in the window that opened", Keys: outlineKeys(m.hints())}
+	}
 	if m.mode != editNone {
 		item := &items[m.cursor]
 		item.Editing = true

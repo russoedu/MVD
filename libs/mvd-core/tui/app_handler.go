@@ -25,6 +25,9 @@ type SetupInput struct {
 	CfgPath    string
 	ListPath   string
 	OpenConfig bool // start on the config screen (first run)
+	// PickFolder, when set, is the operating system's folder chooser, which the
+	// folder settings open instead of the built-in folder browser.
+	PickFolder FolderPicker
 }
 
 // SetupResult is returned when the setup screens close.
@@ -67,6 +70,7 @@ type setupModel struct {
 	advanced      advancedModel
 	result        SetupResult
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
+	pick          FolderPicker
 }
 
 // setupFinishedMsg tells the app model the user left the setup screens.
@@ -88,7 +92,8 @@ func newSetupModel(in SetupInput) setupModel {
 		cfgPath:  in.CfgPath,
 		listPath: in.ListPath,
 		list:     newListModel(in.URLs),
-		config:   newConfigModel(in.Cfg),
+		config:   newConfigModel(in.Cfg).withFolderPicker(in.PickFolder),
+		pick:     in.PickFolder,
 		result:   SetupResult{Action: ActionQuit, Cfg: in.Cfg, URLs: in.URLs},
 	}
 	if in.OpenConfig {
@@ -122,7 +127,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.finish()
 		case listPrefs:
 			m.saveList()
-			m.config = newConfigModel(m.cfg).setSize(m.width, m.height)
+			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).setSize(m.width, m.height)
 			m.screen = screenConfig
 			return m, nil
 		case listQuit:

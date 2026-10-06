@@ -76,3 +76,16 @@ func TestAMachineWithoutTheToolHasNoDialog(t *testing.T) {
 		}
 	}
 }
+
+func TestTheWindowsChooserIsTheExplorerStyleOneWithTheClassicOneAsAFallback(t *testing.T) {
+	for _, want := range []string{
+		"FileOpenDialogClass", // the Explorer style chooser
+		"0x20",                // pick folders
+		"FolderBrowserDialog", // the fallback
+		"MVD_START",           // the start folder comes from the environment
+	} {
+		if !strings.Contains(windowsScript, want) {
+			t.Errorf("the script does not contain %q", want)
+		}
+	}
+}
