@@ -55,7 +55,7 @@ func Default(appDir, downloadsDir string) Config {
 		CookiesFile:                filepath.Join(appDir, "cookies.txt"),
 		CreateLogFile:              true,
 		LogDir:                     appDir,
-		ExtraArgs:                  []string{"-4", "--js-runtimes", "deno,node"},
+		ExtraArgs:                  []string{"-4", "--js-runtimes", "deno", "--js-runtimes", "node"},
 	}
 }
 
