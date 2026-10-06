@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"youtube-downloader/libs/mvd-server/api"
+	"youtube-downloader/apps/mvd/uninstall"
 )
 
 // uninstallAnswerTimeout is how long the running app may take: the person is answering
@@ -19,7 +19,7 @@ const uninstallAnswerTimeout = 15 * time.Minute
 // from Settings > Apps ends the running app instead of leaving its icon behind.
 //
 // running is false when no MVD answers there, and nothing has been asked. When one does,
-// the error is api.ErrUninstallDeclined if the person said no, and nil once it has
+// the error is uninstall.ErrDeclined if the person said no, and nil once it has
 // accepted and is removing itself.
 func RequestUninstall(address string) (running bool, err error) {
 	if !isMVD(address) {
@@ -37,7 +37,7 @@ func RequestUninstall(address string) (running bool, err error) {
 	case http.StatusAccepted:
 		return true, nil
 	case http.StatusConflict:
-		return true, api.ErrUninstallDeclined
+		return true, uninstall.ErrDeclined
 	}
 
 	var body struct {

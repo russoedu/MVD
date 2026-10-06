@@ -51,10 +51,14 @@ func isAddressInUse(err error) bool {
 	return false
 }
 
-// isMVD reports whether an MVD is answering on address: its state endpoint returns a
-// snapshot, which nothing else on the port would.
+// isMVD reports whether an MVD is answering on address: this version answers its ping
+// route, and versions up to 0.0.23 return a snapshot from the state route, which nothing
+// else on the port would.
 func isMVD(address string) bool {
 	client := http.Client{Timeout: 700 * time.Millisecond}
+	if answersPing(client, address) {
+		return true
+	}
 	resp, err := client.Get("http://" + address + "/api/state")
 	if err != nil {
 		return false
@@ -68,4 +72,17 @@ func isMVD(address string) bool {
 		Tally   json.RawMessage `json:"tally"`
 	}
 	return json.NewDecoder(resp.Body).Decode(&body) == nil && body.Version != nil && body.Tally != nil
+}
+
+// answersPing reports whether address answers the ping route the way MVD does.
+func answersPing(client http.Client, address string) bool {
+	resp, err := client.Get("http://" + address + "/api/ping")
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var body struct {
+		App string `json:"app"`
+	}
+	return resp.StatusCode == http.StatusOK && json.NewDecoder(resp.Body).Decode(&body) == nil && body.App == "mvd"
 }

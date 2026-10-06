@@ -2,7 +2,7 @@ package uninstall
 
 import (
 	"youtube-downloader/libs/mvd-core/appdir"
-	"youtube-downloader/libs/mvd-server/settings"
+	"youtube-downloader/libs/mvd-core/config"
 )
 
 // keptFolders returns the function that names the folders holding the person's own
@@ -10,12 +10,11 @@ import (
 // the settings when called, so a change made after the app started is respected.
 func keptFolders(configPath, appDir string) func() []string {
 	downloads := appdir.DefaultDownloadsDir()
-	repository := settings.NewRepository(configPath, appDir, downloads)
 
 	return func() []string {
 		keep := []string{downloads}
-		if document, err := repository.Load(); err == nil {
-			keep = append(keep, document.Settings.OutputDir, document.Settings.LogDir)
+		if cfg, _, err := config.LoadOrCreate(configPath, appDir, downloads); err == nil {
+			keep = append(keep, cfg.OutputDir, cfg.LogDir)
 		}
 
 		return keep

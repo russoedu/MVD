@@ -7,16 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	"youtube-downloader/libs/mvd-server/api"
+	"youtube-downloader/apps/mvd/uninstall"
 )
 
-// runningMVD answers like the app does: a snapshot on /api/state, and whatever the test
+// runningMVD answers like the app does: its identity on /api/ping, and whatever the test
 // wants on /api/uninstall.
 func runningMVD(t *testing.T, uninstall http.HandlerFunc) string {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/state", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"version":1,"tally":{}}`))
+	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"app":"mvd"}`))
 	})
 	mux.HandleFunc("/api/uninstall", uninstall)
 	server := httptest.NewServer(mux)
@@ -64,7 +64,7 @@ func TestARunningAppWhosePersonSaidNoIsReportedAsDeclined(t *testing.T) {
 
 	running, err := RequestUninstall(address)
 
-	if !running || !errors.Is(err, api.ErrUninstallDeclined) {
+	if !running || !errors.Is(err, uninstall.ErrDeclined) {
 		t.Errorf("running = %v, err = %v", running, err)
 	}
 }

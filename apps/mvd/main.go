@@ -1,5 +1,6 @@
-// MVD tray app: runs until it is closed, serves a browser UI on localhost, and
-// takes new URLs while it downloads. The terminal app is apps/mvd-tui; both share
+// MVD tray app: runs until it is closed, serves the terminal interface (the same
+// screens as the terminal app) to a window of its own on localhost, and takes new
+// URLs while it downloads. The terminal app is apps/mvd-tui; both share
 // libs/mvd-core.
 package main
 
@@ -28,9 +29,6 @@ import (
 	"youtube-downloader/apps/mvd/uninstall"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
-	"youtube-downloader/libs/mvd-server/api"
-	"youtube-downloader/libs/mvd-server/session"
-	"youtube-downloader/libs/mvd-server/settings"
 )
 
 var version = "dev"
@@ -41,8 +39,10 @@ func main() {
 	address := flag.String("addr", localserver.DefaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
-	classic := flag.Bool("classic", false, "open the page in the browser instead of the terminal-style window")
-	flag.Bool("terminal-window", true, "the default now, kept so existing shortcuts still start; use -classic for the page")
+	// The page these two chose between is gone; they are still accepted so that a shortcut
+	// that has them keeps starting.
+	flag.Bool("classic", false, "ignored: there is only the terminal-style window now")
+	flag.Bool("terminal-window", true, "ignored: it is the only window now")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
@@ -57,14 +57,14 @@ func main() {
 		return
 	}
 
-	if err := run(*address, !*noBrowser, !*noTray, !*classic, *movedFrom); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(address string, open, withTray, terminalWindow bool, movedFrom string) error {
+func run(address string, open, withTray bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -94,12 +94,6 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 		return errors.New("'yt-dlp' could not be found or installed")
 	}
 
-	// The terminal-style interface is shown in a window of its own, or the page in the browser.
-	show, page := browser.Open, ""
-	if terminalWindow {
-		show, page = browser.OpenWindow, "/terminal"
-	}
-
 	listener, existing, err := localserver.Listen(address)
 	if err != nil {
 		return fmt.Errorf("cannot listen on %s: %w", address, err)
@@ -107,7 +101,7 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 	if existing != "" {
 		fmt.Printf("MVD is already running at http://%s\n", existing)
 		if open {
-			_ = show("http://" + existing + page)
+			_ = browser.OpenWindow("http://" + existing)
 		}
 		return nil
 	}
@@ -117,18 +111,14 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 
 	// yt-dlp and ffmpeg are kept up to date: checked in the background at start, and again
 	// when a download fails, after which the failed downloads are tried again.
-	var sessions *session.Session
 	var terminalRuns *terminalui.Runs
 	updates := toolupdates.New(
 		func() []string {
 			return deps.UpdateIn(binDir, toolupdates.Reporter(logf, func(notification.Notice) {}))
 		},
-		// Whichever interface started the failed downloads, they are tried again.
-		func() int { return sessions.RetryFailed() + terminalRuns.RetryFailed() },
+		func() int { return terminalRuns.RetryFailed() },
 		notify, logf, time.Now,
 	)
-	sessions = session.New(ctx, localserver.NewEngineFactory(ytDlpPath, appDir, logf), session.WithFailureHook(updates.AfterFailure))
-	defer sessions.Close()
 	terminalRuns = terminalui.NewRuns(updates.AfterFailure)
 
 	removal := uninstall.Here(version, appDir, localserver.ConfigPath(appDir), stop)
@@ -143,9 +133,9 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 		Uninstall:  terminalui.Uninstall(removal),
 	}, logf), []string{"localhost:4200"})
 	server := &http.Server{
-		Handler:           localserver.NewHandler(sessions, settings.NewRepository(localserver.ConfigPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}, removal, terminal),
+		Handler:           localserver.NewHandler(removal, terminal),
 		ReadHeaderTimeout: 10 * time.Second,
-		// Open event streams end when the app does, so shutting down is not held up.
+		// The terminal interface's open connections end when the app does, so shutting down is not held up.
 		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
 
@@ -157,8 +147,8 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	updates.AtStart()
 	if open {
-		if err := show(url + page); err != nil {
-			fmt.Printf("Open %s in your browser.\n", url+page)
+		if err := browser.OpenWindow(url); err != nil {
+			fmt.Printf("Open %s in your browser.\n", url)
 		}
 	}
 
@@ -173,10 +163,10 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 	}()
 
 	if withTray {
-		tray.Run(ctx, url+page, show, stop)
+		tray.Run(ctx, url, browser.OpenWindow, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
-			tray.Unavailable(url + page)
+			tray.Unavailable(url)
 		}
 	}
 	<-ctx.Done()
@@ -195,7 +185,7 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 // removes. Either way nothing happens unless the person says yes.
 func runUninstall(address string) error {
 	if running, err := localserver.RequestUninstall(address); running {
-		if errors.Is(err, api.ErrUninstallDeclined) {
+		if errors.Is(err, uninstall.ErrDeclined) {
 			return nil
 		}
 
@@ -208,9 +198,9 @@ func runUninstall(address string) error {
 	}
 	remove, err := uninstall.Here(version, appDir, localserver.ConfigPath(appDir), nil).Confirm(nil)
 	switch {
-	case errors.Is(err, api.ErrUninstallDeclined):
+	case errors.Is(err, uninstall.ErrDeclined):
 		return nil
-	case errors.Is(err, api.ErrNoDialog):
+	case errors.Is(err, uninstall.ErrNoDialog):
 		return errors.New("there is no way to ask for confirmation on this machine, so nothing was removed")
 	case err != nil:
 		return err

@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
+	"youtube-downloader/apps/mvd/uninstall"
 	"youtube-downloader/libs/mvd-core/tui"
-	"youtube-downloader/libs/mvd-server/api"
 )
 
-type fakeUninstaller struct {
+type fakeRemover struct {
 	err     error
 	removed chan struct{}
 }
 
-func (f fakeUninstaller) Confirm(*bool) (func(), error) {
+func (f fakeRemover) Confirm(*bool) (func(), error) {
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -23,7 +23,7 @@ func (f fakeUninstaller) Confirm(*bool) (func(), error) {
 
 func TestAnAgreedRemovalStartsAndTheOtherAnswersAreReported(t *testing.T) {
 	removed := make(chan struct{})
-	outcome, err := Uninstall(fakeUninstaller{removed: removed})()
+	outcome, err := Uninstall(fakeRemover{removed: removed})()
 	if outcome != tui.RemovalStarted || err != nil {
 		t.Fatalf("outcome %d, err %v", outcome, err)
 	}
@@ -33,13 +33,13 @@ func TestAnAgreedRemovalStartsAndTheOtherAnswersAreReported(t *testing.T) {
 		t.Fatal("the removal never ran")
 	}
 
-	if outcome, _ := Uninstall(fakeUninstaller{err: api.ErrUninstallDeclined})(); outcome != tui.RemovalDeclined {
+	if outcome, _ := Uninstall(fakeRemover{err: uninstall.ErrDeclined})(); outcome != tui.RemovalDeclined {
 		t.Errorf("declined: outcome %d", outcome)
 	}
-	if outcome, _ := Uninstall(fakeUninstaller{err: api.ErrNoDialog})(); outcome != tui.RemovalUnavailable {
+	if outcome, _ := Uninstall(fakeRemover{err: uninstall.ErrNoDialog})(); outcome != tui.RemovalUnavailable {
 		t.Errorf("no dialog: outcome %d", outcome)
 	}
-	if _, err := Uninstall(fakeUninstaller{err: errors.New("boom")})(); err == nil {
+	if _, err := Uninstall(fakeRemover{err: errors.New("boom")})(); err == nil {
 		t.Error("another failure should be reported")
 	}
 }

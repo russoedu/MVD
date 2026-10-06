@@ -5,22 +5,18 @@ import (
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/appdir"
-	"youtube-downloader/libs/mvd-server/settings"
+	"youtube-downloader/libs/mvd-core/config"
 )
 
 func TestTheOutputAndLogFoldersFromTheSettingsAreKeptAlongsideDownloads(t *testing.T) {
 	appDir := t.TempDir()
 	configPath := filepath.Join(appDir, "config.conf")
 	output, logs := t.TempDir(), t.TempDir()
-	repository := settings.NewRepository(configPath, appDir, appdir.DefaultDownloadsDir())
-	document, err := repository.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	document.Settings.OutputDir = output
-	document.Settings.CreateLogFile = true
-	document.Settings.LogDir = logs
-	if err := repository.Save(document.Settings); err != nil {
+	cfg := config.Default(appDir, appdir.DefaultDownloadsDir())
+	cfg.OutputDir = output
+	cfg.CreateLogFile = true
+	cfg.LogDir = logs
+	if err := config.Save(cfg, configPath); err != nil {
 		t.Fatal(err)
 	}
 
