@@ -47,6 +47,9 @@ func (m configModel) outline() ScreenOutline {
 	if m.mode == editPicking {
 		return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: "Choose a folder in the window that opened", Keys: outlineKeys(m.hints())}
 	}
+	if m.mode == editConfirming {
+		return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outlineKeys(m.hints())}
+	}
 	if m.mode != editNone {
 		item := &items[m.cursor]
 		item.Editing = true
@@ -57,7 +60,7 @@ func (m configModel) outline() ScreenOutline {
 			item.Value = m.input.Value()
 		}
 	}
-	return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Keys: outlineKeys(m.hints())}
+	return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outlineKeys(m.hints())}
 }
 
 func (m advancedModel) outline() ScreenOutline {

@@ -27,7 +27,8 @@ const (
 	editNumber
 	editRadio
 	editFolder
-	editPicking // the operating system's folder chooser is open
+	editPicking    // the operating system's folder chooser is open
+	editConfirming // the questions about removing the app are being asked
 )
 
 const cfgItemCount = 10
@@ -46,6 +47,8 @@ type configModel struct {
 	radioIdx      int
 	folder        folderModel
 	pick          FolderPicker // nil when the host has no native chooser
+	uninstall     Uninstaller  // nil when the host cannot remove the app
+	status        string       // what happened last, shown in place of the key bar
 	width, height int
 }
 
@@ -53,6 +56,12 @@ func newConfigModel(cfg config.Config) configModel {
 	ti := textinput.New()
 	ti.Prompt = "> "
 	return configModel{cfg: cfg, input: ti}
+}
+
+// withUninstaller offers removing the app on the preferences.
+func (m configModel) withUninstaller(uninstall Uninstaller) configModel {
+	m.uninstall = uninstall
+	return m
 }
 
 // withFolderPicker makes the folder settings open the host's own chooser.
@@ -79,6 +88,7 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 	}
 
 	if isKey {
+		m.status = ""
 		switch k.String() {
 		case "up", "k":
 			if m.cursor > 0 {
@@ -92,6 +102,8 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 			return m, nil, cfgSave, m.cfg
 		case "a":
 			return m, nil, cfgAdvanced, m.cfg
+		case "u":
+			return m, m.askToUninstall(), cfgNone, m.cfg
 		case "esc":
 			return m, nil, cfgCancel, m.cfg
 		case "enter", " ":
@@ -122,6 +134,36 @@ func (m *configModel) activate() tea.Cmd {
 		m.mode = editText
 	}
 	return nil
+}
+
+// askToUninstall starts the questions about removing the app, which the returned
+// command waits on; nothing when the host cannot remove the app.
+func (m *configModel) askToUninstall() tea.Cmd {
+	if m.uninstall == nil {
+		return nil
+	}
+	m.mode = editConfirming
+	m.status = "Answer the questions in the window that opened..."
+	uninstall := m.uninstall
+	return func() tea.Msg {
+		outcome, err := uninstall()
+		return uninstallAnsweredMsg{outcome: outcome, err: err}
+	}
+}
+
+// finishConfirming takes the answer: what to tell the person.
+func (m *configModel) finishConfirming(answered uninstallAnsweredMsg) {
+	m.mode = editNone
+	switch {
+	case answered.err != nil:
+		m.status = "The removal could not be asked: " + answered.err.Error()
+	case answered.outcome == RemovalStarted:
+		m.status = "Removing MVD. This window will close."
+	case answered.outcome == RemovalDeclined:
+		m.status = "Nothing was removed."
+	default:
+		m.status = "This machine cannot ask for confirmation, so nothing was removed. Start MVD with -uninstall from a terminal."
+	}
 }
 
 // folderOfItem is the folder the selected setting holds now.
@@ -175,6 +217,13 @@ func (m *configModel) beginInput(val string) {
 }
 
 func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyMsg, isKey bool) tea.Cmd {
+	if m.mode == editConfirming {
+		// Nothing to do but wait: the questions are windows of their own.
+		if answered, ok := msg.(uninstallAnsweredMsg); ok {
+			m.finishConfirming(answered)
+		}
+		return nil
+	}
 	if m.mode == editPicking {
 		// Nothing to do but wait: the chooser is a window of its own.
 		if picked, ok := msg.(folderPickedMsg); ok {
@@ -395,17 +444,25 @@ func (m configModel) view(width, height int) string {
 		body += "\n\n" + styDim.Render("Template uses yt-dlp fields, e.g. %(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s")
 	}
 
-	return screenFrame(width, height, "MVD · Preferences", body, keyBar(width, m.hints()))
+	bar := keyBar(width, m.hints())
+	if m.status != "" {
+		bar = fit(" "+styMagenta.Render(m.status), width)
+	}
+	return screenFrame(width, height, "MVD · Preferences", body, bar)
 }
 
 func (m configModel) hints() []keyHint {
-	if m.mode == editPicking {
+	if m.mode == editPicking || m.mode == editConfirming {
 		return nil
 	}
 	if m.mode != editNone {
 		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
 	}
-	return []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"s", "save"}, {"esc", "cancel"}}
+	hints := []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"s", "save"}}
+	if m.uninstall != nil {
+		hints = append(hints, keyHint{"u", "uninstall"})
+	}
+	return append(hints, keyHint{"esc", "cancel"})
 }
 
 func (m configModel) editorView() string {

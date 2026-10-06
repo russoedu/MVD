@@ -28,6 +28,9 @@ type SetupInput struct {
 	// PickFolder, when set, is the operating system's folder chooser, which the
 	// folder settings open instead of the built-in folder browser.
 	PickFolder FolderPicker
+	// Uninstall, when set, is offered on the preferences: it asks the person on the
+	// machine's own screen and removes the app if they agree.
+	Uninstall Uninstaller
 }
 
 // SetupResult is returned when the setup screens close.
@@ -71,6 +74,7 @@ type setupModel struct {
 	result        SetupResult
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
 	pick          FolderPicker
+	uninstall     Uninstaller
 }
 
 // setupFinishedMsg tells the app model the user left the setup screens.
@@ -88,13 +92,14 @@ func (m setupModel) finish() tea.Cmd {
 
 func newSetupModel(in SetupInput) setupModel {
 	m := setupModel{
-		cfg:      in.Cfg,
-		cfgPath:  in.CfgPath,
-		listPath: in.ListPath,
-		list:     newListModel(in.URLs),
-		config:   newConfigModel(in.Cfg).withFolderPicker(in.PickFolder),
-		pick:     in.PickFolder,
-		result:   SetupResult{Action: ActionQuit, Cfg: in.Cfg, URLs: in.URLs},
+		cfg:       in.Cfg,
+		cfgPath:   in.CfgPath,
+		listPath:  in.ListPath,
+		list:      newListModel(in.URLs),
+		config:    newConfigModel(in.Cfg).withFolderPicker(in.PickFolder).withUninstaller(in.Uninstall),
+		pick:      in.PickFolder,
+		uninstall: in.Uninstall,
+		result:    SetupResult{Action: ActionQuit, Cfg: in.Cfg, URLs: in.URLs},
 	}
 	if in.OpenConfig {
 		m.screen = screenConfig
@@ -127,7 +132,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.finish()
 		case listPrefs:
 			m.saveList()
-			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).setSize(m.width, m.height)
+			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).withUninstaller(m.uninstall).setSize(m.width, m.height)
 			m.screen = screenConfig
 			return m, nil
 		case listQuit:

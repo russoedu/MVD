@@ -135,9 +135,11 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 	terminal := terminalui.NewHandler(terminalui.NewModelFactory(appDir, terminalui.Files{
 		Config: localserver.ConfigPath(appDir),
 		List:   filepath.Join(appDir, "list.txt"),
-	}, terminalRuns.Start(ctx, ytDlpPath, logf), func(start string) (string, bool, error) {
+	}, terminalui.Host{
+		Start: terminalRuns.Start(ctx, ytDlpPath, logf),
 		// The person is at this machine, so its own folder chooser is the one to show.
-		return folderdialog.Dialog{}.Pick(ctx, start)
+		PickFolder: func(start string) (string, bool, error) { return folderdialog.Dialog{}.Pick(ctx, start) },
+		Uninstall:  terminalui.Uninstall(removal),
 	}, logf), []string{"localhost:4200"})
 	server := &http.Server{
 		Handler:           localserver.NewHandler(sessions, settings.NewRepository(localserver.ConfigPath(appDir), appDir, appdir.DefaultDownloadsDir()), folderdialog.Dialog{}, removal, terminal),
