@@ -41,7 +41,8 @@ func main() {
 	address := flag.String("addr", localserver.DefaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
 	noBrowser := flag.Bool("no-browser", false, "do not open the UI in the browser on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
-	terminalWindow := flag.Bool("terminal-window", false, "open the terminal-style interface in a window of its own, instead of the page in the browser")
+	classic := flag.Bool("classic", false, "open the page in the browser instead of the terminal-style window")
+	flag.Bool("terminal-window", true, "the default now, kept so existing shortcuts still start; use -classic for the page")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
@@ -56,7 +57,7 @@ func main() {
 		return
 	}
 
-	if err := run(*address, !*noBrowser, !*noTray, *terminalWindow, *movedFrom); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray, !*classic, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
@@ -93,7 +94,7 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 		return errors.New("'yt-dlp' could not be found or installed")
 	}
 
-	// The page is shown in the browser, or the terminal-style interface in a window of its own.
+	// The terminal-style interface is shown in a window of its own, or the page in the browser.
 	show, page := browser.Open, ""
 	if terminalWindow {
 		show, page = browser.OpenWindow, "/terminal"
@@ -175,7 +176,7 @@ func run(address string, open, withTray, terminalWindow bool, movedFrom string) 
 		tray.Run(ctx, url+page, show, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
-			tray.Unavailable(url)
+			tray.Unavailable(url + page)
 		}
 	}
 	<-ctx.Done()
