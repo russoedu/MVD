@@ -12,11 +12,10 @@ import (
 
 	"youtube-downloader/apps/mvd/oscommand"
 	"youtube-downloader/libs/mvd-core/procwindow"
-	"youtube-downloader/libs/mvd-server/api"
 )
 
-// Dialog shows the operating system's own folder chooser. It is the
-// api.FolderPicker of the real app: the page asks, the person answers on their screen.
+// Dialog shows the operating system's own folder chooser, on the screen of the person
+// at this machine.
 type Dialog struct{}
 
 // Pick runs the chooser and waits. Cancelling the context (the page went away)
@@ -24,7 +23,7 @@ type Dialog struct{}
 func (Dialog) Pick(ctx context.Context, start string) (string, bool, error) {
 	command, ok := folderDialogCommand(runtime.GOOS, start, oscommand.HasProgram)
 	if !ok {
-		return "", false, api.ErrNoDialog
+		return "", false, ErrNoDialog
 	}
 
 	cmd := exec.CommandContext(ctx, command.Name, command.Args...)

@@ -17,7 +17,6 @@
     "mvd-tui:build": "nx run mvd-tui:build",
     "mvd-tui:start": "nx run mvd-tui:start",
     "mvd-core:qa": "nx run mvd-core:lint && nx run mvd-core:test",
-    "mvd-server:qa": "nx run mvd-server:lint && nx run mvd-server:test",
     "mvd-web:qa": "nx run mvd-web:lint && nx run mvd-web:test",
     "mvd-web:build": "nx run mvd-web:build",
     "mvd-web:start": "nx run mvd-web:serve",

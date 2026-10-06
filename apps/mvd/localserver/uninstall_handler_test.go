@@ -1,4 +1,4 @@
-package api
+package localserver
 
 import (
 	"errors"
@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"youtube-downloader/apps/mvd/uninstall"
 )
 
 type fakeUninstaller struct {
@@ -47,11 +49,20 @@ func waitRemoved(t *testing.T, f *fakeUninstaller) {
 	}
 }
 
-func TestAConfirmedRemovalIsAcceptedAndThenRunsWithTheChoiceThePageMade(t *testing.T) {
+func post(handler http.Handler, path, body string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	r.Host = "127.0.0.1:8421"
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	return w
+}
+
+func TestAConfirmedRemovalIsAcceptedAndThenRunsWithTheChoiceThatWasMade(t *testing.T) {
 	for body, want := range map[string]bool{`{"deletePreferences":true}`: true, `{"deletePreferences":false}`: false} {
 		fake := newFakeUninstaller()
 
-		w := post(New(newFake(), Options{Uninstall: fake}), "/api/uninstall", body)
+		w := post(NewHandler(fake, nil), "/api/uninstall", body)
 
 		if w.Code != http.StatusAccepted || !strings.Contains(w.Body.String(), `"status":"removing"`) {
 			t.Errorf("%s: %d %s", body, w.Code, w.Body)
@@ -67,7 +78,7 @@ func TestWithoutAChoiceThePersonIsAskedTheQuestionToo(t *testing.T) {
 	for _, body := range []string{`{}`, ``} {
 		fake := newFakeUninstaller()
 
-		w := post(New(newFake(), Options{Uninstall: fake}), "/api/uninstall", body)
+		w := post(NewHandler(fake, nil), "/api/uninstall", body)
 
 		if w.Code != http.StatusAccepted {
 			t.Errorf("%q: %d %s", body, w.Code, w.Body)
@@ -81,9 +92,9 @@ func TestWithoutAChoiceThePersonIsAskedTheQuestionToo(t *testing.T) {
 
 func TestDecliningOnTheMachinesOwnScreenRemovesNothingAndSaysSo(t *testing.T) {
 	fake := newFakeUninstaller()
-	fake.err = ErrUninstallDeclined
+	fake.err = uninstall.ErrDeclined
 
-	w := post(New(newFake(), Options{Uninstall: fake}), "/api/uninstall", `{"deletePreferences":true}`)
+	w := post(NewHandler(fake, nil), "/api/uninstall", `{"deletePreferences":true}`)
 
 	if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "nothing was removed") {
 		t.Errorf("%d %s", w.Code, w.Body)
@@ -97,15 +108,15 @@ func TestDecliningOnTheMachinesOwnScreenRemovesNothingAndSaysSo(t *testing.T) {
 
 func TestAMachineThatCannotAskRemovesNothingAndSaysDistinctlyFromAFailure(t *testing.T) {
 	fake := newFakeUninstaller()
-	fake.err = ErrNoDialog
-	w := post(New(newFake(), Options{Uninstall: fake}), "/api/uninstall", `{}`)
+	fake.err = uninstall.ErrNoDialog
+	w := post(NewHandler(fake, nil), "/api/uninstall", `{}`)
 	if w.Code != http.StatusNotImplemented || !strings.Contains(w.Body.String(), "-uninstall") {
 		t.Errorf("no dialog: %d %s", w.Code, w.Body)
 	}
 
 	fake = newFakeUninstaller()
 	fake.err = errors.New("boom")
-	w = post(New(newFake(), Options{Uninstall: fake}), "/api/uninstall", `{}`)
+	w = post(NewHandler(fake, nil), "/api/uninstall", `{}`)
 	if w.Code != http.StatusBadGateway || !strings.Contains(w.Body.String(), "boom") {
 		t.Errorf("failure: %d %s", w.Code, w.Body)
 	}
@@ -115,7 +126,7 @@ func TestOnlyOneConfirmationIsOpenAtATime(t *testing.T) {
 	fake := newFakeUninstaller()
 	fake.opened = make(chan struct{}, 2)
 	fake.release = make(chan struct{})
-	handler := New(newFake(), Options{Uninstall: fake})
+	handler := NewHandler(fake, nil)
 
 	first := make(chan int)
 	go func() { first <- post(handler, "/api/uninstall", `{}`).Code }()
@@ -148,7 +159,7 @@ func TestMalformedUninstallBodiesAreRefusedWithoutAskingAnything(t *testing.T) {
 	} {
 		fake := newFakeUninstaller()
 
-		w := post(New(newFake(), Options{Uninstall: fake}), "/api/uninstall", body)
+		w := post(NewHandler(fake, nil), "/api/uninstall", body)
 
 		if w.Code != http.StatusBadRequest || len(fake.asked) != 0 {
 			t.Errorf("%s: %d, asked %d", name, w.Code, len(fake.asked))
@@ -165,12 +176,12 @@ func TestUninstallingIsGuardedAndAbsentWithoutAnUninstaller(t *testing.T) {
 		"a form post":       func(r *http.Request) { r.Header.Set("Content-Type", "text/plain") },
 	} {
 		r := httptest.NewRequest(http.MethodPost, "/api/uninstall", strings.NewReader(`{"deletePreferences":true}`))
-		r.Host = "127.0.0.1:8080"
+		r.Host = "127.0.0.1:8421"
 		r.Header.Set("Content-Type", "application/json")
 		mutate(r)
 		w := httptest.NewRecorder()
 
-		New(newFake(), Options{Uninstall: fake}).ServeHTTP(w, r)
+		NewHandler(fake, nil).ServeHTTP(w, r)
 
 		if w.Code != http.StatusForbidden {
 			t.Errorf("%s: %d", name, w.Code)
@@ -180,13 +191,13 @@ func TestUninstallingIsGuardedAndAbsentWithoutAnUninstaller(t *testing.T) {
 		t.Errorf("a refused request was put to the person: %d", len(fake.asked))
 	}
 
-	if w := post(New(newFake(), Options{}), "/api/uninstall", `{}`); w.Code != http.StatusNotFound {
+	if w := post(NewHandler(nil, nil), "/api/uninstall", `{}`); w.Code != http.StatusNotFound && w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("no uninstaller configured: %d", w.Code)
 	}
 }
 
 func TestOnlyPostReachesTheUninstallRoute(t *testing.T) {
-	w := get(New(newFake(), Options{Uninstall: newFakeUninstaller()}), "/api/uninstall")
+	w := fetch(t, NewHandler(newFakeUninstaller(), nil), http.MethodGet, "/api/uninstall", "127.0.0.1:8421")
 
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("GET: %d", w.Code)

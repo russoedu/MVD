@@ -10,7 +10,6 @@ import (
 
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/question"
-	"youtube-downloader/libs/mvd-server/api"
 )
 
 // world is a machine laid out in temporary folders: an installed app with a shortcut, an
@@ -108,7 +107,7 @@ func TestDecliningTheConfirmationRemovesNothing(t *testing.T) {
 
 	remove, err := Service{Env: w.env}.Confirm(nil)
 
-	if !errors.Is(err, api.ErrUninstallDeclined) || remove != nil {
+	if !errors.Is(err, ErrDeclined) || remove != nil {
 		t.Fatalf("err = %v, remove = %v", err, remove != nil)
 	}
 	for _, path := range []string{w.program, w.shortcut, filepath.Join(w.appDir, "config.conf"), w.video} {
@@ -126,7 +125,7 @@ func TestAMachineThatCannotAskReportsThatInsteadOfRemovingAnything(t *testing.T)
 
 	_, err := Service{Env: w.env}.Confirm(nil)
 
-	if !errors.Is(err, api.ErrNoDialog) {
+	if !errors.Is(err, ErrNoDialog) {
 		t.Errorf("err = %v", err)
 	}
 	if !w.exists(w.program) {

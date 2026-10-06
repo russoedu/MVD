@@ -1,4 +1,4 @@
-package api
+package localserver
 
 import (
 	"net/http"

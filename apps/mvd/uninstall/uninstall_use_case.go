@@ -8,7 +8,6 @@ import (
 
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/question"
-	"youtube-downloader/libs/mvd-server/api"
 )
 
 // Environment is what removing the app needs from the machine, so that every branch can
@@ -44,7 +43,7 @@ type Environment struct {
 	Quit func()
 }
 
-// Service removes the app. It satisfies api.Uninstaller.
+// Service removes the app.
 type Service struct {
 	Env Environment
 }
@@ -72,9 +71,9 @@ func (s Service) Confirm(deletePreferences *bool) (func(), error) {
 	switch env.Ask(wizardTitle, confirmation(plan, env.AppDir, deleteToo), []string{"Remove MVD", "Keep it"}) {
 	case question.AnswerFirst:
 	case question.AnswerUnavailable:
-		return nil, api.ErrNoDialog
+		return nil, ErrNoDialog
 	default:
-		return nil, api.ErrUninstallDeclined
+		return nil, ErrDeclined
 	}
 
 	if deletePreferences == nil {
@@ -83,7 +82,7 @@ func (s Service) Confirm(deletePreferences *bool) (func(), error) {
 			deleteToo = true
 			plan = build(true)
 		case question.AnswerUnavailable:
-			return nil, api.ErrNoDialog
+			return nil, ErrNoDialog
 		}
 	}
 
@@ -173,5 +172,3 @@ func (s Service) hint(path string, err error) string {
 
 	return " (remove it with your file manager, or as the account that put it there)"
 }
-
-var _ api.Uninstaller = Service{}
