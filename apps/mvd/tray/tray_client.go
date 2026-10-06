@@ -32,7 +32,7 @@ func Run(ctx context.Context, url string, open func(string) error, quit func()) 
 		openPage := func() { _ = open(url) }
 		systray.SetOnTapped(openPage)
 
-		openItem := systray.AddMenuItem(openLabel, "Open MVD in your browser")
+		openItem := systray.AddMenuItem(openLabel, "Open MVD")
 		systray.AddSeparator()
 		quitItem := systray.AddMenuItem(quitLabel, "Stop MVD and its downloads")
 
