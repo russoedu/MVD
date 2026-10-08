@@ -22,6 +22,7 @@ import (
 	"youtube-downloader/apps/mvd/folderdialog"
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/localserver"
+	"youtube-downloader/apps/mvd/nativewindow"
 	"youtube-downloader/apps/mvd/notification"
 	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
@@ -70,6 +71,19 @@ func run(address string, open, withTray bool, movedFrom string) error {
 
 	// The first time it is started from somewhere it does not belong, it offers to move
 	// itself, and if that is accepted the moved copy takes over and this one is done.
+	// The window is drawn by the system's web view where there is one (Windows), and
+	// by a browser's app window everywhere else, or when the web view cannot start.
+	openWindow := func(url string) error {
+		err := nativewindow.Open(url, appDir)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, nativewindow.ErrUnavailable) {
+			logf("cannot open the app window (%v), using a browser", err)
+		}
+		return browser.OpenWindow(url)
+	}
+
 	if install.OfferMoveHere(appDir, withTray, movedFrom, version) {
 		return nil
 	}
@@ -97,7 +111,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	if existing != "" {
 		fmt.Printf("MVD is already running at http://%s\n", existing)
 		if open {
-			_ = browser.OpenWindow("http://" + existing)
+			_ = openWindow("http://" + existing)
 		}
 		return nil
 	}
@@ -143,7 +157,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	updates.AtStart()
 	if open {
-		if err := browser.OpenWindow(url); err != nil {
+		if err := openWindow(url); err != nil {
 			fmt.Printf("Open %s in your browser.\n", url)
 		}
 	}
@@ -159,7 +173,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	}()
 
 	if withTray {
-		tray.Run(ctx, url, browser.OpenWindow, stop)
+		tray.Run(ctx, url, openWindow, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
 			tray.Unavailable(url)
