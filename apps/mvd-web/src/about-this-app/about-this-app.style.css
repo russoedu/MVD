@@ -1,0 +1,56 @@
+.about-this-app {
+  width: min(560px, calc(100vw - 32px));
+  padding: 0;
+  color: #000;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  font: 14px Arial, Helvetica, sans-serif;
+}
+
+.about-this-app::backdrop {
+  background: rgb(0 0 0 / 70%);
+}
+
+.about-title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 4px 3px 8px;
+  color: #fff;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  font-weight: bold;
+}
+
+.about-close,
+.about-ok {
+  color: #000;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.about-close:active,
+.about-ok:active {
+  border-style: inset;
+}
+
+.about-body {
+  padding: 12px 16px 16px;
+  line-height: 1.4;
+}
+
+.about-body p {
+  margin: 0 0 10px;
+}
+
+.about-footer {
+  color: #404040;
+  font-style: italic;
+}
+
+.about-ok {
+  display: block;
+  margin: 12px auto 0;
+  padding: 3px 28px;
+}
