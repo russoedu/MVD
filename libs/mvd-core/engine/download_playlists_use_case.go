@@ -395,7 +395,11 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 	if e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.raw.Channel, en.raw.Uploader) {
 		e.setState(en, StateResolving, "")
-		official, reason := e.opts.Resolver.ResolveLog(en.info.VideoID, func(format string, a ...interface{}) {
+		channel := en.raw.Channel
+		if channel == "" {
+			channel = en.raw.Uploader
+		}
+		official, reason := e.opts.Resolver.ResolveLog(en.info.VideoID, en.raw.Title, channel, func(format string, a ...interface{}) {
 			e.log(pl, eid, "%s", strings.TrimSpace(fmt.Sprintf(format, a...)))
 		})
 		if official != "" {

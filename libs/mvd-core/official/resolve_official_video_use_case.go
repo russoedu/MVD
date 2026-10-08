@@ -31,6 +31,7 @@ type Resolver struct {
 	Attempts  int
 	Log       LogFunc
 	Dumper    PageDumper // optional
+	Searcher  Searcher   // optional
 }
 
 // NewResolver returns a resolver pointed at the real YouTube endpoints.
@@ -55,17 +56,31 @@ func (r *Resolver) Wanted(channel, uploader string) bool {
 // given art track, or "" when none could be found. The returned reason is a
 // short human readable explanation for logging.
 func (r *Resolver) Resolve(videoID string) (string, string) {
-	return r.ResolveLog(videoID, r.Log)
+	return r.ResolveLog(videoID, "", "", r.Log)
 }
 
 // ResolveLog is Resolve with a per-call log function, so concurrent
-// callers can route messages to their own entry.
-func (r *Resolver) ResolveLog(videoID string, logFn func(format string, a ...interface{})) (string, string) {
+// callers can route messages to their own entry. The title and channel of
+// the art track let it search YouTube for the video when the description
+// links none.
+func (r *Resolver) ResolveLog(videoID, title, channel string, logFn func(format string, a ...interface{})) (string, string) {
 	logf := func(format string, a ...interface{}) {
 		if logFn != nil {
 			logFn(format+"\n", a...)
 		}
 	}
+	id, reason := r.fromDescription(videoID, logf)
+	if id != "" {
+		return id, reason
+	}
+	if found := r.fromSearch(videoID, title, channel, logf); found != "" {
+		return found, "found by searching for the official video"
+	}
+	return "", reason
+}
+
+// fromDescription follows the video linked from the art track's page.
+func (r *Resolver) fromDescription(videoID string, logf func(format string, a ...interface{})) (string, string) {
 	var candidates []string
 
 	// 1. Crawl the watch page like a browser would.
