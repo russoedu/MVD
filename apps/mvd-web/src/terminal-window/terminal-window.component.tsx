@@ -2,6 +2,7 @@ import { TTY as Terminal } from '@treactui/tty'
 import { useState } from 'react'
 import { AboutThisApp } from '../about-this-app'
 import { PageHeader } from '../page-header'
+import { useCaptureBrowserShortcuts } from './capture-browser-shortcuts.hook'
 import { terminalUrl } from './terminal-url.algorithm'
 
 /**
@@ -11,6 +12,7 @@ import { terminalUrl } from './terminal-url.algorithm'
  */
 export function TerminalWindow () {
   const [aboutOpen, setAboutOpen] = useState(false)
+  useCaptureBrowserShortcuts()
 
   return (
     <>
