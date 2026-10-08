@@ -18,6 +18,7 @@ const (
 	cfgSave
 	cfgCancel
 	cfgAdvanced
+	cfgColours
 )
 
 // editor modes while a config item is being changed.
@@ -102,6 +103,8 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 			return m, nil, cfgSave, m.cfg
 		case "a":
 			return m, nil, cfgAdvanced, m.cfg
+		case "c":
+			return m, nil, cfgColours, m.cfg
 		case "u":
 			return m, m.askToUninstall(), cfgNone, m.cfg
 		case "esc":
@@ -458,7 +461,7 @@ func (m configModel) hints() []keyHint {
 	if m.mode != editNone {
 		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
 	}
-	hints := []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"s", "save"}}
+	hints := []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"c", "colours"}, {"s", "save"}}
 	if m.uninstall != nil {
 		hints = append(hints, keyHint{"u", "uninstall"})
 	}

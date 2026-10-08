@@ -39,6 +39,8 @@ func (m setupModel) hints() []keyHint {
 		return m.config.hints()
 	case screenAdvanced:
 		return m.advanced.hints()
+	case screenColours:
+		return m.colours.hints()
 	default:
 		return m.list.hints()
 	}
@@ -72,6 +74,10 @@ func (m *setupModel) selectSetting(y int) {
 	case screenAdvanced:
 		if m.advanced.mode == editNone && row >= 0 && row < len(advLabels) {
 			m.advanced.cursor = row
+		}
+	case screenColours:
+		if !m.colours.editing && row >= 0 && row < len(colourLabels) {
+			m.colours.cursor = row
 		}
 	}
 }
