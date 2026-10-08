@@ -12,6 +12,9 @@ func init() {
 	runtime.LockOSThread()
 }
 
+// Icon is the tray icon for this system.
+func Icon() []byte { return trayIcon(runtime.GOOS) }
+
 const (
 	openLabel = "Open MVD"
 	quitLabel = "Quit"

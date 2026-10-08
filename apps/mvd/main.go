@@ -28,6 +28,7 @@ import (
 	"youtube-downloader/apps/mvd/toolupdates"
 	"youtube-downloader/apps/mvd/tray"
 	"youtube-downloader/apps/mvd/uninstall"
+	"youtube-downloader/apps/mvd/wailsshell"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
 )
@@ -41,6 +42,7 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "do not open the window on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
+	wailsShell := flag.Bool("wails", false, "experimental: show the window and the tray icon with Wails v3")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
 
@@ -54,14 +56,14 @@ func main() {
 		return
 	}
 
-	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray, *wailsShell, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(address string, open, withTray bool, movedFrom string) error {
+func run(address string, open, withTray, wails bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -156,7 +158,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	}
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	updates.AtStart()
-	if open {
+	if open && !(wails && withTray) {
 		if err := openWindow(url); err != nil {
 			fmt.Printf("Open %s in your browser.\n", url)
 		}
@@ -172,7 +174,12 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		stop()
 	}()
 
-	if withTray {
+	if withTray && wails {
+		if err := wailsshell.Run(ctx, url, appDir, tray.Icon(), open, stop); err != nil {
+			fmt.Printf("Wails could not start: %v\n", err)
+		}
+		stop()
+	} else if withTray {
 		tray.Run(ctx, url, openWindow, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
