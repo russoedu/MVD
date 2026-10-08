@@ -90,7 +90,34 @@ func applyKey(cfg *Config, key, val, path string) {
 		if val != "" {
 			cfg.ExtraArgs = strings.Fields(val)
 		}
+	default:
+		if slot := colourSlot(cfg, key); slot != nil && validColour(val) {
+			*slot = strings.TrimSpace(val)
+		}
 	}
+}
+
+// colourSlot returns the colour setting a color_* key names, or nil.
+func colourSlot(cfg *Config, key string) *string {
+	switch key {
+	case "color_accent":
+		return &cfg.Colors.Accent
+	case "color_focus":
+		return &cfg.Colors.Focus
+	case "color_highlight":
+		return &cfg.Colors.Highlight
+	case "color_success":
+		return &cfg.Colors.Success
+	case "color_error":
+		return &cfg.Colors.Error
+	case "color_dim":
+		return &cfg.Colors.Dim
+	case "color_text":
+		return &cfg.Colors.Text
+	case "color_selected":
+		return &cfg.Colors.Selected
+	}
+	return nil
 }
 
 // configText is the commented key=value file Save writes for cfg.
@@ -114,6 +141,14 @@ func configText(cfg Config) string {
 	w("create_log_file", strconv.FormatBool(cfg.CreateLogFile))
 	w("log_dir", cfg.LogDir)
 	w("extra_args", strings.Join(cfg.ExtraArgs, " "))
+	w("color_accent", cfg.Colors.Accent)
+	w("color_focus", cfg.Colors.Focus)
+	w("color_highlight", cfg.Colors.Highlight)
+	w("color_success", cfg.Colors.Success)
+	w("color_error", cfg.Colors.Error)
+	w("color_dim", cfg.Colors.Dim)
+	w("color_text", cfg.Colors.Text)
+	w("color_selected", cfg.Colors.Selected)
 
 	return b.String()
 }

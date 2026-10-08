@@ -48,6 +48,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	tui.ApplyTheme(cfg.Colors)
+
 	urls, _ := sourcelist.Load(listPath)
 	if len(urls) == 0 {
 		if legacy, _ := sourcelist.Load("downloads.conf"); len(legacy) > 0 {

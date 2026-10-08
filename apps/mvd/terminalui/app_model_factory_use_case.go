@@ -39,6 +39,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 			logf("cannot read the settings %s, starting from the defaults: %v", files.Config, err)
 			cfg, created = config.Default(appDir, appdir.DefaultDownloadsDir()), true
 		}
+		tui.ApplyTheme(cfg.Colors)
 		urls, _ := sourcelist.Load(files.List)
 
 		return accessibleApp{tui.NewAppModel(tui.AppInput{

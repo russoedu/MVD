@@ -139,6 +139,8 @@ It holds `config.conf` (settings), `list.txt` (your URLs) and `cookies.txt` (the
 
 `output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `download_official_music_video`, `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args`.
 
+The interface colours are `color_accent`, `color_focus`, `color_highlight`, `color_success`, `color_error`, `color_dim`, `color_text` (text) and `color_selected` (background of the selected row), each a `#rgb` or `#rrggbb` value such as `color_accent=#ff007f`. A missing or invalid value keeps the default. Restart the app after editing.
+
 ### Browser cookies
 
 YouTube rate limits heavy use and answers with `Sign in to confirm you're not a bot` or `HTTP Error 429`. The way around it is to run as a signed-in user by borrowing a browser's cookies. **This is on by default and needs no configuration**: at start the app tries every installed browser and uses the first one with a live YouTube login, saving it to `cookies_file` (default `cookies.txt`, ignored by git, keep it private: it holds your session). Later runs reuse that file; delete it to refresh. Every yt-dlp run and the official video resolver use it.
