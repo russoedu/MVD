@@ -31,6 +31,9 @@ type Options struct {
 	Workers             int    // videos in flight across all playlists
 	LogPath             string // "" disables the log file
 	Resolver            OfficialResolver
+	// Tracks, when set, lists the playlists of another service and finds the
+	// YouTube video of each track.
+	Tracks TrackSource
 	// AutoRetry turns on immediate one-off retries and the deferred sweep.
 	AutoRetry bool
 	// RetryCooldown is the wait before each deferred sweep. 0 uses the default.
@@ -43,6 +46,7 @@ type engineEntry struct {
 	state    EntryState
 	targetID string
 	official bool
+	track    *Track // set when the entry is a song with no video yet
 	err      string
 	deferred bool // failed with a transient error, eligible for the sweep
 	sweeps   int  // deferred retry passes already spent
@@ -308,7 +312,7 @@ func (e *Engine) listPlaylist(ctx context.Context, src PlaylistSource) {
 	e.emit(EvPlaylistListing{Playlist: src.Index, URL: src.URL})
 	e.log(src.Index, -1, "listing %s", src.URL)
 
-	entries, err := ytdlp.ListPlaylist(ctx, e.opts.YtDlp, src.URL, e.opts.ExtraArgs)
+	entries, tracks, err := e.listEntries(ctx, src)
 	if err != nil {
 		e.log(src.Index, -1, "listing failed: %v", err)
 		e.emit(EvPlaylistFailed{Playlist: src.Index, Err: err.Error()})
@@ -344,7 +348,11 @@ func (e *Engine) listPlaylist(ctx context.Context, src PlaylistSource) {
 			Title:    pe.Title,
 			Channel:  pe.Channel,
 		}
-		e.entries = append(e.entries, &engineEntry{info: info, raw: pe, state: StateQueued})
+		en := &engineEntry{info: info, raw: pe, state: StateQueued}
+		if tracks != nil {
+			en.track = &tracks[i]
+		}
+		e.entries = append(e.entries, en)
 		infos = append(infos, info)
 		ids = append(ids, info.ID)
 	}
@@ -393,7 +401,12 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 	pl, eid := en.info.Playlist, en.info.ID
 
-	if e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.raw.Channel, en.raw.Uploader) {
+	if en.track != nil {
+		if !e.findTrack(ctx, en) {
+			return
+		}
+		e.log(pl, eid, "%s - %s -> %s (official: %v)", en.track.Artist, en.track.Title, en.targetID, en.official)
+	} else if e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.raw.Channel, en.raw.Uploader) {
 		e.setState(en, StateResolving, "")
 		channel := en.raw.Channel
 		if channel == "" {
@@ -440,7 +453,7 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 		// The official video could not be downloaded: fall back to the art
 		// track itself rather than losing the entry.
-		if en.official {
+		if en.official && en.info.VideoID != "" {
 			e.log(pl, eid, "official video %s failed (%v); downloading the original instead", en.targetID, err)
 			e.mu.Lock()
 			en.targetID = en.info.VideoID

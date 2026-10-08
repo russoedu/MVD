@@ -11,6 +11,7 @@ import (
 	"youtube-downloader/libs/mvd-core/cookies"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/official"
+	"youtube-downloader/libs/mvd-core/spotify"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -74,6 +75,20 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		LogPath:             cfg.LogFile(),
 		AutoRetry:           cfg.AutoRetry,
 	}
+	// The YouTube search behind both the official video lookup and the songs of
+	// playlists from other services.
+	searcher := func(query string) ([]official.SearchResult, error) {
+		entries, err := ytdlp.ListPlaylist(ctx, ytDlpPath, "ytsearch5:"+query, extraArgs)
+		out := make([]official.SearchResult, 0, len(entries))
+		for _, e := range entries {
+			channel := e.Channel
+			if channel == "" {
+				channel = e.Uploader
+			}
+			out = append(out, official.SearchResult{ID: e.ID, Title: e.Title, Channel: channel})
+		}
+		return out, err
+	}
 	if cfg.DownloadOfficialMusicVideo {
 		resolver := official.NewResolver(nil)
 		if cookiesActive {
@@ -89,20 +104,10 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 			}
 			return out, err
 		}
-		resolver.Searcher = func(query string) ([]official.SearchResult, error) {
-			entries, err := ytdlp.ListPlaylist(ctx, ytDlpPath, "ytsearch5:"+query, extraArgs)
-			out := make([]official.SearchResult, 0, len(entries))
-			for _, e := range entries {
-				channel := e.Channel
-				if channel == "" {
-					channel = e.Uploader
-				}
-				out = append(out, official.SearchResult{ID: e.ID, Title: e.Title, Channel: channel})
-			}
-			return out, err
-		}
+		resolver.Searcher = searcher
 		opts.Resolver = resolver
 	}
+	opts.Tracks = spotifyTrackSource{client: spotify.NewClient(), search: searcher}
 
 	return engine.New(opts)
 }
