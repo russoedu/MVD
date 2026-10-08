@@ -31,9 +31,16 @@ func ArtistFromChannel(channel string) string {
 // an auto-generated track and not be a lyric, live or remix cut the art
 // track is not. Results titled "official" win over the rest.
 func PickSearchResult(results []SearchResult, title, artist, ownID string) string {
+	id, _ := pickSearchResult(results, title, artist, ownID)
+	return id
+}
+
+// pickSearchResult is PickSearchResult that also says whether the result it
+// chose is titled "official".
+func pickSearchResult(results []SearchResult, title, artist, ownID string) (string, bool) {
 	song := normalize(bracketed.ReplaceAllString(title, " "))
 	if song == "" {
-		return ""
+		return "", false
 	}
 	band := normalize(artist)
 	original := normalize(title)
@@ -54,13 +61,13 @@ func PickSearchResult(results []SearchResult, title, artist, ownID string) strin
 			continue
 		}
 		if containsWords(resTitle, "official") {
-			return res.ID
+			return res.ID, true
 		}
 		if fallback == "" {
 			fallback = res.ID
 		}
 	}
-	return fallback
+	return fallback, false
 }
 
 func hasUnwantedVersion(resultTitle, originalTitle string) bool {

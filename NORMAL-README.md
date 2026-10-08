@@ -155,6 +155,12 @@ You can also drop your own cookie file (exported with a browser extension) at `c
 
 **Caveat:** Chrome and Edge 127+ encrypt their cookies (App-Bound Encryption) and yt-dlp often cannot read them, even with the browser closed. **Firefox is the reliable source.** If auto mode finds nothing, sign in to YouTube in Firefox, or export a cookie file manually.
 
+### Spotify playlists
+
+Add a public Spotify playlist link to the list (`https://open.spotify.com/playlist/...`, or `spotify:playlist:...`) like any other. The app reads the track list from the playlist's public embed page, so there is no login and no API key, then looks each song up on YouTube and downloads it: the official video when there is one, else the best other upload (a lyric video, the audio, the artist's Topic upload) that carries the song title and the artist. Covers, live versions, remixes and karaoke are never picked. A song with no match fails with "no matching video found on YouTube" and the others carry on.
+
+Limits: the playlist must be public, and Spotify's embed page lists only the first part of a very long playlist.
+
 ### Auto-retry
 
 Failed downloads are retried automatically (`auto_retry=on` by default). A one-off glitch is retried immediately; a rate-limited failure (`429`, bot check) is retried in a single sweep after the whole backlog finishes, once a cooldown lets the limit window reset; a permanent failure (private, removed, geo-blocked) is never retried. The header and summary show a **Retried** count. Set `auto_retry=off` to fail and move on instead.
