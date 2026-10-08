@@ -91,7 +91,7 @@ func applyKey(cfg *Config, key, val, path string) {
 			cfg.ExtraArgs = strings.Fields(val)
 		}
 	default:
-		if slot := colourSlot(cfg, key); slot != nil && validColour(val) {
+		if slot := colourSlot(cfg, key); slot != nil && ValidColour(val) {
 			*slot = strings.TrimSpace(val)
 		}
 	}

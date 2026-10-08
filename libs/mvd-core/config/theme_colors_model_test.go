@@ -8,12 +8,12 @@ import (
 
 func TestValidColour(t *testing.T) {
 	for _, v := range []string{"#fff", "#FF007f", " #00f0ff "} {
-		if !validColour(v) {
+		if !ValidColour(v) {
 			t.Errorf("%q should be valid", v)
 		}
 	}
 	for _, v := range []string{"", "red", "ff007f", "#ff", "#ff007", "#gg0000", "#ff007f00"} {
-		if validColour(v) {
+		if ValidColour(v) {
 			t.Errorf("%q should be invalid", v)
 		}
 	}

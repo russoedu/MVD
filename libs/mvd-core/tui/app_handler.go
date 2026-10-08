@@ -60,6 +60,7 @@ const (
 	screenList = iota
 	screenConfig
 	screenAdvanced
+	screenColours
 )
 
 type setupModel struct {
@@ -71,6 +72,7 @@ type setupModel struct {
 	list          listModel
 	config        configModel
 	advanced      advancedModel
+	colours       coloursModel
 	result        SetupResult
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
 	pick          FolderPicker
@@ -116,6 +118,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list = m.list.setSize(msg.Width, msg.Height)
 		m.config = m.config.setSize(msg.Width, msg.Height)
 		m.advanced = m.advanced.setSize(msg.Width, msg.Height)
+		m.colours = m.colours.setSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.MouseMsg:
 		return m.mouse(msg)
@@ -151,11 +154,16 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.screen = screenList
 			return m, nil
 		case cfgCancel:
+			ApplyTheme(m.cfg.Colors)
 			m.screen = screenList
 			return m, nil
 		case cfgAdvanced:
 			m.advanced = newAdvancedModel(m.config.cfg).setSize(m.width, m.height)
 			m.screen = screenAdvanced
+			return m, nil
+		case cfgColours:
+			m.colours = newColoursModel(m.config.cfg).setSize(m.width, m.height)
+			m.screen = screenColours
 			return m, nil
 		}
 		return m, cmd
@@ -172,6 +180,20 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, cmd
+	case screenColours:
+		next, cmd, out, cfg := m.colours.update(msg)
+		m.colours = next
+		switch out {
+		case colSave:
+			m.config.cfg = cfg
+			m.screen = screenConfig
+			return m, nil
+		case colCancel:
+			ApplyTheme(m.config.cfg.Colors)
+			m.screen = screenConfig
+			return m, nil
+		}
+		return m, cmd
 	}
 	return m, nil
 }
@@ -182,6 +204,8 @@ func (m setupModel) View() string {
 		return m.config.view(m.width, m.height)
 	case screenAdvanced:
 		return m.advanced.view(m.width, m.height)
+	case screenColours:
+		return m.colours.view(m.width, m.height)
 	default:
 		return m.list.view(m.width, m.height)
 	}

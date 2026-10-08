@@ -38,7 +38,7 @@ func DefaultThemeColors() ThemeColors {
 
 var hexColour = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
 
-// validColour reports whether val is a #rgb or #rrggbb colour.
-func validColour(val string) bool {
+// ValidColour reports whether val is a #rgb or #rrggbb colour.
+func ValidColour(val string) bool {
 	return hexColour.MatchString(strings.TrimSpace(val))
 }
