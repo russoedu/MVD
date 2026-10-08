@@ -158,7 +158,7 @@ func run(address string, open, withTray, wails bool, movedFrom string) error {
 	}
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	updates.AtStart()
-	if open && !(wails && withTray) {
+	if open && (!wails || !withTray) {
 		if err := openWindow(url); err != nil {
 			fmt.Printf("Open %s in your browser.\n", url)
 		}
