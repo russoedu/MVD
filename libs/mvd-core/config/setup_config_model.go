@@ -34,6 +34,9 @@ type Config struct {
 
 	// ExtraArgs are advanced raw yt-dlp flags.
 	ExtraArgs []string
+
+	// Colors are the colours of the terminal interface.
+	Colors ThemeColors
 }
 
 // Default returns the settings used on first run, with paths rooted at the
@@ -56,6 +59,7 @@ func Default(appDir, downloadsDir string) Config {
 		CreateLogFile:              true,
 		LogDir:                     appDir,
 		ExtraArgs:                  []string{"-4", "--js-runtimes", "deno", "--js-runtimes", "node"},
+		Colors:                     DefaultThemeColors(),
 	}
 }
 
