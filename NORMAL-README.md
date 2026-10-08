@@ -4,18 +4,20 @@
 
 # Music Video Downloader (Go + yt-dlp) - the boring description...
 
-A lightweight, zero-setup, concurrent Go application with two front ends, a tray app with a browser page (`mvd`) and a terminal app (`mvd-tui`). The terminal app has interactive screens: paste a list of playlists/videos, tune settings in a preferences screen, and watch a live download dashboard. It self-diagnoses and installs missing dependencies, borrows your browser's YouTube cookies automatically, downloads in parallel, and keeps its config and list in your OS preferences folder.
+A lightweight, zero-setup, concurrent Go application with two front ends, a tray app with a window of its own (`mvd`) and a terminal app (`mvd-tui`). The terminal app has interactive screens: paste a list of playlists/videos, tune settings in a preferences screen, and watch a live download dashboard. It self-diagnoses and installs missing dependencies, borrows your browser's YouTube cookies automatically, downloads in parallel, and keeps its config and list in your OS preferences folder.
 
 ---
 
 ## ⚡ Features & Self-Installation
 
-* **Auto-Dependency Installation**: On launch, the app checks for `yt-dlp`, `ffmpeg`, and a JavaScript engine (`deno`). If any dependency is missing, it automatically downloads and extracts pre-built binaries for your operating system into `./bin/` before running.
+* **Auto-Dependency Installation**: On launch, the app checks for `yt-dlp`, `ffmpeg`, and a JavaScript engine (`deno`). If any dependency is missing, it automatically downloads and extracts pre-built binaries for your operating system before running: into the app-data folder's `bin` for the tray app, into `./bin/` for the terminal app (see below).
 * **Cross-Platform**: Works out of the box on **Windows**, **macOS** (Intel & Apple Silicon), and **Linux**.
 * **Parallel Downloads**: Downloads multiple playlists concurrently using Go goroutines and a worker semaphore pool.
 * **YouTube 403 Bypass**: Pre-configured with IPv4 enforcement and JS runtime options to prevent HTTP 403 Forbidden errors.
 * **Official Music Video Mode**: Optionally swaps auto-generated "`<Artist> - Topic`" audio tracks for the official music video that YouTube links from the description's **Music** card.
 * **Automatic browser cookies**: Finds a browser you're signed into YouTube with and uses its cookies to clear bot checks and `429` errors, with no configuration.
+* **Spotify and Apple Music playlists**: Paste a public playlist link; the app reads its songs without any login and finds each one on YouTube, the official video first (see below).
+* **Your colours**: The interface colours are configurable, in the app or in `config.conf`.
 * **Auto-retry**: Retries one-off failures at once and rate-limited ones in a sweep after the backlog finishes; never retries permanently gone videos.
 * **Full Screen Interface**: A fixed terminal UI shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead.
 
@@ -27,9 +29,13 @@ A lightweight, zero-setup, concurrent Go application with two front ends, a tray
 
 ```powershell
 npx nx run mvd:build          # builds the React page, embeds it, builds the binary
-./dist/apps/mvd/mvd           # flags: -addr 127.0.0.1:8421  -no-browser  -no-tray
+./dist/apps/mvd/mvd           # flags: -addr 127.0.0.1:8421  -no-browser  -no-tray  -uninstall
 npx nx run mvd:dev            # development: Vite on :4200 proxying /term to the Go app
 ```
+
+<p align="center">
+  <img src="assets/screenshots/downloading.png" alt="The app window while a playlist downloads" width="720">
+</p>
 
 **Tools and updates.** The app keeps its own copy of yt-dlp and ffmpeg in a `bin` folder inside the app-data folder (`%AppData%\mvd\bin` on Windows, `~/Library/Application Support/mvd/bin` on macOS, `~/.config/mvd/bin` on Linux), whatever is on your `PATH`, so it can keep them current without touching anything you installed yourself. A folder you can always write to, so no administrator rights are involved, and the same place on every start. deno is added only if you have neither deno nor node.
 
@@ -43,6 +49,8 @@ Limits: ffmpeg is kept current on Windows only (the project that publishes the b
 - **macOS:** the release has an `mvd_<version>_macos_universal.dmg`. Open it and drag **MVD** onto the **Applications** link in the same window. The app is not notarized by Apple, so the first launch needs a right-click on MVD and **Open**; on newer macOS, if it still refuses, open System Settings, Privacy & Security and choose **Open Anyway**. An MVD started from anywhere else offers to move itself to `/Applications/MVD.app` (everyone) or `~/Applications/MVD.app` (just you).
 - **Linux:** `~/.local/bin/mvd` with an entry in the applications menu.
 
+**Windows says it is a virus?** Windows Defender has flagged an MVD download as `Trojan:Win32/Bearfoos.A!ml`. The `!ml` ending means a machine-learning guess, not a known signature, and MVD is not code-signed, so this looks like a false positive, but that is for you to judge: the source is here, every release is built by the public CI of this repository, and you can build it yourself (`npx nx run mvd:build`). If Defender quarantines it, you can restore it and report it to Microsoft as a false positive at <https://www.microsoft.com/en-us/wdsi/filesubmission>.
+
 The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only; they have not been run on a real machine.
 
 **Uninstalling.** Settings has a *Remove MVD* button, and `mvd -uninstall` does the same from a terminal. On Windows the app is also listed in Settings > Apps, whose Uninstall button runs `-uninstall`; if MVD is running, that one is asked to remove itself so its tray icon goes too. Whichever way it starts, MVD first shows a window on your computer listing exactly what it will remove, and nothing is removed unless you say yes there. You choose whether your preferences (settings, list and the tools MVD downloaded) go too. Your downloaded videos and their folder are never touched.
@@ -53,9 +61,13 @@ The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 
-**The terminal window.** The tray icon, and the start-up, open the terminal interface in a window of its own: the same screens as `apps/mvd-tui` (download list, preferences, downloads), served by [TReactUI](https://github.com/TReactUI/TReactUI) (`apps/mvd/terminalui`, at `/term`, with the page from `apps/mvd-web`). The window is a Chromium based browser's app mode (Edge or Chrome, found in the usual places; any other browser gets a normal tab). It has the mouse (click a key hint or a row, wheel to scroll) and paste, it is one program shared by every window, and a download run keeps going while no window is open. It reads and writes the same `config.conf` and `list.txt` as the terminal app. On Windows the window is drawn by the system's WebView2 (part of Windows 11 and of current Windows 10), so no browser has to be installed; where WebView2 is missing, and on macOS and Linux for now, the window is a Chromium browser's app window as described above. Keys: `a` adds links to a running download, and on the preferences `u` uninstalls and the folder settings open the system's own folder chooser. 
+**The terminal window.** The tray icon, and the start-up, open the terminal interface in a window of its own: the same screens as `apps/mvd-tui` (download list, preferences, downloads), served by [TReactUI](https://github.com/TReactUI/TReactUI) (`apps/mvd/terminalui`, at `/term`, with the page from `apps/mvd-web`). On Windows the window is drawn by the system's WebView2 (part of Windows 11 and of current Windows 10), so no browser has to be installed. Where WebView2 is missing, and on macOS and Linux for now, it is a Chromium based browser's app window (Edge or Chrome, found in the usual places; any other browser gets a normal tab). Closing the window leaves the app running in the tray; starting the app again, or clicking the tray icon, brings the window back. It has the mouse (click a key hint or a row, wheel to scroll) and paste, it is one program shared by every window, and a download run keeps going while no window is open. The browser's own shortcuts are kept from firing while the window is focused, so Ctrl+P opens the preferences instead of the print dialog. It reads and writes the same `config.conf` and `list.txt` as the terminal app. Keys: `a` adds links to a running download, and on the preferences `u` uninstalls and the folder settings open the system's own folder chooser. 
 
-The page is `apps/mvd-web` (React, just `<TTY>` from [`@treactui/tty`](https://www.npmjs.com/package/@treactui/tty) filling the window); the terminal interface is `apps/mvd/terminalui`, which serves the app model of `libs/mvd-core/tui` at `/term` with [`tty-go`](https://github.com/TReactUI/TReactUI/tree/main/packages/tty-go). Besides `/term` and the page, the app answers `GET /api/ping` (so a second start finds the first) and `POST /api/uninstall` (so `mvd -uninstall` ends the running app); every route under `/api/` goes through a guard that refuses other sites. The tray icon opens the window when clicked and has **Open MVD** and **Quit**; where there is no system tray (a server, a bare window manager) it says so and runs until Ctrl+C, and `-no-tray` does that on purpose. The icons are drawn for each system (see below). On macOS the tray needs a C toolchain to build (it is native Cocoa), which is why the app is built on a runner of each OS; Windows and Linux build without one. The Windows release is a windowed program, so no console window opens next to the icon; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` target of `apps/mvd/project.json`, which is edited by hand (mnci cannot pass the flag yet), and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `nx run mvd:build` and `go run` stay console builds, so you see the logs.
+The page is `apps/mvd-web` (React: the 90s header with its pixel-art logo and the *About this app* window (pictured below), above `<TTY>` from [`@treactui/tty`](https://www.npmjs.com/package/@treactui/tty) filling the rest); `apps/mvd/nativewindow` shows it in the WebView2 window on Windows; the terminal interface is `apps/mvd/terminalui`, which serves the app model of `libs/mvd-core/tui` at `/term` with [`tty-go`](https://github.com/TReactUI/TReactUI/tree/main/packages/tty-go). Besides `/term` and the page, the app answers `GET /api/ping` (so a second start finds the first) and `POST /api/uninstall` (so `mvd -uninstall` ends the running app); every route under `/api/` goes through a guard that refuses other sites. The tray icon opens the window when clicked and has **Open MVD** and **Quit**; where there is no system tray (a server, a bare window manager) it says so and runs until Ctrl+C, and `-no-tray` does that on purpose. The icons are drawn for each system (see below). On macOS the tray needs a C toolchain to build (it is native Cocoa), which is why the app is built on a runner of each OS; Windows and Linux build without one. The Windows release is a windowed program, so no console window opens next to the icon; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` target of `apps/mvd/project.json`, which is edited by hand (mnci cannot pass the flag yet), and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `nx run mvd:build` and `go run` stay console builds, so you see the logs.
+
+<p align="center">
+  <img src="assets/screenshots/about-this-app.png" alt="The About this app window" width="560">
+</p>
 
 ## 🚀 Quick Start (terminal app)
 
@@ -66,7 +78,11 @@ go build -o mvd-tui.exe ./apps/mvd-tui
 .\mvd-tui.exe
 ```
 
-Then: paste your playlist/video URLs on the **list** screen (one per line), press `Ctrl+S` to start, and the **download** dashboard takes over. Everything is kept in the app-data folder (see below) — there are no config files next to the binary.
+Then: paste your playlist/video URLs on the **list** screen (one per line), press `Ctrl+S` to start, and the **download** dashboard takes over.
+
+<p align="center">
+  <img src="assets/screenshots/download-list.png" alt="The list screen: playlist and video links, one per line" width="560">
+</p> Everything is kept in the app-data folder (see below) — there are no config files next to the binary.
 
 For an unattended/headless run (pipes, CI, cron) it downloads the saved list with a plain log instead of the screens:
 
@@ -128,9 +144,16 @@ It holds `config.conf` (settings), `list.txt` (your URLs) and `cookies.txt` (the
 
 ### Screens and keys
 
+<p align="center">
+  <img src="assets/screenshots/preferences.png" alt="The preferences screen" width="360">
+  <img src="assets/screenshots/colours.png" alt="The colours screen" width="360">
+  <img src="assets/screenshots/advanced.png" alt="The advanced screen" width="360">
+</p>
+
 - **List** — paste/type URLs, one per line. `Ctrl+S` start · `Ctrl+P` preferences · `Ctrl+R` reset · `Ctrl+Q`/`Esc` quit. (Ctrl here because Return makes a new line.)
-- **Preferences** — `↑↓` move · `Enter` edit/toggle · `a` advanced · `s` save · `Esc` cancel. Booleans toggle on Enter; quality/merge/cookies open a radio selector; the output and log folders open a folder navigator (`↑↓` move, `→` open, `←` up, `n` new folder, `Enter` choose, `Esc` cancel).
+- **Preferences** — `↑↓` move · `Enter` edit/toggle · `a` advanced · `c` colours · `s` save · `Esc` cancel. Booleans toggle on Enter; quality/merge/cookies open a radio selector; the output and log folders open a folder navigator (`↑↓` move, `→` open, `←` up, `n` new folder, `Enter` choose, `Esc` cancel).
 - **Advanced** — raw extra yt-dlp args, parallel fragments and auto-retry. `s` save · `Esc` back.
+- **Colours** — the eight interface colours, each with a swatch. `Enter` edit (`#rgb` or `#rrggbb`, applied as soon as you accept it) · `d` default · `s` save · `Esc` back. Save on the preferences screen to keep them.
 - **Download** — the live dashboard (see above); `q` returns to the list.
 
 > Keys are bare single letters where you aren't typing; `Ctrl` is used only on the list editor. A terminal can't receive the Cmd key on macOS, so `Ctrl` is used on every platform.
@@ -183,26 +206,28 @@ Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_in
 
 ## 🗂️ Code Layout
 
-The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd-tui`, the terminal app; `apps/mvd`, the tray app, with its window's page in `apps/mvd-web`) and `libs/` the code they share (`libs/mvd-core`, the engine and the screens), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
+The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd-tui`, the terminal app; `apps/mvd`, the tray app, with its window's page in `apps/mvd-web` and the WebView2 window in `apps/mvd/nativewindow`) and `libs/` the code they share (`libs/mvd-core`, the engine and the screens), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
 
 The code follows vertical feature slices: `apps/mvd-tui/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
 
 | Slice | Outcome |
 |---|---|
 | `libs/mvd-core/appdir` | Locate the OS app-data folder and the Downloads folder. |
-| `libs/mvd-core/config` | Load/create/save the config; compile quality presets to a yt-dlp `-f`. |
+| `libs/mvd-core/config` | Load/create/save the config, the interface colours included; compile quality presets to a yt-dlp `-f`. |
 | `libs/mvd-core/sourcelist` | Load/save/clear the saved URL list. |
-| `libs/mvd-core/runner` | Assemble a ready-to-run engine (cookies, resolver, options) from a config. |
+| `libs/mvd-core/runner` | Assemble a ready-to-run engine (cookies, resolver, the Spotify and Apple Music playlist sources, options) from a config. |
 | `libs/mvd-core/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, check what it downloads against the published checksum, and keep the ones the app owns up to date. |
 | `libs/mvd-core/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
 | `libs/mvd-core/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
-| `libs/mvd-core/official` | Find the official music video of an auto-generated art track by crawling the watch page. |
-| `libs/mvd-core/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. |
+| `libs/mvd-core/official` | Find the official music video of an auto-generated art track by crawling the watch page, or of a song by name through a YouTube search (official first, else the best other upload). |
+| `libs/mvd-core/spotify` | Read a public Spotify playlist from its embed page: link policy, page mapper, client. |
+| `libs/mvd-core/applemusic` | Read a public Apple Music playlist from its web page: link policy, page mapper, client. |
+| `libs/mvd-core/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. Playlists of other services come in through the `TrackSource` port. |
 | `libs/mvd-core/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
 | `libs/mvd-core/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
-| `libs/mvd-core/tui` | The interactive screens: list, preferences, advanced, folder picker and the download dashboard. |
+| `libs/mvd-core/tui` | The interactive screens: list, preferences, advanced, colours, folder picker and the download dashboard. |
 
-Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it; `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
+Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it (the same goes for `spotify` and `applemusic`, wired by `runner` into the engine's `TrackSource`); `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
 
 ## 🛠️ Building & Releasing
 
@@ -218,7 +243,7 @@ npx nx run-many -t test
 .\mvd-tui.exe --no-tui
 ```
 
-GitHub Releases are automatically created via GitHub Actions on every new tag push (e.g., `v1.0.0`).
+A push to `main` makes a release only when it holds a `feat:` or `fix:` commit that touches a program or the code it shares; `chore:` and `docs:` commits (this README, dependency pins, screenshots) never do. CI also lints and tests every project, builds the native apps on Windows, macOS and Linux runners, and fails on a critical or high `npm audit` advisory.
 
 Both apps release from `ci.yml` (mnci): a push to `main` versions each from conventional commits, tags it (`mvd@x.y.z`, `mvd-tui@x.y.z`) and attaches its files to that GitHub Release. The files are named `<product>_<version>_<os>_<processor>.<type>` (`mvd_0.0.9_windows_amd64.zip`, `mvd_0.0.9_macos_universal.dmg`, `mvd-tui_0.1.0_linux_arm64.zip`), where the product is `mvd` for the desktop app (the project `mvd`) and `mvd-tui` for the terminal app, and macOS is always written `macos`. `tools/release-assets.cjs` is the one place that decides the names, and CI builds every file with a fixed version and fails if one breaks the rule. The desktop app is a `--cgo` app, so its zip is built on a runner of each OS (the macOS image holds one universal program); the terminal app is cross-compiled for the six platforms. Nx therefore leaves `mvd` out of the cross-compiling verify job and builds it in the `native` job instead. Releases up to 0.0.10 were published as `mvd-tray@x.y.z`; from the next one they are `mvd@x.y.z`. The file names did not change.
 

@@ -36,6 +36,8 @@ In today's soft world of background audio streams, sanitized algorithm feeds, an
 
 Feed MVD a stack of YouTube video or playlist links, and instead of leaving you with boring, sanitized "Topic" uploads (those lifeless still-image audio tracks), it aggressively crawls the video metadata to hijack the **official, original music video**!
 
+Got a playlist on **Spotify** or **Apple Music** instead? Paste its public link: MVD reads the songs and goes hunting for each one's official video too.
+
 Whether you’re setting up an offline media wall, fueling a chaotic 90s house party, or hoarding visual culture before the copyright bots strike it into oblivion, MVD rips through your queue concurrently.
 
 ---
@@ -49,8 +51,23 @@ Whether you’re setting up an offline media wall, fueling a chaotic 90s house p
 We didn't just write a tool; we embraced the total, gloriously ugly anarchy of early web aesthetics and terminal grit.
 
 * **Iconically Ugly Branding:** Stare directly at that logo. Feast your eyes on toxic neon green and Barney-purple fonts stretched out in mismatched, unholy serif/sans-serif proportions. It looks like it was hacked together in Microsoft Paint on Windows 95 while blasting *Smells Like Teen Spirit* on loop—and that’s **exactly** why it rules.
-* **Tray App Power (`mvd`):** Lurks silently in your system tray and serves a raw local web UI page in your browser, keeping your background downloads cranking without cluttering your desktop space.
-* **TUI Madness (`mvd-tui`):** Modern Web3 rounded buttons and pastel design systems? Absolute trash. MVD serves up pure, hard-edged ASCII terminal UI (TUI) box-drawing energy. Run it straight in your terminal or render the full interactive TUI right inside a browser viewport via TReactUI.
+* **Tray App Power (`mvd`):** Lurks silently in your system tray and opens a window of its own (drawn by the system's WebView2 on Windows, so no browser required) with the whole terminal-style interface and a pixel-art 90s header inside, keeping your background downloads cranking without cluttering your desktop space.
+* **TUI Madness (`mvd-tui`):** Modern Web3 rounded buttons and pastel design systems? Absolute trash. MVD serves up pure, hard-edged ASCII terminal UI (TUI) box-drawing energy. Run it straight in your terminal or see the very same interactive TUI inside the app window, rendered through TReactUI.
+
+### 📸 Caught in the act
+
+<p align="center">
+  <img src="assets/screenshots/downloading.png" alt="MVD downloading a playlist: queue counters, the playlist, its entries and the live yt-dlp output" width="720">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/download-list.png" alt="The download list: paste links, one per line" width="350">
+  <img src="assets/screenshots/colours.png" alt="The colours screen: pick your own neon" width="350">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/about-this-app.png" alt="The About this app window, in full Windows 95 style" width="520">
+</p>
 
 ---
 <p align="center">
@@ -63,7 +80,9 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
 * 🛠 **Auto-Dependency Self-Installation:** Zero setup bullshit. On startup, MVD hunts down missing binaries for `yt-dlp`, `ffmpeg`, and JS engines (`deno`), verifying SHA-256 checksums and dropping them directly into your isolated app data folder—no admin rights or manual PATH hacking needed.
 * 🚀 **Parallel Goroutine Power:** Multi-threaded download workers blast through massive playlists concurrently with live, per-track progress bars and raw log output.
 * 🍪 **Automatic Cookie Hijacking:** Automatically detects signed-in YouTube cookies from installed local browsers (Firefox, Chrome, Edge) to dodge `403 Forbidden` errors, `429 Rate Limits`, and bot check walls without asking you to configure a thing.
-* 🖥 **Tray Stealth + Browser TUI:** Runs as a native desktop tray utility driving a local browser session, or as a standalone, hardcore `mvd-tui` terminal executable.
+* 🎧 **Spotify & Apple Music Import:** Paste a public playlist link, no login and no API key. Every song is searched on YouTube: the official video first, the best other upload when there is none, and a song with no match fails alone without stopping the rest.
+* 🎨 **Your Own Neon:** Eight interface colours you can change in the app (`c` on the preferences) or in the config file.
+* 🖥 **Tray Stealth + Its Own Window:** Runs as a desktop tray utility with a window of its own (WebView2 on Windows, a browser app window elsewhere for now), or as a standalone, hardcore `mvd-tui` terminal executable.
 * ⟲ **Relentless Auto-Retry Engine:** Instantly powers through temporary network glitches and sweeps back around for rate-limited downloads once cooldowns reset—ignoring dead, private, or geo-blocked tracks like a champ.
 * 💻 **Cross-Platform & Self-Relocating:** Built for Windows, macOS (Universal/Apple Silicon/Intel), and Linux. Offers to cleanly drop itself into your OS application directory on first launch, complete with a built-in self-destruct uninstaller.
 
