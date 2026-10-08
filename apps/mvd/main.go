@@ -22,6 +22,7 @@ import (
 	"youtube-downloader/apps/mvd/folderdialog"
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/localserver"
+	"youtube-downloader/apps/mvd/nativewindow"
 	"youtube-downloader/apps/mvd/notification"
 	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
@@ -40,6 +41,7 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "do not open the window on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
+	nativeWindow := flag.Bool("native-window", false, "experimental: show the window with the system web view (Windows) instead of a browser")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
 
@@ -53,14 +55,14 @@ func main() {
 		return
 	}
 
-	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray, *nativeWindow, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(address string, open, withTray bool, movedFrom string) error {
+func run(address string, open, withTray, native bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -70,6 +72,18 @@ func run(address string, open, withTray bool, movedFrom string) error {
 
 	// The first time it is started from somewhere it does not belong, it offers to move
 	// itself, and if that is accepted the moved copy takes over and this one is done.
+	openWindow := browser.OpenWindow
+	if native {
+		openWindow = func(url string) error {
+			err := nativewindow.Open(url, appDir)
+			if err == nil {
+				return nil
+			}
+			logf("cannot open the native window (%v), using a browser", err)
+			return browser.OpenWindow(url)
+		}
+	}
+
 	if install.OfferMoveHere(appDir, withTray, movedFrom, version) {
 		return nil
 	}
@@ -97,7 +111,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	if existing != "" {
 		fmt.Printf("MVD is already running at http://%s\n", existing)
 		if open {
-			_ = browser.OpenWindow("http://" + existing)
+			_ = openWindow("http://" + existing)
 		}
 		return nil
 	}
@@ -143,7 +157,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
 	updates.AtStart()
 	if open {
-		if err := browser.OpenWindow(url); err != nil {
+		if err := openWindow(url); err != nil {
 			fmt.Printf("Open %s in your browser.\n", url)
 		}
 	}
@@ -159,7 +173,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	}()
 
 	if withTray {
-		tray.Run(ctx, url, browser.OpenWindow, stop)
+		tray.Run(ctx, url, openWindow, stop)
 		if ctx.Err() == nil {
 			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
 			tray.Unavailable(url)
