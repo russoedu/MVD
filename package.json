@@ -96,6 +96,9 @@
     "@emnapi/runtime": "1.11.3",
     "@nx/react": {
       "express": ">=4.0.0 <6.0.0"
+    },
+    "ts-jest": {
+      "handlebars": "^4.7.10"
     }
   },
   "nx": {
