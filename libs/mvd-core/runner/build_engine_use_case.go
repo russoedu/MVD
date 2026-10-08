@@ -89,6 +89,18 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 			}
 			return out, err
 		}
+		resolver.Searcher = func(query string) ([]official.SearchResult, error) {
+			entries, err := ytdlp.ListPlaylist(ctx, ytDlpPath, "ytsearch5:"+query, extraArgs)
+			out := make([]official.SearchResult, 0, len(entries))
+			for _, e := range entries {
+				channel := e.Channel
+				if channel == "" {
+					channel = e.Uploader
+				}
+				out = append(out, official.SearchResult{ID: e.ID, Title: e.Title, Channel: channel})
+			}
+			return out, err
+		}
 		opts.Resolver = resolver
 	}
 
