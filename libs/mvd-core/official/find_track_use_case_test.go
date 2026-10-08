@@ -84,6 +84,44 @@ func TestFindTrackAcceptsAnyOfSeveralArtists(t *testing.T) {
 	}
 }
 
+func TestArtistNames(t *testing.T) {
+	cases := map[string][]string{
+		"The Weeknd":          {"The Weeknd"},
+		"Queen, David Bowie":  {"Queen", "David Bowie"},
+		"Drake & Don Toliver": {"Drake & Don Toliver", "Drake", "Don Toliver"},
+		"A, B & C":            {"A", "B & C", "B", "C"},
+		" ,  ":                nil,
+		"":                    nil,
+	}
+	for in, want := range cases {
+		got := artistNames(in)
+		if len(got) != len(want) {
+			t.Errorf("artistNames(%q) = %q, want %q", in, got, want)
+			continue
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("artistNames(%q) = %q, want %q", in, got, want)
+				break
+			}
+		}
+	}
+}
+
+func TestFindTrackSearchesForTheWholeActAndMatchesEitherArtist(t *testing.T) {
+	var asked []string
+	search := searchesBy(map[string][]SearchResult{
+		"Solar Eclipse Drake & Don Toliver official video": {
+			{ID: "off", Title: "Don Toliver - Solar Eclipse (Official Video)", Channel: "Don Toliver"},
+		},
+	}, &asked)
+
+	got, _ := FindTrack(search, "Solar Eclipse", "Drake & Don Toliver", quiet)
+	if got != (FoundTrack{VideoID: "off", Official: true}) || len(asked) != 1 {
+		t.Errorf("got %+v after %v, want the video that names only one of the two artists", got, asked)
+	}
+}
+
 func TestFindTrackFindsNothingWhenNothingMatches(t *testing.T) {
 	var asked []string
 	search := searchesBy(map[string][]SearchResult{

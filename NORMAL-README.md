@@ -155,11 +155,11 @@ You can also drop your own cookie file (exported with a browser extension) at `c
 
 **Caveat:** Chrome and Edge 127+ encrypt their cookies (App-Bound Encryption) and yt-dlp often cannot read them, even with the browser closed. **Firefox is the reliable source.** If auto mode finds nothing, sign in to YouTube in Firefox, or export a cookie file manually.
 
-### Spotify playlists
+### Spotify and Apple Music playlists
 
-Add a public Spotify playlist link to the list (`https://open.spotify.com/playlist/...`, or `spotify:playlist:...`) like any other. The app reads the track list from the playlist's public embed page, so there is no login and no API key, then looks each song up on YouTube and downloads it: the official video when there is one, else the best other upload (a lyric video, the audio, the artist's Topic upload) that carries the song title and the artist. Covers, live versions, remixes and karaoke are never picked. A song with no match fails with "no matching video found on YouTube" and the others carry on.
+Add a public Spotify (`https://open.spotify.com/playlist/...`, or `spotify:playlist:...`) or Apple Music (`https://music.apple.com/<country>/playlist/<name>/pl.<id>`) playlist link to the list like any other. The app reads the track list from the playlist's public web page, so there is no login and no API key, then looks each song up on YouTube and downloads it: the official video when there is one, else the best other upload (a lyric video, the audio, the artist's Topic upload) that carries the song title and the artist. Covers, live versions, remixes and karaoke are never picked. A song with no match fails with "no matching video found on YouTube" and the others carry on.
 
-Limits: the playlist must be public, and Spotify's embed page lists only the first part of a very long playlist.
+Limits: the playlist must be public, and the services' public pages may list only the first part of a very long playlist. Songs with several artists (`A, B` or `A & B`) match a video that names any of them.
 
 ### Auto-retry
 
