@@ -41,7 +41,6 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "do not open the window on start")
 	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
-	nativeWindow := flag.Bool("native-window", false, "experimental: show the window with the system web view (Windows) instead of a browser")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
 
@@ -55,14 +54,14 @@ func main() {
 		return
 	}
 
-	if err := run(*address, !*noBrowser, !*noTray, *nativeWindow, *movedFrom); err != nil {
+	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(address string, open, withTray, native bool, movedFrom string) error {
+func run(address string, open, withTray bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -72,16 +71,17 @@ func run(address string, open, withTray, native bool, movedFrom string) error {
 
 	// The first time it is started from somewhere it does not belong, it offers to move
 	// itself, and if that is accepted the moved copy takes over and this one is done.
-	openWindow := browser.OpenWindow
-	if native {
-		openWindow = func(url string) error {
-			err := nativewindow.Open(url, appDir)
-			if err == nil {
-				return nil
-			}
-			logf("cannot open the native window (%v), using a browser", err)
-			return browser.OpenWindow(url)
+	// The window is drawn by the system's web view where there is one (Windows), and
+	// by a browser's app window everywhere else, or when the web view cannot start.
+	openWindow := func(url string) error {
+		err := nativewindow.Open(url, appDir)
+		if err == nil {
+			return nil
 		}
+		if !errors.Is(err, nativewindow.ErrUnavailable) {
+			logf("cannot open the app window (%v), using a browser", err)
+		}
+		return browser.OpenWindow(url)
 	}
 
 	if install.OfferMoveHere(appDir, withTray, movedFrom, version) {
