@@ -14,15 +14,15 @@ export function PixelLogo () {
   const pixels = (colour: string, offset: number) => letters.flatMap((letter, index) =>
     pixelLetters[letter].flatMap((row, y) => [...row].flatMap((cell, x) => cell === '#'
       ? [
-        <rect
-          key={`${colour}-${index}-${x}-${y}`}
-          x={index * (LETTER_WIDTH + GAP) + x + offset}
-          y={y + offset}
-          width={1}
-          height={1}
-          fill={colour}
-        />,
-      ]
+          <rect
+            key={`${colour}-${index}-${x}-${y}`}
+            x={index * (LETTER_WIDTH + GAP) + x + offset}
+            y={y + offset}
+            width={1}
+            height={1}
+            fill={colour}
+          />,
+        ]
       : [])))
 
   return (

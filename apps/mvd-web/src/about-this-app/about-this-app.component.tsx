@@ -3,7 +3,7 @@ import { aboutFooter, aboutParagraphs, aboutTitle } from './about-this-app.conte
 import './about-this-app.style.css'
 
 interface AboutThisAppProps {
-  open: boolean
+  open:    boolean
   onClose: () => void
 }
 
