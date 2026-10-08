@@ -11,7 +11,6 @@ import (
 	"youtube-downloader/libs/mvd-core/cookies"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/official"
-	"youtube-downloader/libs/mvd-core/spotify"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -107,7 +106,7 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		resolver.Searcher = searcher
 		opts.Resolver = resolver
 	}
-	opts.Tracks = spotifyTrackSource{client: spotify.NewClient(), search: searcher}
+	opts.Tracks = newPlaylistTrackSource(searcher)
 
 	return engine.New(opts)
 }

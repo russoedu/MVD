@@ -64,12 +64,28 @@ func FindTrack(search Searcher, title, artists string, logf func(format string, 
 	return FoundTrack{}, nil
 }
 
-// artistNames splits "A, B" into its artists.
+// artistNames lists the artists a service names for a song, the first being
+// the one to search for. "A, B" gives A and B. "A & B" gives "A & B" as
+// written, since it may be one act ("Simon & Garfunkel"), then A and B, so a
+// video that names only one of them still matches.
 func artistNames(artists string) []string {
 	var names []string
 	for _, name := range strings.Split(artists, ",") {
 		if name = strings.TrimSpace(name); name != "" {
 			names = append(names, name)
+		}
+	}
+
+	segments := len(names)
+	for _, segment := range names[:segments] {
+		parts := strings.Split(segment, " & ")
+		if len(parts) < 2 {
+			continue
+		}
+		for _, part := range parts {
+			if part = strings.TrimSpace(part); part != "" {
+				names = append(names, part)
+			}
 		}
 	}
 	return names
