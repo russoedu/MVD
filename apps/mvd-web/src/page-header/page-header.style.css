@@ -1,0 +1,68 @@
+/* 90s web: black page, neon green and Barney purple, chunky bevelled grey buttons. */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: linear-gradient(#2a0a4a, #000);
+  border-bottom: 4px ridge #a020f0;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.pixel-logo {
+  height: 48px;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+.page-header-title {
+  flex: 1;
+  min-width: 0;
+  color: #55ff55;
+  font-size: 20px;
+  text-shadow: 2px 2px #a020f0;
+}
+
+.page-header-ticker {
+  overflow: hidden;
+  white-space: nowrap;
+  font: 14px 'Courier New', monospace;
+  color: #ffff55;
+  text-shadow: none;
+}
+
+.page-header-ticker span {
+  display: inline-block;
+  padding-left: 100%;
+  animation: ticker 18s linear infinite;
+}
+
+@keyframes ticker {
+  to { transform: translateX(-100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-header-ticker span {
+    padding-left: 0;
+    animation: none;
+  }
+}
+
+.page-header-button {
+  flex: none;
+  padding: 4px 12px;
+  font: 14px Arial, Helvetica, sans-serif;
+  color: #000;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  cursor: pointer;
+}
+
+.page-header-button:active {
+  border-style: inset;
+}
+
+@media (max-width: 560px) {
+  .page-header-title { display: none; }
+  .page-header { justify-content: space-between; }
+}

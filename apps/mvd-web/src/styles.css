@@ -3,13 +3,25 @@
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
   background: #000;
 }
 
-/* The terminal-style interface fills the window. */
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The terminal-style interface fills the window below the header. */
 main.terminal-window {
-  position: fixed;
-  inset: 0;
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }
