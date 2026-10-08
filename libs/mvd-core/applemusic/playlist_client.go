@@ -48,10 +48,10 @@ func (c *Client) Fetch(ctx context.Context, link string) (Playlist, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return Playlist{}, errors.New("Apple Music has no such playlist (is it private?)")
+		return Playlist{}, errors.New("no such playlist on Apple Music (is it private?)")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return Playlist{}, errors.New("Apple Music answered " + resp.Status)
+		return Playlist{}, errors.New("the answer from Apple Music was " + resp.Status)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
