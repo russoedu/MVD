@@ -73,15 +73,22 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	// itself, and if that is accepted the moved copy takes over and this one is done.
 	// The window is drawn by the system's web view where there is one (Windows), and
 	// by a browser's app window everywhere else, or when the web view cannot start.
-	openWindow := func(url string) error {
-		err := nativewindow.Open(url, appDir)
+	// showWindow returns a function that waits until the window is closed (at once for a
+	// browser's window, which is a program of its own): a process that is about to exit has
+	// to wait, because the web view window goes with the process that made it.
+	showWindow := func(url string) (func(), error) {
+		closed, err := nativewindow.Open(url, appDir)
 		if err == nil {
-			return nil
+			return func() { <-closed }, nil
 		}
 		if !errors.Is(err, nativewindow.ErrUnavailable) {
 			logf("cannot open the app window (%v), using a browser", err)
 		}
-		return browser.OpenWindow(url)
+		return func() {}, browser.OpenWindow(url)
+	}
+	openWindow := func(url string) error {
+		_, err := showWindow(url)
+		return err
 	}
 
 	if install.OfferMoveHere(appDir, withTray, movedFrom, version) {
@@ -111,7 +118,9 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	if existing != "" {
 		fmt.Printf("MVD is already running at http://%s\n", existing)
 		if open {
-			_ = openWindow("http://" + existing)
+			if wait, err := showWindow("http://" + existing); err == nil {
+				wait()
+			}
 		}
 		return nil
 	}

@@ -27,35 +27,47 @@ var (
 )
 
 // window is the one window that may be open.
-type window struct{ handle uintptr }
+type window struct {
+	handle uintptr
+	// closed is closed when the window is gone.
+	closed chan struct{}
+}
 
 // Open shows url in a native window. Calling it while the window is open brings
 // that window to the front instead of opening a second one. It returns once the
 // window is up, or ErrUnavailable when WebView2 cannot start (not installed).
+// The channel it returns is closed when the window is closed: a process that has
+// nothing else to do waits on it, because the window goes with the process.
 // dataDir is where the web view keeps its profile; it must be a folder the
 // person can write to, never the program's own.
 //
 // The url is always one this program built (http on loopback), never user input.
-func Open(url, dataDir string) error {
+func Open(url, dataDir string) (<-chan struct{}, error) {
 	mu.Lock()
 	if current != nil {
 		raise(current.handle)
+		closed := current.closed
 		mu.Unlock()
-		return nil
+		return closed, nil
 	}
-	current = &window{}
+	win := &window{closed: make(chan struct{})}
+	current = win
 	mu.Unlock()
 
 	started := make(chan error, 1)
-	go run(url, filepath.Join(dataDir, "webview"), started)
-	return <-started
+	go run(win, url, filepath.Join(dataDir, "webview"), started)
+	if err := <-started; err != nil {
+		return nil, err
+	}
+	return win.closed, nil
 }
 
 // run owns the window: Windows delivers a window's messages to the thread that
 // made it, so that thread stays this goroutine's until the window closes.
-func run(url, profileDir string, started chan<- error) {
+func run(win *window, url, profileDir string, started chan<- error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	defer close(win.closed)
 
 	w := webview2.NewWithOptions(webview2.WebViewOptions{
 		DataPath:  profileDir,
@@ -76,7 +88,7 @@ func run(url, profileDir string, started chan<- error) {
 	defer forget()
 
 	mu.Lock()
-	current.handle = uintptr(w.Window())
+	win.handle = uintptr(w.Window())
 	mu.Unlock()
 
 	w.Navigate(url)
