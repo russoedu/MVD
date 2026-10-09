@@ -209,3 +209,14 @@ func TestDownloadArgsKeepUnfinishedFilesInTheTempDir(t *testing.T) {
 		}
 	}
 }
+
+func TestProgressLineWithFragments(t *testing.T) {
+	p, ok := ParseProgressLine("MVD|512|1024|NA|2048.5|7|3|120")
+	if !ok || p.FragmentIndex != 3 || p.FragmentCount != 120 || p.Speed != 2048.5 {
+		t.Errorf("got %+v, %v", p, ok)
+	}
+	p, ok = ParseProgressLine("MVD|512|1024|NA|2048.5|7|NA|NA")
+	if !ok || p.FragmentIndex != 0 || p.FragmentCount != 0 {
+		t.Errorf("a part without fragments: %+v, %v", p, ok)
+	}
+}

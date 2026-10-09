@@ -808,3 +808,22 @@ func TestOnlyOfficialVideosKeepsTheOnesThatAreOfficial(t *testing.T) {
 		t.Errorf("done %d, duplicate %d, failed %d, not found %d", doneCount, dup, failed, notFound)
 	}
 }
+
+func TestPartsInFlightAreTheFragmentsAllowedAtOnceAndLeft(t *testing.T) {
+	cases := []struct {
+		progress ytdlp.Progress
+		allowed  int
+		want     int
+	}{
+		{ytdlp.Progress{}, 4, 1},
+		{ytdlp.Progress{FragmentIndex: 3, FragmentCount: 120}, 4, 4},
+		{ytdlp.Progress{FragmentIndex: 119, FragmentCount: 120}, 4, 2},
+		{ytdlp.Progress{FragmentIndex: 120, FragmentCount: 120}, 4, 1},
+		{ytdlp.Progress{FragmentIndex: 3, FragmentCount: 120}, 0, 1},
+	}
+	for _, c := range cases {
+		if got := partsInFlight(c.progress, c.allowed); got != c.want {
+			t.Errorf("%+v with %d allowed: got %d, want %d", c.progress, c.allowed, got, c.want)
+		}
+	}
+}

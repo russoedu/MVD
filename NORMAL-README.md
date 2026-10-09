@@ -20,7 +20,7 @@ A lightweight, zero-setup, concurrent Go application with two front ends, a desk
 * **Song lists from anywhere**: A text file of `Artist - Title` lines, or a CSV with title and artist columns, is handled like a playlist (see below).
 * **Your colours**: The interface colours are configurable, in the app or in `config.conf`.
 * **Auto-retry**: Retries one-off failures at once and rate-limited ones in a sweep after the backlog finishes; never retries permanently gone videos.
-* **Full Screen Interface**: A fixed terminal UI shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead.
+* **Full Screen Interface**: A fixed terminal UI shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead. While files are coming in, the header also shows the speed of all of them together and how many files and how many parts of them (the fragments of a stream, up to `concurrent_fragments`) are being fetched at once.
 
 ---
 
