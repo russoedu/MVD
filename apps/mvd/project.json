@@ -147,20 +147,10 @@
         }
       ],
       "outputs": [
-        "{workspaceRoot}/apps/mvd/localserver/web"
+        "{workspaceRoot}/apps/mvd/appwindow/web"
       ],
       "options": {
-        "command": "node -e \"const fs=require('node:fs');fs.rmSync('apps/mvd/localserver/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd/localserver/web',{recursive:true})\""
-      }
-    },
-    "dev": {
-      "executor": "nx:run-commands",
-      "options": {
-        "commands": [
-          "nx run @mvd/mvd-web:serve",
-          "nx run mvd:start"
-        ],
-        "parallel": true
+        "command": "node -e \"const fs=require('node:fs');fs.rmSync('apps/mvd/appwindow/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd/appwindow/web',{recursive:true})\""
       }
     }
   },
