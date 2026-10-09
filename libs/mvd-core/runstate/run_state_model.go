@@ -28,6 +28,7 @@ type Entry struct {
 	State      engine.EntryState
 	TargetID   string
 	Official   bool
+	Better     bool
 	Err        string
 	Percent    float64
 	Downloaded int64
@@ -39,7 +40,7 @@ type Entry struct {
 
 // Tally holds the global counters shown in the header.
 type Tally struct {
-	Total, Queued, Running, Done, Official, Duplicate, Failed, Retried int
+	Total, Queued, Running, Done, Official, Better, Duplicate, Failed, Retried int
 }
 
 // State is the renderer side mirror of the engine, built purely from
@@ -108,6 +109,7 @@ func (s *State) Apply(ev interface{}) int {
 		en.State = e.State
 		en.TargetID = e.TargetID
 		en.Official = e.Official
+		en.Better = e.Better
 		en.Err = e.Err
 		if e.State == engine.StateQueued {
 			en.Percent, en.Downloaded, en.Total, en.Speed, en.ETA = 0, 0, 0, 0, -1
@@ -165,6 +167,9 @@ func (s *State) Tally() Tally {
 			t.Done++
 			if en.Official {
 				t.Official++
+			}
+			if en.Better {
+				t.Better++
 			}
 		case engine.StateDuplicate:
 			t.Duplicate++

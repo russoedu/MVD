@@ -131,7 +131,7 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		resolver.Sources.Cache = official.NewResolutionCache(filepath.Join(appDir, "official-videos.json"), 90*24*time.Hour)
 	}
 	if cfg.DownloadOfficialMusicVideo {
-		opts.Resolver = resolver
+		opts.Resolver = engineResolver{resolver}
 	}
 	opts.Tracks = newPlaylistTrackSource(searcher, resolver.Sources)
 

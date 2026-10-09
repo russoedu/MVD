@@ -8,9 +8,20 @@ type OfficialResolver interface {
 	// network). It must not rely on the channel name: auto-generated art tracks
 	// often show the artist's own name.
 	Wanted(title, channel, uploader string) bool
-	// ResolveLog returns the official video id ("" when none was found) and
-	// a short reason, logging progress through logf. The title, channel and
-	// length (in seconds, 0 when unknown) of the art track let it search for
-	// the video by name.
-	ResolveLog(videoID, title, channel string, durationSec int, logf func(format string, a ...interface{})) (string, string)
+	// ResolveVersion looks for a better version of the upload to download: the
+	// official video, or failing that the upload of the song with the best
+	// quality, logging progress through logf. The title, channel and length (in
+	// seconds, 0 when unknown) of the upload let it search for the song by name.
+	ResolveVersion(videoID, title, channel string, durationSec int, logf func(format string, a ...interface{})) Resolution
+}
+
+// Resolution is the answer of an OfficialResolver.
+type Resolution struct {
+	// VideoID is the version to download instead, "" when the upload stays.
+	VideoID string
+	// Official is true when VideoID is the official video, false when it is only the
+	// upload of the song with the best quality.
+	Official bool
+	// Reason is a short explanation for the log.
+	Reason string
 }

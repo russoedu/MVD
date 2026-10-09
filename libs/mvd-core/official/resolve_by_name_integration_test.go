@@ -77,9 +77,12 @@ func TestWithoutAnOfficialVideoTheBestQualityUploadIsTaken(t *testing.T) {
 		},
 	})
 
-	got, why := res.ResolveLog("up1", "Run to You", "Rage - Topic", 0, nil)
-	if got != "fanB" || !strings.Contains(why, "best quality") {
-		t.Errorf("got %q (%s), want the 1080p upload", got, why)
+	got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil)
+	if got.ID != "fanB" || got.Official || !strings.Contains(got.Reason, "best quality") {
+		t.Errorf("got %+v, want the 1080p upload, not as an official video", got)
+	}
+	if id, _ := res.ResolveLog("up1", "Run to You", "Rage - Topic", 0, nil); id != "" {
+		t.Errorf("got %q: ResolveLog answers with official videos only", id)
 	}
 	if asked["cover"] {
 		t.Error("a cover is no upload of the song, its quality is not worth looking up")
@@ -95,8 +98,8 @@ func TestThePlaylistsOwnUploadStaysWhenNothingIsBetter(t *testing.T) {
 	})
 	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC"}, nil }
 
-	if got, _ := res.ResolveLog("up1", "Rage - Run to You", "Some Channel", 0, nil); got != "" {
-		t.Errorf("got %q, an upload only as good as the playlist's own is no improvement", got)
+	if got := res.ResolveVersion("up1", "Rage - Run to You", "Some Channel", 0, nil); got.ID != "" {
+		t.Errorf("got %+v, an upload only as good as the playlist's own is no improvement", got)
 	}
 }
 
@@ -108,8 +111,8 @@ func TestAnArtTracksStillPictureDoesNotCountAsAPicture(t *testing.T) {
 		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
 	})
 
-	if got, _ := res.ResolveLog("up1", "Run to You", "Rage - Topic", 0, nil); got != "fanB" {
-		t.Errorf("got %q, want a real video over the art track's 1080p still image", got)
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
+		t.Errorf("got %+v, want a real video over the art track's 1080p still image", got)
 	}
 }
 
@@ -120,8 +123,8 @@ func TestWhenQualityCannotBeLookedUpTheOriginalStays(t *testing.T) {
 		Quality:  func(string) (Quality, error) { return Quality{}, errors.New("blocked") },
 	})
 
-	if got, _ := res.ResolveLog("up1", "Run to You", "Rage - Topic", 0, nil); got != "" {
-		t.Errorf("got %q", got)
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "" {
+		t.Errorf("got %+v", got)
 	}
 }
 
@@ -155,7 +158,7 @@ func TestAnArtTrackUnderTheArtistsOwnNameIsNotAnUploadToTake(t *testing.T) {
 		},
 	})
 
-	if got, _ := res.ResolveLog("up1", "Run to You", "Rage - Topic", 0, nil); got != "fanB" {
-		t.Errorf("got %q, want the real video, not another art track", got)
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
+		t.Errorf("got %+v, want the real video, not another art track", got)
 	}
 }
