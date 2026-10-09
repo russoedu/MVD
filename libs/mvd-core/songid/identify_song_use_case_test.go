@@ -62,18 +62,9 @@ func TestMusicBrainzErrorsAreReported(t *testing.T) {
 	}
 }
 
-func TestIdentifyTakesTheDatabaseNamesNotTheUploads(t *testing.T) {
-	brainz := serving(t, musicBrainzAnswer, nil)
-	identifier := &Identifier{MusicBrainz: &MusicBrainzClient{HTTP: brainz.Client(), Endpoint: brainz.URL}}
-
-	artist, title, ok := identifier.Identify("Tonight Is The Night (Le Click - Dance Mix )", "La Bouche")
-	if !ok || artist != "Le Click" || title != "Tonight Is the Night" {
-		t.Errorf("got %q, %q, %v", artist, title, ok)
-	}
-}
-
-func TestIdentifyFallsBackToITunes(t *testing.T) {
-	brainz := serving(t, `{"recordings":[]}`, nil)
+func TestIdentifyAsksITunesFirstAndTakesItsNames(t *testing.T) {
+	var brainzAsked []string
+	brainz := serving(t, musicBrainzAnswer, &brainzAsked)
 	itunes := serving(t, iTunesAnswer, nil)
 	identifier := &Identifier{
 		MusicBrainz: &MusicBrainzClient{HTTP: brainz.Client(), Endpoint: brainz.URL},
@@ -83,6 +74,32 @@ func TestIdentifyFallsBackToITunes(t *testing.T) {
 	artist, title, ok := identifier.Identify("Run to You", "Rage - Topic")
 	if !ok || artist != "Rage" || title != "Run To You" {
 		t.Errorf("got %q, %q, %v: the mix is not part of the title", artist, title, ok)
+	}
+	if len(brainzAsked) != 0 {
+		t.Errorf("MusicBrainz was asked %q although iTunes knew the song", brainzAsked)
+	}
+}
+
+func TestIdentifyFallsBackToMusicBrainzForWhatITunesDoesNotKnow(t *testing.T) {
+	brainz := serving(t, musicBrainzAnswer, nil)
+	itunes := serving(t, `{"results":[]}`, nil)
+	identifier := &Identifier{
+		MusicBrainz: &MusicBrainzClient{HTTP: brainz.Client(), Endpoint: brainz.URL},
+		ITunes:      &ITunesClient{HTTP: itunes.Client(), Endpoint: itunes.URL},
+	}
+
+	artist, title, ok := identifier.Identify("Tonight Is The Night (Le Click - Dance Mix )", "La Bouche")
+	if !ok || artist != "Le Click" || title != "Tonight Is the Night" {
+		t.Errorf("got %q, %q, %v", artist, title, ok)
+	}
+}
+
+func TestIdentifyWorksWithMusicBrainzAlone(t *testing.T) {
+	brainz := serving(t, musicBrainzAnswer, nil)
+	identifier := &Identifier{MusicBrainz: &MusicBrainzClient{HTTP: brainz.Client(), Endpoint: brainz.URL}}
+
+	if artist, _, ok := identifier.Identify("Tonight Is The Night (Le Click - Dance Mix )", "La Bouche"); !ok || artist != "Le Click" {
+		t.Errorf("got %q, %v", artist, ok)
 	}
 }
 

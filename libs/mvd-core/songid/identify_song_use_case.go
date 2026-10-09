@@ -3,7 +3,9 @@ package songid
 import "youtube-downloader/libs/mvd-core/official"
 
 // Identifier names the song of an upload with the help of two databases. Either may be
-// nil; a database that fails is skipped, since the answer is only a help.
+// nil; a database that fails is skipped, since the answer is only a help. iTunes goes
+// first, as it answers at once; MusicBrainz, which allows a request a second, only gets
+// the songs iTunes could not place.
 type Identifier struct {
 	MusicBrainz *MusicBrainzClient
 	ITunes      *ITunesClient
@@ -18,16 +20,19 @@ func NewIdentifier() *Identifier {
 // or false when none does with the upload's own words behind it. The title is
 // returned without the mix and credit terms a search leaves out.
 func (i *Identifier) Identify(uploadTitle, channel string) (artist, title string, ok bool) {
-	for _, guess := range guessesFrom(uploadTitle, channel) {
-		if i.MusicBrainz != nil {
-			if found, err := i.MusicBrainz.Recordings(guess.Artist, guess.Title); err == nil {
+	guesses := guessesFrom(uploadTitle, channel)
+	if i.ITunes != nil {
+		for _, guess := range guesses {
+			if found, err := i.ITunes.Songs(guess.Artist + " " + guess.Title); err == nil {
 				if identity, hit := firstThatNamesTheUpload(found, uploadTitle, channel); hit {
 					return identity.Artist, official.SearchTitle(identity.Title), true
 				}
 			}
 		}
-		if i.ITunes != nil {
-			if found, err := i.ITunes.Songs(guess.Artist + " " + guess.Title); err == nil {
+	}
+	if i.MusicBrainz != nil {
+		for _, guess := range guesses {
+			if found, err := i.MusicBrainz.Recordings(guess.Artist, guess.Title); err == nil {
 				if identity, hit := firstThatNamesTheUpload(found, uploadTitle, channel); hit {
 					return identity.Artist, official.SearchTitle(identity.Title), true
 				}
