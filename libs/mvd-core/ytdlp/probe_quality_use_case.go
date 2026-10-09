@@ -9,8 +9,9 @@ import (
 	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
-// ProbeQuality asks yt-dlp what a video offers to download, without downloading it.
-func ProbeQuality(ctx context.Context, bin, videoID string, extraArgs []string) (MediaQuality, error) {
+// ProbeVideo asks yt-dlp what a video offers to download and what its storyboard is,
+// without downloading it.
+func ProbeVideo(ctx context.Context, bin, videoID string, extraArgs []string) (VideoProbe, error) {
 	args := []string{"-J", "--no-playlist", "--skip-download", "--no-warnings"}
 	args = append(args, extraArgs...)
 	args = append(args, "https://www.youtube.com/watch?v="+videoID)
@@ -25,7 +26,7 @@ func ProbeQuality(ctx context.Context, bin, videoID string, extraArgs []string) 
 		if msg == "" {
 			msg = err.Error()
 		}
-		return MediaQuality{}, fmt.Errorf("yt-dlp -J failed: %s", lastLine(msg))
+		return VideoProbe{}, fmt.Errorf("yt-dlp -J failed: %s", lastLine(msg))
 	}
-	return ParseMediaQuality(out)
+	return ParseVideoProbe(out)
 }

@@ -69,13 +69,25 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 		},
 	}
 	if !in.SkipQuality {
+		// What yt-dlp says of an upload (the formats and the storyboard) is asked once.
+		probes := newVideoProbes(ctx, in.YtDlp, in.ExtraArgs)
 		// The formats of the uploads of a song tell which has the best picture and sound.
-		// A picture with the song over it is not a better version of the song.
-		resolver.Sources.Still = stillpicture.NewChecker().IsStill
 		resolver.Sources.Quality = func(videoID string) (official.Quality, error) {
-			quality, err := ytdlp.ProbeQuality(ctx, in.YtDlp, videoID, in.ExtraArgs)
-			return official.Quality{Height: quality.Height, AudioKbps: quality.AudioKbps}, err
+			probe, err := probes.of(videoID)
+			return official.Quality{Height: probe.Quality.Height, AudioKbps: probe.Quality.AudioKbps}, err
 		}
+		// A video that does not really move (a picture with the song over it, a lyric
+		// video over one background) is not a better version of the song. Its motion is
+		// read from the storyboard, the small frames YouTube keeps of every video.
+		resolver.Sources.Static = stillpicture.NewChecker(func(videoID string) (stillpicture.Storyboard, error) {
+			probe, err := probes.of(videoID)
+			sb := probe.Storyboard
+			board := stillpicture.Storyboard{Width: sb.Width, Height: sb.Height, Rows: sb.Rows, Columns: sb.Columns}
+			for _, fragment := range sb.Fragments {
+				board.Fragments = append(board.Fragments, stillpicture.StoryboardFragment{URL: fragment.URL, DurationSec: fragment.DurationSec})
+			}
+			return board, err
+		}).IsStatic
 	}
 	if in.CacheFile != "" {
 		resolver.Sources.Cache = official.NewResolutionCache(in.CacheFile, 90*24*time.Hour)

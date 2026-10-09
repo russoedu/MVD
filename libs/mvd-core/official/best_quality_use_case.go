@@ -45,8 +45,9 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 		if artTrack, _ := ArtTrackFromVideoType(kind); artTrack {
 			continue
 		}
-		// Nor is a picture with the song over it a better version of the song.
-		if r.isStill(res.ID, song.OwnID, logf) {
+		// Nor is a picture with the song over it, or a lyric video over one picture, a
+		// better version of the song.
+		if r.isStatic(res.ID, song.OwnID, logf) {
 			continue
 		}
 		chosen = append(chosen, res)
@@ -57,8 +58,8 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 	if song.OwnID != "" {
 		if quality, err := r.Sources.Quality(song.OwnID); err == nil {
 			own = quality
-			// A still picture has no picture worth counting, whatever size the file is.
-			if song.OwnIsStill || r.isStill(song.OwnID, song.OwnID, logf) {
+			// A video that does not move has no picture worth counting, whatever size the file is.
+			if song.OwnIsStill || r.isStatic(song.OwnID, song.OwnID, logf) {
 				own.Height = 0
 			}
 		}
@@ -82,19 +83,19 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 		best.ID, best.Channel, bestQuality.Height, bestQuality.AudioKbps, own.Height, own.AudioKbps)
 }
 
-// isStill says whether a video is a picture with the song over it. When that cannot be
+// isStatic says whether a video does not really move: a picture with the song over it. When that cannot be
 // told it is not, so a failing image server never costs a good version.
-func (r *Resolver) isStill(videoID, ownID string, logf func(format string, a ...interface{})) bool {
-	if r.Sources.Still == nil || videoID == "" {
+func (r *Resolver) isStatic(videoID, ownID string, logf func(format string, a ...interface{})) bool {
+	if r.Sources.Static == nil || videoID == "" {
 		return false
 	}
-	still, err := r.Sources.Still(videoID)
+	still, err := r.Sources.Static(videoID)
 	if err != nil {
-		logf("[official] %s: cannot tell whether %s is a still picture: %v", ownID, videoID, err)
+		logf("[official] %s: cannot tell whether %s moves: %v", ownID, videoID, err)
 		return false
 	}
 	if still {
-		logf("[official] %s: %s is only a still picture, left out", ownID, videoID)
+		logf("[official] %s: %s does not really move, left out", ownID, videoID)
 	}
 	return still
 }
