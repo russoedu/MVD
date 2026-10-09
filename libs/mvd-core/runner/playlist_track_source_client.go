@@ -6,6 +6,7 @@ import (
 	"youtube-downloader/libs/mvd-core/applemusic"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/official"
+	"youtube-downloader/libs/mvd-core/songfile"
 	"youtube-downloader/libs/mvd-core/spotify"
 )
 
@@ -16,8 +17,9 @@ type playlistProvider interface {
 }
 
 // playlistTrackSource lists the public playlists of the music services the app
-// knows (Spotify, Apple Music) and finds each song on YouTube, official video
-// first and the best other upload when there is none.
+// knows (Spotify, Apple Music) and the song files of the user, and finds each
+// song on YouTube, official video first and the best other upload when there
+// is none.
 type playlistTrackSource struct {
 	providers []playlistProvider
 	search    official.Searcher
@@ -29,6 +31,7 @@ func newPlaylistTrackSource(search official.Searcher, sources official.Sources) 
 		providers: []playlistProvider{
 			spotifyProvider{client: spotify.NewClient()},
 			appleMusicProvider{client: applemusic.NewClient()},
+			songFileProvider{},
 		},
 		search:  search,
 		sources: sources,
@@ -98,4 +101,26 @@ func (p appleMusicProvider) Tracks(ctx context.Context, link string) (string, []
 		tracks[i] = engine.Track{Title: t.Title, Artist: t.Artist, DurationMs: t.DurationMs}
 	}
 	return playlist.Title, tracks, nil
+}
+
+// songFileProvider lists a file of songs on the user's computer: "Artist -
+// Title" lines or a CSV, whatever service the list came from.
+type songFileProvider struct{}
+
+func (songFileProvider) Handles(link string) bool {
+	_, ok := songfile.FilePath(link)
+	return ok
+}
+
+func (songFileProvider) Tracks(_ context.Context, link string) (string, []engine.Track, error) {
+	path, _ := songfile.FilePath(link)
+	list, err := songfile.Load(path)
+	if err != nil {
+		return "", nil, err
+	}
+	tracks := make([]engine.Track, len(list.Songs))
+	for i, s := range list.Songs {
+		tracks[i] = engine.Track{Title: s.Title, Artist: s.Artist, DurationMs: s.DurationMs}
+	}
+	return list.Title, tracks, nil
 }
