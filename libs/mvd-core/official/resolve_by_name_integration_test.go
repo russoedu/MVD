@@ -200,7 +200,7 @@ func TestLyricAndAudioUploadsAreNotTheSongsVideo(t *testing.T) {
 	}
 }
 
-func TestAnUploadThatIsOnlyAStillPictureIsLeftOut(t *testing.T) {
+func TestAnUploadThatDoesNotMoveIsLeftOut(t *testing.T) {
 	uploads := []SearchResult{
 		{ID: "cover", Title: "Rage - Run To You (HQ)", Channel: "CoverFan", Views: 800_000},
 		{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2000", Views: 90_000},
@@ -210,7 +210,7 @@ func TestAnUploadThatIsOnlyAStillPictureIsLeftOut(t *testing.T) {
 	res := resolverWith(t, search, Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
-		Still:    func(id string) (bool, error) { return id == "cover", nil },
+		Static:   func(id string) (bool, error) { return id == "cover", nil },
 	})
 
 	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
@@ -225,7 +225,7 @@ func TestThePlaylistsOwnStillPictureCountsForNoPicture(t *testing.T) {
 	res := resolverWith(t, search, Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
-		Still:    func(id string) (bool, error) { return id == "up1", nil },
+		Static:   func(id string) (bool, error) { return id == "up1", nil },
 	})
 	// The playlist's own upload is not an art track, but a plain video that is only a picture.
 	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC"}, nil }
@@ -242,7 +242,7 @@ func TestWhenStillnessCannotBeToldNothingIsLeftOut(t *testing.T) {
 	res := resolverWith(t, search, Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
-		Still:    func(string) (bool, error) { return false, errors.New("image server down") },
+		Static:   func(string) (bool, error) { return false, errors.New("image server down") },
 	})
 
 	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
