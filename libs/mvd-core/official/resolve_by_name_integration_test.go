@@ -199,3 +199,53 @@ func TestLyricAndAudioUploadsAreNotTheSongsVideo(t *testing.T) {
 		t.Errorf("got %+v, want the plain video", got)
 	}
 }
+
+func TestAnUploadThatIsOnlyAStillPictureIsLeftOut(t *testing.T) {
+	uploads := []SearchResult{
+		{ID: "cover", Title: "Rage - Run To You (HQ)", Channel: "CoverFan", Views: 800_000},
+		{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2000", Views: 90_000},
+	}
+	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": uploads}}
+	qualities := map[string]Quality{"up1": {AudioKbps: 130}, "cover": {Height: 1080, AudioKbps: 160}, "fanB": {Height: 720, AudioKbps: 131}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
+		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
+		Still:    func(id string) (bool, error) { return id == "cover", nil },
+	})
+
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
+		t.Errorf("got %+v, want the video that moves over the still picture of better size", got)
+	}
+}
+
+func TestThePlaylistsOwnStillPictureCountsForNoPicture(t *testing.T) {
+	uploads := []SearchResult{{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2000", Views: 90_000}}
+	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": uploads}}
+	qualities := map[string]Quality{"up1": {Height: 1080, AudioKbps: 130}, "fanB": {Height: 480, AudioKbps: 131}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
+		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
+		Still:    func(id string) (bool, error) { return id == "up1", nil },
+	})
+	// The playlist's own upload is not an art track, but a plain video that is only a picture.
+	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC"}, nil }
+
+	if got := res.ResolveVersion("up1", "Rage - Run to You", "Some Channel", 0, nil); got.ID != "fanB" {
+		t.Errorf("got %+v, want the 480p video over a 1080p still picture", got)
+	}
+}
+
+func TestWhenStillnessCannotBeToldNothingIsLeftOut(t *testing.T) {
+	uploads := []SearchResult{{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2000", Views: 90_000}}
+	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": uploads}}
+	qualities := map[string]Quality{"up1": {AudioKbps: 130}, "fanB": {Height: 720, AudioKbps: 131}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
+		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
+		Still:    func(string) (bool, error) { return false, errors.New("image server down") },
+	})
+
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
+		t.Errorf("got %+v: a failing image server must not cost a good version", got)
+	}
+}

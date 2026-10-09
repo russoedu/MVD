@@ -133,7 +133,7 @@ Work goes through four stages, each with its own queue and workers, so a slow on
 
 1. **List**: `list_workers` (default 4) playlists are read at the same time.
 2. **Name**: `name_workers` (default 8) uploads are named at the same time, asking iTunes, Deezer and MusicBrainz for the artist and title. Each service is paced on its own (MusicBrainz allows one request a second) and is left alone for a minute if it refuses a request.
-3. **Pick**: `pick_workers` (default 4) songs get their version picked at the same time: the official video, else the upload with the best picture and sound.
+3. **Pick**: `pick_workers` (default 4) songs get their version picked at the same time: the official video, else the upload with the best picture and sound. An upload that is only a still picture with the song over it (YouTube keeps three frames of every video; if they are the same picture nothing moves) is never taken as a better version, and counts as having no picture when it is the playlist's own.
 4. **Download**: `max_concurrent_downloads` is the number of videos in flight across all playlists. Each video also fetches `concurrent_fragments` fragments in parallel.
 
 Downloads start as soon as the first song has been picked, while the rest are still being named. Files are numbered by playlist position, so the order they finish in does not matter.

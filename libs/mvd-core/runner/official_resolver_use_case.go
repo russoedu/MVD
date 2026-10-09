@@ -6,6 +6,7 @@ import (
 
 	"youtube-downloader/libs/mvd-core/official"
 	"youtube-downloader/libs/mvd-core/songid"
+	"youtube-downloader/libs/mvd-core/stillpicture"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -69,6 +70,8 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 	}
 	if !in.SkipQuality {
 		// The formats of the uploads of a song tell which has the best picture and sound.
+		// A picture with the song over it is not a better version of the song.
+		resolver.Sources.Still = stillpicture.NewChecker().IsStill
 		resolver.Sources.Quality = func(videoID string) (official.Quality, error) {
 			quality, err := ytdlp.ProbeQuality(ctx, in.YtDlp, videoID, in.ExtraArgs)
 			return official.Quality{Height: quality.Height, AudioKbps: quality.AudioKbps}, err

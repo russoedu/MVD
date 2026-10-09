@@ -18,6 +18,9 @@ type Sources struct {
 	// Quality tells what a video offers to download, to choose between uploads of the
 	// song when none is official.
 	Quality func(videoID string) (Quality, error)
+	// Still tells whether a video is only a picture with the song over it, so that such
+	// an upload is not taken as the song's video. An error means it could not tell.
+	Still func(videoID string) (bool, error)
 	// Cache remembers the videos found for songs.
 	Cache *ResolutionCache
 }
