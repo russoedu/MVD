@@ -14,6 +14,9 @@ const (
 	StateDone
 	StateDuplicate
 	StateFailed
+	// StateNotFound is a song with no official video, when only official videos are
+	// wanted: it is not downloaded.
+	StateNotFound
 )
 
 func (s EntryState) String() string {
@@ -32,11 +35,13 @@ func (s EntryState) String() string {
 		return "duplicate"
 	case StateFailed:
 		return "failed"
+	case StateNotFound:
+		return "not found"
 	}
 	return "unknown"
 }
 
 // Finished reports whether the state is terminal.
 func (s EntryState) Finished() bool {
-	return s == StateDone || s == StateDuplicate || s == StateFailed
+	return s == StateDone || s == StateDuplicate || s == StateFailed || s == StateNotFound
 }

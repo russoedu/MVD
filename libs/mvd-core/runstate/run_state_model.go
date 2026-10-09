@@ -40,7 +40,7 @@ type Entry struct {
 
 // Tally holds the global counters shown in the header.
 type Tally struct {
-	Total, Queued, Running, Done, Official, Better, Duplicate, Failed, Retried int
+	Total, Queued, Running, Done, Official, Better, Duplicate, NotFound, Failed, Retried int
 }
 
 // State is the renderer side mirror of the engine, built purely from
@@ -173,6 +173,8 @@ func (s *State) Tally() Tally {
 			}
 		case engine.StateDuplicate:
 			t.Duplicate++
+		case engine.StateNotFound:
+			t.NotFound++
 		case engine.StateFailed:
 			t.Failed++
 		}

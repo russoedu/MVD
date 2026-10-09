@@ -180,7 +180,7 @@ func printBanner(cfg config.Config, cfgPath, listPath string) {
 	fmt.Printf("Output Template:          %s\n", cfg.OutputTemplate)
 	fmt.Printf("Max Concurrent Downloads: %d\n", cfg.MaxConcurrentDownloads)
 	fmt.Printf("Concurrent Fragments:     %d\n", cfg.ConcurrentFragments)
-	fmt.Printf("Official Music Video:     %v\n", cfg.DownloadOfficialMusicVideo)
+	fmt.Printf("Official Music Video:     %s\n", cfg.OfficialVideo)
 	fmt.Printf("Auto Retry:               %v\n", cfg.AutoRetry)
 	fmt.Printf("Cookies:                  %s\n", cookieDescription(cfg))
 	fmt.Printf("Log File:                 %s\n", orNone(cfg.LogFile()))

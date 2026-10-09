@@ -31,7 +31,8 @@ func TestLoadOrCreateRoundTrip(t *testing.T) {
 	cfg.VideoQuality = "1080p"
 	cfg.AudioQuality = "medium"
 	cfg.MaxConcurrentDownloads = 7
-	cfg.DownloadOfficialMusicVideo = true
+	cfg.OfficialVideo = OfficialOnly
+	cfg.SaveNotFound = false
 	cfg.CookiesFromBrowser = "firefox"
 	cfg.AutoCookies = false
 	cfg.CreateLogFile = false
@@ -44,7 +45,7 @@ func TestLoadOrCreateRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	if reloaded.VideoQuality != "1080p" || reloaded.AudioQuality != "medium" ||
-		reloaded.MaxConcurrentDownloads != 7 || !reloaded.DownloadOfficialMusicVideo ||
+		reloaded.MaxConcurrentDownloads != 7 || reloaded.OfficialVideo != OfficialOnly || reloaded.SaveNotFound ||
 		reloaded.CookiesFromBrowser != "firefox" || reloaded.AutoCookies ||
 		reloaded.CreateLogFile || len(reloaded.ExtraArgs) != 2 {
 		t.Errorf("reloaded config wrong: %+v", reloaded)

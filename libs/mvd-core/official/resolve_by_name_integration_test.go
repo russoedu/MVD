@@ -249,3 +249,34 @@ func TestWhenStillnessCannotBeToldNothingIsLeftOut(t *testing.T) {
 		t.Errorf("got %+v: a failing image server must not cost a good version", got)
 	}
 }
+
+func TestAVideoYouTubeMusicSaysTheArtistUploadedIsTheOfficialOne(t *testing.T) {
+	search := &scriptedSearch{}
+	res := resolverWith(t, search, Sources{})
+	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "OMV"}, nil }
+
+	got := res.ResolveVersion("up1", "Rage - Run to You", "Rage", 0, nil)
+	if got.ID != "" || !got.OwnOfficial || got.Official {
+		t.Errorf("got %+v, want the upload itself as the official video", got)
+	}
+	if len(search.asked) != 0 {
+		t.Errorf("searched for %q although the upload is official", search.asked)
+	}
+}
+
+func TestWhenOnlyOfficialVideosAreWantedTheBestQualityUploadIsNotLookedFor(t *testing.T) {
+	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": fanUploads()}}
+	var probed int
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
+		Quality:  func(string) (Quality, error) { probed++; return Quality{Height: 1080, AudioKbps: 160}, nil },
+	})
+	res.OfficialOnly = true
+
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "" {
+		t.Errorf("got %+v, want nothing: there is no official video", got)
+	}
+	if probed != 0 {
+		t.Errorf("the quality of %d uploads was looked up for nothing", probed)
+	}
+}

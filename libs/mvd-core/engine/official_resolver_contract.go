@@ -23,6 +23,8 @@ type Identification struct {
 	// Done is true when Resolution is already the answer.
 	Done       bool
 	Resolution Resolution
+	// Artist and Title are the song as a music database named it, when it did.
+	Artist, Title string
 	// State is the resolver's own notes for Pick; the engine only carries it.
 	State any
 }
@@ -34,6 +36,9 @@ type Resolution struct {
 	// Official is true when VideoID is the official video, false when it is only the
 	// upload of the song with the best quality.
 	Official bool
+	// OwnOfficial is true when the upload itself is the official video, so VideoID is
+	// empty and nothing better is needed.
+	OwnOfficial bool
 	// Reason is a short explanation for the log.
 	Reason string
 }

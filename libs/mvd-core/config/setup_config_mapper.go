@@ -58,8 +58,11 @@ func applyKey(cfg *Config, key, val, path string) {
 				cfg.ConcurrentFragments = n
 			}
 		}
-	case "download_official_music_video":
-		cfg.DownloadOfficialMusicVideo = parseBool(val)
+	case "official_video", "download_official_music_video":
+		// The older setting was true or false: yes or no.
+		cfg.OfficialVideo = officialModeOf(val)
+	case "save_not_found":
+		cfg.SaveNotFound = parseBool(val)
 	case "auto_retry":
 		cfg.AutoRetry = parseBool(val)
 	case "cookies_from_browser":
@@ -149,7 +152,8 @@ func configText(cfg Config) string {
 	w("list_workers", strconv.Itoa(cfg.ListWorkers))
 	w("name_workers", strconv.Itoa(cfg.NameWorkers))
 	w("pick_workers", strconv.Itoa(cfg.PickWorkers))
-	w("download_official_music_video", strconv.FormatBool(cfg.DownloadOfficialMusicVideo))
+	w("official_video", string(cfg.OfficialVideo))
+	w("save_not_found", strconv.FormatBool(cfg.SaveNotFound))
 	w("auto_retry", strconv.FormatBool(cfg.AutoRetry))
 	w("cookies_from_browser", cookieSetting(cfg))
 	w("cookies_file", cfg.CookiesFile)

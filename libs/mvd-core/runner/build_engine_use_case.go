@@ -92,8 +92,15 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 	resolver, searcher := BuildResolver(ctx, ResolverInput{
 		YtDlp: ytDlpPath, ExtraArgs: extraArgs, CookiesFile: cfg.CookiesFile, CookiesActive: cookiesActive, CacheFile: cacheFile,
 	}, log)
-	if cfg.DownloadOfficialMusicVideo {
+	if cfg.LooksForOfficial() {
+		resolver.OfficialOnly = cfg.OfficialVideo == config.OfficialOnly
 		opts.Resolver = engineResolver{resolver}
+	}
+	if cfg.OfficialVideo == config.OfficialOnly {
+		opts.OfficialOnly = true
+		if cfg.SaveNotFound {
+			opts.NotFoundFile = filepath.Join(cfg.OutputDir, "not-found.csv")
+		}
 	}
 	opts.Tracks = newPlaylistTrackSource(searcher, resolver.Sources)
 

@@ -14,7 +14,8 @@ type engineResolver struct {
 
 func (r engineResolver) Identify(videoID, title, channel string, durationSec int, logf func(format string, a ...interface{})) engine.Identification {
 	identified := r.Resolver.Identify(videoID, title, channel, durationSec, logf)
-	return engine.Identification{Done: identified.Done, Resolution: resolutionOf(identified.Version), State: identified}
+	artist, name, _ := identified.Named()
+	return engine.Identification{Done: identified.Done, Resolution: resolutionOf(identified.Version), Artist: artist, Title: name, State: identified}
 }
 
 func (r engineResolver) Pick(identification engine.Identification, logf func(format string, a ...interface{})) engine.Resolution {
@@ -26,5 +27,5 @@ func (r engineResolver) Pick(identification engine.Identification, logf func(for
 }
 
 func resolutionOf(version official.Version) engine.Resolution {
-	return engine.Resolution{VideoID: version.ID, Official: version.Official, Reason: version.Reason}
+	return engine.Resolution{VideoID: version.ID, Official: version.Official, OwnOfficial: version.OwnOfficial, Reason: version.Reason}
 }
