@@ -25,9 +25,9 @@ func (c *DeezerClient) Tracks(term string) ([]Identity, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Deezer answered %s", resp.Status)
+		return nil, fmt.Errorf("the Deezer search answered %s", resp.Status)
 	}
 	var body struct {
 		Data []struct {
