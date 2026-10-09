@@ -36,7 +36,7 @@ In today's soft world of background audio streams, sanitized algorithm feeds, an
 
 Feed MVD a stack of YouTube video or playlist links, and instead of leaving you with boring, sanitized "Topic" uploads (those lifeless still-image audio tracks), it aggressively crawls the video metadata to hijack the **official, original music video**!
 
-Got a playlist on **Spotify** or **Apple Music** instead? Paste its public link: MVD reads the songs and goes hunting for each one's official video too.
+Got a playlist on **Spotify** or **Apple Music** instead? Paste its public link: MVD reads the songs and goes hunting for each one's official video too. Any other service, or just a list in your head? Press `Ctrl+O` on the list, type `Artist - Title` lines and MVD hunts those down as well.
 
 Whether you’re setting up an offline media wall, fueling a chaotic 90s house party, or hoarding visual culture before the copyright bots strike it into oblivion, MVD rips through your queue concurrently.
 
@@ -81,6 +81,7 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
 * 🚀 **Parallel Goroutine Power:** Multi-threaded download workers blast through massive playlists concurrently with live, per-track progress bars and raw log output.
 * 🍪 **Automatic Cookie Hijacking:** Automatically detects signed-in YouTube cookies from installed local browsers (Firefox, Chrome, Edge) to dodge `403 Forbidden` errors, `429 Rate Limits`, and bot check walls without asking you to configure a thing.
 * 🎧 **Spotify & Apple Music Import:** Paste a public playlist link, no login and no API key. Every song is searched on YouTube: the official video first, the best other upload when there is none, and a song with no match fails alone without stopping the rest.
+* 📝 **Your Own Song List:** Press `Ctrl+O`, paste or type `Artist - Title` lines (or a CSV exported from any service) and every song is hunted down the same way. Works for Deezer, Tidal, Amazon Music, Last.fm, a note on your phone, anything that can give you a list.
 * 🎨 **Your Own Neon:** Eight interface colours you can change in the app (`c` on the preferences) or in the config file.
 * 🖥 **Tray Stealth + Its Own Window:** Runs as a desktop tray utility with a window of its own (WebView2 on Windows, a browser app window elsewhere for now), or as a standalone, hardcore `mvd-tui` terminal executable.
 * ⟲ **Relentless Auto-Retry Engine:** Instantly powers through temporary network glitches and sweeps back around for rate-limited downloads once cooldowns reset—ignoring dead, private, or geo-blocked tracks like a champ.

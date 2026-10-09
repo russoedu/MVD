@@ -53,6 +53,8 @@ func hintKeyMsg(key string) (tea.KeyMsg, bool) {
 		return tea.KeyMsg{Type: tea.KeyCtrlS}, true
 	case "ctrl+p":
 		return tea.KeyMsg{Type: tea.KeyCtrlP}, true
+	case "ctrl+o":
+		return tea.KeyMsg{Type: tea.KeyCtrlO}, true
 	case "ctrl+r":
 		return tea.KeyMsg{Type: tea.KeyCtrlR}, true
 	case "ctrl+q":

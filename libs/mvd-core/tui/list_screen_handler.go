@@ -17,6 +17,7 @@ const (
 	listNone listOutcome = iota
 	listStart
 	listPrefs
+	listSongs
 	listQuit
 )
 
@@ -55,6 +56,21 @@ func (m listModel) urls() []string {
 	return out
 }
 
+// withURL adds a line to the list unless it is already there.
+func (m listModel) withURL(url string) listModel {
+	for _, existing := range m.urls() {
+		if existing == url {
+			return m
+		}
+	}
+	value := strings.TrimRight(m.ta.Value(), "\n")
+	if value != "" {
+		value += "\n"
+	}
+	m.ta.SetValue(value + url)
+	return m
+}
+
 func (m listModel) update(msg tea.Msg) (listModel, tea.Cmd, listOutcome) {
 	if k, ok := msg.(tea.KeyMsg); ok {
 		if m.confirmQuit {
@@ -74,6 +90,8 @@ func (m listModel) update(msg tea.Msg) (listModel, tea.Cmd, listOutcome) {
 			return m, nil, listStart
 		case "ctrl+p":
 			return m, nil, listPrefs
+		case "ctrl+o":
+			return m, nil, listSongs
 		case "ctrl+r":
 			m.ta.SetValue("")
 			return m, nil, listNone
@@ -108,7 +126,7 @@ func (m listModel) view(width, height int) string {
 
 func (m listModel) hints() []keyHint {
 	return []keyHint{
-		{"ctrl+s", "start"}, {"ctrl+p", "preferences"},
+		{"ctrl+s", "start"}, {"ctrl+o", "songs"}, {"ctrl+p", "preferences"},
 		{"ctrl+r", "reset"}, {"ctrl+q", "quit"},
 	}
 }

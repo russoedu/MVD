@@ -41,6 +41,8 @@ func (m setupModel) hints() []keyHint {
 		return m.advanced.hints()
 	case screenColours:
 		return m.colours.hints()
+	case screenSongs:
+		return m.songs.hints()
 	default:
 		return m.list.hints()
 	}

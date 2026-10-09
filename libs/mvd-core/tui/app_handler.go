@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -61,6 +62,7 @@ const (
 	screenConfig
 	screenAdvanced
 	screenColours
+	screenSongs
 )
 
 type setupModel struct {
@@ -73,6 +75,7 @@ type setupModel struct {
 	config        configModel
 	advanced      advancedModel
 	colours       coloursModel
+	songs         songsModel
 	result        SetupResult
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
 	pick          FolderPicker
@@ -98,6 +101,7 @@ func newSetupModel(in SetupInput) setupModel {
 		cfgPath:   in.CfgPath,
 		listPath:  in.ListPath,
 		list:      newListModel(in.URLs),
+		songs:     newSongsModel(""),
 		config:    newConfigModel(in.Cfg).withFolderPicker(in.PickFolder).withUninstaller(in.Uninstall),
 		pick:      in.PickFolder,
 		uninstall: in.Uninstall,
@@ -119,6 +123,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.config = m.config.setSize(msg.Width, msg.Height)
 		m.advanced = m.advanced.setSize(msg.Width, msg.Height)
 		m.colours = m.colours.setSize(msg.Width, msg.Height)
+		m.songs = m.songs.setSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.MouseMsg:
 		return m.mouse(msg)
@@ -138,6 +143,13 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).withUninstaller(m.uninstall).setSize(m.width, m.height)
 			m.screen = screenConfig
 			return m, nil
+		case listSongs:
+			if m.listPath == "" {
+				return m, nil
+			}
+			m.songs = newSongsModel(filepath.Join(filepath.Dir(m.listPath), "songs")).setSize(m.width, m.height)
+			m.screen = screenSongs
+			return m, textareaBlink
 		case listQuit:
 			m.saveList()
 			m.result = SetupResult{Action: ActionQuit, Cfg: m.cfg, URLs: m.list.urls()}
@@ -180,6 +192,20 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, cmd
+	case screenSongs:
+		next, cmd, out := m.songs.update(msg)
+		m.songs = next
+		switch out {
+		case songsAdded:
+			m.list = m.list.withURL(m.songs.saved)
+			m.saveList()
+			m.screen = screenList
+			return m, nil
+		case songsCancel:
+			m.screen = screenList
+			return m, nil
+		}
+		return m, cmd
 	case screenColours:
 		next, cmd, out, cfg := m.colours.update(msg)
 		m.colours = next
@@ -206,6 +232,8 @@ func (m setupModel) View() string {
 		return m.advanced.view(m.width, m.height)
 	case screenColours:
 		return m.colours.view(m.width, m.height)
+	case screenSongs:
+		return m.songs.view(m.width, m.height)
 	default:
 		return m.list.view(m.width, m.height)
 	}

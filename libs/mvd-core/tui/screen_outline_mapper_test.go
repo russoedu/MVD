@@ -17,7 +17,7 @@ func TestOutlineDescribesTheListScreen(t *testing.T) {
 	if out.Title != "MVD · Download list (2 items)" || !out.HasText || out.Text != "https://a\nhttps://b" {
 		t.Fatalf("unexpected outline %+v", out)
 	}
-	if len(out.Keys) != 4 || out.Keys[0] != (OutlineKey{Key: "ctrl+s", Description: "start"}) {
+	if len(out.Keys) != 5 || out.Keys[0] != (OutlineKey{Key: "ctrl+s", Description: "start"}) {
 		t.Fatalf("unexpected keys %+v", out.Keys)
 	}
 }
