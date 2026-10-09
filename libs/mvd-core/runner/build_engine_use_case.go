@@ -14,6 +14,7 @@ import (
 	"youtube-downloader/libs/mvd-core/cookies"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/official"
+	"youtube-downloader/libs/mvd-core/songid"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -114,6 +115,13 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 	resolver.Sources = official.Sources{
 		Known: resolver.KnownCandidates(official.NewWikidataClient()),
 		Music: music.SearchVideos,
+		// A music database names the song of an upload, and the formats of the uploads that
+		// are not official tell which has the best picture and sound.
+		Identify: songid.NewIdentifier().Identify,
+		Quality: func(videoID string) (official.Quality, error) {
+			quality, err := ytdlp.ProbeQuality(ctx, ytDlpPath, videoID, extraArgs)
+			return official.Quality{Height: quality.Height, AudioKbps: quality.AudioKbps}, err
+		},
 		Type: func(videoID string) (string, error) {
 			info, err := music.Describe(videoID)
 			return info.Type, err

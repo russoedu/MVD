@@ -18,6 +18,10 @@ type Song struct {
 	DurationSec int
 	// OwnID is the upload the song came from, never a candidate.
 	OwnID string
+	// OwnIsStill is true when that upload is an art track, whose picture is a still
+	// image over the audio: only its sound counts when it is compared with the
+	// videos of the song.
+	OwnIsStill bool
 }
 
 // Kind says what a candidate is.

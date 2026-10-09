@@ -80,9 +80,6 @@ func (r *Resolver) ResolveLog(videoID, title, channel string, durationSec int, l
 		}
 	}
 	artTrack, info, why := r.isArtTrack(videoID, channel, logf)
-	if !artTrack {
-		return "", why
-	}
 	// YouTube Music names the artist better than a channel does ("Kate Bush", not
 	// "KateBushMusic") and knows the length of the song.
 	if info.Artist != "" {
@@ -91,12 +88,28 @@ func (r *Resolver) ResolveLog(videoID, title, channel string, durationSec int, l
 	if durationSec == 0 {
 		durationSec = info.DurationSec
 	}
-	id, reason := r.fromDescription(videoID, logf)
-	if id != "" {
-		return id, reason
+
+	reason := why
+	if artTrack {
+		var id string
+		if id, reason = r.fromDescription(videoID, logf); id != "" {
+			return id, reason
+		}
 	}
-	if found, why := r.fromSearch(videoID, title, channel, durationSec, logf); found != "" {
-		return found, why
+
+	// Next, the official video by searching for the song under its right name and
+	// artist; failing that, the upload of it with the best picture and sound. A plain
+	// video is only searched for when a music database says what song it is.
+	song, named := r.songOfUpload(videoID, title, channel, durationSec, artTrack, logf)
+	if !named {
+		return "", reason
+	}
+	found, foundWhy, results := r.fromSearch(song, logf)
+	if found != "" {
+		return found, foundWhy
+	}
+	if best, bestWhy := r.fromBestQuality(song, results, logf); best != "" {
+		return best, bestWhy
 	}
 	return "", reason
 }
