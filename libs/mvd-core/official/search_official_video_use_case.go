@@ -16,7 +16,7 @@ func (r *Resolver) fromSearch(videoID, title, channel string, durationSec int, l
 		DurationSec: durationSec,
 		OwnID:       videoID,
 	}
-	pick, ok, _, err := FindBestVideo(r.Searcher, song, func(format string, a ...interface{}) {
+	pick, ok, _, err := FindBestVideo(r.Searcher, r.Sources, song, func(format string, a ...interface{}) {
 		logf("[official] %s: "+format, append([]interface{}{videoID}, a...)...)
 	})
 	if err != nil {

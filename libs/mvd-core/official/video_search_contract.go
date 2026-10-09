@@ -10,6 +10,10 @@ type SearchResult struct {
 	Duration int
 	Views    int64
 	Verified bool
+	// MusicType is YouTube Music's tag for the video when it said (OMV, UGC, ...),
+	// and Source names the database that listed it, when one did.
+	MusicType string
+	Source    string
 }
 
 // Searcher looks a query up on YouTube (the app wires yt-dlp here) and

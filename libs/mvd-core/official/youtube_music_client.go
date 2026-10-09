@@ -19,6 +19,7 @@ import (
 type YouTubeMusicClient struct {
 	HTTP      *http.Client
 	NextURL   string // the "next" endpoint of YouTube Music
+	SearchURL string // its search endpoint
 	UserAgent string
 }
 
@@ -27,6 +28,7 @@ func NewYouTubeMusicClient() *YouTubeMusicClient {
 	return &YouTubeMusicClient{
 		HTTP:      &http.Client{Timeout: 10 * time.Second},
 		NextURL:   "https://music.youtube.com/youtubei/v1/next?prettyPrint=false",
+		SearchURL: "https://music.youtube.com/youtubei/v1/search?prettyPrint=false",
 		UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 	}
 }

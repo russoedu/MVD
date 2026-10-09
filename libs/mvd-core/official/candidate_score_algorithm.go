@@ -44,6 +44,13 @@ type Pick struct {
 	Kind    Kind
 	Score   float64
 	Channel string
+	// MusicType is YouTube Music's tag for the candidate when it was known (OMV,
+	// UGC, ATV, ...).
+	MusicType string
+	// Sure is true when the candidate says it is official or a database lists it:
+	// only such a pick ends the search early, since a video of the artist's
+	// channel that says nothing may be a TV performance next to the real video.
+	Sure bool
 	// Why lists what counted for the candidate, for the log.
 	Why string
 }
@@ -107,7 +114,7 @@ func scoreCandidate(res SearchResult, song Song) (Pick, bool) {
 	if !artistInTitle && !artistChannel {
 		return Pick{}, false
 	}
-	if !artistChannel && !res.Verified && res.Views > 0 && res.Views < minFanViews {
+	if !artistChannel && !res.Verified && res.Source == "" && res.Views > 0 && res.Views < minFanViews {
 		return Pick{}, false
 	}
 
@@ -120,7 +127,8 @@ func scoreCandidate(res SearchResult, song Song) (Pick, bool) {
 	// A video is taken when it says it is official or when the artist's own
 	// channel uploaded it (Nickelback's "How You Remind Me" never says it). An
 	// audio or lyric upload is taken only from the artist's own channel.
-	if kind == KindVideo && !official && !artistChannel {
+	listed := res.Source != ""
+	if kind == KindVideo && !official && !artistChannel && !listed {
 		return Pick{}, false
 	}
 	if kind == KindAudio && !artistChannel {
@@ -144,6 +152,14 @@ func scoreCandidate(res SearchResult, song Song) (Pick, bool) {
 		score++
 		why = append(why, "verified")
 	}
+	if res.Source != "" {
+		score += 3
+		why = append(why, "listed by "+res.Source)
+	}
+	if res.MusicType == "OMV" {
+		score += 1.5
+		why = append(why, "YouTube Music: official video")
+	}
 	if res.Views > 0 {
 		score += math.Min(math.Log10(float64(res.Views))/8, 1)
 	}
@@ -156,7 +172,7 @@ func scoreCandidate(res SearchResult, song Song) (Pick, bool) {
 		score -= 20
 	}
 
-	return Pick{ID: res.ID, Kind: kind, Score: score, Channel: res.Channel, Why: strings.Join(why, ", ")}, true
+	return Pick{ID: res.ID, Kind: kind, Score: score, Channel: res.Channel, MusicType: res.MusicType, Sure: official || listed, Why: strings.Join(why, ", ")}, true
 }
 
 // durationFit compares the lengths of the song and of a video. A music video
@@ -179,17 +195,25 @@ func durationFit(song, video int) (string, float64) {
 }
 
 // RankCandidates scores every result that can be the song's video, best first.
+// The same video may come from several sources, each naming it its own way (YouTube
+// Music calls an official video by its metadata title, "It's My Life (Raggadag
+// Remix)"): each result is scored and the best score of a video is the one kept.
 func RankCandidates(results []SearchResult, song Song) []Pick {
 	var picks []Pick
-	seen := map[string]bool{}
+	position := map[string]int{}
 	for _, res := range results {
-		if seen[res.ID] {
+		pick, ok := scoreCandidate(res, song)
+		if !ok {
 			continue
 		}
-		seen[res.ID] = true
-		if pick, ok := scoreCandidate(res, song); ok {
-			picks = append(picks, pick)
+		if at, seen := position[pick.ID]; seen {
+			if pick.Score > picks[at].Score {
+				picks[at] = pick
+			}
+			continue
 		}
+		position[pick.ID] = len(picks)
+		picks = append(picks, pick)
 	}
 	sort.SliceStable(picks, func(i, j int) bool { return picks[i].Score > picks[j].Score })
 	return picks
