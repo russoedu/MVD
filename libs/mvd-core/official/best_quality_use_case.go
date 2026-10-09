@@ -45,6 +45,10 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 		if artTrack, _ := ArtTrackFromVideoType(kind); artTrack {
 			continue
 		}
+		// Nor is a picture with the song over it a better version of the song.
+		if r.isStill(res.ID, song.OwnID, logf) {
+			continue
+		}
 		chosen = append(chosen, res)
 	}
 	uploads = chosen
@@ -53,7 +57,8 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 	if song.OwnID != "" {
 		if quality, err := r.Sources.Quality(song.OwnID); err == nil {
 			own = quality
-			if song.OwnIsStill {
+			// A still picture has no picture worth counting, whatever size the file is.
+			if song.OwnIsStill || r.isStill(song.OwnID, song.OwnID, logf) {
 				own.Height = 0
 			}
 		}
@@ -75,4 +80,21 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 	}
 	return best.ID, fmt.Sprintf("no official video found; the best quality is %s by %q (%dp, %d kbps, against %dp, %d kbps)",
 		best.ID, best.Channel, bestQuality.Height, bestQuality.AudioKbps, own.Height, own.AudioKbps)
+}
+
+// isStill says whether a video is a picture with the song over it. When that cannot be
+// told it is not, so a failing image server never costs a good version.
+func (r *Resolver) isStill(videoID, ownID string, logf func(format string, a ...interface{})) bool {
+	if r.Sources.Still == nil || videoID == "" {
+		return false
+	}
+	still, err := r.Sources.Still(videoID)
+	if err != nil {
+		logf("[official] %s: cannot tell whether %s is a still picture: %v", ownID, videoID, err)
+		return false
+	}
+	if still {
+		logf("[official] %s: %s is only a still picture, left out", ownID, videoID)
+	}
+	return still
 }
