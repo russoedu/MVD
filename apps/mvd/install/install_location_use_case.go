@@ -1,6 +1,7 @@
 package install
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -227,13 +228,18 @@ func installWindowsSystem(target installTarget, exe, allUsersLink string, shortc
 	return nil
 }
 
-// installMacBundle builds MVD.app around the program, without an icon.
+// installMacBundle builds MVD.app around the program, with the app's icon.
 func installMacBundle(target installTarget, exe, version string) error {
-	return macbundle.Write(target.Folder, exe, version, "")
+	return macbundle.WriteWithIcon(target.Folder, exe, version, macbundle.DefaultIcon())
 }
 
-// installLinuxUser puts the program in ~/.local/bin and an entry for it in the
-// applications menu.
+// linuxIcon is the app's icon for the applications menu of Linux.
+//
+//go:embed linux_icon.png
+var linuxIcon []byte
+
+// installLinuxUser puts the program in ~/.local/bin and an entry for it, with its
+// icon, in the applications menu.
 func installLinuxUser(target installTarget, exe, applicationsDir string) error {
 	if err := programfile.Place(exe, target.Program); err != nil {
 		return err
@@ -242,5 +248,11 @@ func installLinuxUser(target installTarget, exe, applicationsDir string) error {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(applicationsDir, "mvd.desktop"), []byte(desktopEntry(target.Program)), 0o644)
+	// The icon is best effort: without it the entry still works and shows the generic one.
+	icon := linuxIconPath(applicationsDir)
+	if err := os.MkdirAll(filepath.Dir(icon), 0o755); err != nil || os.WriteFile(icon, linuxIcon, 0o644) != nil {
+		icon = ""
+	}
+
+	return os.WriteFile(filepath.Join(applicationsDir, "mvd.desktop"), []byte(desktopEntryWithIcon(target.Program, icon)), 0o644)
 }

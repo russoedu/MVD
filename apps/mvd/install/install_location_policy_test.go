@@ -124,7 +124,7 @@ func TestTheMoveIsNotOfferedInEachOfTheCasesWhereItWouldBeWrong(t *testing.T) {
 	cases := map[string]func(*moveSituation){
 		"there is nowhere to move to":     func(s *moveSituation) { s.HasTarget = false },
 		"it is a developer's build":       func(s *moveSituation) { s.Version = "dev" },
-		"it runs without a window":     func(s *moveSituation) { s.Window = false },
+		"it runs without a window":        func(s *moveSituation) { s.Window = false },
 		"it is the copy a move just made": func(s *moveSituation) { s.MovedFrom = "mvd.exe" },
 		"the person was already asked":    func(s *moveSituation) { s.Asked = true },
 		"it is already installed":         func(s *moveSituation) { s.Installed = true },

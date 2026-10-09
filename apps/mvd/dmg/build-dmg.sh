@@ -41,7 +41,10 @@ make_icon() {
 }
 
 set -- -program "$work/mvd" -version "$version" -out "$work/staging/MVD.app"
-if make_icon; then
+if [ -f assets/icons/mvd.icns ]; then
+  echo "icon: assets/icons/mvd.icns"
+  set -- "$@" -icon assets/icons/mvd.icns
+elif make_icon; then
   echo "icon: built from assets/mvd-logo.svg"
   set -- "$@" -icon "$work/MVD.icns"
 else

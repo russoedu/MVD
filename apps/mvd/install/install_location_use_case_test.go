@@ -468,7 +468,7 @@ func TestOnLinuxTheProgramGoesToLocalBinWithAMenuEntryPointingAtIt(t *testing.T)
 		t.Errorf("program = %q", data)
 	}
 	entry, err := os.ReadFile(filepath.Join(menu, "mvd.desktop"))
-	if err != nil || string(entry) != desktopEntry(target.Program) {
+	if err != nil || string(entry) != desktopEntryWithIcon(target.Program, linuxIconPath(menu)) {
 		t.Errorf("the entry is not the one for %s: %q (%v)", target.Program, entry, err)
 	}
 }
