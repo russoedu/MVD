@@ -38,7 +38,7 @@ func footprintOf(goos string, places installPlaces, startMenu, allUsersLink, app
 	case "windows":
 		footprint.Entries = append(footprint.Entries, filepath.Join(startMenu, "MVD.lnk"), allUsersLink)
 	case "linux":
-		footprint.Entries = append(footprint.Entries, filepath.Join(applicationsDir, "mvd.desktop"))
+		footprint.Entries = append(footprint.Entries, filepath.Join(applicationsDir, "mvd.desktop"), linuxIconPath(applicationsDir))
 	}
 
 	return footprint
