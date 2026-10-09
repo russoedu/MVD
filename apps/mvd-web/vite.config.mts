@@ -6,10 +6,8 @@ export default defineConfig(() => ({
   root:     import.meta.dirname,
   cacheDir: '../../node_modules/.vite/apps/mvd-web',
   server:   {
-    // The terminal interface's WebSocket is served by the app.
-    proxy: { '/term': { target: 'http://127.0.0.1:8421', ws: true } },
-    port:  4200,
-    host:  'localhost',
+    port: 4200,
+    host: 'localhost',
   },
   preview: {
     port: 4300,

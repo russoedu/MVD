@@ -5,11 +5,11 @@ import (
 	"errors"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/coder/websocket"
-	"net/http/httptest"
+	ttygo "github.com/meta-tui/treactui/packages/tty-go"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/sourcelist"
@@ -52,43 +52,61 @@ func TestTheAppOpensThePreferencesOnTheFirstRun(t *testing.T) {
 	}
 }
 
-func TestAWindowThatConnectsIsGreetedAndShownTheApp(t *testing.T) {
-	dir, files := testFiles(t, "https://a")
-	server := httptest.NewServer(NewHandler(NewModelFactory(dir, files, Host{Start: noRun}, t.Logf), nil))
-	defer server.Close()
+// fakeEvents is the page's side of the event bus: it plays the page and keeps what Go sent.
+type fakeEvents struct {
+	mu       sync.Mutex
+	handlers map[string]func(string)
+	down     []string
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
-	if err != nil {
-		t.Fatal(err)
+func (e *fakeEvents) On(name string, handler func(string)) func() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.handlers == nil {
+		e.handlers = map[string]func(string){}
 	}
-	defer func() { _ = conn.CloseNow() }()
+	e.handlers[name] = handler
+	return func() {}
+}
 
-	seen := ""
-	for !strings.Contains(seen, "Download list (1 item)") {
-		_, frame, err := conn.Read(ctx)
-		if err != nil {
-			t.Fatalf("never saw the list; got %q (%v)", seen, err)
-		}
-		seen += string(frame)
-	}
-	if !strings.Contains(seen, `"type":"hello"`) {
-		t.Errorf("the first frame should be a hello: %q", seen)
+func (e *fakeEvents) Emit(name, data string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if name == "treactui:down" {
+		e.down = append(e.down, data)
 	}
 }
 
-func TestAPageFromAnotherSiteIsRefused(t *testing.T) {
-	dir, files := testFiles(t)
-	server := httptest.NewServer(NewHandler(NewModelFactory(dir, files, Host{Start: noRun}, t.Logf), nil))
-	defer server.Close()
+func (e *fakeEvents) page(data string) {
+	e.mu.Lock()
+	handler := e.handlers["treactui:up"]
+	e.mu.Unlock()
+	handler(data)
+}
 
+func (e *fakeEvents) seen() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return strings.Join(e.down, "")
+}
+
+func TestAPageThatConnectsIsGreetedAndShownTheApp(t *testing.T) {
+	dir, files := testFiles(t, "https://a")
+	events := &fakeEvents{}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), &websocket.DialOptions{
-		HTTPHeader: map[string][]string{"Origin": {"https://evil.example"}},
-	})
-	if err == nil {
-		t.Error("a page from another site must not be able to open the app")
+	stop := ttygo.BindShared(ctx, NewShared(NewModelFactory(dir, files, Host{Start: noRun}, t.Logf)), events, ttygo.BindOptions{})
+	defer stop()
+
+	events.page(`{"c":"page","n":0,"t":"open"}`)
+
+	for !strings.Contains(events.seen(), "Download list (1 item)") {
+		if ctx.Err() != nil {
+			t.Fatalf("never saw the list; got %q", events.seen())
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !strings.Contains(events.seen(), `type\":\"hello`) {
+		t.Errorf("the first message should be a hello: %q", events.seen())
 	}
 }

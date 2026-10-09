@@ -1,6 +1,8 @@
 // Package appwindow shows the app in a window of its own, drawn by the system's web view
-// (WebView2 on Windows, WKWebView on macOS, WebKitGTK on Linux) through Wails. The app is
-// a normal program: one window, and closing it quits.
+// (WebView2 on Windows, WKWebView on macOS, WebKitGTK on Linux) through Wails. Wails serves
+// the page itself and carries the terminal interface between the page and Go as events, so
+// there is no server and no port. The app is a normal program: one window, and closing it
+// quits.
 package appwindow
 
 import (
@@ -10,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	ttygo "github.com/meta-tui/treactui/packages/tty-go"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -27,8 +30,8 @@ const uniqueID = "io.github.russoedu.mvd"
 
 // Options says what the window shows.
 type Options struct {
-	// URL is the app's address on the local server.
-	URL string
+	// Program is the terminal interface the window shows.
+	Program *ttygo.SharedProgram
 	// DataDir is the app-data folder; the web view keeps its profile in a folder inside.
 	DataDir string
 	// Busy reports whether downloads are running, so closing the window asks first.
@@ -39,6 +42,7 @@ type Options struct {
 // open a second window: it raises the first one and ends. Cancelling ctx closes the window.
 func Run(ctx context.Context, opts Options) error {
 	var windowCtx context.Context
+	var unbind func()
 
 	err := wails.Run(&options.App{
 		Title:            "MVD",
@@ -47,7 +51,7 @@ func Run(ctx context.Context, opts Options) error {
 		MinWidth:         640,
 		MinHeight:        400,
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 255},
-		AssetServer:      &assetserver.Options{Handler: pageHandler(opts.URL)},
+		AssetServer:      &assetserver.Options{Assets: pageAssets()},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: uniqueID,
 			OnSecondInstanceLaunch: func(options.SecondInstanceData) {
@@ -60,10 +64,16 @@ func Run(ctx context.Context, opts Options) error {
 		},
 		OnStartup: func(c context.Context) {
 			windowCtx = c
+			unbind = ttygo.BindShared(c, opts.Program, wailsEvents{ctx: c}, ttygo.BindOptions{})
 			go func() {
 				<-ctx.Done()
 				wailsruntime.Quit(c)
 			}()
+		},
+		OnShutdown: func(context.Context) {
+			if unbind != nil {
+				unbind()
+			}
 		},
 		OnBeforeClose: func(c context.Context) bool {
 			return keepOpen(opts.Busy, func() bool { return askToQuit(c) })
