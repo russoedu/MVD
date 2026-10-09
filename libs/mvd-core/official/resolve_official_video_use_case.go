@@ -93,15 +93,36 @@ func (r *Resolver) ResolveLog(videoID, title, channel string, durationSec int, l
 	return version.ID, version.Reason
 }
 
+// Identified is what the first half of a lookup learned about an upload: whether the
+// answer is already known, and otherwise the song to search for.
+type Identified struct {
+	// Done is true when the answer is known (the description linked the official video,
+	// or the upload is a plain video no database names), so Pick has nothing to do.
+	Done bool
+	// Version is the answer when Done.
+	Version Version
+
+	song   Song
+	reason string
+}
+
 // ResolveVersion looks for the video to download in place of an upload: the
 // official music video, or failing that the upload of the song with the best
-// picture and sound.
+// picture and sound. It is Identify followed by Pick, which an engine runs
+// separately so that each can have its own workers.
 func (r *Resolver) ResolveVersion(videoID, title, channel string, durationSec int, logFn func(format string, a ...interface{})) Version {
-	logf := func(format string, a ...interface{}) {
-		if logFn != nil {
-			logFn(format+"\n", a...)
-		}
+	identified := r.Identify(videoID, title, channel, durationSec, logFn)
+	if identified.Done {
+		return identified.Version
 	}
+	return r.Pick(identified, logFn)
+}
+
+// Identify is the first half of ResolveVersion: it tells art tracks from videos, follows
+// the link of the description to the official video, and names the song through the
+// music databases.
+func (r *Resolver) Identify(videoID, title, channel string, durationSec int, logFn func(format string, a ...interface{})) Identified {
+	logf := logWith(logFn)
 	artTrack, info, why := r.isArtTrack(videoID, channel, logf)
 	// YouTube Music names the artist better than a channel does ("Kate Bush", not
 	// "KateBushMusic") and knows the length of the song.
@@ -116,25 +137,43 @@ func (r *Resolver) ResolveVersion(videoID, title, channel string, durationSec in
 	if artTrack {
 		var id string
 		if id, reason = r.fromDescription(videoID, logf); id != "" {
-			return Version{ID: id, Official: true, Reason: reason}
+			return Identified{Done: true, Version: Version{ID: id, Official: true, Reason: reason}}
 		}
 	}
 
-	// Next, the official video by searching for the song under its right name and
-	// artist; failing that, the upload of it with the best picture and sound. A plain
-	// video is only searched for when a music database says what song it is.
+	// A plain video is only searched for when a music database says what song it is.
 	song, named := r.songOfUpload(videoID, title, channel, durationSec, artTrack, logf)
 	if !named {
-		return Version{Reason: reason}
+		return Identified{Done: true, Version: Version{Reason: reason}}
 	}
-	found, foundWhy, results := r.fromSearch(song, logf)
+	return Identified{song: song, reason: reason}
+}
+
+// Pick is the second half of ResolveVersion: it searches for the official video of the
+// song under its right name and artist and, failing that, takes the upload of the song
+// with the best picture and sound.
+func (r *Resolver) Pick(identified Identified, logFn func(format string, a ...interface{})) Version {
+	if identified.Done {
+		return identified.Version
+	}
+	logf := logWith(logFn)
+	found, foundWhy, results := r.fromSearch(identified.song, logf)
 	if found != "" {
 		return Version{ID: found, Official: true, Reason: foundWhy}
 	}
-	if best, bestWhy := r.fromBestQuality(song, results, logf); best != "" {
+	if best, bestWhy := r.fromBestQuality(identified.song, results, logf); best != "" {
 		return Version{ID: best, Reason: bestWhy}
 	}
-	return Version{Reason: reason}
+	return Version{Reason: identified.reason}
+}
+
+// logWith makes a log function that may be nil, and ends every message with a newline.
+func logWith(logFn func(format string, a ...interface{})) func(format string, a ...interface{}) {
+	return func(format string, a ...interface{}) {
+		if logFn != nil {
+			logFn(format+"\n", a...)
+		}
+	}
 }
 
 // fromDescription follows the video linked from the art track's page.

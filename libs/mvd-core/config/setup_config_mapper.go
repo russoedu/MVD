@@ -37,6 +37,18 @@ func applyKey(cfg *Config, key, val, path string) {
 		if n, err := strconv.Atoi(val); err == nil && n > 0 {
 			cfg.MaxConcurrentDownloads = n
 		}
+	case "list_workers":
+		if n, err := strconv.Atoi(val); err == nil && n > 0 {
+			cfg.ListWorkers = n
+		}
+	case "name_workers":
+		if n, err := strconv.Atoi(val); err == nil && n > 0 {
+			cfg.NameWorkers = n
+		}
+	case "pick_workers":
+		if n, err := strconv.Atoi(val); err == nil && n > 0 {
+			cfg.PickWorkers = n
+		}
 	case "concurrent_fragments":
 		switch strings.ToLower(val) {
 		case "off", "none", "false":
@@ -134,6 +146,9 @@ func configText(cfg Config) string {
 	w("output_template", cfg.OutputTemplate)
 	w("max_concurrent_downloads", strconv.Itoa(cfg.MaxConcurrentDownloads))
 	w("concurrent_fragments", strconv.Itoa(cfg.ConcurrentFragments))
+	w("list_workers", strconv.Itoa(cfg.ListWorkers))
+	w("name_workers", strconv.Itoa(cfg.NameWorkers))
+	w("pick_workers", strconv.Itoa(cfg.PickWorkers))
 	w("download_official_music_video", strconv.FormatBool(cfg.DownloadOfficialMusicVideo))
 	w("auto_retry", strconv.FormatBool(cfg.AutoRetry))
 	w("cookies_from_browser", cookieSetting(cfg))

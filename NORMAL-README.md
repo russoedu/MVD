@@ -129,7 +129,14 @@ Terminals narrower than 100 columns show only the lists; press `l` for the outpu
 
 Emoji in playlist and video titles are not drawn, because terminals disagree on their width and one wrong guess shifts the whole layout. The interface uses Unicode box drawing and status glyphs, so use a terminal with a font that has them (Windows Terminal, iTerm2, GNOME Terminal, kitty, VS Code and most others are fine). A terminal that does not answer colour queries can add a five second pause at start-up; `--no-tui` avoids it.
 
-Downloads are scheduled per entry: `max_concurrent_downloads` is the number of videos in flight across all playlists, filled in playlist order. Each video also fetches `concurrent_fragments` fragments in parallel.
+Work goes through four stages, each with its own queue and workers, so a slow one does not hold the others back:
+
+1. **List**: `list_workers` (default 4) playlists are read at the same time.
+2. **Name**: `name_workers` (default 8) uploads are named at the same time, asking iTunes, Deezer and MusicBrainz for the artist and title. Each service is paced on its own (MusicBrainz allows one request a second) and is left alone for a minute if it refuses a request.
+3. **Pick**: `pick_workers` (default 4) songs get their version picked at the same time: the official video, else the upload with the best picture and sound.
+4. **Download**: `max_concurrent_downloads` is the number of videos in flight across all playlists. Each video also fetches `concurrent_fragments` fragments in parallel.
+
+Downloads start as soon as the first song has been picked, while the rest are still being named. Files are numbered by playlist position, so the order they finish in does not matter.
 
 ## ⚙️ Configuration
 
@@ -161,7 +168,7 @@ It holds `config.conf` (settings), `list.txt` (your URLs), `official-videos.json
 
 ### `config.conf` keys (for reference)
 
-`output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `download_official_music_video`, `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args`.
+`output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `list_workers`, `name_workers`, `pick_workers`, `download_official_music_video`, `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args`.
 
 The interface colours are `color_accent`, `color_focus`, `color_highlight`, `color_success`, `color_error`, `color_dim`, `color_text` (text) and `color_selected` (background of the selected row), each a `#rgb` or `#rrggbb` value such as `color_accent=#ff007f`. A missing or invalid value keeps the default. You can also change them in the app: on the preferences press `c` for the colours screen, where each colour shows a swatch and applies as you accept it (`d` restores the default of the selected one). Edited in the file, they apply on the next start.
 

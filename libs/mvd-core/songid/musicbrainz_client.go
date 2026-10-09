@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -18,11 +17,11 @@ type MusicBrainzClient struct {
 	HTTP      *http.Client
 	Endpoint  string // the recording search endpoint
 	UserAgent string // MusicBrainz requires one that says who is asking
-	// MinInterval is the least time between two requests: MusicBrainz allows one a second.
+	// MinInterval is the least time between two requests, however many workers ask:
+	// MusicBrainz allows one a second.
 	MinInterval time.Duration
 
-	mu   sync.Mutex
-	last time.Time
+	pace pacer
 }
 
 // NewMusicBrainzClient returns a client pointed at the real MusicBrainz.
@@ -37,8 +36,11 @@ func NewMusicBrainzClient() *MusicBrainzClient {
 
 // Recordings returns the recordings called title that artist made, best match first.
 func (c *MusicBrainzClient) Recordings(artist, title string) ([]Identity, error) {
+	if c.pace.blocked() {
+		return nil, errLeftAlone
+	}
 	query := fmt.Sprintf(`recording:"%s" AND artist:"%s"`, luceneEscaped(title), luceneEscaped(artist))
-	c.wait()
+	c.pace.wait(c.MinInterval)
 	req, err := http.NewRequest(http.MethodGet, c.Endpoint+"?fmt=json&limit=5&query="+url.QueryEscape(query), nil)
 	if err != nil {
 		return nil, err
@@ -50,6 +52,9 @@ func (c *MusicBrainzClient) Recordings(artist, title string) ([]Identity, error)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
+		if refusedBy(resp.StatusCode) {
+			c.pace.block(leftAloneFor)
+		}
 		return nil, fmt.Errorf("MusicBrainz answered %s", resp.Status)
 	}
 
@@ -73,16 +78,6 @@ func (c *MusicBrainzClient) Recordings(artist, title string) ([]Identity, error)
 		out = append(out, Identity{Artist: rec.ArtistCredit[0].Name, Title: rec.Title})
 	}
 	return out, nil
-}
-
-// wait keeps the requests a polite distance apart.
-func (c *MusicBrainzClient) wait() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if gap := c.MinInterval - time.Since(c.last); gap > 0 {
-		time.Sleep(gap)
-	}
-	c.last = time.Now()
 }
 
 // luceneEscaped makes a text safe inside a quoted Lucene phrase.

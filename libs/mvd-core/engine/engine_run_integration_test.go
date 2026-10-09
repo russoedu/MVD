@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -125,16 +126,22 @@ func (fakeResolver) Wanted(title, channel, uploader string) bool {
 	return strings.HasSuffix(channel, " - Topic") || title == "Normal upload"
 }
 
-func (fakeResolver) ResolveVersion(videoID, title, channel string, _ int, logf func(string, ...interface{})) Resolution {
-	logf("[official] %s: looked up", videoID)
-	if strings.HasPrefix(videoID, "aaaa") {
-		return Resolution{VideoID: "OFFICIAL001", Official: true, Reason: `official video by "Label Records"`}
+func (fakeResolver) Identify(videoID, title, channel string, _ int, logf func(string, ...interface{})) Identification {
+	logf("[official] %s: identified", videoID)
+	switch {
+	case strings.HasPrefix(videoID, "aaaa"):
+		return Identification{Done: true, Resolution: Resolution{VideoID: "OFFICIAL001", Official: true, Reason: `official video by "Label Records"`}}
+	case strings.HasPrefix(videoID, "cccc"):
+		return Identification{Done: true, Resolution: Resolution{VideoID: "OFFICIALfail", Official: true, Reason: `official video by "Gone Records"`}}
 	}
-	if strings.HasPrefix(videoID, "bbbb") {
+	return Identification{State: videoID} // named, left for the picking stage
+}
+
+func (fakeResolver) Pick(identification Identification, logf func(string, ...interface{})) Resolution {
+	id, _ := identification.State.(string)
+	logf("[official] %s: picked", id)
+	if strings.HasPrefix(id, "bbbb") {
 		return Resolution{VideoID: "BETTER00001", Reason: "no official video found; the best quality is BETTER00001"}
-	}
-	if strings.HasPrefix(videoID, "cccc") {
-		return Resolution{VideoID: "OFFICIALfail", Official: true, Reason: `official video by "Gone Records"`}
 	}
 	return Resolution{Reason: "no official video link found in description"}
 }
@@ -515,7 +522,7 @@ func TestEngineAddSourceKeepsTheEngineBusyUntilListed(t *testing.T) {
 	default:
 	}
 
-	// Once the producer has taken it and found nothing more, drains are signalled again.
+	// While the producer is reading the list it took, the engine is still busy.
 	if _, ok := eng.nextToList(); !ok {
 		t.Fatal("nextToList returned nothing for the waiting source")
 	}
@@ -523,6 +530,14 @@ func TestEngineAddSourceKeepsTheEngineBusyUntilListed(t *testing.T) {
 		t.Fatal("nextToList returned a source twice")
 	}
 	eng.signalDrain()
+	select {
+	case <-eng.drained:
+		t.Fatal("a drain was signalled while a list was still being read")
+	default:
+	}
+
+	// Once the list is read and there is nothing more, drains are signalled again.
+	eng.listDone()
 	select {
 	case <-eng.drained:
 	default:
@@ -675,5 +690,49 @@ func TestPartialDirIsEmptiedWhenARunStartsAndRemovedWhenItEnds(t *testing.T) {
 	<-done
 	if _, err := os.Stat(partial); !os.IsNotExist(err) {
 		t.Errorf("the partial dir should be removed when the run ends (%v)", err)
+	}
+}
+
+// measuringResolver counts how many identifications run at the same time.
+type measuringResolver struct {
+	fakeResolver
+	mu      sync.Mutex
+	running int
+	peak    int
+}
+
+func (m *measuringResolver) Identify(videoID, title, channel string, d int, logf func(string, ...interface{})) Identification {
+	m.mu.Lock()
+	m.running++
+	m.peak = max(m.peak, m.running)
+	m.mu.Unlock()
+	time.Sleep(150 * time.Millisecond)
+	m.mu.Lock()
+	m.running--
+	m.mu.Unlock()
+	return m.fakeResolver.Identify(videoID, title, channel, d, logf)
+}
+
+func runWithNameWorkers(t *testing.T, workers int) int {
+	t.Helper()
+	resolver := &measuringResolver{}
+	eng := stubEngine(t, false, "https://youtube.com/playlist?list=A")
+	eng.opts.Resolver = resolver
+	eng.opts.NameWorkers = workers
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	collect(t, eng)
+	cancel()
+	<-done
+	return resolver.peak
+}
+
+func TestNamingWorkersAreBoundedByTheLimitAndRunInParallelWhenAllowed(t *testing.T) {
+	if peak := runWithNameWorkers(t, 1); peak != 1 {
+		t.Errorf("with one naming worker, %d uploads were identified at once", peak)
+	}
+	if peak := runWithNameWorkers(t, 4); peak < 2 {
+		t.Errorf("with four naming workers the two art tracks should be identified together, peak was %d", peak)
 	}
 }
