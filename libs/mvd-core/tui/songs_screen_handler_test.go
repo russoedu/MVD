@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
 
 func typeText(m tea.Model, text string) tea.Model {
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(text), Paste: true})
+	m, _ = m.Update(tea.PasteMsg{Content: text})
 	return m
 }
 
@@ -32,7 +32,7 @@ func TestSongsScreenAddsAListFileToTheDownloadList(t *testing.T) {
 		t.Fatalf("ctrl+o should open the songs screen, on screen %d", m.(setupModel).screen)
 	}
 	m = typeText(m, "# Road trip\nATB - Killer\nSeal - Kiss From a Rose\nnot a song\n")
-	if view := m.View(); !strings.Contains(view, "2 songs, 1 line not understood") {
+	if view := m.View().Content; !strings.Contains(view, "2 songs, 1 line not understood") {
 		t.Errorf("the screen should say how the text reads:\n%s", view)
 	}
 
@@ -56,8 +56,8 @@ func TestSongsScreenRefusesATextWithoutSongsAndCancels(t *testing.T) {
 	m = typeText(m, "just words")
 
 	m, _ = m.Update(key("ctrl+s"))
-	if m.(setupModel).screen != screenSongs || !strings.Contains(m.View(), "Artist - Title") {
-		t.Errorf("a text without songs stays on the screen with a hint:\n%s", m.View())
+	if m.(setupModel).screen != screenSongs || !strings.Contains(m.View().Content, "Artist - Title") {
+		t.Errorf("a text without songs stays on the screen with a hint:\n%s", m.View().Content)
 	}
 	if entries, _ := os.ReadDir(filepath.Join(dir, "songs")); len(entries) != 0 {
 		t.Errorf("nothing should be stored, found %d files", len(entries))

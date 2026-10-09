@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
@@ -40,12 +40,12 @@ func newAdvancedModel(cfg config.Config) advancedModel {
 
 func (m advancedModel) setSize(w, h int) advancedModel {
 	m.width, m.height = w, h
-	m.input.Width = max(10, w-8)
+	m.input.SetWidth(max(10, w-8))
 	return m
 }
 
 func (m advancedModel) update(msg tea.Msg) (advancedModel, tea.Cmd, advancedOutcome, config.Config) {
-	k, isKey := msg.(tea.KeyMsg)
+	k, isKey := msg.(tea.KeyPressMsg)
 
 	if m.mode != editNone {
 		if isKey {

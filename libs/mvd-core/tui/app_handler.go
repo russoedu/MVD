@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/sourcelist"
@@ -44,7 +44,7 @@ type SetupResult struct {
 // RunSetup runs the list + config screens and returns the user's choice.
 func RunSetup(in SetupInput) (SetupResult, error) {
 	m := newSetupModel(in)
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m)
 	final, err := p.Run()
 	if fm, ok := final.(setupModel); ok {
 		return fm.result, err
@@ -224,7 +224,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m setupModel) View() string {
+func (m setupModel) render() string {
 	switch m.screen {
 	case screenConfig:
 		return m.config.view(m.width, m.height)
@@ -270,3 +270,5 @@ func screenFrame(width, height int, title, body, bar string) string {
 	body = lipgloss.NewStyle().Width(width).Height(bodyH).Render(body)
 	return lipgloss.JoinVertical(lipgloss.Left, head, body, bar)
 }
+
+func (m setupModel) View() tea.View { return screenView(m.render()) }

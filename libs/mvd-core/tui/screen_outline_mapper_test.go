@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
@@ -24,7 +24,7 @@ func TestOutlineDescribesTheListScreen(t *testing.T) {
 
 func TestOutlineFollowsTheConfigScreenSelection(t *testing.T) {
 	m, _ := NewSetupModel(SetupInput{Cfg: config.Config{VideoQuality: "best"}, OpenConfig: true}).Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	out := m.(outliner).Outline()
 
 	if out.Title != "MVD · Preferences" || len(out.Items) != cfgItemCount {
@@ -34,7 +34,7 @@ func TestOutlineFollowsTheConfigScreenSelection(t *testing.T) {
 		t.Fatalf("unexpected selection %+v", out.Items[1])
 	}
 
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter}) // open the radio editor
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // open the radio editor
 	editing := m.(outliner).Outline().Items[1]
 	if !editing.Editing || len(editing.Choices) == 0 {
 		t.Fatalf("expected the radio editor to be described, got %+v", editing)

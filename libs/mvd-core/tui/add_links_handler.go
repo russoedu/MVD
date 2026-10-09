@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/engine"
 )
@@ -43,7 +43,7 @@ func (m model) startAdding() (tea.Model, tea.Cmd) {
 
 // updateAdding handles a key while the box is open: ctrl+s adds the links,
 // esc closes the box, anything else is typed into it.
-func (m model) updateAdding(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m model) updateAdding(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.adding = false

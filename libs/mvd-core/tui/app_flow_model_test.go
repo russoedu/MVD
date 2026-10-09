@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/engine"
@@ -131,7 +131,7 @@ func TestAppModelKeepsTheListWhenTheRunIsUnfinished(t *testing.T) {
 	app := m.(appModel)
 	app.download.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "One"}}})
 	app.download.state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading})
-	m = drive(t, app, tea.KeyMsg{Type: tea.KeyCtrlC})
+	m = drive(t, app, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 
 	back := m.(appModel)
 	if back.downloading || !run.closed {

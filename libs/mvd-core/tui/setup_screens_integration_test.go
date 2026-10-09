@@ -3,33 +3,33 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
 
-func key(s string) tea.KeyMsg {
+func key(s string) tea.KeyPressMsg {
 	switch s {
 	case "ctrl+s":
-		return tea.KeyMsg{Type: tea.KeyCtrlS}
+		return tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
 	case "ctrl+p":
-		return tea.KeyMsg{Type: tea.KeyCtrlP}
+		return tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl}
 	case "ctrl+o":
-		return tea.KeyMsg{Type: tea.KeyCtrlO}
+		return tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl}
 	case "ctrl+r":
-		return tea.KeyMsg{Type: tea.KeyCtrlR}
+		return tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}
 	case "ctrl+q":
-		return tea.KeyMsg{Type: tea.KeyCtrlQ}
+		return tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl}
 	case "esc":
-		return tea.KeyMsg{Type: tea.KeyEsc}
+		return tea.KeyPressMsg{Code: tea.KeyEscape}
 	case "enter":
-		return tea.KeyMsg{Type: tea.KeyEnter}
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
 	case "up":
-		return tea.KeyMsg{Type: tea.KeyUp}
+		return tea.KeyPressMsg{Code: tea.KeyUp}
 	case "down":
-		return tea.KeyMsg{Type: tea.KeyDown}
+		return tea.KeyPressMsg{Code: tea.KeyDown}
 	default:
-		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+		return keyText(s)
 	}
 }
 
@@ -226,4 +226,10 @@ func TestCookieChoice(t *testing.T) {
 	if !cfg.AutoCookies || currentCookieChoice(cfg) != "all" {
 		t.Errorf("all wrong: %+v", cfg)
 	}
+}
+
+// keyText is the key press that types text.
+func keyText(text string) tea.KeyPressMsg {
+	r := []rune(text)
+	return tea.KeyPressMsg{Code: r[0], Text: text}
 }

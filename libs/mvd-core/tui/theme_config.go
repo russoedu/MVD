@@ -3,7 +3,9 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
@@ -11,7 +13,7 @@ import (
 // Colours and styles, rebuilt from the config by ApplyTheme. They start as the
 // palette taken from the logo.
 var (
-	colMagenta, colCyan, colYellow, colGreen, colRed, colDim, colText lipgloss.Color
+	colMagenta, colCyan, colYellow, colGreen, colRed, colDim, colText color.Color
 
 	styTitle, styBorder, styBorderOn, styDim, styText, styCyan, styYellow lipgloss.Style
 	styGreen, styRed, styMagenta, stySelected, styKey, styBarFill         lipgloss.Style

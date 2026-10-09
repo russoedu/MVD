@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 	"golang.org/x/term"
 
 	"youtube-downloader/libs/mvd-core/engine"
@@ -34,7 +34,7 @@ func Enabled(noTUIFlag bool) bool {
 // RunDownload drives the download screen until the user quits and returns
 // the final state for the summary.
 func RunDownload(ctx context.Context, c Controller) (*runstate.State, error) {
-	p := tea.NewProgram(newModel(c), tea.WithAltScreen(), tea.WithContext(ctx))
+	p := tea.NewProgram(newModel(c), tea.WithContext(ctx))
 	final, err := p.Run()
 	if fm, ok := final.(model); ok {
 		return fm.state, err
@@ -149,7 +149,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case evClosed:
 		return m, m.quit()
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 
 	case tea.MouseMsg:
@@ -164,7 +164,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	if key == "ctrl+c" {
@@ -356,3 +356,5 @@ func (m *model) jumpTo(id int) {
 	}
 	m.outScroll = 0
 }
+
+func (m model) View() tea.View { return screenView(m.render()) }
