@@ -76,7 +76,7 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
 
 ### ⚡ Heavyweight Feature Arsenal
 
-* 🎬 **Official Video Hijack:** Ruthlessly swaps out auto-generated `Artist - Topic` still-image uploads for the official, authentic music video linked inside YouTube's *Music* cards.
+* 🎬 **Official Video Hijack:** Ruthlessly swaps out the auto-generated still-image uploads of your playlists (the `Artist - Topic` ones and the many that wear the artist's own name) for the official, authentic music video, found through YouTube's *Music* cards, Wikidata, YouTube Music and a fuzzy, scored YouTube search. No official video? It takes the artist's official audio, and never drops a song.
 * 🛠 **Auto-Dependency Self-Installation:** Zero setup bullshit. On startup, MVD hunts down missing binaries for `yt-dlp`, `ffmpeg`, and JS engines (`deno`), verifying SHA-256 checksums and dropping them directly into your isolated app data folder—no admin rights or manual PATH hacking needed.
 * 🚀 **Parallel Goroutine Power:** Multi-threaded download workers blast through massive playlists concurrently with live, per-track progress bars and raw log output.
 * 🍪 **Automatic Cookie Hijacking:** Automatically detects signed-in YouTube cookies from installed local browsers (Firefox, Chrome, Edge) to dodge `403 Forbidden` errors, `429 Rate Limits`, and bot check walls without asking you to configure a thing.
