@@ -30,6 +30,9 @@ func TestSearchQueries(t *testing.T) {
 		"Them Bones Alice In Chains official video",
 		"Alice In Chains Them Bones official music video",
 		"Alice In Chains - Them Bones",
+		"Alice In Chains Them Bones music video",
+		"Them Bones Alice In Chains",
+		"Alice In Chains Them Bones (2022 Remaster)",
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %q, want %q", got, want)
@@ -86,8 +89,8 @@ func TestFindBestVideoKeepsTheBestAcrossSearchesAndReportsTheResults(t *testing.
 	if err != nil || !ok || pick.ID != "audio" || pick.Kind != KindAudio {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
-	if len(results) != 2 || len(search.asked) != 3 {
-		t.Errorf("want 2 results from 3 searches, got %d from %q", len(results), search.asked)
+	if len(results) != 2 || len(search.asked) != 5 {
+		t.Errorf("want 2 results from 5 searches, got %d from %q", len(results), search.asked)
 	}
 }
 
