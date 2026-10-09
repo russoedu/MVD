@@ -49,6 +49,7 @@ type configModel struct {
 	folder        folderModel
 	pick          FolderPicker // nil when the host has no native chooser
 	uninstall     Uninstaller  // nil when the host cannot remove the app
+	move          Mover        // nil when the host cannot move the app
 	status        string       // what happened last, shown in place of the key bar
 	width, height int
 }
@@ -62,6 +63,12 @@ func newConfigModel(cfg config.Config) configModel {
 // withUninstaller offers removing the app on the preferences.
 func (m configModel) withUninstaller(uninstall Uninstaller) configModel {
 	m.uninstall = uninstall
+	return m
+}
+
+// withMover offers moving the app to its own folder on the preferences.
+func (m configModel) withMover(move Mover) configModel {
+	m.move = move
 	return m
 }
 
@@ -107,6 +114,8 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 			return m, nil, cfgColours, m.cfg
 		case "u":
 			return m, m.askToUninstall(), cfgNone, m.cfg
+		case "m":
+			return m, m.askToMove(), cfgNone, m.cfg
 		case "esc":
 			return m, nil, cfgCancel, m.cfg
 		case "enter", " ":
@@ -151,6 +160,38 @@ func (m *configModel) askToUninstall() tea.Cmd {
 	return func() tea.Msg {
 		outcome, err := uninstall()
 		return uninstallAnsweredMsg{outcome: outcome, err: err}
+	}
+}
+
+// askToMove starts the questions about moving the app to its own folder, which the
+// returned command waits on; nothing when the host cannot move the app.
+func (m *configModel) askToMove() tea.Cmd {
+	if m.move == nil {
+		return nil
+	}
+	m.mode = editConfirming
+	m.status = "Answer the questions in the window that opened..."
+	move := m.move
+	return func() tea.Msg {
+		outcome, err := move()
+		return moveAnsweredMsg{outcome: outcome, err: err}
+	}
+}
+
+// finishMoving takes the answer of the move: what to tell the person.
+func (m *configModel) finishMoving(answered moveAnsweredMsg) {
+	m.mode = editNone
+	switch {
+	case answered.err != nil:
+		m.status = "MVD could not be moved: " + answered.err.Error()
+	case answered.outcome == MoveStarted:
+		m.status = "MVD was moved to its own folder. This window will close and the new copy will open."
+	case answered.outcome == MoveAlreadyThere:
+		m.status = "MVD already lives in its own folder."
+	case answered.outcome == MoveUnavailable:
+		m.status = "This machine has no place to move MVD to, or no way to ask. Start MVD with -move from a terminal."
+	default:
+		m.status = "MVD was not moved."
 	}
 }
 
@@ -222,8 +263,11 @@ func (m *configModel) beginInput(val string) {
 func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) tea.Cmd {
 	if m.mode == editConfirming {
 		// Nothing to do but wait: the questions are windows of their own.
-		if answered, ok := msg.(uninstallAnsweredMsg); ok {
+		switch answered := msg.(type) {
+		case uninstallAnsweredMsg:
 			m.finishConfirming(answered)
+		case moveAnsweredMsg:
+			m.finishMoving(answered)
 		}
 		return nil
 	}
@@ -462,6 +506,9 @@ func (m configModel) hints() []keyHint {
 		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
 	}
 	hints := []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"c", "colours"}, {"s", "save"}}
+	if m.move != nil {
+		hints = append(hints, keyHint{"m", "move app"})
+	}
 	if m.uninstall != nil {
 		hints = append(hints, keyHint{"u", "uninstall"})
 	}

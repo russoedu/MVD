@@ -27,6 +27,8 @@ type Host struct {
 	PickFolder tui.FolderPicker
 	// Uninstall removes the app after asking; nil to offer no uninstall.
 	Uninstall tui.Uninstaller
+	// Move moves the app to its own folder after asking; nil to offer no move.
+	Move tui.Mover
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -43,7 +45,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 		urls, _ := sourcelist.Load(files.List)
 
 		return accessibleApp{tui.NewAppModel(tui.AppInput{
-			Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall},
+			Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
 			Start: host.Start,
 		})}
 	}

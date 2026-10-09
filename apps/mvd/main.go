@@ -38,6 +38,7 @@ func main() {
 	flag.Bool("no-window", false, "no longer used (kept for older scripts)")
 	flag.Bool("no-browser", false, "no longer used (kept for older scripts)")
 	flag.Bool("no-tray", false, "no longer used (kept for older scripts)")
+	move := flag.Bool("move", false, "ask to move the app to its own folder now, whatever was answered before")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
@@ -52,14 +53,14 @@ func main() {
 		return
 	}
 
-	if err := run(*movedFrom); err != nil {
+	if err := run(*movedFrom, *move); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(movedFrom string) error {
+func run(movedFrom string, askToMove bool) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -69,7 +70,17 @@ func run(movedFrom string) error {
 
 	// The first time it is started from somewhere it does not belong, it offers to move
 	// itself, and if that is accepted the moved copy takes over and this one is done.
-	if install.OfferMoveHere(appDir, true, movedFrom, version) {
+	// -move asks whatever was answered before.
+	if askToMove {
+		switch install.MoveNow(appDir, version) {
+		case install.Moved:
+			return nil
+		case install.AlreadyThere:
+			logf("MVD already lives in its own folder.")
+		case install.CannotMove:
+			logf("MVD cannot be moved on this machine.")
+		}
+	} else if install.OfferMoveHere(appDir, true, movedFrom, version) {
 		return nil
 	}
 	if movedFrom != "" {
@@ -111,6 +122,8 @@ func run(movedFrom string) error {
 		// The person is at this machine, so its own folder chooser is the one to show.
 		PickFolder: func(start string) (string, bool, error) { return folderdialog.Dialog{}.Pick(ctx, start) },
 		Uninstall:  terminalui.Uninstall(removal),
+		// Moving later is possible whatever was answered when the app asked by itself.
+		Move: terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop),
 	}, logf))
 
 	fmt.Printf("MVD %s\n", version)
