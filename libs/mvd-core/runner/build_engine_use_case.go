@@ -7,14 +7,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"time"
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/cookies"
 	"youtube-downloader/libs/mvd-core/engine"
-	"youtube-downloader/libs/mvd-core/official"
-	"youtube-downloader/libs/mvd-core/songid"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -82,58 +79,16 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 	if appDir, err := appdir.Dir(); err == nil {
 		opts.PartialDir = filepath.Join(appDir, "partial")
 	}
-	// The YouTube search behind both the official video lookup and the songs of
-	// playlists from other services.
-	searcher := func(query string) ([]official.SearchResult, error) {
-		entries, err := ytdlp.ListPlaylist(ctx, ytDlpPath, "ytsearch10:"+query, extraArgs)
-		out := make([]official.SearchResult, 0, len(entries))
-		for _, e := range entries {
-			channel := e.Channel
-			if channel == "" {
-				channel = e.Uploader
-			}
-			out = append(out, official.SearchResult{ID: e.ID, Title: e.Title, Channel: channel, Duration: int(e.Duration), Views: e.ViewCount, Verified: e.ChannelIsVerified})
-		}
-		return out, err
-	}
 	// The resolver is also what songs from other services are found with, so it is
 	// built whether or not the official video option is on; only the option puts it in
 	// front of the entries of YouTube playlists.
-	resolver := official.NewResolver(nil)
-	if cookiesActive {
-		if _, err := resolver.UseCookies(cfg.CookiesFile); err != nil {
-			log("warning: resolver cannot use cookies: %v", err)
-		}
-	}
-	resolver.Dumper = func(videoID string) ([]official.DumpedPage, error) {
-		pages, err := ytdlp.DumpPages(ctx, ytDlpPath, "https://www.youtube.com/watch?v="+videoID, extraArgs)
-		out := make([]official.DumpedPage, 0, len(pages))
-		for _, p := range pages {
-			out = append(out, official.DumpedPage{URL: p.URL, Body: p.Body})
-		}
-		return out, err
-	}
-	music := official.NewYouTubeMusicClient()
-	resolver.Searcher = searcher
-	resolver.TrackInfos = music.Describe
-	resolver.Sources = official.Sources{
-		Known: resolver.KnownCandidates(official.NewWikidataClient()),
-		Music: music.SearchVideos,
-		// A music database names the song of an upload, and the formats of the uploads that
-		// are not official tell which has the best picture and sound.
-		Identify: songid.NewIdentifier().Identify,
-		Quality: func(videoID string) (official.Quality, error) {
-			quality, err := ytdlp.ProbeQuality(ctx, ytDlpPath, videoID, extraArgs)
-			return official.Quality{Height: quality.Height, AudioKbps: quality.AudioKbps}, err
-		},
-		Type: func(videoID string) (string, error) {
-			info, err := music.Describe(videoID)
-			return info.Type, err
-		},
-	}
+	cacheFile := ""
 	if appDir, err := appdir.Dir(); err == nil {
-		resolver.Sources.Cache = official.NewResolutionCache(filepath.Join(appDir, "official-videos.json"), 90*24*time.Hour)
+		cacheFile = filepath.Join(appDir, "official-videos.json")
 	}
+	resolver, searcher := BuildResolver(ctx, ResolverInput{
+		YtDlp: ytDlpPath, ExtraArgs: extraArgs, CookiesFile: cfg.CookiesFile, CookiesActive: cookiesActive, CacheFile: cacheFile,
+	}, log)
 	if cfg.DownloadOfficialMusicVideo {
 		opts.Resolver = engineResolver{resolver}
 	}
