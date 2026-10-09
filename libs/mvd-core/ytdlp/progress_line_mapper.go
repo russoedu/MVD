@@ -6,7 +6,7 @@ import (
 )
 
 // ProgressTemplate makes yt-dlp print one machine readable line per tick.
-const ProgressTemplate = "download:MVD|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s"
+const ProgressTemplate = "download:MVD|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s|%(progress.fragment_index)s|%(progress.fragment_count)s"
 
 // Progress is one decoded progress tick.
 type Progress struct {
@@ -15,6 +15,9 @@ type Progress struct {
 	Total      int64
 	Speed      float64 // bytes per second, 0 when unknown
 	ETA        int     // seconds, -1 when unknown
+	// FragmentIndex and FragmentCount say how far a part that comes in fragments is
+	// (DASH streams do), and are 0 for one that does not.
+	FragmentIndex, FragmentCount int
 }
 
 // ParseProgressLine decodes a line produced by ProgressTemplate.
@@ -23,7 +26,8 @@ func ParseProgressLine(line string) (Progress, bool) {
 		return Progress{}, false
 	}
 	parts := strings.Split(line, "|")
-	if len(parts) != 6 {
+	// Six fields, or eight when the fragments are given as well.
+	if len(parts) != 6 && len(parts) != 8 {
 		return Progress{}, false
 	}
 	num := func(s string) float64 {
@@ -61,6 +65,14 @@ func ParseProgressLine(line string) (Progress, bool) {
 	}
 	if eta >= 0 {
 		p.ETA = int(eta)
+	}
+	if len(parts) == 8 {
+		if index := num(parts[6]); index > 0 {
+			p.FragmentIndex = int(index)
+		}
+		if count := num(parts[7]); count > 0 {
+			p.FragmentCount = int(count)
+		}
 	}
 	return p, true
 }

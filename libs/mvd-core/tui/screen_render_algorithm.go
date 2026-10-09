@@ -60,6 +60,8 @@ func (m model) renderHeader(w int) string {
 	right := elapsed
 	if m.state.Idle {
 		right = "FINISHED · " + elapsed
+	} else if t.Downloading > 0 {
+		right = downloadingSummary(t) + " · " + elapsed
 	}
 
 	parts := []string{
@@ -422,4 +424,18 @@ func (m model) renderHelp() string {
 		}
 	}
 	return renderBox("Help", "", w+4, len(lines)+2, lines, true)
+}
+
+// downloadingSummary is the speed of all the downloads together, and how many files and
+// how many parts of them are coming in now: "↓ 12.4MiB/s · 4 files · 9 parts".
+func downloadingSummary(t runstate.Tally) string {
+	return fmt.Sprintf("↓ %s · %s · %s", runstate.HumanSpeed(t.Speed), counted(t.Downloading, "file"), counted(t.Parts, "part"))
+}
+
+// counted writes a count with its noun: "1 file", "4 files".
+func counted(n int, word string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, word)
+	}
+	return fmt.Sprintf("%d %ss", n, word)
 }

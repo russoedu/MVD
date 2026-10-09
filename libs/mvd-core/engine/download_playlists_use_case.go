@@ -790,7 +790,7 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 
 	return ytdlp.Download(ctx, e.opts.YtDlp, args, func(line string) {
 		if p, ok := ytdlp.ParseProgressLine(line); ok {
-			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA})
+			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA, Parts: partsInFlight(p, e.opts.ConcurrentFragments)})
 			return
 		}
 		if ytdlp.IsPostProcessLine(line) {
@@ -886,4 +886,17 @@ func sleepCtx(ctx context.Context, d time.Duration) bool {
 	case <-t.C:
 		return true
 	}
+}
+
+// partsInFlight is how many parts of a file are being fetched at once: when the part
+// comes in fragments, as many as are allowed at once and are left, else the one part.
+func partsInFlight(p ytdlp.Progress, concurrentFragments int) int {
+	if p.FragmentCount <= 1 || concurrentFragments <= 1 {
+		return 1
+	}
+	left := p.FragmentCount - p.FragmentIndex + 1
+	if left < 1 {
+		left = 1
+	}
+	return min(concurrentFragments, left)
 }

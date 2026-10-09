@@ -57,6 +57,9 @@ type (
 		Total      int64
 		Speed      float64 // bytes per second, 0 when unknown
 		ETA        int     // seconds, -1 when unknown
+		// Parts is how many parts of the file are coming at once: the fragments of a
+		// part that is fragmented, up to concurrent_fragments, else one.
+		Parts int
 	}
 	// EvLog is one line of output. Entry is -1 for playlist level lines.
 	EvLog struct {

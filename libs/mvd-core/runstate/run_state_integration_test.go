@@ -104,3 +104,18 @@ func TestHumanFormats(t *testing.T) {
 		t.Errorf("ProgressLine wrong: %q", got)
 	}
 }
+
+func TestTheTallyAddsUpWhatIsComingInNow(t *testing.T) {
+	s := New(nil)
+	s.Entries = []*Entry{
+		{State: engine.StateDownloading, Speed: 2_000_000, Parts: 4},
+		{State: engine.StateDownloading, Speed: 1_000_000},
+		{State: engine.StateMerging, Speed: 500_000, Parts: 2},
+		{State: engine.StateQueued},
+	}
+
+	tally := s.Tally()
+	if tally.Downloading != 2 || tally.Parts != 5 || tally.Speed != 3_000_000 {
+		t.Errorf("downloading %d, parts %d, speed %v: a merging file is not coming in", tally.Downloading, tally.Parts, tally.Speed)
+	}
+}

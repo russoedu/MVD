@@ -35,12 +35,18 @@ type Entry struct {
 	Total      int64
 	Speed      float64
 	ETA        int
-	Log        []string
+	// Parts is how many parts of the file were being fetched at once, at the last tick.
+	Parts int
+	Log   []string
 }
 
 // Tally holds the global counters shown in the header.
 type Tally struct {
 	Total, Queued, Running, Done, Official, Better, Duplicate, NotFound, Failed, Retried int
+	// Downloading is how many files are coming in now, Parts how many parts of them
+	// at once, and Speed how fast, all of them together, in bytes per second.
+	Downloading, Parts int
+	Speed              float64
 }
 
 // State is the renderer side mirror of the engine, built purely from
@@ -124,6 +130,7 @@ func (s *State) Apply(ev interface{}) int {
 			return -1
 		}
 		en.Percent, en.Downloaded, en.Total, en.Speed, en.ETA = e.Percent, e.Downloaded, e.Total, e.Speed, e.ETA
+		en.Parts = e.Parts
 		return e.Entry
 	case engine.EvLog:
 		if e.Playlist >= 0 && e.Playlist < len(s.Playlists) {
@@ -163,6 +170,11 @@ func (s *State) Tally() Tally {
 			t.Queued++
 		case engine.StateResolving, engine.StateDownloading, engine.StateMerging:
 			t.Running++
+			if en.State == engine.StateDownloading {
+				t.Downloading++
+				t.Parts += max(1, en.Parts)
+				t.Speed += en.Speed
+			}
 		case engine.StateDone:
 			t.Done++
 			if en.Official {
