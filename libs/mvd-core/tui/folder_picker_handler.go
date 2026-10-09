@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 type folderOutcome int
@@ -70,12 +70,12 @@ func (m *folderModel) load() {
 
 func (m folderModel) setSize(w, h int) folderModel {
 	m.width, m.height = w, h
-	m.input.Width = max(10, w-16)
+	m.input.SetWidth(max(10, w-16))
 	return m
 }
 
 func (m folderModel) update(msg tea.Msg) (folderModel, tea.Cmd, folderOutcome) {
-	k, ok := msg.(tea.KeyMsg)
+	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		if m.creating {
 			var cmd tea.Cmd

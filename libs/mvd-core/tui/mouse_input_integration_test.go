@@ -3,17 +3,17 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
 
 func click(x, y int) tea.MouseMsg {
-	return tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft}
+	return tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft}
 }
 
 func wheel(x, y int, button tea.MouseButton) tea.MouseMsg {
-	return tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: button}
+	return tea.MouseWheelMsg{X: x, Y: y, Button: button}
 }
 
 func TestHintAtFindsTheEntryDrawnUnderAColumn(t *testing.T) {
@@ -54,11 +54,11 @@ func TestSetupScreensKeyBarSettingsAndWheel(t *testing.T) {
 	}
 
 	// The wheel moves like the arrow keys.
-	m, _ = m.Update(wheel(10, 5, tea.MouseButtonWheelDown))
+	m, _ = m.Update(wheel(10, 5, tea.MouseWheelDown))
 	if got := m.(setupModel).config.cursor; got != 5 {
 		t.Errorf("a notch down moves three settings, got cursor %d", got)
 	}
-	m, _ = m.Update(wheel(10, 5, tea.MouseButtonWheelUp))
+	m, _ = m.Update(wheel(10, 5, tea.MouseWheelUp))
 	if got := m.(setupModel).config.cursor; got != 2 {
 		t.Errorf("a notch up moves three back, got cursor %d", got)
 	}
@@ -125,13 +125,13 @@ func TestDownloadScreenWheelScrollsThePaneUnderThePointer(t *testing.T) {
 	m.width, m.height = 120, 36
 	m.selEntry = 4 // the entry with a long log
 
-	next, _ := m.Update(wheel(80, 10, tea.MouseButtonWheelUp)) // over the output box
+	next, _ := m.Update(wheel(80, 10, tea.MouseWheelUp)) // over the output box
 	m = next.(model)
 	if m.focus != paneOutput || m.outScroll != wheelStep {
 		t.Errorf("wheel up over the output: focus %d, scrolled %d", m.focus, m.outScroll)
 	}
 
-	next, _ = m.Update(wheel(5, 11, tea.MouseButtonWheelDown)) // over the entries
+	next, _ = m.Update(wheel(5, 11, tea.MouseWheelDown)) // over the entries
 	m = next.(model)
 	if m.focus != paneEntries || m.selEntry != 5 {
 		t.Errorf("wheel down over the entries: focus %d, selEntry %d", m.focus, m.selEntry)

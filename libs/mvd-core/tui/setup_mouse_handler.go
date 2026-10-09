@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // mouse handles a click or a wheel notch on the setup screens: a click on a key
@@ -17,15 +17,15 @@ func (m setupModel) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if !isLeftClick(msg) {
 		return m, nil
 	}
-	if msg.Y == m.height-1 {
-		if h, found := hintAt(m.hints(), msg.X); found {
+	if msg.Mouse().Y == m.height-1 {
+		if h, found := hintAt(m.hints(), msg.Mouse().X); found {
 			if key, clickable := hintKeyMsg(h.key); clickable {
 				return m.Update(key)
 			}
 		}
 		return m, nil
 	}
-	m.selectSetting(msg.Y)
+	m.selectSetting(msg.Mouse().Y)
 	return m, nil
 }
 
@@ -50,9 +50,9 @@ func (m setupModel) hints() []keyHint {
 
 // pressArrow presses the arrow key wheelStep times, up for a negative direction.
 func (m setupModel) pressArrow(dir int) (tea.Model, tea.Cmd) {
-	key := tea.KeyMsg{Type: tea.KeyDown}
+	key := tea.KeyPressMsg{Code: tea.KeyDown}
 	if dir < 0 {
-		key = tea.KeyMsg{Type: tea.KeyUp}
+		key = tea.KeyPressMsg{Code: tea.KeyUp}
 	}
 	var model tea.Model = m
 	var cmds []tea.Cmd

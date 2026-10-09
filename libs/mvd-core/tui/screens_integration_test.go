@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"youtube-downloader/libs/mvd-core/engine"
@@ -74,31 +74,31 @@ func TestViewLayouts(t *testing.T) {
 		m.width, m.height = sz[0], sz[1]
 		m.focus = paneEntries
 		m.selEntry = 4
-		checkFrame(t, "entries", m.View(), sz[0], sz[1])
+		checkFrame(t, "entries", m.View().Content, sz[0], sz[1])
 
 		m.focus = paneLists
-		checkFrame(t, "lists", m.View(), sz[0], sz[1])
+		checkFrame(t, "lists", m.View().Content, sz[0], sz[1])
 
 		m.selPlaylist = 1
-		checkFrame(t, "emoji playlist", m.View(), sz[0], sz[1])
+		checkFrame(t, "emoji playlist", m.View().Content, sz[0], sz[1])
 		m.selPlaylist = 0
 
 		m.fullLog = true
 		m.focus = paneOutput
 		m.outScroll = 5
-		checkFrame(t, "fulllog", m.View(), sz[0], sz[1])
+		checkFrame(t, "fulllog", m.View().Content, sz[0], sz[1])
 
 		m.fullLog = false
 		m.filterFailed = true
 		m.focus = paneEntries
-		checkFrame(t, "filter", m.View(), sz[0], sz[1])
+		checkFrame(t, "filter", m.View().Content, sz[0], sz[1])
 
 		m.confirmQuit = true
-		checkFrame(t, "confirm", m.View(), sz[0], sz[1])
+		checkFrame(t, "confirm", m.View().Content, sz[0], sz[1])
 
 		m.confirmQuit = false
 		m.showHelp = true
-		checkFrame(t, "help", m.View(), sz[0], sz[1])
+		checkFrame(t, "help", m.View().Content, sz[0], sz[1])
 	}
 }
 
@@ -107,7 +107,7 @@ func TestViewContent(t *testing.T) {
 	m.width, m.height = 120, 36
 	m.focus = paneEntries
 	m.selEntry = 4
-	frame := ansi.Strip(m.View())
+	frame := ansi.Strip(m.View().Content)
 	for _, want := range []string{"Queue 1", "Running 3", "Done 1", "Official 1", "Dup 1", "Failed 1", "90s UK Dance Hits", "Música Eletrônica 1990s  1999", "3/6", "34.2% of 112.4MiB at 8.1MiB/s ETA 0:09", "ERR", "dup", "res.", "merge", "⇄", "follow", "(X4UGPCR3zEQ)"} {
 		if !strings.Contains(frame, want) {
 			t.Errorf("frame missing %q\n%s", want, frame)
@@ -118,7 +118,7 @@ func TestViewContent(t *testing.T) {
 	}
 	m.selPlaylist = 2
 	m.focus = paneLists
-	if f := ansi.Strip(m.View()); !strings.Contains(f, "unable to recognize playlist") {
+	if f := ansi.Strip(m.View().Content); !strings.Contains(f, "unable to recognize playlist") {
 		t.Errorf("playlist error not shown\n%s", f)
 	}
 }
@@ -129,16 +129,16 @@ func TestKeyHandling(t *testing.T) {
 
 	press := func(k string) {
 		var mm tea.Model
-		var msg tea.KeyMsg
+		var msg tea.KeyPressMsg
 		switch k {
 		case "tab":
-			msg = tea.KeyMsg{Type: tea.KeyTab}
+			msg = tea.KeyPressMsg{Code: tea.KeyTab}
 		case "down":
-			msg = tea.KeyMsg{Type: tea.KeyDown}
+			msg = tea.KeyPressMsg{Code: tea.KeyDown}
 		case "enter":
-			msg = tea.KeyMsg{Type: tea.KeyEnter}
+			msg = tea.KeyPressMsg{Code: tea.KeyEnter}
 		default:
-			msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
+			msg = keyText(k)
 		}
 		mm, _ = m.Update(msg)
 		m = mm.(model)
@@ -199,7 +199,7 @@ func TestKeyHandling(t *testing.T) {
 	}
 
 	m.state.Idle = true
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	_, cmd := m.Update(keyText("q"))
 	if cmd == nil {
 		t.Fatal("q when idle should quit")
 	}

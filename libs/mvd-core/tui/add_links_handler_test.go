@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/engine"
 )
@@ -48,12 +48,12 @@ func TestAddingLinksQueuesEveryLineOnTheRun(t *testing.T) {
 	if !m.adding {
 		t.Fatal("the key should open the box")
 	}
-	if !strings.Contains(m.View(), "Add links") {
-		t.Errorf("the box should be on screen:\n%s", m.View())
+	if !strings.Contains(m.View().Content, "Add links") {
+		t.Errorf("the box should be on screen:\n%s", m.View().Content)
 	}
 
 	// A paste of two links and a blank line, as a terminal sends it.
-	m = press(t, m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("https://b\n\n https://c "), Paste: true})
+	m = press(t, m, tea.PasteMsg{Content: "https://b\n\n https://c "})
 	m = press(t, m, key("ctrl+s"))
 
 	if m.adding {
@@ -69,7 +69,7 @@ func TestAddingLinksQueuesEveryLineOnTheRun(t *testing.T) {
 
 func TestEscapeClosesTheBoxWithoutAdding(t *testing.T) {
 	m, c := addingScreen(t)
-	m = press(t, m, key("a"), tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("https://b")}, key("esc"))
+	m = press(t, m, key("a"), keyText("https://b"), key("esc"))
 
 	if m.adding || len(c.added) != 0 {
 		t.Errorf("adding %v, queued %v", m.adding, c.added)
@@ -88,7 +88,7 @@ func TestAnEmptyBoxAddsNothingAndSaysSo(t *testing.T) {
 func TestLinksAddedAfterTheRunEndedAreReported(t *testing.T) {
 	m, c := addingScreen(t)
 	c.ended = true
-	m = press(t, m, key("a"), tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("https://b")}, key("ctrl+s"))
+	m = press(t, m, key("a"), keyText("https://b"), key("ctrl+s"))
 
 	if m.status != "added 0 of 1 links; the run has ended" {
 		t.Errorf("status %q", m.status)
@@ -130,7 +130,7 @@ func TestTheAddKeyIsInTheKeyBarAndClickable(t *testing.T) {
 
 func TestTheBoxIsDescribedForAScreenReader(t *testing.T) {
 	m, _ := addingScreen(t)
-	m = press(t, m, key("a"), tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("https://b")})
+	m = press(t, m, key("a"), keyText("https://b"))
 
 	out := m.Outline()
 	if out.Title != "MVD · Add links" || out.Text != "https://b" || !out.HasText || out.TextLabel == "" {

@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // textareaBlink drives the textarea cursor.
@@ -72,7 +72,7 @@ func (m listModel) withURL(url string) listModel {
 }
 
 func (m listModel) update(msg tea.Msg) (listModel, tea.Cmd, listOutcome) {
-	if k, ok := msg.(tea.KeyMsg); ok {
+	if k, ok := msg.(tea.KeyPressMsg); ok {
 		if m.confirmQuit {
 			switch k.String() {
 			case "y", "Y", "enter":

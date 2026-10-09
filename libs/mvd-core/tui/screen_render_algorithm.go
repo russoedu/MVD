@@ -5,14 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
 )
 
-func (m model) View() string {
+func (m model) render() string {
 	if m.width == 0 || m.height == 0 {
 		return "starting..."
 	}

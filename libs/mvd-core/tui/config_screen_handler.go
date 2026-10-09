@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
@@ -75,13 +75,13 @@ func (m configModel) init() tea.Cmd { return textinput.Blink }
 
 func (m configModel) setSize(w, h int) configModel {
 	m.width, m.height = w, h
-	m.input.Width = max(10, w-8)
+	m.input.SetWidth(max(10, w-8))
 	m.folder = m.folder.setSize(w, h)
 	return m
 }
 
 func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, config.Config) {
-	k, isKey := msg.(tea.KeyMsg)
+	k, isKey := msg.(tea.KeyPressMsg)
 
 	if m.mode != editNone {
 		cmd := m.updateEditor(msg, k, isKey)
@@ -219,7 +219,7 @@ func (m *configModel) beginInput(val string) {
 	m.input.Focus()
 }
 
-func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyMsg, isKey bool) tea.Cmd {
+func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) tea.Cmd {
 	if m.mode == editConfirming {
 		// Nothing to do but wait: the questions are windows of their own.
 		if answered, ok := msg.(uninstallAnsweredMsg); ok {

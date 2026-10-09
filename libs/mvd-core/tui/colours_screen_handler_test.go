@@ -3,7 +3,8 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
@@ -30,7 +31,7 @@ func TestColoursModelEditsAndValidates(t *testing.T) {
 	// A valid one is accepted and applied to the interface.
 	m.input.SetValue("#123456")
 	m, _, _, _ = m.update(key("enter"))
-	if m.editing || m.cfg.Colors.Accent != "#123456" || string(colMagenta) != "#123456" {
+	if m.editing || m.cfg.Colors.Accent != "#123456" || colMagenta != lipgloss.Color("#123456") {
 		t.Errorf("a valid colour should be accepted and applied: %+v", m.cfg.Colors)
 	}
 
@@ -41,7 +42,7 @@ func TestColoursModelEditsAndValidates(t *testing.T) {
 	}
 
 	// Moving down and editing changes another slot, and s saves.
-	m, _, _, _ = m.update(tea.KeyMsg{Type: tea.KeyDown})
+	m, _, _, _ = m.update(tea.KeyPressMsg{Code: tea.KeyDown})
 	m, _, _, _ = m.update(key("enter"))
 	m.input.SetValue("#abc")
 	m, _, _, _ = m.update(key("enter"))

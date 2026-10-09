@@ -3,25 +3,27 @@ package tui
 import (
 	"github.com/charmbracelet/x/ansi"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // wheelStep is how many rows one notch of the mouse wheel moves.
 const wheelStep = 3
 
 func isLeftClick(msg tea.MouseMsg) bool {
-	return msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft
+	click, ok := msg.(tea.MouseClickMsg)
+	return ok && click.Button == tea.MouseLeft
 }
 
 // wheelDirection is -1 for a notch up, 1 for a notch down, 0 for anything else.
 func wheelDirection(msg tea.MouseMsg) int {
-	if msg.Action != tea.MouseActionPress {
+	wheel, ok := msg.(tea.MouseWheelMsg)
+	if !ok {
 		return 0
 	}
-	switch msg.Button {
-	case tea.MouseButtonWheelUp:
+	switch wheel.Button {
+	case tea.MouseWheelUp:
 		return -1
-	case tea.MouseButtonWheelDown:
+	case tea.MouseWheelDown:
 		return 1
 	}
 	return 0
@@ -47,35 +49,35 @@ func hintAt(hints []keyHint, x int) (keyHint, bool) {
 
 // hintKeyMsg is the key press a key bar entry stands for, so a click on the
 // entry does what the key does. The arrows that only move are not clickable.
-func hintKeyMsg(key string) (tea.KeyMsg, bool) {
+func hintKeyMsg(key string) (tea.KeyPressMsg, bool) {
 	switch key {
 	case "ctrl+s":
-		return tea.KeyMsg{Type: tea.KeyCtrlS}, true
+		return tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}, true
 	case "ctrl+p":
-		return tea.KeyMsg{Type: tea.KeyCtrlP}, true
+		return tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl}, true
 	case "ctrl+o":
-		return tea.KeyMsg{Type: tea.KeyCtrlO}, true
+		return tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl}, true
 	case "ctrl+r":
-		return tea.KeyMsg{Type: tea.KeyCtrlR}, true
+		return tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}, true
 	case "ctrl+q":
-		return tea.KeyMsg{Type: tea.KeyCtrlQ}, true
+		return tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl}, true
 	case "enter", "⏎":
-		return tea.KeyMsg{Type: tea.KeyEnter}, true
+		return tea.KeyPressMsg{Code: tea.KeyEnter}, true
 	case "esc":
-		return tea.KeyMsg{Type: tea.KeyEsc}, true
+		return tea.KeyPressMsg{Code: tea.KeyEscape}, true
 	case "tab":
-		return tea.KeyMsg{Type: tea.KeyTab}, true
+		return tea.KeyPressMsg{Code: tea.KeyTab}, true
 	case "→":
-		return tea.KeyMsg{Type: tea.KeyRight}, true
+		return tea.KeyPressMsg{Code: tea.KeyRight}, true
 	case "←":
-		return tea.KeyMsg{Type: tea.KeyLeft}, true
+		return tea.KeyPressMsg{Code: tea.KeyLeft}, true
 	case "↑↓":
-		return tea.KeyMsg{}, false
+		return tea.KeyPressMsg{}, false
 	}
 	if runes := []rune(key); len(runes) == 1 {
-		return tea.KeyMsg{Type: tea.KeyRunes, Runes: runes}, true
+		return tea.KeyPressMsg{Code: runes[0], Text: key}, true
 	}
-	return tea.KeyMsg{}, false
+	return tea.KeyPressMsg{}, false
 }
 
 // windowStart is the index of the first row window shows: the same arithmetic,

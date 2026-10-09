@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/songfile"
 )
@@ -46,7 +46,7 @@ func (m songsModel) setSize(w, h int) songsModel {
 }
 
 func (m songsModel) update(msg tea.Msg) (songsModel, tea.Cmd, songsOutcome) {
-	if k, ok := msg.(tea.KeyMsg); ok {
+	if k, ok := msg.(tea.KeyPressMsg); ok {
 		switch k.String() {
 		case "ctrl+s":
 			path, err := songfile.Save(m.dir, m.ta.Value(), time.Now())

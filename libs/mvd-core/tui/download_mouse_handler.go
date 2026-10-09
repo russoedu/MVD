@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // rect is a region of the screen, in cells.
@@ -71,19 +71,19 @@ func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if !isLeftClick(msg) {
 		return m, nil
 	}
-	if msg.Y == m.height-1 {
-		if h, found := hintAt(m.hints(), msg.X); found {
+	if msg.Mouse().Y == m.height-1 {
+		if h, found := hintAt(m.hints(), msg.Mouse().X); found {
 			if key, clickable := hintKeyMsg(h.key); clickable {
 				return m.handleKey(key)
 			}
 		}
 		return m, nil
 	}
-	if l.hasLists && l.playlists.rows().contains(msg.X, msg.Y) {
-		m.clickPlaylist(l.playlists.rows(), msg.Y)
-	} else if l.hasLists && l.entries.rows().contains(msg.X, msg.Y) {
-		m.clickEntry(l.entries.rows(), msg.Y)
-	} else if l.hasOutput && l.output.contains(msg.X, msg.Y) {
+	if l.hasLists && l.playlists.rows().contains(msg.Mouse().X, msg.Mouse().Y) {
+		m.clickPlaylist(l.playlists.rows(), msg.Mouse().Y)
+	} else if l.hasLists && l.entries.rows().contains(msg.Mouse().X, msg.Mouse().Y) {
+		m.clickEntry(l.entries.rows(), msg.Mouse().Y)
+	} else if l.hasOutput && l.output.contains(msg.Mouse().X, msg.Mouse().Y) {
 		m.focus = paneOutput
 	}
 	return m, nil
@@ -92,11 +92,11 @@ func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 // wheel scrolls the pane under the pointer.
 func (m model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, tea.Cmd) {
 	switch {
-	case l.hasLists && l.playlists.contains(msg.X, msg.Y):
+	case l.hasLists && l.playlists.contains(msg.Mouse().X, msg.Mouse().Y):
 		m.focus = paneLists
-	case l.hasLists && l.entries.contains(msg.X, msg.Y):
+	case l.hasLists && l.entries.contains(msg.Mouse().X, msg.Mouse().Y):
 		m.focus = paneEntries
-	case l.hasOutput && l.output.contains(msg.X, msg.Y):
+	case l.hasOutput && l.output.contains(msg.Mouse().X, msg.Mouse().Y):
 		m.focus = paneOutput
 	default:
 		return m, nil

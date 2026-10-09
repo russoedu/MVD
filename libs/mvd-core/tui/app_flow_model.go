@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/sourcelist"
@@ -74,7 +74,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.(type) {
 		case tickMsg, evMsg, evClosed: // left over from a run that has ended
 			return m, nil
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			m.notice = ""
 		}
 	}
@@ -139,11 +139,11 @@ func (m appModel) backToSetup() (tea.Model, tea.Cmd) {
 	return m, m.setup.Init()
 }
 
-func (m appModel) View() string {
+func (m appModel) render() string {
 	if m.downloading {
-		return m.download.View()
+		return m.download.render()
 	}
-	view := m.setup.View()
+	view := m.setup.render()
 	if m.notice == "" || m.width == 0 {
 		return view
 	}
@@ -151,3 +151,5 @@ func (m appModel) View() string {
 	lines[len(lines)-1] = fit(" "+styRed.Render(m.notice), m.width)
 	return strings.Join(lines, "\n")
 }
+
+func (m appModel) View() tea.View { return screenView(m.render()) }

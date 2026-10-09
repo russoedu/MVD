@@ -3,9 +3,9 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
@@ -43,7 +43,7 @@ func newColoursModel(cfg config.Config) coloursModel {
 
 func (m coloursModel) setSize(w, h int) coloursModel {
 	m.width, m.height = w, h
-	m.input.Width = max(10, w-8)
+	m.input.SetWidth(max(10, w-8))
 	return m
 }
 
@@ -59,7 +59,7 @@ func (m coloursModel) defaultFor(i int) string {
 }
 
 func (m coloursModel) update(msg tea.Msg) (coloursModel, tea.Cmd, coloursOutcome, config.Config) {
-	k, isKey := msg.(tea.KeyMsg)
+	k, isKey := msg.(tea.KeyPressMsg)
 
 	if m.editing {
 		if isKey {
