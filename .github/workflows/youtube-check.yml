@@ -1,0 +1,169 @@
+name: YouTube check
+
+# The official video lookup depends on pages and endpoints YouTube can change without notice.
+# Every week this looks up the songs of a playlist kept for the purpose, against the real
+# YouTube, and compares the answers with the ones recorded in tools/youtube-check/baseline.json.
+# When more of them differ than allowed it opens (or updates) an issue, and, if the
+# ANTHROPIC_API_KEY secret is set, starts Claude Code to look into it and open a DRAFT pull
+# request with a fix. It never merges anything.
+#
+# Setup (once):
+#   - Variable YT_CHECK_PLAYLIST: the address of the playlist (50 songs or more, public or unlisted).
+#   - tools/youtube-check/baseline.json: record it with
+#       go run ./tools/youtube-check -playlist <url> -record
+#     and review what it says before committing it.
+#   - Secret ANTHROPIC_API_KEY (optional): lets the investigation job run.
+#   - Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: youtube-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    env:
+      YT_CHECK_PLAYLIST: ${{ vars.YT_CHECK_PLAYLIST }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install yt-dlp
+        run: |
+          sudo curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod +x /usr/local/bin/yt-dlp
+          yt-dlp --version
+      - name: Look the songs up
+        id: check
+        run: |
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          if [ -z "$YT_CHECK_PLAYLIST" ]; then
+            echo "::notice::The variable YT_CHECK_PLAYLIST is not set, so there is nothing to check."
+            exit 0
+          fi
+          if ! grep -q '"id"' tools/youtube-check/baseline.json 2>/dev/null; then
+            echo "::notice::tools/youtube-check/baseline.json has no recorded answers yet (see the setup in this workflow)."
+            exit 0
+          fi
+          set +e
+          go run ./tools/youtube-check -report report.md
+          code=$?
+          set -e
+          [ -f report.md ] && cat report.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" -eq 1 ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -ne 0 ]; then
+            echo "::error::The check could not run (exit $code)."
+            exit "$code"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: steps.check.outputs.changed == 'true'
+        with:
+          name: youtube-check-report
+          path: report.md
+      - name: Open or update the issue
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          gh label create youtube-change --description "YouTube changed under the official video lookup" --color D93F0B 2>/dev/null || true
+          existing=$(gh issue list --label youtube-change --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file report.md
+          else
+            gh issue create --label youtube-change --title "YouTube changed: the official video lookup needs a look" --body-file report.md
+          fi
+
+  investigate:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - name: Is there a key, and no fix in the works?
+        id: gate
+        run: |
+          go=true
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::notice::ANTHROPIC_API_KEY is not set, so nobody investigates; the issue has the report."
+            go=false
+          fi
+          if [ -n "$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --search 'head:fix/youtube-change' --json number --jq '.[0].number // empty')" ]; then
+            echo "::notice::A pull request for a YouTube change is already open."
+            go=false
+          fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.go == 'true'
+      - uses: actions/setup-go@v7
+        if: steps.gate.outputs.go == 'true'
+        with:
+          go-version-file: go.mod
+      - name: Install yt-dlp
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          sudo curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod +x /usr/local/bin/yt-dlp
+      - uses: actions/download-artifact@v7
+        if: steps.gate.outputs.go == 'true'
+        with:
+          name: youtube-check-report
+      - name: Investigate and draft a fix
+        if: steps.gate.outputs.go == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            The weekly YouTube check failed: more of the songs of the check playlist now get a
+            different official video answer than the ones recorded in
+            tools/youtube-check/baseline.json. report.md in the working directory says which.
+            The most likely cause is that YouTube changed something the lookup in
+            libs/mvd-core/official depends on: the watch page and its description and Music
+            card, the innertube "next" endpoint, YouTube Music's next endpoint and its video
+            type tags (ATV, OMV, UGC), yt-dlp's search output, or the Wikidata queries. The
+            other causes are a new yt-dlp, or the runner being blocked or sent a consent page.
+
+            1. Find out which it is: run `go run ./tools/youtube-check -playlist "$YT_CHECK_PLAYLIST"`
+               (set YT_CHECK_PLAYLIST from the repository variable if it is not in the
+               environment), fetch the pages involved for a few of the differing songs, and
+               compare with what the code expects. Tests in libs/mvd-core/official show the
+               shapes it parses.
+            2. If the lookup needs a patch, make the smallest change in libs/mvd-core/official,
+               add or update a test that fails without it, and run `go test ./libs/...`.
+            3. Create a branch named fix/youtube-change-<yyyymmdd>, commit with a message that
+               starts with `fix:`, push it and open a DRAFT pull request with
+               `gh pr create --draft`. Explain what YouTube changed and how you know.
+            4. If you cannot find a fix (a block, an outage, songs removed), do not change
+               code: add a comment to the open issue labelled youtube-change with what you found.
+
+            Rules: never merge anything, never push to main, do not touch .github, the release
+            configuration or any secret, change nothing outside libs/mvd-core/official and its
+            tests, and never print cookies or tokens.
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Read,Grep,Glob,Edit,Write,Bash(go:*),Bash(git:*),Bash(yt-dlp:*),Bash(curl:*),Bash(gh pr create:*),Bash(gh pr list:*),Bash(gh issue list:*),Bash(gh issue comment:*)"
+        env:
+          YT_CHECK_PLAYLIST: ${{ vars.YT_CHECK_PLAYLIST }}

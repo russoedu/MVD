@@ -219,6 +219,8 @@ What leaves your computer for this: the song's title and artist go to YouTube (a
 
 Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_index)s` and the other playlist fields of `output_template` are filled in from the playlist listing and files land exactly where a playlist download would put them.
 
+The lookup depends on pages and endpoints YouTube can change without notice, so a weekly check watches it (`.github/workflows/youtube-check.yml`, the program is `tools/youtube-check`). It looks up every song of a playlist kept for the purpose (the repository variable `YT_CHECK_PLAYLIST`, 50 songs or more) against the real YouTube, without the cache, and compares the answers with the ones recorded in `tools/youtube-check/baseline.json` (record them with `go run ./tools/youtube-check -playlist <url> -record` and read what it recorded before committing). A few songs answering differently is normal, since videos get removed and blocked; when more than a tenth of them do, it opens or updates an issue labelled `youtube-change` with a table of what differs, and, when the `ANTHROPIC_API_KEY` secret is set, starts Claude Code, which may only investigate, commit under `libs/mvd-core/official` and open a draft pull request; it never merges. Without the playlist variable or the recorded answers the check does nothing.
+
 ---
 
 ## 🗂️ Code Layout
