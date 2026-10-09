@@ -406,7 +406,7 @@ func (e *Engine) process(ctx context.Context, id int) {
 			return
 		}
 		e.log(pl, eid, "%s - %s -> %s (official: %v)", en.track.Artist, en.track.Title, en.targetID, en.official)
-	} else if e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.raw.Channel, en.raw.Uploader) {
+	} else if e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.info.Title, en.raw.Channel, en.raw.Uploader) {
 		e.setState(en, StateResolving, "")
 		channel := en.raw.Channel
 		if channel == "" {

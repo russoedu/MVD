@@ -120,7 +120,7 @@ func stubAttempt(id string) int {
 // fakeResolver maps both art tracks to the same official video.
 type fakeResolver struct{}
 
-func (fakeResolver) Wanted(channel, uploader string) bool {
+func (fakeResolver) Wanted(_, channel, uploader string) bool {
 	return strings.HasSuffix(channel, " - Topic")
 }
 

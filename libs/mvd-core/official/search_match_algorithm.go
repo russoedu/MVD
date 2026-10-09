@@ -29,7 +29,9 @@ func ArtistFromChannel(channel string) string {
 // music video of the track, or "" when none is convincing. A result must
 // carry the song title, come from the artist (by channel or title), not be
 // an auto-generated track and not be a lyric, live or remix cut the art
-// track is not. Results titled "official" win over the rest.
+// track is not. Results titled "official" win over the rest, the artist's own
+// channel winning among them; a result that does not say "official" is taken
+// only when the artist's own channel uploaded it.
 func PickSearchResult(results []SearchResult, title, artist, ownID string) string {
 	id, _ := pickSearchResult(results, title, artist, ownID)
 	return id
@@ -45,7 +47,7 @@ func pickSearchResult(results []SearchResult, title, artist, ownID string) (stri
 	band := normalize(artist)
 	original := normalize(title)
 
-	fallback := ""
+	bestID, bestTier, bestOfficial := "", 0, false
 	for _, res := range results {
 		if res.ID == "" || res.ID == ownID || IsTopicChannel(res.Channel) {
 			continue
@@ -54,20 +56,31 @@ func pickSearchResult(results []SearchResult, title, artist, ownID string) (stri
 		if !containsWords(resTitle, song) {
 			continue
 		}
-		if band != "" && !containsWords(resTitle, band) && !containsWords(normalize(res.Channel), band) {
+		if band != "" && !containsWords(resTitle, band) && !containsWords(normalize(res.Channel), band) && !ChannelIsArtist(res.Channel, artist) {
 			continue
 		}
 		if hasUnwantedVersion(resTitle, original) {
 			continue
 		}
-		if containsWords(resTitle, "official") {
-			return res.ID, true
+		// A video that says "official" from the artist's own channel is the best pick;
+		// one that says "official" from anyone else's channel comes next (fans write
+		// it too); one that does not say it counts only when the artist uploaded it.
+		official := containsWords(resTitle, "official")
+		artistChannel := ChannelIsArtist(res.Channel, artist)
+		tier := 0
+		switch {
+		case official && artistChannel:
+			tier = 3
+		case official:
+			tier = 2
+		case artistChannel:
+			tier = 1
 		}
-		if fallback == "" {
-			fallback = res.ID
+		if tier > bestTier {
+			bestID, bestTier, bestOfficial = res.ID, tier, official
 		}
 	}
-	return fallback, false
+	return bestID, bestOfficial
 }
 
 func hasUnwantedVersion(resultTitle, originalTitle string) bool {
