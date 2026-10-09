@@ -43,6 +43,8 @@ func Run(ctx context.Context, cancel context.CancelFunc, events <-chan interface
 				what := "original"
 				if en.Official {
 					what = "official video " + en.TargetID
+				} else if en.Better {
+					what = "better quality video " + en.TargetID
 				}
 				_, _ = fmt.Fprintf(out, "%s downloading %s (%s)\n", tag(en), en.Title, what)
 				lastStep[id] = -1
@@ -88,6 +90,7 @@ func PrintSummary(out io.Writer, state *runstate.State, t runstate.Tally) {
 	_, _ = fmt.Fprintf(out, "Videos total:           %d\n", t.Total)
 	_, _ = fmt.Fprintf(out, "  downloaded:           %d\n", t.Done)
 	_, _ = fmt.Fprintf(out, "  replaced by official: %d\n", t.Official)
+	_, _ = fmt.Fprintf(out, "  replaced by better quality: %d\n", t.Better)
 	_, _ = fmt.Fprintf(out, "  skipped duplicates:   %d\n", t.Duplicate)
 	_, _ = fmt.Fprintf(out, "  failed:               %d\n", t.Failed)
 	_, _ = fmt.Fprintf(out, "Retried:                %d\n", t.Retried)

@@ -12,6 +12,12 @@ type Sources struct {
 	// used to drop a candidate that is an art track too: YouTube shows those under the
 	// artist's own name, so a search result from "the artist's channel" may be one.
 	Type func(videoID string) (string, error)
+	// Identify names the song of an upload with a music database: the artist and the
+	// title, or false when none says so (see package songid).
+	Identify func(uploadTitle, channel string) (artist, title string, ok bool)
+	// Quality tells what a video offers to download, to choose between uploads of the
+	// song when none is official.
+	Quality func(videoID string) (Quality, error)
 	// Cache remembers the videos found for songs.
 	Cache *ResolutionCache
 }

@@ -46,6 +46,7 @@ type engineEntry struct {
 	state    EntryState
 	targetID string
 	official bool
+	better   bool   // replaced by an upload of better quality, not the official video
 	track    *Track // set when the entry is a song with no video yet
 	err      string
 	deferred bool // failed with a transient error, eligible for the sweep
@@ -272,7 +273,7 @@ func (e *Engine) Retry(entryID int) bool {
 	e.idleSent = false
 	e.mu.Unlock()
 
-	e.emit(EvEntryState{Entry: entryID, State: StateQueued, TargetID: en.targetID, Official: en.official})
+	e.emit(EvEntryState{Entry: entryID, State: StateQueued, TargetID: en.targetID, Official: en.official, Better: en.better})
 	e.log(en.info.Playlist, entryID, "retry requested")
 	e.queue.Push(entryID)
 	return true
@@ -370,7 +371,7 @@ func (e *Engine) setState(en *engineEntry, st EntryState, err string) {
 	e.mu.Lock()
 	en.state = st
 	en.err = err
-	ev := EvEntryState{Entry: en.info.ID, State: st, TargetID: en.targetID, Official: en.official, Err: err}
+	ev := EvEntryState{Entry: en.info.ID, State: st, TargetID: en.targetID, Official: en.official, Better: en.better, Err: err}
 	e.mu.Unlock()
 	e.emit(ev)
 }
@@ -397,6 +398,7 @@ func (e *Engine) process(ctx context.Context, id int) {
 	en := e.entries[id]
 	en.targetID = en.info.VideoID
 	en.official = false
+	en.better = false
 	e.mu.Unlock()
 
 	pl, eid := en.info.Playlist, en.info.ID
@@ -412,17 +414,18 @@ func (e *Engine) process(ctx context.Context, id int) {
 		if channel == "" {
 			channel = en.raw.Uploader
 		}
-		official, reason := e.opts.Resolver.ResolveLog(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), func(format string, a ...interface{}) {
+		res := e.opts.Resolver.ResolveVersion(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), func(format string, a ...interface{}) {
 			e.log(pl, eid, "%s", strings.TrimSpace(fmt.Sprintf(format, a...)))
 		})
-		if official != "" {
+		if res.VideoID != "" {
 			e.mu.Lock()
-			en.targetID = official
-			en.official = true
+			en.targetID = res.VideoID
+			en.official = res.Official
+			en.better = !res.Official
 			e.mu.Unlock()
-			e.log(pl, eid, "%s -> %s (%s)", en.info.VideoID, official, reason)
+			e.log(pl, eid, "%s -> %s (%s)", en.info.VideoID, res.VideoID, res.Reason)
 		} else {
-			e.log(pl, eid, "kept original (%s)", reason)
+			e.log(pl, eid, "kept original (%s)", res.Reason)
 		}
 	}
 
@@ -453,11 +456,12 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 		// The official video could not be downloaded: fall back to the art
 		// track itself rather than losing the entry.
-		if en.official && en.info.VideoID != "" {
-			e.log(pl, eid, "official video %s failed (%v); downloading the original instead", en.targetID, err)
+		if (en.official || en.better) && en.info.VideoID != "" {
+			e.log(pl, eid, "replacement video %s failed (%v); downloading the original instead", en.targetID, err)
 			e.mu.Lock()
 			en.targetID = en.info.VideoID
 			en.official = false
+			en.better = false
 			e.mu.Unlock()
 			if !e.claimTarget(pl, en.targetID, eid) {
 				e.log(pl, eid, "%s already downloaded for this playlist, skipping duplicate", en.targetID)
@@ -529,7 +533,7 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 			if en.state == StateDownloading {
 				en.state = StateMerging
 				e.mu.Unlock()
-				e.emit(EvEntryState{Entry: eid, State: StateMerging, TargetID: en.targetID, Official: en.official})
+				e.emit(EvEntryState{Entry: eid, State: StateMerging, TargetID: en.targetID, Official: en.official, Better: en.better})
 			} else {
 				e.mu.Unlock()
 			}
@@ -601,7 +605,7 @@ func (e *Engine) autoRetry(id int) {
 	e.idleSent = false
 	e.mu.Unlock()
 
-	e.emit(EvEntryState{Entry: id, State: StateQueued, TargetID: en.targetID, Official: en.official})
+	e.emit(EvEntryState{Entry: id, State: StateQueued, TargetID: en.targetID, Official: en.official, Better: en.better})
 	e.log(en.info.Playlist, id, "auto-retry after cooldown")
 	e.queue.Push(id)
 }

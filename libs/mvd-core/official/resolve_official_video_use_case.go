@@ -62,6 +62,17 @@ func (r *Resolver) Wanted(title, _, _ string) bool {
 	return !LooksLikeOfficialVideo(title)
 }
 
+// Version is the video ResolveVersion chose to download in place of an upload.
+type Version struct {
+	// ID is the video, "" when the upload stays.
+	ID string
+	// Official is true for the official video, false for the upload of the song with
+	// the best quality, taken when there is no official one.
+	Official bool
+	// Reason is a short explanation for the log.
+	Reason string
+}
+
 // Resolve returns the video id of the official music video linked from the
 // given art track, or "" when none could be found. The returned reason is a
 // short human readable explanation for logging.
@@ -72,17 +83,26 @@ func (r *Resolver) Resolve(videoID string) (string, string) {
 // ResolveLog is Resolve with a per-call log function, so concurrent
 // callers can route messages to their own entry. The title and channel of
 // the art track let it search YouTube for the video when the description
-// links none.
+// links none. Only an official video is an answer: the best quality upload of
+// ResolveVersion changes with every view, so it is not one to track.
 func (r *Resolver) ResolveLog(videoID, title, channel string, durationSec int, logFn func(format string, a ...interface{})) (string, string) {
+	version := r.ResolveVersion(videoID, title, channel, durationSec, logFn)
+	if !version.Official {
+		return "", version.Reason
+	}
+	return version.ID, version.Reason
+}
+
+// ResolveVersion looks for the video to download in place of an upload: the
+// official music video, or failing that the upload of the song with the best
+// picture and sound.
+func (r *Resolver) ResolveVersion(videoID, title, channel string, durationSec int, logFn func(format string, a ...interface{})) Version {
 	logf := func(format string, a ...interface{}) {
 		if logFn != nil {
 			logFn(format+"\n", a...)
 		}
 	}
 	artTrack, info, why := r.isArtTrack(videoID, channel, logf)
-	if !artTrack {
-		return "", why
-	}
 	// YouTube Music names the artist better than a channel does ("Kate Bush", not
 	// "KateBushMusic") and knows the length of the song.
 	if info.Artist != "" {
@@ -91,14 +111,30 @@ func (r *Resolver) ResolveLog(videoID, title, channel string, durationSec int, l
 	if durationSec == 0 {
 		durationSec = info.DurationSec
 	}
-	id, reason := r.fromDescription(videoID, logf)
-	if id != "" {
-		return id, reason
+
+	reason := why
+	if artTrack {
+		var id string
+		if id, reason = r.fromDescription(videoID, logf); id != "" {
+			return Version{ID: id, Official: true, Reason: reason}
+		}
 	}
-	if found, why := r.fromSearch(videoID, title, channel, durationSec, logf); found != "" {
-		return found, why
+
+	// Next, the official video by searching for the song under its right name and
+	// artist; failing that, the upload of it with the best picture and sound. A plain
+	// video is only searched for when a music database says what song it is.
+	song, named := r.songOfUpload(videoID, title, channel, durationSec, artTrack, logf)
+	if !named {
+		return Version{Reason: reason}
 	}
-	return "", reason
+	found, foundWhy, results := r.fromSearch(song, logf)
+	if found != "" {
+		return Version{ID: found, Official: true, Reason: foundWhy}
+	}
+	if best, bestWhy := r.fromBestQuality(song, results, logf); best != "" {
+		return Version{ID: best, Reason: bestWhy}
+	}
+	return Version{Reason: reason}
 }
 
 // fromDescription follows the video linked from the art track's page.
