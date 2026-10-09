@@ -55,7 +55,7 @@
     "jest": "~30.5.2",
     "jest-environment-jsdom": "~30.3.0",
     "jest-util": "~30.5.1",
-    "jiti": "2.4.2",
+    "jiti": "2.7.0",
     "nx": "23.2.1",
     "ts-jest": "^29.4.7",
     "ts-node": "10.9.2",
