@@ -17,6 +17,7 @@ A lightweight, zero-setup, concurrent Go application with two front ends, a tray
 * **Official Music Video Mode**: Optionally swaps auto-generated "`<Artist> - Topic`" audio tracks for the official music video that YouTube links from the description's **Music** card.
 * **Automatic browser cookies**: Finds a browser you're signed into YouTube with and uses its cookies to clear bot checks and `429` errors, with no configuration.
 * **Spotify and Apple Music playlists**: Paste a public playlist link; the app reads its songs without any login and finds each one on YouTube, the official video first (see below).
+* **Song lists from anywhere**: A text file of `Artist - Title` lines, or a CSV with title and artist columns, is handled like a playlist (see below).
 * **Your colours**: The interface colours are configurable, in the app or in `config.conf`.
 * **Auto-retry**: Retries one-off failures at once and rate-limited ones in a sweep after the backlog finishes; never retries permanently gone videos.
 * **Full Screen Interface**: A fixed terminal UI shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead.
@@ -188,6 +189,16 @@ Limits: the playlist must be public, and the services' public pages may list onl
 
 Failed downloads are retried automatically (`auto_retry=on` by default). A one-off glitch is retried immediately; a rate-limited failure (`429`, bot check) is retried in a single sweep after the whole backlog finishes, once a cooldown lets the limit window reset; a permanent failure (private, removed, geo-blocked) is never retried. The header and summary show a **Retried** count. Set `auto_retry=off` to fail and move on instead.
 
+### Song lists (any service)
+
+When all you have is the artist and the title of each song, give the app a list. Press `Ctrl+O` on the download list, paste or type the songs and press `Ctrl+S`: the list is stored in the `songs` folder next to `list.txt` and its path is added to the download list. A path typed or dropped in the list works the same, so a file made elsewhere can be used as it is. Entries ending in `.txt`, `.csv` or `.tsv` that are not URLs are read as song lists.
+
+- **Text**: one `Artist - Title` per line (a hyphen, en dash or em dash with spaces around it, or a tab). Blank lines, `#` comments and list numbers (`12.`) are ignored. A first line such as `# Road trip` names the list.
+- **CSV / TSV**: the first row names the columns. A `Title`, `Track Name` or `Song` column and an `Artist` or `Artist Name(s)` column are needed; a `Duration (ms)`, `Duration` or `Length` column is used when there is one (it helps pick the right video). Comma, semicolon or tab delimiters are detected, and `;` between artists becomes a comma. This is what Exportify (Spotify), TuneMyMusic and Last.fm exports look like.
+- A line or row that cannot be read is skipped (the screen counts them); a file with no song at all fails with a message that says how to write one.
+
+Each song is then found on YouTube exactly as the songs of a Spotify playlist are: the official video first, the best other upload when there is none, and a song with no match fails alone.
+
 ### Official music video mode
 
 Most of what a YouTube Music playlist holds are auto-generated art tracks: a still image with the audio, whose description starts "Provided to YouTube by ...". YouTube shows some of them under `<Artist> - Topic` and most under the artist's own name, so the channel name tells nothing. With `download_official_music_video=true` the app, for every entry of a playlist:
@@ -226,6 +237,7 @@ The code follows vertical feature slices: `apps/mvd-tui/main.go` only wires thin
 | `libs/mvd-core/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
 | `libs/mvd-core/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
 | `libs/mvd-core/official` | Find the official video of a song: tell art tracks from real videos, follow the Music card, ask Wikidata and YouTube Music, search YouTube, score the candidates (fuzzy titles, artist channels, length) and remember what was found. |
+| `libs/mvd-core/songfile` | Read a list of songs from a text file or CSV (or a pasted text): link policy, line and CSV mappers, file and pasted-list stores. |
 | `libs/mvd-core/spotify` | Read a public Spotify playlist from its embed page: link policy, page mapper, client. |
 | `libs/mvd-core/applemusic` | Read a public Apple Music playlist from its web page: link policy, page mapper, client. |
 | `libs/mvd-core/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. Playlists of other services come in through the `TrackSource` port. |

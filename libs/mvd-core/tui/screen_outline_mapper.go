@@ -12,6 +12,8 @@ func (m setupModel) Outline() ScreenOutline {
 		return m.advanced.outline()
 	case screenColours:
 		return m.colours.outline()
+	case screenSongs:
+		return m.songs.outline()
 	default:
 		return m.list.outline()
 	}
