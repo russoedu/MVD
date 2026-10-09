@@ -72,7 +72,8 @@ const minFanViews = 50_000
 // is that cut. Lyric and audio uploads are not here: they are a kind of their own.
 var cutsToReject = []string{
 	"cover", "karaoke", "live", "reaction", "instrumental", "remix", "slowed",
-	"sped up", "8d", "nightcore", "reverb", "tutorial",
+	"sped up", "8d", "nightcore", "reverb", "tutorial", "interview", "concert", "top of the pops",
+	"totp", "re edit",
 }
 
 var audioMarkers = []string{"audio", "lyric", "lyrics", "visualizer", "visualiser"}

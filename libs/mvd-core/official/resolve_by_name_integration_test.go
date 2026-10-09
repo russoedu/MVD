@@ -162,3 +162,22 @@ func TestAnArtTrackUnderTheArtistsOwnNameIsNotAnUploadToTake(t *testing.T) {
 		t.Errorf("got %+v, want the real video, not another art track", got)
 	}
 }
+
+func TestTelevisionAppearancesAndFanEditsAreNotTheSongsVideo(t *testing.T) {
+	uploads := []SearchResult{
+		{ID: "tv", Title: "Rage no Raul Gil (1995) Run To You & Interview", Channel: "XiaoAn", Views: 800_000},
+		{ID: "edit", Title: "Rage - Run To You (Extended Intro Cut - Tony Mendes Video Re Edit)", Channel: "Tony Mendes", Views: 700_000},
+		{ID: "totp", Title: "Rage - Run To You - TOTP HQ", Channel: "gigantis2000", Views: 600_000},
+		{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2001", Views: 90_000},
+	}
+	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": uploads}}
+	qualities := map[string]Quality{"up1": {AudioKbps: 130}, "tv": {Height: 1080, AudioKbps: 140}, "edit": {Height: 1080, AudioKbps: 140}, "totp": {Height: 1080, AudioKbps: 140}, "fanB": {Height: 720, AudioKbps: 131}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
+		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
+	})
+
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
+		t.Errorf("got %+v, want the plain video", got)
+	}
+}
