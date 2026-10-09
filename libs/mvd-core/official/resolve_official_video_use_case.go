@@ -36,6 +36,9 @@ type Resolver struct {
 	// called (YouTube Music's own tag) and names the song's real artist; without it
 	// every upload is looked up and the artist is the channel's name.
 	TrackInfos TrackDescriber
+	// Sources are the other places the video of a song is looked for (Wikidata, YouTube
+	// Music's video search) and the cache of earlier runs; each is optional.
+	Sources Sources
 }
 
 // NewResolver returns a resolver pointed at the real YouTube endpoints.

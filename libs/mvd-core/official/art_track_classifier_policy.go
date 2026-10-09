@@ -15,13 +15,15 @@ func LooksLikeOfficialVideo(title string) bool {
 }
 
 // ArtTrackFromVideoType reads YouTube Music's tag for an upload: ATV is an
-// auto-generated art track, any other tag (OMV, UGC, ...) is a real video.
-// known is false when there is no tag.
+// auto-generated art track and OFFICIAL_SOURCE_MUSIC is a track a label
+// distributed (a remix or a "revibe", shown under the artist's name like an art
+// track); any other tag (OMV, UGC, ...) is a real video. known is false when
+// there is no tag.
 func ArtTrackFromVideoType(videoType string) (artTrack, known bool) {
 	switch strings.ToUpper(strings.TrimSpace(videoType)) {
 	case "":
 		return false, false
-	case "ATV":
+	case "ATV", "OFFICIAL_SOURCE_MUSIC":
 		return true, true
 	default:
 		return false, true

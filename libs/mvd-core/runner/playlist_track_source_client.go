@@ -21,15 +21,17 @@ type playlistProvider interface {
 type playlistTrackSource struct {
 	providers []playlistProvider
 	search    official.Searcher
+	sources   official.Sources
 }
 
-func newPlaylistTrackSource(search official.Searcher) playlistTrackSource {
+func newPlaylistTrackSource(search official.Searcher, sources official.Sources) playlistTrackSource {
 	return playlistTrackSource{
 		providers: []playlistProvider{
 			spotifyProvider{client: spotify.NewClient()},
 			appleMusicProvider{client: applemusic.NewClient()},
 		},
-		search: search,
+		search:  search,
+		sources: sources,
 	}
 }
 
@@ -47,7 +49,7 @@ func (s playlistTrackSource) Tracks(ctx context.Context, link string) (string, [
 }
 
 func (s playlistTrackSource) Find(_ context.Context, track engine.Track, logf func(format string, a ...interface{})) (string, bool, error) {
-	found, err := official.FindTrack(s.search, track.Title, track.Artist, track.DurationMs/1000, logf)
+	found, err := official.FindTrack(s.search, s.sources, track.Title, track.Artist, track.DurationMs/1000, logf)
 	return found.VideoID, found.Official, err
 }
 

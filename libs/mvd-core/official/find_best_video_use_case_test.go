@@ -51,7 +51,7 @@ func TestFindBestVideoStopsAtAConfidentMusicVideo(t *testing.T) {
 	}}
 	song := Song{Title: "Killer", Artists: []string{"Seal"}}
 
-	pick, ok, _, err := FindBestVideo(search.search, song, quietLog)
+	pick, ok, _, err := FindBestVideo(search.search, Sources{}, song, quietLog)
 	if err != nil || !ok || pick.ID != "official" {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
@@ -66,7 +66,7 @@ func TestFindBestVideoTriesOtherWordingsWhenTheFirstFindsNothing(t *testing.T) {
 	}}
 	song := Song{Title: "MMMBop", Artists: []string{"Hanson"}}
 
-	pick, ok, _, err := FindBestVideo(search.search, song, quietLog)
+	pick, ok, _, err := FindBestVideo(search.search, Sources{}, song, quietLog)
 	if err != nil || !ok || pick.ID != "official" {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
@@ -82,7 +82,7 @@ func TestFindBestVideoKeepsTheBestAcrossSearchesAndReportsTheResults(t *testing.
 	}}
 	song := Song{Title: "Lovely Day", Artists: []string{"Bill Withers"}}
 
-	pick, ok, results, err := FindBestVideo(search.search, song, quietLog)
+	pick, ok, results, err := FindBestVideo(search.search, Sources{}, song, quietLog)
 	if err != nil || !ok || pick.ID != "audio" || pick.Kind != KindAudio {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
@@ -93,10 +93,10 @@ func TestFindBestVideoKeepsTheBestAcrossSearchesAndReportsTheResults(t *testing.
 
 func TestFindBestVideoErrors(t *testing.T) {
 	failing := func(string) ([]SearchResult, error) { return nil, errors.New("offline") }
-	if _, _, _, err := FindBestVideo(failing, Song{Title: "Song", Artists: []string{"Band"}}, quietLog); err == nil {
+	if _, _, _, err := FindBestVideo(failing, Sources{}, Song{Title: "Song", Artists: []string{"Band"}}, quietLog); err == nil {
 		t.Error("the first search failing is an error")
 	}
-	if _, _, _, err := FindBestVideo(nil, Song{Title: "Song"}, quietLog); err == nil {
+	if _, _, _, err := FindBestVideo(nil, Sources{}, Song{Title: "Song"}, quietLog); err == nil {
 		t.Error("no searcher is an error")
 	}
 
@@ -109,7 +109,7 @@ func TestFindBestVideoErrors(t *testing.T) {
 		}
 		return nil, errors.New("offline")
 	}
-	if _, ok, _, err := FindBestVideo(flaky, Song{Title: "Song", Artists: []string{"Band"}}, quietLog); err != nil || ok {
+	if _, ok, _, err := FindBestVideo(flaky, Sources{}, Song{Title: "Song", Artists: []string{"Band"}}, quietLog); err != nil || ok {
 		t.Errorf("got ok=%v err=%v, want no pick and no error", ok, err)
 	}
 }

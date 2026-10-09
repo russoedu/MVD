@@ -171,6 +171,20 @@ func TestPickBestVideoDistrustsTinyReuploadsOfOtherChannels(t *testing.T) {
 	}
 }
 
+func TestRankCandidatesKeepsTheBestScoreOfAVideoSeenTwice(t *testing.T) {
+	// YouTube Music names the official video by its metadata title, which says remix;
+	// YouTube names it right. The video must not be lost to the first spelling.
+	song := Song{Title: "It's My Life", Artists: []string{"Dr. Alban"}, DurationSec: 235}
+	results := []SearchResult{
+		{ID: "official", Title: "It's My Life (Raggadag Remix)", Channel: "Dr. Alban", MusicType: "OMV", Views: 93000000},
+		{ID: "official", Title: "Dr.Alban - It's My Life (Official 4K Video)", Channel: "Dr. Alban", Verified: true, Duration: 230, Views: 93000000},
+	}
+	picks := RankCandidates(results, song)
+	if len(picks) != 1 || picks[0].ID != "official" || !picks[0].Sure {
+		t.Fatalf("got %+v, want the video once, with the score of its good title", picks)
+	}
+}
+
 func TestDurationFit(t *testing.T) {
 	cases := []struct {
 		song, video int

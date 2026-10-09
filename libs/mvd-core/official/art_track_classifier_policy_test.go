@@ -36,7 +36,7 @@ func TestArtTrackFromVideoType(t *testing.T) {
 		{" atv ", true, true},
 		{"OMV", false, true},
 		{"UGC", false, true},
-		{"OFFICIAL_SOURCE_MUSIC", false, true},
+		{"OFFICIAL_SOURCE_MUSIC", true, true},
 		{"", false, false},
 	}
 	for _, c := range cases {

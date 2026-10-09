@@ -121,6 +121,13 @@ func (r *Resolver) fetchNext(videoID string, pageHTML []byte) ([]byte, error) {
 // lookupAuthor asks the oEmbed endpoint who uploaded a video.
 // ok=false means the video does not exist (404).
 func (r *Resolver) lookupAuthor(videoID string) (author string, ok bool, err error) {
+	author, _, ok, err = r.lookupVideo(videoID)
+	return author, ok, err
+}
+
+// lookupVideo asks the oEmbed endpoint who uploaded a video and what it is called.
+// ok=false means the video does not exist (404).
+func (r *Resolver) lookupVideo(videoID string) (author, title string, ok bool, err error) {
 	body, err := func() ([]byte, error) {
 		req, err := http.NewRequest("GET", r.OEmbedURL+"https://www.youtube.com/watch?v="+videoID, nil)
 		if err != nil {
@@ -139,16 +146,17 @@ func (r *Resolver) lookupAuthor(videoID string) (author string, ok bool, err err
 		return body, nil
 	}()
 	if err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
 	if body == nil {
-		return "", false, nil
+		return "", "", false, nil
 	}
 	var o struct {
 		AuthorName string `json:"author_name"`
+		Title      string `json:"title"`
 	}
 	if err := json.Unmarshal(body, &o); err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
-	return o.AuthorName, true, nil
+	return o.AuthorName, o.Title, true, nil
 }

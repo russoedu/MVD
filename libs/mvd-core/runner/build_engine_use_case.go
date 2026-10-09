@@ -6,7 +6,10 @@ package runner
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"time"
 
+	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/cookies"
 	"youtube-downloader/libs/mvd-core/engine"
@@ -88,26 +91,41 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		}
 		return out, err
 	}
+	// The resolver is also what songs from other services are found with, so it is
+	// built whether or not the official video option is on; only the option puts it in
+	// front of the entries of YouTube playlists.
+	resolver := official.NewResolver(nil)
+	if cookiesActive {
+		if _, err := resolver.UseCookies(cfg.CookiesFile); err != nil {
+			log("warning: resolver cannot use cookies: %v", err)
+		}
+	}
+	resolver.Dumper = func(videoID string) ([]official.DumpedPage, error) {
+		pages, err := ytdlp.DumpPages(ctx, ytDlpPath, "https://www.youtube.com/watch?v="+videoID, extraArgs)
+		out := make([]official.DumpedPage, 0, len(pages))
+		for _, p := range pages {
+			out = append(out, official.DumpedPage{URL: p.URL, Body: p.Body})
+		}
+		return out, err
+	}
+	music := official.NewYouTubeMusicClient()
+	resolver.Searcher = searcher
+	resolver.TrackInfos = music.Describe
+	resolver.Sources = official.Sources{
+		Known: resolver.KnownCandidates(official.NewWikidataClient()),
+		Music: music.SearchVideos,
+		Type: func(videoID string) (string, error) {
+			info, err := music.Describe(videoID)
+			return info.Type, err
+		},
+	}
+	if appDir, err := appdir.Dir(); err == nil {
+		resolver.Sources.Cache = official.NewResolutionCache(filepath.Join(appDir, "official-videos.json"), 90*24*time.Hour)
+	}
 	if cfg.DownloadOfficialMusicVideo {
-		resolver := official.NewResolver(nil)
-		if cookiesActive {
-			if _, err := resolver.UseCookies(cfg.CookiesFile); err != nil {
-				log("warning: resolver cannot use cookies: %v", err)
-			}
-		}
-		resolver.Dumper = func(videoID string) ([]official.DumpedPage, error) {
-			pages, err := ytdlp.DumpPages(ctx, ytDlpPath, "https://www.youtube.com/watch?v="+videoID, extraArgs)
-			out := make([]official.DumpedPage, 0, len(pages))
-			for _, p := range pages {
-				out = append(out, official.DumpedPage{URL: p.URL, Body: p.Body})
-			}
-			return out, err
-		}
-		resolver.Searcher = searcher
-		resolver.TrackInfos = official.NewYouTubeMusicClient().Describe
 		opts.Resolver = resolver
 	}
-	opts.Tracks = newPlaylistTrackSource(searcher)
+	opts.Tracks = newPlaylistTrackSource(searcher, resolver.Sources)
 
 	return engine.New(opts)
 }

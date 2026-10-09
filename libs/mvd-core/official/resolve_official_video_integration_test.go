@@ -133,6 +133,7 @@ type fakeYouTube struct {
 	pages   map[string]string // video id -> watch page HTML
 	next    map[string][]byte // video id -> next response
 	authors map[string]string // video id -> channel name (missing = 404)
+	titles  map[string]string // video id -> title the oEmbed answer carries
 	mu      sync.Mutex
 	hits    map[string]int
 }
@@ -181,7 +182,7 @@ func (f *fakeYouTube) server(t *testing.T) (*httptest.Server, *Resolver) {
 		u := r.URL.Query().Get("url")
 		id := u[strings.LastIndex(u, "=")+1:]
 		if author, ok := f.authors[id]; ok {
-			_ = json.NewEncoder(w).Encode(map[string]string{"author_name": author})
+			_ = json.NewEncoder(w).Encode(map[string]string{"author_name": author, "title": f.titles[id]})
 			return
 		}
 		http.NotFound(w, r)
