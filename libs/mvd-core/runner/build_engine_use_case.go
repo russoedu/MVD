@@ -77,7 +77,7 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 	// The YouTube search behind both the official video lookup and the songs of
 	// playlists from other services.
 	searcher := func(query string) ([]official.SearchResult, error) {
-		entries, err := ytdlp.ListPlaylist(ctx, ytDlpPath, "ytsearch5:"+query, extraArgs)
+		entries, err := ytdlp.ListPlaylist(ctx, ytDlpPath, "ytsearch10:"+query, extraArgs)
 		out := make([]official.SearchResult, 0, len(entries))
 		for _, e := range entries {
 			channel := e.Channel
@@ -104,6 +104,7 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 			return out, err
 		}
 		resolver.Searcher = searcher
+		resolver.VideoTypes = official.NewYouTubeMusicClient().VideoType
 		opts.Resolver = resolver
 	}
 	opts.Tracks = newPlaylistTrackSource(searcher)
