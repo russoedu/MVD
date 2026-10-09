@@ -2,18 +2,19 @@ package songid
 
 import "youtube-downloader/libs/mvd-core/official"
 
-// Identifier names the song of an upload with the help of two databases. Either may be
-// nil; a database that fails is skipped, since the answer is only a help. iTunes goes
-// first, as it answers at once; MusicBrainz, which allows a request a second, only gets
-// the songs iTunes could not place.
+// Identifier names the song of an upload with the help of three databases. Any may be
+// nil; a database that fails is skipped, since the answer is only a help. iTunes and
+// Deezer go first, as they answer at once; MusicBrainz, which allows a request a
+// second, only gets the songs they could not place.
 type Identifier struct {
 	MusicBrainz *MusicBrainzClient
 	ITunes      *ITunesClient
+	Deezer      *DeezerClient
 }
 
-// NewIdentifier returns an identifier that asks the real MusicBrainz and iTunes.
+// NewIdentifier returns an identifier that asks the real iTunes, Deezer and MusicBrainz.
 func NewIdentifier() *Identifier {
-	return &Identifier{MusicBrainz: NewMusicBrainzClient(), ITunes: NewITunesClient()}
+	return &Identifier{MusicBrainz: NewMusicBrainzClient(), ITunes: NewITunesClient(), Deezer: NewDeezerClient()}
 }
 
 // Identify returns the artist and the title a database gives the song of an upload,
@@ -24,6 +25,15 @@ func (i *Identifier) Identify(uploadTitle, channel string) (artist, title string
 	if i.ITunes != nil {
 		for _, guess := range guesses {
 			if found, err := i.ITunes.Songs(guess.Artist + " " + guess.Title); err == nil {
+				if identity, hit := firstThatNamesTheUpload(found, uploadTitle, channel); hit {
+					return identity.Artist, official.SearchTitle(identity.Title), true
+				}
+			}
+		}
+	}
+	if i.Deezer != nil {
+		for _, guess := range guesses {
+			if found, err := i.Deezer.Tracks(guess.Artist + " " + guess.Title); err == nil {
 				if identity, hit := firstThatNamesTheUpload(found, uploadTitle, channel); hit {
 					return identity.Artist, official.SearchTitle(identity.Title), true
 				}

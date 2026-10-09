@@ -117,3 +117,37 @@ func TestIdentifyWithoutDatabasesFindsNothing(t *testing.T) {
 		t.Error("no database, no answer")
 	}
 }
+
+const deezerAnswer = `{"data":[
+  {"title":"I Drove All Night","artist":{"name":"Bandit"}},
+  {"title":"I Drove All Night (Club Mix)","artist":{"name":"Bandido"}}]}`
+
+func TestDeezerTracksAreReadWithTheirArtists(t *testing.T) {
+	server := serving(t, deezerAnswer, nil)
+	client := &DeezerClient{HTTP: server.Client(), Endpoint: server.URL}
+
+	got, err := client.Tracks("Bandido I Drove All Night")
+	if err != nil || len(got) != 2 || got[1].Artist != "Bandido" {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+}
+
+func TestIdentifyAsksDeezerBeforeMusicBrainzAndSkipsAnotherArtistsSong(t *testing.T) {
+	var brainzAsked []string
+	brainz := serving(t, musicBrainzAnswer, &brainzAsked)
+	itunes := serving(t, `{"results":[]}`, nil)
+	deezer := serving(t, deezerAnswer, nil)
+	identifier := &Identifier{
+		MusicBrainz: &MusicBrainzClient{HTTP: brainz.Client(), Endpoint: brainz.URL},
+		ITunes:      &ITunesClient{HTTP: itunes.Client(), Endpoint: itunes.URL},
+		Deezer:      &DeezerClient{HTTP: deezer.Client(), Endpoint: deezer.URL},
+	}
+
+	artist, _, ok := identifier.Identify("Bandido - I Drove All Night (1991)", "Eurodance")
+	if !ok || artist != "Bandido" {
+		t.Errorf("got %q, %v: the first answer is another artist's song of the same name", artist, ok)
+	}
+	if len(brainzAsked) != 0 {
+		t.Errorf("MusicBrainz was asked %q although Deezer knew the song", brainzAsked)
+	}
+}
