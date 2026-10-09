@@ -78,6 +78,10 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		LogPath:             cfg.LogFile(),
 		AutoRetry:           cfg.AutoRetry,
 	}
+	// Videos are downloaded and merged out of the library and moved in once complete.
+	if appDir, err := appdir.Dir(); err == nil {
+		opts.PartialDir = filepath.Join(appDir, "partial")
+	}
 	// The YouTube search behind both the official video lookup and the songs of
 	// playlists from other services.
 	searcher := func(query string) ([]official.SearchResult, error) {

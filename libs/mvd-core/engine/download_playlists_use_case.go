@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -20,10 +21,14 @@ const maxSweeps = 1
 
 // Options configures an Engine.
 type Options struct {
-	YtDlp               string   // path to the yt-dlp executable
-	URLs                []string // playlists, in order
-	OutputDir           string
-	OutputTemplate      string
+	YtDlp          string   // path to the yt-dlp executable
+	URLs           []string // playlists, in order
+	OutputDir      string
+	OutputTemplate string
+	// PartialDir, when set, is where videos are downloaded and merged before they are
+	// moved to OutputDir, so a failed or cancelled download leaves nothing in the
+	// library. The engine empties it when a run starts and removes it when it ends.
+	PartialDir          string
 	Quality             string
 	MergeOutputFormat   string
 	ConcurrentFragments int // yt-dlp --concurrent-fragments per video; 0 skips
@@ -163,6 +168,12 @@ func (e *Engine) LogPath() string { return e.logger.path }
 // Run lists playlists, downloads everything and keeps serving retries
 // until ctx is cancelled. It returns once all workers have exited.
 func (e *Engine) Run(ctx context.Context) {
+	if dir := e.opts.PartialDir; dir != "" {
+		_ = os.RemoveAll(dir) // what an earlier run that did not end well left
+		_ = os.MkdirAll(dir, 0o755)
+		defer func() { _ = os.RemoveAll(dir) }()
+	}
+
 	workers := e.opts.Workers
 	if workers < 1 {
 		workers = 1
@@ -509,14 +520,18 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	target := en.targetID
 	e.mu.Unlock()
 
-	outPattern := filepath.Join(e.opts.OutputDir, ytdlp.ApplyPlaylistFields(e.opts.OutputTemplate, en.raw))
-	args := ytdlp.DownloadArgs(ytdlp.DownloadOptions{
+	template := ytdlp.ApplyPlaylistFields(e.opts.OutputTemplate, en.raw)
+	options := ytdlp.DownloadOptions{
 		Format:              e.opts.Quality,
-		OutputTemplate:      outPattern,
+		OutputTemplate:      filepath.Join(e.opts.OutputDir, template),
 		MergeOutputFormat:   e.opts.MergeOutputFormat,
 		ConcurrentFragments: e.opts.ConcurrentFragments,
 		ExtraArgs:           e.opts.ExtraArgs,
-	},
+	}
+	if e.opts.PartialDir != "" {
+		options.OutputTemplate, options.HomeDir, options.TempDir = template, e.opts.OutputDir, e.opts.PartialDir
+	}
+	args := ytdlp.DownloadArgs(options,
 		"--newline",
 		"--progress-template", ytdlp.ProgressTemplate,
 		"--no-playlist",

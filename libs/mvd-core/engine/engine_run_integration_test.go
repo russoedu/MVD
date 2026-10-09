@@ -647,3 +647,33 @@ func TestRunLogger(t *testing.T) {
 		t.Error("empty path should disable the log")
 	}
 }
+
+func TestPartialDirIsEmptiedWhenARunStartsAndRemovedWhenItEnds(t *testing.T) {
+	partial := filepath.Join(t.TempDir(), "partial")
+	if err := os.MkdirAll(partial, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	leftover := filepath.Join(partial, "old.f401.mp4.part")
+	if err := os.WriteFile(leftover, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	eng := stubEngine(t, false, "https://youtube.com/playlist?list=A")
+	eng.opts.PartialDir = partial
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	collect(t, eng)
+
+	if _, err := os.Stat(leftover); !os.IsNotExist(err) {
+		t.Errorf("what an earlier run left in the partial dir should be gone (%v)", err)
+	}
+	if _, err := os.Stat(partial); err != nil {
+		t.Errorf("the partial dir should exist while the run lasts: %v", err)
+	}
+	cancel()
+	<-done
+	if _, err := os.Stat(partial); !os.IsNotExist(err) {
+		t.Errorf("the partial dir should be removed when the run ends (%v)", err)
+	}
+}
