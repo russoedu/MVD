@@ -19,7 +19,7 @@ const movedMarkerName = "install-offered"
 type moveEnvironment struct {
 	GOOS      string
 	Version   string
-	Tray      bool
+	Window      bool
 	MovedFrom string
 	Places    installPlaces
 	// AdminHint adds to the question how to install for everyone, on a system where
@@ -58,7 +58,7 @@ func offerMove(env moveEnvironment) (moved bool) {
 	_, markerErr := os.Stat(marker)
 
 	if !shouldOfferMove(moveSituation{
-		Version: env.Version, Tray: env.Tray, MovedFrom: env.MovedFrom,
+		Version: env.Version, Window: env.Window, MovedFrom: env.MovedFrom,
 		Asked: markerErr == nil, HasTarget: len(targets) > 0,
 		Installed: isInstalled(env.GOOS, env.Exe, targets),
 	}) {

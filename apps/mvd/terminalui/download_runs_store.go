@@ -13,7 +13,7 @@ import (
 )
 
 // Runs starts the download runs of the terminal interface and remembers the one
-// going now, so the tray can hear about its failures and try them again once the
+// going now, so the app can hear about its failures and try them again once the
 // downloader has been updated.
 type Runs struct {
 	onFailure func()
@@ -36,6 +36,23 @@ func (r *Runs) RetryFailed() int {
 		return 0
 	}
 	return run.ledger.retryAll(run.Engine)
+}
+
+// Busy reports whether the current run still has downloads going. A run whose
+// downloads are all done is not busy, even while its screen is open.
+func (r *Runs) Busy() bool {
+	r.mu.Lock()
+	run := r.current
+	r.mu.Unlock()
+	if run == nil {
+		return false
+	}
+	select {
+	case <-run.done:
+		return false
+	default:
+		return true
+	}
 }
 
 // Start is the app model's starter: it builds the engine for the settings and list

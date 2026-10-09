@@ -1,6 +1,6 @@
-// MVD tray app: runs until it is closed, serves the terminal interface (the same
-// screens as the terminal app) to a window of its own on localhost, and takes new
-// URLs while it downloads. The terminal app is apps/mvd-tui; both share
+// MVD desktop app: a window of its own that shows the terminal interface (the same
+// screens as the terminal app), served on localhost, and that takes new URLs while it
+// downloads. Closing the window quits. The terminal app is apps/mvd-tui; both share
 // libs/mvd-core.
 package main
 
@@ -17,16 +17,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"youtube-downloader/apps/mvd/browser"
+	"youtube-downloader/apps/mvd/appwindow"
 	"youtube-downloader/apps/mvd/console"
 	"youtube-downloader/apps/mvd/folderdialog"
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/localserver"
-	"youtube-downloader/apps/mvd/nativewindow"
 	"youtube-downloader/apps/mvd/notification"
 	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
-	"youtube-downloader/apps/mvd/tray"
 	"youtube-downloader/apps/mvd/uninstall"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
@@ -38,8 +36,10 @@ func main() {
 	console.AttachParent()
 
 	address := flag.String("addr", localserver.DefaultAddress, "address to serve the UI on; keep it on 127.0.0.1")
-	noBrowser := flag.Bool("no-browser", false, "do not open the window on start")
-	noTray := flag.Bool("no-tray", false, "do not put an icon in the system tray (run until Ctrl+C)")
+	noWindow := flag.Bool("no-window", false, "do not open the window: serve the interface until Ctrl+C")
+	// Older shortcuts and scripts pass these two; they now mean the same as -no-window.
+	noBrowser := flag.Bool("no-browser", false, "same as -no-window (kept for older scripts)")
+	noTray := flag.Bool("no-tray", false, "same as -no-window (kept for older scripts)")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
@@ -54,14 +54,15 @@ func main() {
 		return
 	}
 
-	if err := run(*address, !*noBrowser, !*noTray, *movedFrom); err != nil {
+	withWindow := !*noWindow && !*noBrowser && !*noTray
+	if err := run(*address, withWindow, *movedFrom); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(address string, open, withTray bool, movedFrom string) error {
+func run(address string, withWindow bool, movedFrom string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -71,27 +72,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 
 	// The first time it is started from somewhere it does not belong, it offers to move
 	// itself, and if that is accepted the moved copy takes over and this one is done.
-	// The window is drawn by the system's web view where there is one (Windows), and
-	// by a browser's app window everywhere else, or when the web view cannot start.
-	// showWindow returns a function that waits until the window is closed (at once for a
-	// browser's window, which is a program of its own): a process that is about to exit has
-	// to wait, because the web view window goes with the process that made it.
-	showWindow := func(url string) (func(), error) {
-		closed, err := nativewindow.Open(url, appDir)
-		if err == nil {
-			return func() { <-closed }, nil
-		}
-		if !errors.Is(err, nativewindow.ErrUnavailable) {
-			logf("cannot open the app window (%v), using a browser", err)
-		}
-		return func() {}, browser.OpenWindow(url)
-	}
-	openWindow := func(url string) error {
-		_, err := showWindow(url)
-		return err
-	}
-
-	if install.OfferMoveHere(appDir, withTray, movedFrom, version) {
+	if install.OfferMoveHere(appDir, withWindow, movedFrom, version) {
 		return nil
 	}
 	if movedFrom != "" {
@@ -101,7 +82,7 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	// The tools live in the app-data folder: the same place on every start, and one the
 	// person can always write to, whatever folder the app was started from.
 	notify := func(notification.Notice) {}
-	if withTray {
+	if withWindow {
 		notify = notification.Notify
 	}
 	binDir := filepath.Join(appDir, "bin")
@@ -116,11 +97,12 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		return fmt.Errorf("cannot listen on %s: %w", address, err)
 	}
 	if existing != "" {
+		// Another MVD answers there. A window of this version finds that one's window and
+		// raises it, then ends (see appwindow); an older version has no such window, so this
+		// one opens its own on that server.
 		fmt.Printf("MVD is already running at http://%s\n", existing)
-		if open {
-			if wait, err := showWindow("http://" + existing); err == nil {
-				wait()
-			}
+		if withWindow {
+			return appwindow.Run(context.Background(), appwindow.Options{URL: "http://" + existing, DataDir: appDir})
 		}
 		return nil
 	}
@@ -158,19 +140,6 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
 
-	url := "http://" + listener.Addr().String()
-	quitHint := "Ctrl+C to quit"
-	if withTray {
-		quitHint = "use the tray icon or Ctrl+C to quit"
-	}
-	fmt.Printf("MVD %s at %s (%s)\n", version, url, quitHint)
-	updates.AtStart()
-	if open {
-		if err := openWindow(url); err != nil {
-			fmt.Printf("Open %s in your browser.\n", url)
-		}
-	}
-
 	serveErr := make(chan error, 1)
 	go func() {
 		err := server.Serve(listener)
@@ -181,12 +150,18 @@ func run(address string, open, withTray bool, movedFrom string) error {
 		stop()
 	}()
 
-	if withTray {
-		tray.Run(ctx, url, openWindow, stop)
-		if ctx.Err() == nil {
-			fmt.Println("No system tray is available here; running without an icon (Ctrl+C to quit).")
-			tray.Unavailable(url)
-		}
+	url := "http://" + listener.Addr().String()
+	fmt.Printf("MVD %s at %s\n", version, url)
+	updates.AtStart()
+
+	var windowErr error
+	if withWindow {
+		// The window runs on this goroutine (macOS needs the main thread) until it is closed,
+		// and closing it ends the app.
+		windowErr = appwindow.Run(ctx, appwindow.Options{URL: url, DataDir: appDir, Busy: terminalRuns.Busy})
+		stop()
+	} else {
+		fmt.Println("No window: Ctrl+C to quit.")
 	}
 	<-ctx.Done()
 
@@ -195,8 +170,11 @@ func run(address string, open, withTray bool, movedFrom string) error {
 	if err := server.Shutdown(shutdown); err != nil {
 		return err
 	}
+	if err := <-serveErr; err != nil {
+		return err
+	}
 
-	return <-serveErr
+	return windowErr
 }
 
 // runUninstall removes the app. If one is already running it is asked to remove itself,

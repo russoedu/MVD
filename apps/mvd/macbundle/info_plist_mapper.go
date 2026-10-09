@@ -7,9 +7,7 @@ const Identifier = "io.github.russoedu.mvd"
 
 // InfoPlist is the Info.plist of the MVD.app bundle: the one the app builds around
 // itself, and the one the release build puts in the .dmg. withIcon names the icon file
-// that Write places in Resources. LSUIElement keeps the app out of the Dock and the
-// application switcher: it lives in the menu bar, like the tray icon on the other
-// systems.
+// that Write places in Resources. The app is a normal one, with a Dock icon and a window.
 func InfoPlist(version string, withIcon bool) string {
 	icon := ""
 	if withIcon {
@@ -36,8 +34,6 @@ func InfoPlist(version string, withIcon bool) string {
 	<string>` + html.EscapeString(version) + `</string>
 ` + icon + `	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
-	<key>LSUIElement</key>
-	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 </dict>
