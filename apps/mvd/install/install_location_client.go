@@ -13,12 +13,58 @@ import (
 	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
-// OfferMoveHere is offerMove against the real machine. It reports true when the app has
-// been moved and started from its new place, and the caller should exit.
+// MoveResult is how a move that the person asked for went.
+type MoveResult int
+
+const (
+	// Moved: the app was installed and the copy started; the caller should quit.
+	Moved MoveResult = iota
+	// Declined: the person said no, or the move failed and said so.
+	Declined
+	// AlreadyThere: the app already lives in its own folder.
+	AlreadyThere
+	// CannotMove: there is nowhere to move to on this machine, or no way to ask.
+	CannotMove
+)
+
+// OfferMoveHere is the offer to move the app, made by itself the first time it is started
+// from somewhere it does not belong, against the real machine. It reports true when the
+// app has been moved and started from its new place, and the caller should exit.
 func OfferMoveHere(appDir string, window bool, movedFrom, version string) bool {
+	env, ok := realEnvironment(appDir, window, movedFrom, version)
+	if !ok {
+		return false
+	}
+
+	return offerMove(env)
+}
+
+// MoveNow is the move the person asked for, from the preferences or with -move: they
+// are asked whatever they answered before, and nothing is remembered.
+func MoveNow(appDir, version string) MoveResult {
+	env, ok := realEnvironment(appDir, true, "", version)
+	if !ok {
+		return CannotMove
+	}
+	env.Force = true
+
+	switch moveOffer(env) {
+	case offerMoved:
+		return Moved
+	case offerAlreadyThere:
+		return AlreadyThere
+	case offerCannot, offerSkipped:
+		return CannotMove
+	}
+
+	return Declined
+}
+
+// realEnvironment describes this machine and this run to the move.
+func realEnvironment(appDir string, window bool, movedFrom, version string) (moveEnvironment, bool) {
 	exe, err := os.Executable()
 	if err != nil {
-		return false
+		return moveEnvironment{}, false
 	}
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
@@ -33,7 +79,7 @@ func OfferMoveHere(appDir string, window bool, movedFrom, version string) bool {
 		programFiles = os.Getenv("ProgramFiles")
 	}
 
-	return offerMove(moveEnvironment{
+	return moveEnvironment{
 		GOOS: runtime.GOOS, Version: version, Window: window, MovedFrom: movedFrom,
 		Places:    installPlaces{ProgramFiles: programFiles, LocalAppData: os.Getenv("LOCALAPPDATA"), Home: home},
 		AdminHint: runtime.GOOS == "windows" && !isElevated(),
@@ -46,7 +92,7 @@ func OfferMoveHere(appDir string, window bool, movedFrom, version string) bool {
 			return installOnThisMachine(target, exe, version)
 		},
 		Start: startInstalled,
-	})
+	}, true
 }
 
 // installOnThisMachine puts the program in target in the way that system needs.

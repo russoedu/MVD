@@ -27,6 +27,9 @@ type moveProbe struct {
 	startErr    error
 }
 
+// answerAskAgain is the second choice of the question after "Not now".
+const answerAskAgain = question.AnswerLeave
+
 type startedProgram struct {
 	target installTarget
 	args   []string
@@ -49,6 +52,10 @@ func newMoveProbe(t *testing.T, goos string, answers ...question.Answer) *movePr
 		Ask: func(title, question string, choices []string) question.Answer {
 			p.questions = append(p.questions, question)
 			p.choices = append(p.choices, choices)
+			// Unless a test says otherwise, "Not now" is followed by "ask me again".
+			if len(p.answers) == 0 && len(choices) == 2 && choices[0] == "Never ask again" {
+				return answerAskAgain
+			}
 			if len(p.answers) == 0 {
 				t.Fatal("asked more questions than the test expected")
 			}
@@ -119,12 +126,12 @@ func TestTheQuestionNamesBothPlacesWhenTheAppMayInstallForEveryone(t *testing.T)
 	offerMove(p.env)
 
 	question := p.questions[0]
-	for _, want := range []string{filepath.Dir(p.env.Exe), p.targets()[0].Folder, p.targets()[1].Folder, "only asked once"} {
+	for _, want := range []string{filepath.Dir(p.env.Exe), p.targets()[0].Folder, p.targets()[1].Folder, "later, from the preferences"} {
 		if !strings.Contains(question, want) {
 			t.Errorf("the question lacks %q:\n%s", want, question)
 		}
 	}
-	if got := strings.Join(p.choices[0], "|"); got != "For everyone|Just for me|Leave it here" {
+	if got := strings.Join(p.choices[0], "|"); got != "For everyone|Just for me|Not now" {
 		t.Errorf("choices = %s", got)
 	}
 }
@@ -136,7 +143,7 @@ func TestWithoutAdministratorRightsOnWindowsOnlyTheOwnFolderIsOfferedAndTheQuest
 
 	offerMove(p.env)
 
-	if got := strings.Join(p.choices[0], "|"); got != "Move it|Leave it here" {
+	if got := strings.Join(p.choices[0], "|"); got != "Move it|Not now" {
 		t.Errorf("choices = %s", got)
 	}
 	if !strings.Contains(p.questions[0], "Run as administrator") || !strings.Contains(p.questions[0], p.targets()[0].Folder) {
@@ -167,7 +174,7 @@ func TestThereIsNoAdministratorTalkOnMacAndOnlyTwoChoicesOnLinux(t *testing.T) {
 
 	linux := newMoveProbe(t, "linux", question.AnswerLeave)
 	offerMove(linux.env)
-	if got := strings.Join(linux.choices[0], "|"); got != "Move it|Leave it here" {
+	if got := strings.Join(linux.choices[0], "|"); got != "Move it|Not now" {
 		t.Errorf("Linux choices = %s", got)
 	}
 	if !strings.Contains(linux.questions[0], linux.targets()[0].Folder) {
@@ -183,18 +190,85 @@ func TestLinuxMovesToItsOnlyPlaceOnYes(t *testing.T) {
 	}
 }
 
-func TestLeavingItDoesNothingAndIsNeverAskedAgain(t *testing.T) {
-	p := newMoveProbe(t, "windows", question.AnswerLeave)
+func TestNotNowDoesNothingAndIsFollowedByAskingWhetherToBeAskedAgain(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerLeave, question.AnswerLeave)
 
 	if offerMove(p.env) {
-		t.Fatal("moved although the person chose to leave it")
+		t.Fatal("moved although the person chose not now")
 	}
 	if len(p.installed)+len(p.started) != 0 {
 		t.Errorf("something was done: installed=%v started=%v", p.installed, p.started)
 	}
+	if len(p.questions) != 2 || strings.Join(p.choices[1], "|") != "Never ask again|Ask me again" {
+		t.Fatalf("questions %q, choices %q: want the move, then whether to ask again", p.questions, p.choices)
+	}
+	if _, err := os.Stat(filepath.Join(p.env.AppDir, movedMarkerName)); err == nil {
+		t.Error("the person said to ask again, so nothing should be remembered")
+	}
+}
 
-	if offerMove(p.env) || len(p.questions) != 1 {
-		t.Errorf("asked %d times in total, want exactly once", len(p.questions))
+func TestAskMeAgainIsAskedAtTheNextStart(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerLeave, question.AnswerLeave, question.AnswerLeave, question.AnswerLeave)
+
+	offerMove(p.env)
+	offerMove(p.env)
+
+	if len(p.questions) != 4 {
+		t.Errorf("asked %d questions, want 4: the move and the follow-up at each of two starts", len(p.questions))
+	}
+}
+
+func TestNeverAskAgainIsRememberedAndNotAskedAtTheNextStart(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerLeave, question.AnswerFirst)
+
+	offerMove(p.env)
+	if _, err := os.Stat(filepath.Join(p.env.AppDir, movedMarkerName)); err != nil {
+		t.Fatalf("the person said never, it should be remembered: %v", err)
+	}
+
+	if offerMove(p.env) || len(p.questions) != 2 {
+		t.Errorf("asked %d questions in all, want the two of the first start only", len(p.questions))
+	}
+}
+
+func TestMovingOnRequestWorksAfterNeverAskAgainAndRemembersNothing(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerLeave, question.AnswerFirst, question.AnswerSecond)
+	offerMove(p.env) // not now, never ask again
+
+	p.env.Force = true
+	if got := moveOffer(p.env); got != offerMoved {
+		t.Fatalf("got %v, want the move to happen although the person said never", got)
+	}
+	if len(p.installed) != 1 || p.installed[0].Kind != kindWindowsUser {
+		t.Errorf("installed %v, want the person's own place", p.installed)
+	}
+	if got := strings.Join(p.choices[2], "|"); got != "For everyone|Just for me|Not now" {
+		t.Errorf("choices %q", got)
+	}
+	if !strings.Contains(p.questions[2], "You asked for this from the preferences.") {
+		t.Errorf("the question should say the person asked: %q", p.questions[2])
+	}
+}
+
+func TestMovingOnRequestWhenAlreadyInPlaceSaysSoAndAsksNothing(t *testing.T) {
+	p := newMoveProbe(t, "windows")
+	p.env.Force = true
+	p.env.Exe = p.targets()[0].Program
+
+	if got := moveOffer(p.env); got != offerAlreadyThere || len(p.questions) != 0 {
+		t.Errorf("got %v after %d questions, want already there with none", got, len(p.questions))
+	}
+}
+
+func TestDecliningARequestedMoveIsNotFollowedByQuestionsAndRemembersNothing(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerLeave)
+	p.env.Force = true
+
+	if got := moveOffer(p.env); got != offerDeclined || len(p.questions) != 1 {
+		t.Errorf("got %v after %d questions, want declined after one", got, len(p.questions))
+	}
+	if _, err := os.Stat(filepath.Join(p.env.AppDir, movedMarkerName)); err == nil {
+		t.Error("a requested move leaves no record")
 	}
 }
 
@@ -213,7 +287,7 @@ func TestTheQuestionIsRecordedBeforeItIsPutSoACrashCannotMakeItRepeat(t *testing
 }
 
 func TestWhenNothingCouldShowTheQuestionItIsNotCountedAsAskedAndIsTriedAgainNextTime(t *testing.T) {
-	p := newMoveProbe(t, "linux", question.AnswerUnavailable, question.AnswerLeave)
+	p := newMoveProbe(t, "linux", question.AnswerUnavailable, question.AnswerLeave, question.AnswerLeave)
 
 	if offerMove(p.env) {
 		t.Fatal("moved with no answer")
@@ -224,8 +298,8 @@ func TestWhenNothingCouldShowTheQuestionItIsNotCountedAsAskedAndIsTriedAgainNext
 
 	offerMove(p.env)
 
-	if len(p.questions) != 2 {
-		t.Errorf("asked %d times, want 2 (the second start tries again)", len(p.questions))
+	if len(p.questions) != 3 {
+		t.Errorf("asked %d times, want 3 (the second start asks the move and the follow-up again)", len(p.questions))
 	}
 }
 

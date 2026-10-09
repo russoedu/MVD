@@ -32,6 +32,9 @@ type SetupInput struct {
 	// Uninstall, when set, is offered on the preferences: it asks the person on the
 	// machine's own screen and removes the app if they agree.
 	Uninstall Uninstaller
+	// Move, when set, is offered on the preferences: it asks the person on the machine's
+	// own screen where the app should live and moves it there if they agree.
+	Move Mover
 }
 
 // SetupResult is returned when the setup screens close.
@@ -80,6 +83,7 @@ type setupModel struct {
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
 	pick          FolderPicker
 	uninstall     Uninstaller
+	move          Mover
 }
 
 // setupFinishedMsg tells the app model the user left the setup screens.
@@ -102,9 +106,10 @@ func newSetupModel(in SetupInput) setupModel {
 		listPath:  in.ListPath,
 		list:      newListModel(in.URLs),
 		songs:     newSongsModel(""),
-		config:    newConfigModel(in.Cfg).withFolderPicker(in.PickFolder).withUninstaller(in.Uninstall),
+		config:    newConfigModel(in.Cfg).withFolderPicker(in.PickFolder).withUninstaller(in.Uninstall).withMover(in.Move),
 		pick:      in.PickFolder,
 		uninstall: in.Uninstall,
+		move:      in.Move,
 		result:    SetupResult{Action: ActionQuit, Cfg: in.Cfg, URLs: in.URLs},
 	}
 	if in.OpenConfig {
@@ -140,7 +145,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.finish()
 		case listPrefs:
 			m.saveList()
-			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).withUninstaller(m.uninstall).setSize(m.width, m.height)
+			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).withUninstaller(m.uninstall).withMover(m.move).setSize(m.width, m.height)
 			m.screen = screenConfig
 			return m, nil
 		case listSongs:

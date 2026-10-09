@@ -19,7 +19,7 @@ const movedMarkerName = "install-offered"
 type moveEnvironment struct {
 	GOOS      string
 	Version   string
-	Window      bool
+	Window    bool
 	MovedFrom string
 	Places    installPlaces
 	// AdminHint adds to the question how to install for everyone, on a system where
@@ -31,6 +31,10 @@ type moveEnvironment struct {
 	Exe  string
 	Args []string
 
+	// Force is true when the person asked to move the app (from the preferences, or with
+	// -move): they are asked whatever they answered before, and nothing is remembered.
+	Force bool
+
 	// Ask puts a question with the given choices, best one first, to the person.
 	Ask func(title, question string, choices []string) question.Answer
 	// Tell shows the person a problem.
@@ -41,44 +45,87 @@ type moveEnvironment struct {
 	Start func(target installTarget, args []string) error
 }
 
-// offerMove asks the person, the first time the app is started from somewhere it does
+// offerOutcome is how an offer to move the app went.
+type offerOutcome int
+
+const (
+	// offerSkipped: the offer does not apply (a developer's build, a script, asked and
+	// told never again, already in place), so nobody was asked.
+	offerSkipped offerOutcome = iota
+	// offerMoved: the app was installed and the copy started; the caller should exit.
+	offerMoved
+	// offerDeclined: the person was asked and the app stays where it is.
+	offerDeclined
+	// offerAlreadyThere: asked for by the person, and the app is already in its place.
+	offerAlreadyThere
+	// offerCannot: there is nowhere to move to, or nothing could show the question.
+	offerCannot
+)
+
+// offerMove is moveOffer for a caller that only wants to know whether the app moved.
+func offerMove(env moveEnvironment) (moved bool) {
+	return moveOffer(env) == offerMoved
+}
+
+// moveOffer asks the person, the first time the app is started from somewhere it does
 // not belong, whether to move it, and where: for everyone on the computer, or just for
-// them. If they agree it installs itself, starts the copy and returns true, and the
+// them. If they agree it installs itself, starts the copy and reports offerMoved, and the
 // caller should exit: the copy takes over, and removes this one once it has gone (see
 // removeAfterExit).
 //
-// The question is recorded as asked before it is put, so whatever the answer, and
-// however the app ends, it is not asked again. If installing for everyone does not work
-// (the administrator prompt was declined, or the account may not write there) the person
-// is offered the place of their own instead. If nothing works the app keeps running from
+// "Not now" is followed by one more question: ask again at the next start, or never.
+// Never is remembered in the app-data folder. A person who asks to move the app (env.Force,
+// from the preferences or -move) is asked whatever was answered before, and nothing is
+// remembered.
+//
+// The question is recorded as asked before it is put, so that however the app ends it is
+// not asked in a loop; the record is taken back when the person says to ask again, or
+// when nothing could show the question. If installing for everyone does not work (the
+// administrator prompt was declined, or the account may not write there) the person is
+// offered the place of their own instead. If nothing works the app keeps running from
 // where it is and says why.
-func offerMove(env moveEnvironment) (moved bool) {
+func moveOffer(env moveEnvironment) offerOutcome {
 	targets := installTargets(env.GOOS, env.Places)
+	if len(targets) == 0 {
+		return offerCannot
+	}
+	installed := isInstalled(env.GOOS, env.Exe, targets)
 	marker := filepath.Join(env.AppDir, movedMarkerName)
-	_, markerErr := os.Stat(marker)
 
-	if !shouldOfferMove(moveSituation{
-		Version: env.Version, Window: env.Window, MovedFrom: env.MovedFrom,
-		Asked: markerErr == nil, HasTarget: len(targets) > 0,
-		Installed: isInstalled(env.GOOS, env.Exe, targets),
-	}) {
-		return false
-	}
-	if err := os.WriteFile(marker, []byte("asked\n"), 0o600); err != nil {
-		// Not being able to remember would mean asking at every start.
-		return false
+	if env.Force {
+		if installed {
+			return offerAlreadyThere
+		}
+	} else {
+		_, markerErr := os.Stat(marker)
+		if !shouldOfferMove(moveSituation{
+			Version: env.Version, Window: env.Window, MovedFrom: env.MovedFrom,
+			Asked: markerErr == nil, HasTarget: true, Installed: installed,
+		}) {
+			return offerSkipped
+		}
+		if err := os.WriteFile(marker, []byte("asked\n"), 0o600); err != nil {
+			// Not being able to remember would mean asking at every start.
+			return offerSkipped
+		}
 	}
 
-	prompt, choices := moveQuestion(filepath.Dir(env.Exe), targets, env.AdminHint)
+	prompt, choices := moveQuestion(filepath.Dir(env.Exe), targets, env.AdminHint, env.Force)
 	picked := env.Ask("MVD", prompt, choices)
 	switch picked {
 	case question.AnswerUnavailable:
 		// Nothing could be shown, so nothing was asked: try again at the next start.
-		_ = os.Remove(marker)
+		if !env.Force {
+			_ = os.Remove(marker)
+		}
 
-		return false
+		return offerCannot
 	case question.AnswerLeave:
-		return false
+		if !env.Force {
+			askAgainLater(env, marker)
+		}
+
+		return offerDeclined
 	}
 
 	chosen := targets[0]
@@ -92,7 +139,7 @@ func offerMove(env moveEnvironment) (moved bool) {
 			"MVD could not be installed for everyone: %v\n\nInstall it just for you instead?\n\n%s", err, fallback.Folder),
 			[]string{"Install just for me", "Leave it here"})
 		if again != question.AnswerFirst {
-			return false
+			return offerDeclined
 		}
 		chosen = fallback
 		err = env.Install(chosen, env.Exe)
@@ -100,24 +147,40 @@ func offerMove(env moveEnvironment) (moved bool) {
 	if err != nil {
 		env.Tell(fmt.Sprintf("MVD could not move itself to %s: %v\n\nIt will keep running from where it is.", chosen.Folder, err))
 
-		return false
+		return offerDeclined
 	}
 
 	args := append(append([]string{}, env.Args...), "-moved-from="+env.Exe)
 	if err := env.Start(chosen, args); err != nil {
 		env.Tell(fmt.Sprintf("MVD was installed in %s but could not be started from there: %v\n\nIt will keep running from where it is.", chosen.Folder, err))
 
-		return false
+		return offerDeclined
 	}
 
-	return true
+	return offerMoved
+}
+
+// askAgainLater is the question after "Not now": whether to be asked again at the next
+// start. Only "Never ask again" keeps the record that the person was asked; closing the
+// box, or no way to show it, leaves things as they were and asks again.
+func askAgainLater(env moveEnvironment, marker string) {
+	picked := env.Ask("MVD",
+		"Ask again the next time MVD starts?\n\nYou can always move it later: press m on the preferences, or start MVD with -move.",
+		[]string{"Never ask again", "Ask me again"})
+	if picked != question.AnswerFirst {
+		_ = os.Remove(marker)
+	}
 }
 
 // moveQuestion words the question and the choices. With two places to go it offers both
 // and a way out; with one it offers that and a way out, and may add how to get the place
 // for everyone.
-func moveQuestion(from string, targets []installTarget, adminHint bool) (string, []string) {
+func moveQuestion(from string, targets []installTarget, adminHint, requested bool) (string, []string) {
 	text := fmt.Sprintf("MVD is running from:\n\n%s\n\n", from)
+	footer := "You can also do this later, from the preferences."
+	if requested {
+		footer = "You asked for this from the preferences."
+	}
 
 	if len(targets) < 2 {
 		text += fmt.Sprintf("Move it to its own folder, where this system keeps programs?\n\n%s\n\n", targets[0].Folder)
@@ -125,17 +188,17 @@ func moveQuestion(from string, targets []installTarget, adminHint bool) (string,
 			text += "To install it for everyone on this computer instead, say No, then start MVD as an administrator " +
 				"(right-click it and choose Run as administrator). You will not be asked again, so this is the only time to choose.\n\n"
 		}
-		text += "You are only asked once."
+		text += footer
 
-		return text, []string{"Move it", "Leave it here"}
+		return text, []string{"Move it", "Not now"}
 	}
 
 	text += "Where should it live?\n\n"
 	text += fmt.Sprintf("For everyone on this computer:\n%s\n\n", targets[0].Folder)
 	text += fmt.Sprintf("Just for you:\n%s\n\n", targets[1].Folder)
-	text += "You are only asked once."
+	text += footer
 
-	return text, []string{"For everyone", "Just for me", "Leave it here"}
+	return text, []string{"For everyone", "Just for me", "Not now"}
 }
 
 // installWindowsUser puts the program in the person's own Programs folder, adds a
