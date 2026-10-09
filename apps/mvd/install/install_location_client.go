@@ -15,7 +15,7 @@ import (
 
 // OfferMoveHere is offerMove against the real machine. It reports true when the app has
 // been moved and started from its new place, and the caller should exit.
-func OfferMoveHere(appDir string, tray bool, movedFrom, version string) bool {
+func OfferMoveHere(appDir string, window bool, movedFrom, version string) bool {
 	exe, err := os.Executable()
 	if err != nil {
 		return false
@@ -34,7 +34,7 @@ func OfferMoveHere(appDir string, tray bool, movedFrom, version string) bool {
 	}
 
 	return offerMove(moveEnvironment{
-		GOOS: runtime.GOOS, Version: version, Tray: tray, MovedFrom: movedFrom,
+		GOOS: runtime.GOOS, Version: version, Window: window, MovedFrom: movedFrom,
 		Places:    installPlaces{ProgramFiles: programFiles, LocalAppData: os.Getenv("LOCALAPPDATA"), Home: home},
 		AdminHint: runtime.GOOS == "windows" && !isElevated(),
 		AppDir:    appDir,

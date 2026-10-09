@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestTheBundleDescribesAMenuBarOnlyApplicationNamedMVD(t *testing.T) {
+func TestTheBundleDescribesANormalApplicationNamedMVD(t *testing.T) {
 	plist := InfoPlist("0.0.7", false)
 
 	for _, want := range []string{
@@ -13,11 +13,13 @@ func TestTheBundleDescribesAMenuBarOnlyApplicationNamedMVD(t *testing.T) {
 		"<key>CFBundlePackageType</key>\n\t<string>APPL</string>",
 		"<key>CFBundleIdentifier</key>\n\t<string>" + Identifier + "</string>",
 		"<key>CFBundleShortVersionString</key>\n\t<string>0.0.7</string>",
-		"<key>LSUIElement</key>\n\t<true/>",
 	} {
 		if !strings.Contains(plist, want) {
 			t.Errorf("the Info.plist lacks %q", want)
 		}
+	}
+	if strings.Contains(plist, "LSUIElement") {
+		t.Error("the app has a window and a Dock icon, so it is not a menu-bar-only app")
 	}
 	if !strings.HasPrefix(plist, "<?xml") || !strings.HasSuffix(plist, "</plist>\n") {
 		t.Error("the Info.plist is not a complete XML document")

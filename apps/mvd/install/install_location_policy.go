@@ -114,9 +114,9 @@ func isInstalled(goos, exe string, targets []installTarget) bool {
 type moveSituation struct {
 	// Version is "dev" for a build made on a developer's machine.
 	Version string
-	// Tray is false when the app was asked to run without a tray icon, which is how it
+	// Window is false when the app was asked to run without a window, which is how it
 	// is run from a terminal or a script.
-	Tray bool
+	Window bool
 	// MovedFrom is set on the copy that a move has just started.
 	MovedFrom string
 	// Asked is whether the person has been offered the move before.
@@ -136,7 +136,7 @@ func shouldOfferMove(s moveSituation) bool {
 		return false
 	case s.Version == "dev":
 		return false
-	case !s.Tray:
+	case !s.Window:
 		return false
 	case s.MovedFrom != "":
 		return false

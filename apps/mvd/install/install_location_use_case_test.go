@@ -37,7 +37,7 @@ func newMoveProbe(t *testing.T, goos string, answers ...question.Answer) *movePr
 	p := &moveProbe{answers: answers}
 	root := t.TempDir()
 	p.env = moveEnvironment{
-		GOOS: goos, Version: "0.0.7", Tray: true,
+		GOOS: goos, Version: "0.0.7", Window: true,
 		Places: installPlaces{
 			ProgramFiles: filepath.Join(root, "Program Files"),
 			LocalAppData: filepath.Join(root, "Local"),
@@ -232,7 +232,7 @@ func TestWhenNothingCouldShowTheQuestionItIsNotCountedAsAskedAndIsTriedAgainNext
 func TestNothingHappensWhereTheOfferDoesNotApply(t *testing.T) {
 	cases := map[string]func(*moveProbe){
 		"a dev build":     func(p *moveProbe) { p.env.Version = "dev" },
-		"no tray":         func(p *moveProbe) { p.env.Tray = false },
+		"no window":       func(p *moveProbe) { p.env.Window = false },
 		"a freshly moved": func(p *moveProbe) { p.env.MovedFrom = "old.exe" },
 		"nowhere to go":   func(p *moveProbe) { p.env.Places = installPlaces{} },
 		"already in the system place": func(p *moveProbe) {

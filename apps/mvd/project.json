@@ -15,7 +15,11 @@
         "{workspaceRoot}/dist/apps/mvd"
       ],
       "options": {
-        "outputPath": "../../dist/apps/mvd/mvd"
+        "outputPath": "../../dist/apps/mvd/mvd",
+        "flags": [
+          "-tags",
+          "production,webkit2_41"
+        ]
       },
       "dependsOn": [
         "stage-web"
@@ -25,7 +29,13 @@
       "executor": "@nx-go/nx-go:test",
       "dependsOn": [
         "stage-web"
-      ]
+      ],
+      "options": {
+        "tags": [
+          "production",
+          "webkit2_41"
+        ]
+      }
     },
     "lint": {
       "executor": "@nx-go/nx-go:lint",
@@ -33,7 +43,9 @@
       "options": {
         "linter": "golangci-lint",
         "args": [
-          "run"
+          "run",
+          "--build-tags",
+          "production,webkit2_41"
         ]
       },
       "dependsOn": [
@@ -55,7 +67,7 @@
         "{workspaceRoot}/dist/platforms/mvd"
       ],
       "options": {
-        "command": "node -e \"const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)\""
+        "command": "node -e \"const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','production'+(os==='linux'?',webkit2_41':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)\""
       },
       "dependsOn": [
         "stage-web"
@@ -106,7 +118,7 @@
       "executor": "nx:run-commands",
       "continuous": true,
       "options": {
-        "command": "go run .",
+        "command": "go run -tags production,webkit2_41 .",
         "cwd": "apps/mvd"
       },
       "dependsOn": [

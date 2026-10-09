@@ -111,7 +111,7 @@ func TestWindowsPathsAreComparedWithoutRegardToCase(t *testing.T) {
 }
 
 func situation() moveSituation {
-	return moveSituation{Version: "0.0.7", Tray: true, HasTarget: true}
+	return moveSituation{Version: "0.0.7", Window: true, HasTarget: true}
 }
 
 func TestTheMoveIsOfferedWhenAReleaseRunsFromSomewhereElseForTheFirstTime(t *testing.T) {
@@ -124,7 +124,7 @@ func TestTheMoveIsNotOfferedInEachOfTheCasesWhereItWouldBeWrong(t *testing.T) {
 	cases := map[string]func(*moveSituation){
 		"there is nowhere to move to":     func(s *moveSituation) { s.HasTarget = false },
 		"it is a developer's build":       func(s *moveSituation) { s.Version = "dev" },
-		"it runs without a tray icon":     func(s *moveSituation) { s.Tray = false },
+		"it runs without a window":     func(s *moveSituation) { s.Window = false },
 		"it is the copy a move just made": func(s *moveSituation) { s.MovedFrom = "mvd.exe" },
 		"the person was already asked":    func(s *moveSituation) { s.Asked = true },
 		"it is already installed":         func(s *moveSituation) { s.Installed = true },
