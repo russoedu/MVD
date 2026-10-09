@@ -14,7 +14,7 @@ A lightweight, zero-setup, concurrent Go application with two front ends, a desk
 * **Cross-Platform**: Works out of the box on **Windows**, **macOS** (Intel & Apple Silicon), and **Linux**.
 * **Parallel Downloads**: Downloads multiple playlists concurrently using Go goroutines and a worker semaphore pool.
 * **YouTube 403 Bypass**: Pre-configured with IPv4 enforcement and JS runtime options to prevent HTTP 403 Forbidden errors.
-* **Official Music Video Mode**: Optionally swaps auto-generated "`<Artist> - Topic`" audio tracks for the official music video that YouTube links from the description's **Music** card.
+* **Official Music Video Mode**: Swaps auto-generated "`<Artist> - Topic`" audio tracks for the official music video that YouTube links from the description's **Music** card. It is on by default (`official_video=yes`); `no` never looks, and `only` downloads just the songs that have an official video and lists the others in a CSV file (`save_not_found`).
 * **Automatic browser cookies**: Finds a browser you're signed into YouTube with and uses its cookies to clear bot checks and `429` errors, with no configuration.
 * **Spotify and Apple Music playlists**: Paste a public playlist link; the app reads its songs without any login and finds each one on YouTube, the official video first (see below).
 * **Song lists from anywhere**: A text file of `Artist - Title` lines, or a CSV with title and artist columns, is handled like a playlist (see below).
@@ -168,7 +168,7 @@ It holds `config.conf` (settings), `list.txt` (your URLs), `official-videos.json
 
 ### `config.conf` keys (for reference)
 
-`output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `list_workers`, `name_workers`, `pick_workers`, `download_official_music_video`, `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args`.
+`output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `list_workers`, `name_workers`, `pick_workers`, `official_video` (`yes`, the default; `no`; or `only`, which downloads only songs that have an official video), `save_not_found` (with `only`: write the songs without one to `not-found.csv` in the output folder, with the playlist, the artist, the title and the address), `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args`.
 
 The interface colours are `color_accent`, `color_focus`, `color_highlight`, `color_success`, `color_error`, `color_dim`, `color_text` (text) and `color_selected` (background of the selected row), each a `#rgb` or `#rrggbb` value such as `color_accent=#ff007f`. A missing or invalid value keeps the default. You can also change them in the app: on the preferences press `c` for the colours screen, where each colour shows a swatch and applies as you accept it (`d` restores the default of the selected one). Edited in the file, they apply on the next start.
 

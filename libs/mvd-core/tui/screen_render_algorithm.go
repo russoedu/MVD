@@ -71,6 +71,9 @@ func (m model) renderHeader(w int) string {
 		styDim.Render(fmt.Sprintf("≡ Dup %d", t.Duplicate)),
 		styRed.Render(fmt.Sprintf("✗ Failed %d", t.Failed)),
 	}
+	if t.NotFound > 0 {
+		parts = append(parts, styDim.Render(fmt.Sprintf("∅ Not found %d", t.NotFound)))
+	}
 	if t.Retried > 0 {
 		parts = append(parts, styCyan.Render(fmt.Sprintf("↻ Retried %d", t.Retried)))
 	}
@@ -160,6 +163,8 @@ func (m model) entryGlyph(en *runstate.Entry) string {
 		return styGreen.Render("✓")
 	case engine.StateDuplicate:
 		return styDim.Render("≡")
+	case engine.StateNotFound:
+		return styDim.Render("∅")
 	case engine.StateFailed:
 		return styRed.Render("✗")
 	}
@@ -180,6 +185,8 @@ func (m model) entryTag(en *runstate.Entry) (string, int) {
 		return styYellow.Render("merge"), 5
 	case engine.StateDuplicate:
 		return styDim.Render("dup"), 3
+	case engine.StateNotFound:
+		return styDim.Render("n/f"), 3
 	case engine.StateFailed:
 		return styRed.Render("ERR"), 3
 	case engine.StateDone:

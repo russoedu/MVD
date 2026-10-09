@@ -56,6 +56,10 @@ func (e *Engine) findTrack(ctx context.Context, en *engineEntry) bool {
 		e.mu.Unlock()
 		e.setState(en, StateFailed, err.Error())
 		return false
+	case id == "" && e.opts.OfficialOnly:
+		// No video at all is no official video either.
+		e.markNotFound(en)
+		return false
 	case id == "":
 		e.log(pl, eid, "no video found for %s - %s", en.track.Artist, en.track.Title)
 		e.setState(en, StateFailed, "no matching video found on YouTube")

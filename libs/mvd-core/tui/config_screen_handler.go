@@ -32,7 +32,7 @@ const (
 	editConfirming // the questions about removing the app are being asked
 )
 
-const cfgItemCount = 10
+const cfgItemCount = 11
 
 var mergeOptions = []string{"mp4", "mkv", "webm"}
 var cookieOptions = []string{"all", "off", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari"}
@@ -129,11 +129,11 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 // setting opens the host's chooser when there is one, which the returned command waits on.
 func (m *configModel) activate() tea.Cmd {
 	switch m.cursor {
-	case 6:
-		m.cfg.DownloadOfficialMusicVideo = !m.cfg.DownloadOfficialMusicVideo
+	case 10:
+		m.cfg.SaveNotFound = !m.cfg.SaveNotFound
 	case 8:
 		m.cfg.CreateLogFile = !m.cfg.CreateLogFile
-	case 1, 2, 3, 7:
+	case 1, 2, 3, 6, 7:
 		m.radioOpts, m.radioIdx = m.radioState()
 		m.mode = editRadio
 	case 5:
@@ -371,6 +371,8 @@ func (m *configModel) commit() {
 		m.cfg.AudioQuality = m.radioOpts[m.radioIdx]
 	case 3:
 		m.cfg.MergeOutputFormat = m.radioOpts[m.radioIdx]
+	case 6:
+		m.cfg.OfficialVideo = config.OfficialMode(m.radioOpts[m.radioIdx])
 	case 7:
 		applyCookieChoice(&m.cfg, m.radioOpts[m.radioIdx])
 	}
@@ -408,6 +410,8 @@ func (m configModel) radioState() ([]string, int) {
 		return config.AudioPresets, indexOf(config.AudioPresets, m.cfg.AudioQuality)
 	case 3:
 		return mergeOptions, indexOf(mergeOptions, m.cfg.MergeOutputFormat)
+	case 6:
+		return config.OfficialModes, indexOf(config.OfficialModes, string(m.cfg.OfficialVideo))
 	case 7:
 		return cookieOptions, indexOf(cookieOptions, currentCookieChoice(m.cfg))
 	}
@@ -431,6 +435,7 @@ var cfgLabels = []string{
 	"Output Folder", "Video Quality", "Audio Quality", "Merge Format",
 	"Output Template", "Max Concurrent Downloads", "Download Official Music Video",
 	"Cookies from Browser", "Create Log File", "Log File Location",
+	"Save Songs Without Official Video (CSV)",
 }
 
 func (m configModel) display(i int) string {
@@ -449,13 +454,18 @@ func (m configModel) display(i int) string {
 	case 5:
 		return strconv.Itoa(c.MaxConcurrentDownloads)
 	case 6:
-		return yesNo(c.DownloadOfficialMusicVideo)
+		return string(c.OfficialVideo)
 	case 7:
 		return cookieLabel(c)
 	case 8:
 		return yesNo(c.CreateLogFile)
 	case 9:
 		return c.LogDir
+	case 10:
+		if c.OfficialVideo != config.OfficialOnly {
+			return yesNo(c.SaveNotFound) + " (used when Download Official is only)"
+		}
+		return yesNo(c.SaveNotFound)
 	}
 	return ""
 }

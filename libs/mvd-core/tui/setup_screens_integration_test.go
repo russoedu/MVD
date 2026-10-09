@@ -68,22 +68,40 @@ func TestListModel(t *testing.T) {
 	}
 }
 
-func TestConfigModelToggleAndSave(t *testing.T) {
+func TestConfigModelRadioAndSave(t *testing.T) {
 	m := newConfigModel(config.Default("/app", "/dl"))
+	if m.cfg.OfficialVideo != config.OfficialYes {
+		t.Fatalf("the official video setting should start as yes, it is %q", m.cfg.OfficialVideo)
+	}
 
-	// Move to "Download Official Music Video" (index 6) and toggle it.
+	// Move to "Download Official Music Video" (index 6), open it and choose "only".
 	for m.cursor < 6 {
 		m, _, _, _ = m.update(key("down"))
 	}
 	m, _, _, _ = m.update(key("enter"))
-	if !m.cfg.DownloadOfficialMusicVideo {
-		t.Error("enter on a toggle should flip it")
+	if m.mode != editRadio {
+		t.Fatalf("enter should open the choices, mode %d", m.mode)
+	}
+	m, _, _, _ = m.update(key("down"))
+	m, _, _, _ = m.update(key("down"))
+	m, _, _, _ = m.update(key("enter"))
+	if m.cfg.OfficialVideo != config.OfficialOnly {
+		t.Errorf("the choice should be only, it is %q", m.cfg.OfficialVideo)
+	}
+
+	// The next item saves the songs with no official video.
+	for m.cursor < 10 {
+		m, _, _, _ = m.update(key("down"))
+	}
+	m, _, _, _ = m.update(key("enter"))
+	if m.cfg.SaveNotFound {
+		t.Error("enter on the toggle should flip it (it starts as yes)")
 	}
 
 	// Save returns the edited config.
 	_, _, out, cfg := m.update(key("s"))
-	if out != cfgSave || !cfg.DownloadOfficialMusicVideo {
-		t.Errorf("s should save the edited config, out=%d official=%v", out, cfg.DownloadOfficialMusicVideo)
+	if out != cfgSave || cfg.OfficialVideo != config.OfficialOnly || cfg.SaveNotFound {
+		t.Errorf("s should save the edited config, out=%d official=%q save=%v", out, cfg.OfficialVideo, cfg.SaveNotFound)
 	}
 	if _, _, out, _ := m.update(key("esc")); out != cfgCancel {
 		t.Errorf("esc should cancel, got %d", out)

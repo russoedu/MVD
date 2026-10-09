@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,6 +30,12 @@ type Options struct {
 	// moved to OutputDir, so a failed or cancelled download leaves nothing in the
 	// library. The engine empties it when a run starts and removes it when it ends.
 	PartialDir string
+	// OfficialOnly downloads only the songs that have an official video; the others end
+	// as StateNotFound. NotFoundFile, when set, is a CSV file that receives them (the
+	// playlist, the artist, the title and the address), rewritten each time the engine
+	// goes quiet.
+	OfficialOnly bool
+	NotFoundFile string
 	// ListWorkers, NameWorkers and PickWorkers are how many playlists are listed, uploads
 	// identified and versions picked at the same time, ahead of the downloads (Workers).
 	// Each stage has its own queue, so a slow one holds the others back no more than it
@@ -59,13 +66,23 @@ type engineEntry struct {
 	targetID string
 	// identified is what the naming stage learned, for the picking stage.
 	identified *Identification
-	official   bool
-	better     bool   // replaced by an upload of better quality, not the official video
-	track      *Track // set when the entry is a song with no video yet
-	err        string
-	deferred   bool // failed with a transient error, eligible for the sweep
-	sweeps     int  // deferred retry passes already spent
+	// ownOfficial is true when the upload itself is the official video.
+	ownOfficial bool
+	// named is the song as a music database named it.
+	named    *namedSong
+	official bool
+	better   bool   // replaced by an upload of better quality, not the official video
+	track    *Track // set when the entry is a song with no video yet
+	err      string
+	deferred bool // failed with a transient error, eligible for the sweep
+	sweeps   int  // deferred retry passes already spent
 }
+
+// namedSong is a song as a music database named it.
+type namedSong struct{ artist, title string }
+
+// notFoundRow is a song with no official video, as the CSV file lists it.
+type notFoundRow struct{ playlist, artist, title, url string }
 
 // Engine lists playlists, resolves official videos and runs yt-dlp per
 // entry with a bounded pool of workers. All observable state is reported
@@ -93,6 +110,9 @@ type Engine struct {
 	toList      []int         // sources waiting to be listed, in the order they arrived
 	wake        chan struct{} // pinged when AddSource gives a waiting producer work
 	closed      bool          // Run has finished: no more events will be sent
+
+	playlistTitles map[int]string // the titles of the playlists listed, by index
+	notFound       []notFoundRow  // songs with no official video, when only those are wanted
 }
 
 // New builds an engine. It opens the log file right away.
@@ -102,15 +122,16 @@ func New(opts Options) (*Engine, error) {
 		return nil, err
 	}
 	e := &Engine{
-		opts:      opts,
-		events:    make(chan interface{}, 1024),
-		nameQueue: newTaskQueue(),
-		pickQueue: newTaskQueue(),
-		queue:     newTaskQueue(),
-		logger:    logger,
-		drained:   make(chan struct{}, 1),
-		wake:      make(chan struct{}, 1),
-		claims:    make(map[int]map[string]int),
+		opts:           opts,
+		events:         make(chan interface{}, 1024),
+		nameQueue:      newTaskQueue(),
+		pickQueue:      newTaskQueue(),
+		queue:          newTaskQueue(),
+		logger:         logger,
+		drained:        make(chan struct{}, 1),
+		wake:           make(chan struct{}, 1),
+		claims:         make(map[int]map[string]int),
+		playlistTitles: make(map[int]string),
 	}
 	for i, u := range opts.URLs {
 		e.sources = append(e.sources, PlaylistSource{Index: i, URL: u})
@@ -284,6 +305,7 @@ func (e *Engine) Run(ctx context.Context) {
 	e.queue.Close()
 	downloading.Wait()
 	<-coordDone
+	e.writeNotFound()
 	e.logger.Close()
 	e.mu.Lock()
 	e.closed = true
@@ -442,6 +464,7 @@ func (e *Engine) listPlaylist(ctx context.Context, src PlaylistSource) {
 		ids = append(ids, info.ID)
 	}
 	e.pending += len(ids)
+	e.playlistTitles[src.Index] = title
 	e.mu.Unlock()
 
 	e.log(src.Index, -1, "%q: %d entries", title, len(entries))
@@ -486,6 +509,8 @@ func (e *Engine) nameStage(ctx context.Context, id int) {
 	en.official = false
 	en.better = false
 	en.identified = nil
+	en.ownOfficial = false
+	en.named = nil
 	e.mu.Unlock()
 
 	pl, eid := en.info.Playlist, en.info.ID
@@ -506,15 +531,23 @@ func (e *Engine) nameStage(ctx context.Context, id int) {
 		identification := e.opts.Resolver.Identify(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), e.entryLog(pl, eid))
 		if identification.Done {
 			e.applyResolution(en, identification.Resolution)
-			e.queue.Push(id)
+			e.advance(en)
 			return
 		}
 		e.mu.Lock()
 		en.identified = &identification
+		if identification.Artist != "" && identification.Title != "" {
+			en.named = &namedSong{artist: identification.Artist, title: identification.Title}
+		}
 		e.mu.Unlock()
 		e.pickQueue.Push(id)
 	default:
-		e.queue.Push(id)
+		// Nothing to look up. With a resolver that means the upload says it is the
+		// official video, which is then what is wanted.
+		e.mu.Lock()
+		en.ownOfficial = e.opts.Resolver != nil
+		e.mu.Unlock()
+		e.advance(en)
 	}
 }
 
@@ -542,7 +575,78 @@ func (e *Engine) pickStage(ctx context.Context, id int) {
 	case identification != nil && e.opts.Resolver != nil:
 		e.applyResolution(en, e.opts.Resolver.Pick(*identification, e.entryLog(pl, eid)))
 	}
-	e.queue.Push(id)
+	e.advance(en)
+}
+
+// advance sends an entry to the download stage, or ends it when only official videos
+// are wanted and this song has none.
+func (e *Engine) advance(en *engineEntry) {
+	e.mu.Lock()
+	official := en.official || en.ownOfficial
+	e.mu.Unlock()
+
+	if e.opts.OfficialOnly && !official {
+		e.markNotFound(en)
+		e.finishOne()
+		return
+	}
+	e.queue.Push(en.info.ID)
+}
+
+// markNotFound ends an entry that has no official video, and notes it for the CSV file.
+func (e *Engine) markNotFound(en *engineEntry) {
+	e.log(en.info.Playlist, en.info.ID, "no official video found: not downloaded")
+	e.mu.Lock()
+	row := notFoundRow{playlist: e.playlistTitles[en.info.Playlist]}
+	switch {
+	case en.named != nil:
+		row.artist, row.title = en.named.artist, en.named.title
+	case en.track != nil:
+		row.artist, row.title = en.track.Artist, en.track.Title
+	default:
+		channel := en.raw.Channel
+		if channel == "" {
+			channel = en.raw.Uploader
+		}
+		row.artist, row.title = strings.TrimSuffix(channel, " - Topic"), en.raw.Title
+	}
+	if en.track == nil && en.info.VideoID != "" {
+		row.url = "https://www.youtube.com/watch?v=" + en.info.VideoID
+	}
+	e.notFound = append(e.notFound, row)
+	e.mu.Unlock()
+	e.setState(en, StateNotFound, "")
+}
+
+// writeNotFound writes the songs with no official video to the CSV file, all of those
+// of this run so far.
+func (e *Engine) writeNotFound() {
+	if e.opts.NotFoundFile == "" {
+		return
+	}
+	e.mu.Lock()
+	rows := append([]notFoundRow(nil), e.notFound...)
+	e.mu.Unlock()
+	if len(rows) == 0 {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(e.opts.NotFoundFile), 0o755); err != nil {
+		return
+	}
+	file, err := os.Create(e.opts.NotFoundFile)
+	if err != nil {
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	// A byte order mark lets Excel read the accents of the titles.
+	_, _ = file.WriteString("\ufeff")
+	w := csv.NewWriter(file)
+	_ = w.Write([]string{"playlist", "artist", "title", "url"})
+	for _, row := range rows {
+		_ = w.Write([]string{row.playlist, row.artist, row.title, row.url})
+	}
+	w.Flush()
 }
 
 // cancelEntry ends an entry that was still waiting for a stage when the run was cancelled.
@@ -562,6 +666,11 @@ func (e *Engine) entryLog(pl, eid int) func(format string, a ...interface{}) {
 func (e *Engine) applyResolution(en *engineEntry, res Resolution) {
 	pl, eid := en.info.Playlist, en.info.ID
 	if res.VideoID == "" {
+		if res.OwnOfficial {
+			e.mu.Lock()
+			en.ownOfficial = true
+			e.mu.Unlock()
+		}
 		e.log(pl, eid, "kept original (%s)", res.Reason)
 		return
 	}
@@ -724,6 +833,7 @@ func (e *Engine) markIdle() {
 	already := e.idleSent
 	e.idleSent = true
 	e.mu.Unlock()
+	e.writeNotFound()
 	if !already {
 		e.emit(EvIdle{})
 	}

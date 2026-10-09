@@ -54,6 +54,8 @@ func Run(ctx context.Context, cancel context.CancelFunc, events <-chan interface
 				_, _ = fmt.Fprintf(out, "%s DONE %s\n", tag(en), en.Title)
 			case engine.StateDuplicate:
 				_, _ = fmt.Fprintf(out, "%s duplicate of an earlier entry, skipped\n", tag(en))
+			case engine.StateNotFound:
+				_, _ = fmt.Fprintf(out, "%s no official video found, not downloaded: %s\n", tag(en), en.Title)
 			case engine.StateFailed:
 				_, _ = fmt.Fprintf(out, "%s FAILED %s: %s\n", tag(en), en.Title, en.Err)
 			}
@@ -91,6 +93,9 @@ func PrintSummary(out io.Writer, state *runstate.State, t runstate.Tally) {
 	_, _ = fmt.Fprintf(out, "  downloaded:           %d\n", t.Done)
 	_, _ = fmt.Fprintf(out, "  replaced by official: %d\n", t.Official)
 	_, _ = fmt.Fprintf(out, "  replaced by better quality: %d\n", t.Better)
+	if t.NotFound > 0 {
+		_, _ = fmt.Fprintf(out, "  no official video:    %d\n", t.NotFound)
+	}
 	_, _ = fmt.Fprintf(out, "  skipped duplicates:   %d\n", t.Duplicate)
 	_, _ = fmt.Fprintf(out, "  failed:               %d\n", t.Failed)
 	_, _ = fmt.Fprintf(out, "Retried:                %d\n", t.Retried)

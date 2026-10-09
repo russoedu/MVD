@@ -36,6 +36,9 @@ type Resolver struct {
 	// called (YouTube Music's own tag) and names the song's real artist; without it
 	// every upload is looked up and the artist is the channel's name.
 	TrackInfos TrackDescriber
+	// OfficialOnly leaves out the choice of the best quality upload when there is no
+	// official video: the caller only wants official videos.
+	OfficialOnly bool
 	// Sources are the other places the video of a song is looked for (Wikidata, YouTube
 	// Music's video search) and the cache of earlier runs; each is optional.
 	Sources Sources
@@ -69,6 +72,9 @@ type Version struct {
 	// Official is true for the official video, false for the upload of the song with
 	// the best quality, taken when there is no official one.
 	Official bool
+	// OwnOfficial is true when the upload itself is the official video (YouTube Music
+	// tags it as one the artist uploaded), so ID is empty and nothing better is needed.
+	OwnOfficial bool
 	// Reason is a short explanation for the log.
 	Reason string
 }
@@ -106,6 +112,14 @@ type Identified struct {
 	reason string
 }
 
+// Named returns the artist and the title a music database gave the song, when it did.
+func (i Identified) Named() (artist, title string, ok bool) {
+	if i.song.Title == "" || len(i.song.Artists) == 0 {
+		return "", "", false
+	}
+	return i.song.Artists[0], i.song.Title, true
+}
+
 // ResolveVersion looks for the video to download in place of an upload: the
 // official music video, or failing that the upload of the song with the best
 // picture and sound. It is Identify followed by Pick, which an engine runs
@@ -131,6 +145,11 @@ func (r *Resolver) Identify(videoID, title, channel string, durationSec int, log
 	}
 	if durationSec == 0 {
 		durationSec = info.DurationSec
+	}
+
+	// A video YouTube Music says the artist uploaded as an official video is one already.
+	if !artTrack && info.Type == "OMV" {
+		return Identified{Done: true, Version: Version{OwnOfficial: true, Reason: why}}
 	}
 
 	reason := why
@@ -160,6 +179,10 @@ func (r *Resolver) Pick(identified Identified, logFn func(format string, a ...in
 	found, foundWhy, results := r.fromSearch(identified.song, logf)
 	if found != "" {
 		return Version{ID: found, Official: true, Reason: foundWhy}
+	}
+	// Only an official video is wanted: the best quality upload is not looked for.
+	if r.OfficialOnly {
+		return Version{Reason: identified.reason}
 	}
 	if best, bestWhy := r.fromBestQuality(identified.song, results, logf); best != "" {
 		return Version{ID: best, Reason: bestWhy}

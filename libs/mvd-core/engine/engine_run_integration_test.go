@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/csv"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -734,5 +735,76 @@ func TestNamingWorkersAreBoundedByTheLimitAndRunInParallelWhenAllowed(t *testing
 	}
 	if peak := runWithNameWorkers(t, 4); peak < 2 {
 		t.Errorf("with four naming workers the two art tracks should be identified together, peak was %d", peak)
+	}
+}
+
+func TestOnlyOfficialVideosAreDownloadedAndTheOthersAreListedInTheCSV(t *testing.T) {
+	eng := stubEngine(t, true, "https://youtube.com/playlist?list=B")
+	eng.opts.OfficialOnly = true
+	notFound := filepath.Join(t.TempDir(), "out", "not-found.csv")
+	eng.opts.NotFoundFile = notFound
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	events := collect(t, eng)
+	cancel()
+	<-done
+
+	var states []EvEntryState
+	for _, st := range final(events) {
+		states = append(states, st)
+	}
+	if len(states) != 1 || states[0].State != StateNotFound {
+		t.Fatalf("states %+v: the song with only a better quality upload should be not found", states)
+	}
+
+	data, err := os.ReadFile(notFound)
+	if err != nil {
+		t.Fatalf("the CSV was not written: %v", err)
+	}
+	rows, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(string(data), "\ufeff"))).ReadAll()
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("rows %v, %v: want a header and one song", rows, err)
+	}
+	want := []string{"Playlist B", "Band", "Normal upload", "https://www.youtube.com/watch?v=bbbbbbbbbb1"}
+	for i, cell := range want {
+		if rows[1][i] != cell {
+			t.Errorf("column %d = %q, want %q", i, rows[1][i], cell)
+		}
+	}
+	if strings.Join(rows[0], ",") != "playlist,artist,title,url" {
+		t.Errorf("header %v", rows[0])
+	}
+}
+
+func TestOnlyOfficialVideosKeepsTheOnesThatAreOfficial(t *testing.T) {
+	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A")
+	eng.opts.OfficialOnly = true
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	events := collect(t, eng)
+	cancel()
+	<-done
+
+	doneCount, dup, failed, notFound := 0, 0, 0, 0
+	for _, st := range final(events) {
+		switch st.State {
+		case StateDone:
+			doneCount++
+		case StateDuplicate:
+			dup++
+		case StateFailed:
+			failed++
+		case StateNotFound:
+			notFound++
+		}
+	}
+	// Two art tracks with one official video (one done, one duplicate), and an upload
+	// that says it is official but cannot be downloaded.
+	if doneCount != 1 || dup != 1 || failed != 1 || notFound != 0 {
+		t.Errorf("done %d, duplicate %d, failed %d, not found %d", doneCount, dup, failed, notFound)
 	}
 }
