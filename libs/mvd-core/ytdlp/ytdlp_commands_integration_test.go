@@ -103,12 +103,12 @@ func TestAVideoGivenOnItsOwnIsNamedAfterItselfWithNoPlaylistFolderOrNumber(t *te
 	alone := PlaylistEntry{ID: "jNQXAC9IVRw", Title: "Me at the zoo"}
 	cases := map[string]string{
 		"%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s": "%(title)s.%(ext)s",
-		"%(playlist_index)02d - %(title)s.%(ext)s":                              "%(title)s.%(ext)s",
-		"%(playlist_title)s/%(playlist_index)s - %(title)s [%(id)s].%(ext)s":    "%(title)s [%(id)s].%(ext)s",
-		"Music/%(playlist_title,playlist)s/%(title)s.%(ext)s":                   "Music/%(title)s.%(ext)s",
-		"%(title)s.%(ext)s":                                                     "%(title)s.%(ext)s",
-		"%(playlist_title|Singles)s/%(title)s.%(ext)s":                          "Singles/%(title)s.%(ext)s",
-		"%(playlist_index)02d":                                                  "%(title)s.%(ext)s",
+		"%(playlist_index)02d - %(title)s.%(ext)s":                             "%(title)s.%(ext)s",
+		"%(playlist_title)s/%(playlist_index)s - %(title)s [%(id)s].%(ext)s":   "%(title)s [%(id)s].%(ext)s",
+		"Music/%(playlist_title,playlist)s/%(title)s.%(ext)s":                  "Music/%(title)s.%(ext)s",
+		"%(title)s.%(ext)s":                            "%(title)s.%(ext)s",
+		"%(playlist_title|Singles)s/%(title)s.%(ext)s": "Singles/%(title)s.%(ext)s",
+		"%(playlist_index)02d":                         "%(title)s.%(ext)s",
 	}
 	for in, want := range cases {
 		if got := ApplyPlaylistFields(in, alone); got != want {
@@ -194,5 +194,18 @@ func TestDumpPages(t *testing.T) {
 	parsed := ParseDumpedPages("[youtube:tab] Extracting URL: x\n[youtube:tab] Dumping request to https://a\naGVsbG8=\n[download] done\n[youtube] Dumping request to https://b\nnot base64!!\n")
 	if len(parsed) != 1 || parsed[0].URL != "https://a" || string(parsed[0].Body) != "hello" {
 		t.Errorf("unexpected parse result %+v", parsed)
+	}
+}
+
+func TestDownloadArgsKeepUnfinishedFilesInTheTempDir(t *testing.T) {
+	got := DownloadArgs(DownloadOptions{Format: "best", OutputTemplate: "%(title)s.%(ext)s", HomeDir: "/music", TempDir: "/tmp/partial"}, "url")
+	want := []string{"-f", "best", "-P", "home:/music", "-P", "temp:/tmp/partial", "-o", "%(title)s.%(ext)s", "url"}
+	if len(got) != len(want) {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("arg %d = %q, want %q", i, got[i], want[i])
+		}
 	}
 }

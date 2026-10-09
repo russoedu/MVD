@@ -67,6 +67,7 @@ func (m model) renderHeader(w int) string {
 		styYellow.Render(fmt.Sprintf("%s Running %d", spinnerFrames[m.spin], t.Running)),
 		styGreen.Render(fmt.Sprintf("✓ Done %d", t.Done)),
 		styCyan.Render(fmt.Sprintf("⇄ Official %d", t.Official)),
+		styCyan.Render(fmt.Sprintf("↑ Better %d", t.Better)),
 		styDim.Render(fmt.Sprintf("≡ Dup %d", t.Duplicate)),
 		styRed.Render(fmt.Sprintf("✗ Failed %d", t.Failed)),
 	}
@@ -185,6 +186,9 @@ func (m model) entryTag(en *runstate.Entry) (string, int) {
 		if en.Official {
 			return styCyan.Render("⇄"), 1
 		}
+		if en.Better {
+			return styCyan.Render("↑"), 1
+		}
 	}
 	return "", 0
 }
@@ -274,6 +278,8 @@ func (m model) renderOutput(w, h int) string {
 			what := "original " + en.TargetID
 			if en.Official {
 				what = "official video " + en.TargetID
+			} else if en.Better {
+				what = "better quality video " + en.TargetID
 			}
 			footer = append(footer, "", styGreen.Render(truncate("✓ downloaded "+what, innerW)))
 		}

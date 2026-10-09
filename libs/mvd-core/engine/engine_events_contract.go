@@ -46,6 +46,7 @@ type (
 		State    EntryState
 		TargetID string // video actually downloaded (official or original)
 		Official bool   // true when TargetID is the official video
+		Better   bool   // true when TargetID is a better quality upload, not the official video
 		Err      string // set for StateFailed
 	}
 	// EvProgress carries a download progress tick.

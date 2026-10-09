@@ -16,6 +16,7 @@ const maxChecked = 5
 // searchQueries are what is searched for on YouTube, the most precise first.
 func searchQueries(song Song) []string {
 	title := SearchTitle(song.Title)
+	raw := strings.Join(strings.Fields(song.Title), " ")
 	artist := ""
 	if len(song.Artists) > 0 {
 		artist = song.Artists[0]
@@ -27,6 +28,17 @@ func searchQueries(song Song) []string {
 		title + " " + artist + " official video",
 		artist + " " + title + " official music video",
 		artist + " - " + title,
+		// If those found nothing, look wider: the same words in other orders, and the
+		// title as the playlist spells it, since cleaning may have cut a real part of it
+		// ("(Everything I Do) I Do It for You").
+		artist + " " + title + " music video",
+		title + " " + artist,
+		func() string {
+			if raw == title {
+				return ""
+			}
+			return artist + " " + raw
+		}(),
 	} {
 		query = strings.Join(strings.Fields(query), " ")
 		if query != "" && !seen[query] {

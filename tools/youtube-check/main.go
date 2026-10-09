@@ -62,7 +62,7 @@ func run(playlist, baselinePath string, record bool, maxDifferent float64, repor
 	}
 
 	// No cache: it would answer from earlier runs and hide what YouTube does now.
-	resolver, _ := runner.BuildResolver(ctx, runner.ResolverInput{YtDlp: ytDlp}, func(format string, a ...interface{}) {
+	resolver, _ := runner.BuildResolver(ctx, runner.ResolverInput{YtDlp: ytDlp, SkipQuality: true}, func(format string, a ...interface{}) {
 		fmt.Fprintf(os.Stderr, format+"\n", a...)
 	})
 	lookup := songLookup{

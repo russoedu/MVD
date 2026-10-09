@@ -48,7 +48,7 @@ func TestFindTrackFallsBackToANonOfficialUpload(t *testing.T) {
 	if err != nil || got != (FoundTrack{VideoID: "aud"}) {
 		t.Fatalf("got %+v, %v; want the non-official audio upload", got, err)
 	}
-	if len(asked) != 3 {
+	if len(asked) != 5 {
 		t.Errorf("asked %v, want every wording tried before settling for a non-official upload", asked)
 	}
 }
@@ -79,7 +79,7 @@ func TestFindTrackUsesTheLooseMatchOfAnyOfTheSearches(t *testing.T) {
 	if err != nil || got.VideoID != "lyr" || got.Official {
 		t.Fatalf("got %+v, %v; want the lyric upload as a non-official match", got, err)
 	}
-	if len(asked) != 3 {
+	if len(asked) != 5 {
 		t.Errorf("asked %v, want every wording tried", asked)
 	}
 }

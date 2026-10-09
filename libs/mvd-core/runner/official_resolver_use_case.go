@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"youtube-downloader/libs/mvd-core/official"
+	"youtube-downloader/libs/mvd-core/songid"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -18,6 +19,10 @@ type ResolverInput struct {
 	// CacheFile keeps the answers of earlier runs for 90 days; empty for no cache, which is
 	// what a check that must see YouTube as it is now wants.
 	CacheFile string
+	// SkipQuality leaves out the look-up of the formats of the uploads of a song, which
+	// only chooses among uploads when none is official: a check that only wants to know
+	// whether the official video is still found has no use for it.
+	SkipQuality bool
 }
 
 // BuildResolver wires the official video lookup against the real sites, the way the app
@@ -55,10 +60,19 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 	resolver.Sources = official.Sources{
 		Known: resolver.KnownCandidates(official.NewWikidataClient()),
 		Music: music.SearchVideos,
+		// A music database names the song of an upload.
+		Identify: songid.NewIdentifier().Identify,
 		Type: func(videoID string) (string, error) {
 			info, err := music.Describe(videoID)
 			return info.Type, err
 		},
+	}
+	if !in.SkipQuality {
+		// The formats of the uploads of a song tell which has the best picture and sound.
+		resolver.Sources.Quality = func(videoID string) (official.Quality, error) {
+			quality, err := ytdlp.ProbeQuality(ctx, in.YtDlp, videoID, in.ExtraArgs)
+			return official.Quality{Height: quality.Height, AudioKbps: quality.AudioKbps}, err
+		}
 	}
 	if in.CacheFile != "" {
 		resolver.Sources.Cache = official.NewResolutionCache(in.CacheFile, 90*24*time.Hour)

@@ -18,6 +18,10 @@ type Song struct {
 	DurationSec int
 	// OwnID is the upload the song came from, never a candidate.
 	OwnID string
+	// OwnIsStill is true when that upload is an art track, whose picture is a still
+	// image over the audio: only its sound counts when it is compared with the
+	// videos of the song.
+	OwnIsStill bool
 }
 
 // Kind says what a candidate is.
@@ -68,7 +72,8 @@ const minFanViews = 50_000
 // is that cut. Lyric and audio uploads are not here: they are a kind of their own.
 var cutsToReject = []string{
 	"cover", "karaoke", "live", "reaction", "instrumental", "remix", "slowed",
-	"sped up", "8d", "nightcore", "reverb", "tutorial",
+	"sped up", "8d", "nightcore", "reverb", "tutorial", "interview", "concert", "top of the pops",
+	"totp", "re edit",
 }
 
 var audioMarkers = []string{"audio", "lyric", "lyrics", "visualizer", "visualiser"}

@@ -75,6 +75,10 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		LogPath:             cfg.LogFile(),
 		AutoRetry:           cfg.AutoRetry,
 	}
+	// Videos are downloaded and merged out of the library and moved in once complete.
+	if appDir, err := appdir.Dir(); err == nil {
+		opts.PartialDir = filepath.Join(appDir, "partial")
+	}
 	// The resolver is also what songs from other services are found with, so it is
 	// built whether or not the official video option is on; only the option puts it in
 	// front of the entries of YouTube playlists.
@@ -86,7 +90,7 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		YtDlp: ytDlpPath, ExtraArgs: extraArgs, CookiesFile: cfg.CookiesFile, CookiesActive: cookiesActive, CacheFile: cacheFile,
 	}, log)
 	if cfg.DownloadOfficialMusicVideo {
-		opts.Resolver = resolver
+		opts.Resolver = engineResolver{resolver}
 	}
 	opts.Tracks = newPlaylistTrackSource(searcher, resolver.Sources)
 

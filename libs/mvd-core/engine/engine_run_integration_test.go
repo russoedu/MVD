@@ -117,22 +117,26 @@ func stubAttempt(id string) int {
 	return n
 }
 
-// fakeResolver maps both art tracks to the same official video.
+// fakeResolver maps both art tracks to the same official video, and the normal
+// upload to a better quality one.
 type fakeResolver struct{}
 
-func (fakeResolver) Wanted(_, channel, uploader string) bool {
-	return strings.HasSuffix(channel, " - Topic")
+func (fakeResolver) Wanted(title, channel, uploader string) bool {
+	return strings.HasSuffix(channel, " - Topic") || title == "Normal upload"
 }
 
-func (fakeResolver) ResolveLog(videoID, title, channel string, _ int, logf func(string, ...interface{})) (string, string) {
+func (fakeResolver) ResolveVersion(videoID, title, channel string, _ int, logf func(string, ...interface{})) Resolution {
 	logf("[official] %s: looked up", videoID)
 	if strings.HasPrefix(videoID, "aaaa") {
-		return "OFFICIAL001", `official video by "Label Records"`
+		return Resolution{VideoID: "OFFICIAL001", Official: true, Reason: `official video by "Label Records"`}
+	}
+	if strings.HasPrefix(videoID, "bbbb") {
+		return Resolution{VideoID: "BETTER00001", Reason: "no official video found; the best quality is BETTER00001"}
 	}
 	if strings.HasPrefix(videoID, "cccc") {
-		return "OFFICIALfail", `official video by "Gone Records"`
+		return Resolution{VideoID: "OFFICIALfail", Official: true, Reason: `official video by "Gone Records"`}
 	}
-	return "", "no official video link found in description"
+	return Resolution{Reason: "no official video link found in description"}
 }
 
 func stubEngine(t *testing.T, official bool, urls ...string) *Engine {
@@ -246,8 +250,8 @@ func TestEngineRun(t *testing.T) {
 		t.Errorf("bad entry should fail with yt-dlp's error: %+v", bad)
 	}
 	b1 := states[infos["bbbbbbbbbb1"].ID]
-	if b1.State != StateDone || b1.Official || b1.TargetID != "bbbbbbbbbb1" {
-		t.Errorf("b1 should be downloaded as is: %+v", b1)
+	if b1.State != StateDone || b1.Official || !b1.Better || b1.TargetID != "BETTER00001" {
+		t.Errorf("b1 should be replaced by the better quality upload, not counted as official: %+v", b1)
 	}
 	// The official video of c1 cannot be downloaded: the original is used.
 	c1 := states[infos["cccccccccc1"].ID]
@@ -641,5 +645,35 @@ func TestRunLogger(t *testing.T) {
 	}
 	if l, err := newRunLogger(""); err != nil || l.path != "" {
 		t.Error("empty path should disable the log")
+	}
+}
+
+func TestPartialDirIsEmptiedWhenARunStartsAndRemovedWhenItEnds(t *testing.T) {
+	partial := filepath.Join(t.TempDir(), "partial")
+	if err := os.MkdirAll(partial, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	leftover := filepath.Join(partial, "old.f401.mp4.part")
+	if err := os.WriteFile(leftover, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	eng := stubEngine(t, false, "https://youtube.com/playlist?list=A")
+	eng.opts.PartialDir = partial
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	collect(t, eng)
+
+	if _, err := os.Stat(leftover); !os.IsNotExist(err) {
+		t.Errorf("what an earlier run left in the partial dir should be gone (%v)", err)
+	}
+	if _, err := os.Stat(partial); err != nil {
+		t.Errorf("the partial dir should exist while the run lasts: %v", err)
+	}
+	cancel()
+	<-done
+	if _, err := os.Stat(partial); !os.IsNotExist(err) {
+		t.Errorf("the partial dir should be removed when the run ends (%v)", err)
 	}
 }
