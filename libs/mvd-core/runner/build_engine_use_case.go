@@ -84,7 +84,7 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 			if channel == "" {
 				channel = e.Uploader
 			}
-			out = append(out, official.SearchResult{ID: e.ID, Title: e.Title, Channel: channel})
+			out = append(out, official.SearchResult{ID: e.ID, Title: e.Title, Channel: channel, Duration: int(e.Duration), Views: e.ViewCount, Verified: e.ChannelIsVerified})
 		}
 		return out, err
 	}
@@ -104,7 +104,7 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 			return out, err
 		}
 		resolver.Searcher = searcher
-		resolver.VideoTypes = official.NewYouTubeMusicClient().VideoType
+		resolver.TrackInfos = official.NewYouTubeMusicClient().Describe
 		opts.Resolver = resolver
 	}
 	opts.Tracks = newPlaylistTrackSource(searcher)

@@ -124,7 +124,7 @@ func (fakeResolver) Wanted(_, channel, uploader string) bool {
 	return strings.HasSuffix(channel, " - Topic")
 }
 
-func (fakeResolver) ResolveLog(videoID, title, channel string, logf func(string, ...interface{})) (string, string) {
+func (fakeResolver) ResolveLog(videoID, title, channel string, _ int, logf func(string, ...interface{})) (string, string) {
 	logf("[official] %s: looked up", videoID)
 	if strings.HasPrefix(videoID, "aaaa") {
 		return "OFFICIAL001", `official video by "Label Records"`

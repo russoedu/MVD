@@ -412,7 +412,7 @@ func (e *Engine) process(ctx context.Context, id int) {
 		if channel == "" {
 			channel = en.raw.Uploader
 		}
-		official, reason := e.opts.Resolver.ResolveLog(en.info.VideoID, en.raw.Title, channel, func(format string, a ...interface{}) {
+		official, reason := e.opts.Resolver.ResolveLog(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), func(format string, a ...interface{}) {
 			e.log(pl, eid, "%s", strings.TrimSpace(fmt.Sprintf(format, a...)))
 		})
 		if official != "" {

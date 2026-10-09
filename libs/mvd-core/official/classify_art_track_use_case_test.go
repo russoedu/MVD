@@ -13,8 +13,8 @@ func artTrackPage(musicID string) string {
 	return strings.Replace(watchPage(artTrackID, musicID, ""), "Tricky", "Provided to YouTube by Label Tricky", 1)
 }
 
-func tagged(tag string) VideoTyper {
-	return func(string) (string, error) { return tag, nil }
+func tagged(tag string) TrackDescriber {
+	return func(string) (TrackInfo, error) { return TrackInfo{Type: tag}, nil }
 }
 
 func quietLog(string, ...interface{}) {}
@@ -25,9 +25,9 @@ func TestAnArtTrackUnderTheArtistsNameIsResolved(t *testing.T) {
 		authors: map[string]string{"-bsONE-kZwI": "London Records"},
 	}
 	_, res := f.server(t)
-	res.VideoTypes = tagged("ATV")
+	res.TrackInfos = tagged("ATV")
 
-	got, reason := res.ResolveLog(artTrackID, "Killer", "ATB", quietLog)
+	got, reason := res.ResolveLog(artTrackID, "Killer", "ATB", 0, quietLog)
 	if got != "-bsONE-kZwI" {
 		t.Fatalf("want the official video, got %q (%s)", got, reason)
 	}
@@ -39,8 +39,8 @@ func TestARealVideoIsLeftAloneWithoutFetchingAnything(t *testing.T) {
 	}
 	_, res := f.server(t)
 	for _, tag := range []string{"OMV", "UGC"} {
-		res.VideoTypes = tagged(tag)
-		got, reason := res.ResolveLog(artTrackID, "Song", "Artist", quietLog)
+		res.TrackInfos = tagged(tag)
+		got, reason := res.ResolveLog(artTrackID, "Song", "Artist", 0, quietLog)
 		if got != "" || !strings.Contains(reason, "already a video") || !strings.Contains(reason, tag) {
 			t.Errorf("%s: want it left alone with the reason, got %q (%s)", tag, got, reason)
 		}
@@ -53,13 +53,13 @@ func TestARealVideoIsLeftAloneWithoutFetchingAnything(t *testing.T) {
 func TestWithoutATagTheChannelAndTheDescriptionDecide(t *testing.T) {
 	cases := []struct {
 		name    string
-		typer   VideoTyper
+		typer   TrackDescriber
 		channel string
 		page    string
 		want    string
 	}{
 		{"a Topic channel", tagged(""), "Artist - Topic", "", "-bsONE-kZwI"},
-		{"YouTube Music is down, the description says art track", func(string) (string, error) { return "", errors.New("down") }, "ATB", artTrackPage("-bsONE-kZwI"), "-bsONE-kZwI"},
+		{"YouTube Music is down, the description says art track", func(string) (TrackInfo, error) { return TrackInfo{}, errors.New("down") }, "ATB", artTrackPage("-bsONE-kZwI"), "-bsONE-kZwI"},
 		{"the description is a normal one", tagged(""), "ATB", `<script>var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":"Official video for the song. Subscribe!"}};</script>`, ""},
 	}
 	for _, c := range cases {
@@ -71,9 +71,9 @@ func TestWithoutATagTheChannelAndTheDescriptionDecide(t *testing.T) {
 			f.pages[artTrackID] = watchPage(artTrackID, "-bsONE-kZwI", "")
 		}
 		_, res := f.server(t)
-		res.VideoTypes = c.typer
+		res.TrackInfos = c.typer
 
-		got, reason := res.ResolveLog(artTrackID, "Song", c.channel, quietLog)
+		got, reason := res.ResolveLog(artTrackID, "Song", c.channel, 0, quietLog)
 		if got != c.want {
 			t.Errorf("%s: got %q (%s), want %q", c.name, got, reason, c.want)
 		}
@@ -87,7 +87,7 @@ func TestWithoutAVideoTyperEveryUploadIsLookedUp(t *testing.T) {
 	}
 	_, res := f.server(t)
 
-	if got, _ := res.ResolveLog(artTrackID, "Song", "Band", quietLog); got != "-bsONE-kZwI" {
+	if got, _ := res.ResolveLog(artTrackID, "Song", "Band", 0, quietLog); got != "-bsONE-kZwI" {
 		t.Errorf("without a VideoTyper the behaviour is the one from before, got %q", got)
 	}
 }

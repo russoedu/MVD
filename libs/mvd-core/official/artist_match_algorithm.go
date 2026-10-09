@@ -14,7 +14,8 @@ var channelNoise = []string{"vevo", "official", "music", "records", "tv", "video
 // is not the channel of ATB. "&" and "and" are the same, so "Earth, Wind & Fire"
 // is the artist of "EarthWindandFireVEVO".
 func ChannelIsArtist(channel, artist string) bool {
-	channelKey := stripNoise(compactName(channel))
+	// "Michael Sembello (The Master)" is Michael Sembello's.
+	channelKey := stripNoise(compactName(bracketed.ReplaceAllString(channel, " ")))
 	if channelKey == "" {
 		return false
 	}
@@ -40,7 +41,7 @@ func compactName(name string) string {
 			return unicode.ToLower(r)
 		}
 		return -1
-	}, name)
+	}, foldAccents(name))
 }
 
 // stripNoise takes the channel noise words off both ends of a compact name.
