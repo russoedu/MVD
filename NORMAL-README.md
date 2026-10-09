@@ -136,7 +136,7 @@ Work goes through four stages, each with its own queue and workers, so a slow on
 3. **Pick**: `pick_workers` (default 4) songs get their version picked at the same time: the official video, else the upload with the best picture and sound. An upload that is only a still picture with the song over it (YouTube keeps three frames of every video; if they are the same picture nothing moves) is never taken as a better version, and counts as having no picture when it is the playlist's own.
 4. **Download**: `max_concurrent_downloads` is the number of videos in flight across all playlists. Each video also fetches `concurrent_fragments` fragments in parallel.
 
-Downloads start as soon as the first song has been picked, while the rest are still being named. Files are numbered by playlist position, so the order they finish in does not matter.
+Downloads start as soon as the first song has been picked, while the rest are still being named. How it all fits together, with diagrams, is in [`nerdy-info.md`](./nerdy-info.md). Files are numbered by playlist position, so the order they finish in does not matter.
 
 ## ⚙️ Configuration
 
