@@ -181,3 +181,21 @@ func TestTelevisionAppearancesAndFanEditsAreNotTheSongsVideo(t *testing.T) {
 		t.Errorf("got %+v, want the plain video", got)
 	}
 }
+
+func TestLyricAndAudioUploadsAreNotTheSongsVideo(t *testing.T) {
+	uploads := []SearchResult{
+		{ID: "lyrics", Title: "Rage - Run To You (Letra/Lyrics)", Channel: "LyricsFan", Views: 800_000},
+		{ID: "audio", Title: "Rage - Run To You (Audio)", Channel: "AudioFan", Views: 700_000},
+		{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2000", Views: 90_000},
+	}
+	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": uploads}}
+	qualities := map[string]Quality{"up1": {AudioKbps: 130}, "lyrics": {Height: 1080, AudioKbps: 140}, "audio": {Height: 1080, AudioKbps: 140}, "fanB": {Height: 720, AudioKbps: 131}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
+		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
+	})
+
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "fanB" {
+		t.Errorf("got %+v, want the plain video", got)
+	}
+}
