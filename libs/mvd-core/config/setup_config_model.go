@@ -19,6 +19,13 @@ type Config struct {
 	MaxConcurrentDownloads int
 	ConcurrentFragments    int
 
+	// ListWorkers, NameWorkers and PickWorkers are how many playlists are listed, songs
+	// named (artist and title looked up in music databases) and versions picked (the
+	// official video, else the best quality) at the same time, ahead of the downloads.
+	ListWorkers int
+	NameWorkers int
+	PickWorkers int
+
 	DownloadOfficialMusicVideo bool
 	AutoRetry                  bool
 
@@ -51,6 +58,9 @@ func Default(appDir, downloadsDir string) Config {
 		OutputTemplate:             "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s",
 		MaxConcurrentDownloads:     4,
 		ConcurrentFragments:        4,
+		ListWorkers:                4,
+		NameWorkers:                8,
+		PickWorkers:                4,
 		DownloadOfficialMusicVideo: false,
 		AutoRetry:                  true,
 		CookiesFromBrowser:         "",

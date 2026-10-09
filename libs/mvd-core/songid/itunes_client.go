@@ -12,21 +12,32 @@ import (
 type ITunesClient struct {
 	HTTP     *http.Client
 	Endpoint string // the search endpoint
+	// MinInterval is the least time between two requests, however many workers ask.
+	MinInterval time.Duration
+
+	pace pacer
 }
 
 // NewITunesClient returns a client pointed at the real iTunes Search API.
 func NewITunesClient() *ITunesClient {
-	return &ITunesClient{HTTP: &http.Client{Timeout: 20 * time.Second}, Endpoint: "https://itunes.apple.com/search"}
+	return &ITunesClient{HTTP: &http.Client{Timeout: 20 * time.Second}, Endpoint: "https://itunes.apple.com/search", MinInterval: 300 * time.Millisecond}
 }
 
 // Songs returns the songs the store finds for a free text, best match first.
 func (c *ITunesClient) Songs(term string) ([]Identity, error) {
+	if c.pace.blocked() {
+		return nil, errLeftAlone
+	}
+	c.pace.wait(c.MinInterval)
 	resp, err := c.HTTP.Get(c.Endpoint + "?entity=song&limit=5&term=" + url.QueryEscape(term))
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
+		if refusedBy(resp.StatusCode) {
+			c.pace.block(leftAloneFor)
+		}
 		return nil, fmt.Errorf("iTunes answered %s", resp.Status)
 	}
 	var body struct {

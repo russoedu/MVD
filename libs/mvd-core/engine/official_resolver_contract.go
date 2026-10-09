@@ -8,11 +8,23 @@ type OfficialResolver interface {
 	// network). It must not rely on the channel name: auto-generated art tracks
 	// often show the artist's own name.
 	Wanted(title, channel, uploader string) bool
-	// ResolveVersion looks for a better version of the upload to download: the
-	// official video, or failing that the upload of the song with the best
-	// quality, logging progress through logf. The title, channel and length (in
-	// seconds, 0 when unknown) of the upload let it search for the song by name.
-	ResolveVersion(videoID, title, channel string, durationSec int, logf func(format string, a ...interface{})) Resolution
+	// Identify is the first half of the lookup for a better version of an upload:
+	// it tells art tracks from videos, follows the link of the description to the
+	// official video and names the song in the music databases. It may already know
+	// the answer.
+	Identify(videoID, title, channel string, durationSec int, logf func(format string, a ...interface{})) Identification
+	// Pick is the second half: it searches for the official video of the named song
+	// and, failing that, the upload of it with the best quality.
+	Pick(identification Identification, logf func(format string, a ...interface{})) Resolution
+}
+
+// Identification is what Identify learned about an upload, handed to Pick.
+type Identification struct {
+	// Done is true when Resolution is already the answer.
+	Done       bool
+	Resolution Resolution
+	// State is the resolver's own notes for Pick; the engine only carries it.
+	State any
 }
 
 // Resolution is the answer of an OfficialResolver.

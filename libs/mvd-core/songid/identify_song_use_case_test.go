@@ -151,3 +151,26 @@ func TestIdentifyAsksDeezerBeforeMusicBrainzAndSkipsAnotherArtistsSong(t *testin
 		t.Errorf("MusicBrainz was asked %q although Deezer knew the song", brainzAsked)
 	}
 }
+
+func TestAServiceThatRefusesIsLeftAloneAndTheNextOneIsAsked(t *testing.T) {
+	var itunesAsked int
+	refusing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		itunesAsked++
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer refusing.Close()
+	deezer := serving(t, `{"data":[{"title":"Run To You","artist":{"name":"Rage"}}]}`, nil)
+	identifier := &Identifier{
+		ITunes: &ITunesClient{HTTP: refusing.Client(), Endpoint: refusing.URL},
+		Deezer: &DeezerClient{HTTP: deezer.Client(), Endpoint: deezer.URL},
+	}
+
+	for i := 0; i < 3; i++ {
+		if artist, _, ok := identifier.Identify("Run to You", "Rage - Topic"); !ok || artist != "Rage" {
+			t.Fatalf("round %d: got %q, %v, want Deezer to answer", i, artist, ok)
+		}
+	}
+	if itunesAsked != 1 {
+		t.Errorf("iTunes was asked %d times, it should be left alone after it refused once", itunesAsked)
+	}
+}

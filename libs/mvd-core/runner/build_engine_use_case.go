@@ -72,6 +72,9 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		ConcurrentFragments: cfg.ConcurrentFragments,
 		ExtraArgs:           extraArgs,
 		Workers:             cfg.MaxConcurrentDownloads,
+		ListWorkers:         cfg.ListWorkers,
+		NameWorkers:         cfg.NameWorkers,
+		PickWorkers:         cfg.PickWorkers,
 		LogPath:             cfg.LogFile(),
 		AutoRetry:           cfg.AutoRetry,
 	}

@@ -28,7 +28,14 @@ type Options struct {
 	// PartialDir, when set, is where videos are downloaded and merged before they are
 	// moved to OutputDir, so a failed or cancelled download leaves nothing in the
 	// library. The engine empties it when a run starts and removes it when it ends.
-	PartialDir          string
+	PartialDir string
+	// ListWorkers, NameWorkers and PickWorkers are how many playlists are listed, uploads
+	// identified and versions picked at the same time, ahead of the downloads (Workers).
+	// Each stage has its own queue, so a slow one holds the others back no more than it
+	// must. 0 uses 4, 8 and 4.
+	ListWorkers         int
+	NameWorkers         int
+	PickWorkers         int
 	Quality             string
 	MergeOutputFormat   string
 	ConcurrentFragments int // yt-dlp --concurrent-fragments per video; 0 skips
@@ -50,12 +57,14 @@ type engineEntry struct {
 	raw      ytdlp.PlaylistEntry
 	state    EntryState
 	targetID string
-	official bool
-	better   bool   // replaced by an upload of better quality, not the official video
-	track    *Track // set when the entry is a song with no video yet
-	err      string
-	deferred bool // failed with a transient error, eligible for the sweep
-	sweeps   int  // deferred retry passes already spent
+	// identified is what the naming stage learned, for the picking stage.
+	identified *Identification
+	official   bool
+	better     bool   // replaced by an upload of better quality, not the official video
+	track      *Track // set when the entry is a song with no video yet
+	err        string
+	deferred   bool // failed with a transient error, eligible for the sweep
+	sweeps     int  // deferred retry passes already spent
 }
 
 // Engine lists playlists, resolves official videos and runs yt-dlp per
@@ -65,20 +74,25 @@ type Engine struct {
 	opts    Options
 	sources []PlaylistSource
 
-	events  chan interface{}
-	queue   *taskQueue
-	logger  *runLogger
-	drained chan struct{} // pinged when the queue empties
+	events chan interface{}
+	// The pipeline: entries go through the naming queue, the picking queue and then the
+	// download queue (queue), each with its own workers.
+	nameQueue *taskQueue
+	pickQueue *taskQueue
+	queue     *taskQueue
+	logger    *runLogger
+	drained   chan struct{} // pinged when the queue empties
 
-	mu       sync.Mutex
-	entries  []*engineEntry
-	claims   map[int]map[string]int // playlist -> target id -> entry id
-	pending  int                    // queued + in flight
-	listing  bool                   // producer still listing playlists
-	idleSent bool
-	toList   []int         // sources waiting to be listed, in the order they arrived
-	wake     chan struct{} // pinged when AddSource gives a waiting producer work
-	closed   bool          // Run has finished: no more events will be sent
+	mu          sync.Mutex
+	entries     []*engineEntry
+	claims      map[int]map[string]int // playlist -> target id -> entry id
+	pending     int                    // queued + in flight
+	listing     bool                   // producer still listing playlists
+	listsActive int                    // playlists being listed right now
+	idleSent    bool
+	toList      []int         // sources waiting to be listed, in the order they arrived
+	wake        chan struct{} // pinged when AddSource gives a waiting producer work
+	closed      bool          // Run has finished: no more events will be sent
 }
 
 // New builds an engine. It opens the log file right away.
@@ -88,13 +102,15 @@ func New(opts Options) (*Engine, error) {
 		return nil, err
 	}
 	e := &Engine{
-		opts:    opts,
-		events:  make(chan interface{}, 1024),
-		queue:   newTaskQueue(),
-		logger:  logger,
-		drained: make(chan struct{}, 1),
-		wake:    make(chan struct{}, 1),
-		claims:  make(map[int]map[string]int),
+		opts:      opts,
+		events:    make(chan interface{}, 1024),
+		nameQueue: newTaskQueue(),
+		pickQueue: newTaskQueue(),
+		queue:     newTaskQueue(),
+		logger:    logger,
+		drained:   make(chan struct{}, 1),
+		wake:      make(chan struct{}, 1),
+		claims:    make(map[int]map[string]int),
 	}
 	for i, u := range opts.URLs {
 		e.sources = append(e.sources, PlaylistSource{Index: i, URL: u})
@@ -148,18 +164,29 @@ func (e *Engine) AddSource(url string) (PlaylistSource, bool) {
 }
 
 // nextToList hands the producer the next source to list. When there is none it
-// marks listing as finished, under the same lock AddSource takes.
+// marks listing as finished, under the same lock AddSource takes, unless other
+// lists are still being read.
 func (e *Engine) nextToList() (PlaylistSource, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if len(e.toList) == 0 {
-		e.listing = false
+		e.listing = e.listsActive > 0
 		return PlaylistSource{}, false
 	}
 	idx := e.toList[0]
 	e.toList = e.toList[1:]
+	e.listsActive++
 	e.listing = true
 	return e.sources[idx], true
+}
+
+// listDone is called when one list is read, so the engine knows when listing is over.
+func (e *Engine) listDone() {
+	e.mu.Lock()
+	e.listsActive--
+	e.listing = e.listsActive > 0 || len(e.toList) > 0
+	e.mu.Unlock()
+	e.signalDrain()
 }
 
 // LogPath returns the path of the log file, or "" when disabled.
@@ -174,10 +201,10 @@ func (e *Engine) Run(ctx context.Context) {
 		defer func() { _ = os.RemoveAll(dir) }()
 	}
 
-	workers := e.opts.Workers
-	if workers < 1 {
-		workers = 1
-	}
+	workers := atLeast(e.opts.Workers, 1)
+	listWorkers := orDefault(e.opts.ListWorkers, 4)
+	nameWorkers := orDefault(e.opts.NameWorkers, 8)
+	pickWorkers := orDefault(e.opts.PickWorkers, 4)
 
 	e.mu.Lock()
 	e.listing = true
@@ -191,47 +218,93 @@ func (e *Engine) Run(ctx context.Context) {
 		close(coordDone)
 	}()
 
-	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				id, ok := e.queue.Pop(ctx)
-				if !ok {
-					return
+	// A pool takes entries from a queue until it is closed and empty.
+	pool := func(n int, queue *taskQueue, work func(context.Context, int)) *sync.WaitGroup {
+		var wg sync.WaitGroup
+		for i := 0; i < n; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for {
+					id, ok := queue.Pop(ctx)
+					if !ok {
+						return
+					}
+					work(ctx, id)
 				}
-				e.process(ctx, id)
-				e.finishOne()
-			}
-		}()
+			}()
+		}
+		return &wg
 	}
+	naming := pool(nameWorkers, e.nameQueue, e.nameStage)
+	picking := pool(pickWorkers, e.pickQueue, e.pickStage)
+	downloading := pool(workers, e.queue, func(ctx context.Context, id int) {
+		e.process(ctx, id)
+		e.finishOne()
+	})
 
-	// Producer: list playlists in order, feeding the queue as each one
+	// Producer: list playlists, a few at a time, feeding the pipeline as each one
 	// comes back so downloads start while later playlists are still listed.
 	// When there is nothing left to list it waits, so AddSource can feed an
 	// engine that is already running; it stops only when ctx is cancelled.
+	slots := make(chan struct{}, listWorkers)
+	var listing sync.WaitGroup
 	for ctx.Err() == nil {
-		src, ok := e.nextToList()
-		if ok {
-			e.listPlaylist(ctx, src)
+		select {
+		case slots <- struct{}{}:
+		case <-ctx.Done():
 			continue
 		}
-		e.signalDrain()
-		select {
-		case <-e.wake:
-		case <-ctx.Done():
+		src, ok := e.nextToList()
+		if !ok {
+			<-slots
+			e.signalDrain()
+			select {
+			case <-e.wake:
+			case <-ctx.Done():
+			}
+			continue
 		}
+		listing.Add(1)
+		go func() {
+			defer listing.Done()
+			defer func() { <-slots }()
+			defer e.listDone()
+			e.listPlaylist(ctx, src)
+		}()
 	}
 
+	// Close the stages front to back, each one emptied before the next is closed, so
+	// nothing is handed to a queue nobody reads.
+	listing.Wait()
+	e.nameQueue.Close()
+	naming.Wait()
+	e.pickQueue.Close()
+	picking.Wait()
 	e.queue.Close()
-	wg.Wait()
+	downloading.Wait()
 	<-coordDone
 	e.logger.Close()
 	e.mu.Lock()
 	e.closed = true
 	e.mu.Unlock()
 	close(e.events)
+}
+
+// atLeast returns n, or floor when n is smaller.
+func atLeast(n, floor int) int {
+	if n < floor {
+		return floor
+	}
+	return n
+}
+
+// orDefault returns n, or fallback when n is not set.
+func orDefault(n, fallback int) int {
+	if n < 1 {
+		return fallback
+	}
+	return n
 }
 
 // coordinate waits for the queue to drain and then either runs a deferred
@@ -286,7 +359,7 @@ func (e *Engine) Retry(entryID int) bool {
 
 	e.emit(EvEntryState{Entry: entryID, State: StateQueued, TargetID: en.targetID, Official: en.official, Better: en.better})
 	e.log(en.info.Playlist, entryID, "retry requested")
-	e.queue.Push(entryID)
+	e.nameQueue.Push(entryID)
 	return true
 }
 
@@ -374,7 +447,7 @@ func (e *Engine) listPlaylist(ctx context.Context, src PlaylistSource) {
 	e.log(src.Index, -1, "%q: %d entries", title, len(entries))
 	e.emit(EvPlaylistListed{Playlist: src.Index, Title: title, Entries: infos})
 	for _, id := range ids {
-		e.queue.Push(id)
+		e.nameQueue.Push(id)
 	}
 }
 
@@ -404,41 +477,109 @@ func (e *Engine) claimTarget(playlist int, target string, entryID int) bool {
 	return true
 }
 
-func (e *Engine) process(ctx context.Context, id int) {
+// nameStage is the first stage of the pipeline: it names the song of an upload, or
+// passes it on when there is nothing to name.
+func (e *Engine) nameStage(ctx context.Context, id int) {
 	e.mu.Lock()
 	en := e.entries[id]
 	en.targetID = en.info.VideoID
 	en.official = false
 	en.better = false
+	en.identified = nil
 	e.mu.Unlock()
 
 	pl, eid := en.info.Playlist, en.info.ID
+	if ctx.Err() != nil {
+		e.cancelEntry(en)
+		return
+	}
 
-	if en.track != nil {
-		if !e.findTrack(ctx, en) {
-			return
-		}
-		e.log(pl, eid, "%s - %s -> %s (official: %v)", en.track.Artist, en.track.Title, en.targetID, en.official)
-	} else if e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.info.Title, en.raw.Channel, en.raw.Uploader) {
+	switch {
+	case en.track != nil:
+		e.pickQueue.Push(id) // a song of another service is found by its own search
+	case e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.info.Title, en.raw.Channel, en.raw.Uploader):
 		e.setState(en, StateResolving, "")
 		channel := en.raw.Channel
 		if channel == "" {
 			channel = en.raw.Uploader
 		}
-		res := e.opts.Resolver.ResolveVersion(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), func(format string, a ...interface{}) {
-			e.log(pl, eid, "%s", strings.TrimSpace(fmt.Sprintf(format, a...)))
-		})
-		if res.VideoID != "" {
-			e.mu.Lock()
-			en.targetID = res.VideoID
-			en.official = res.Official
-			en.better = !res.Official
-			e.mu.Unlock()
-			e.log(pl, eid, "%s -> %s (%s)", en.info.VideoID, res.VideoID, res.Reason)
-		} else {
-			e.log(pl, eid, "kept original (%s)", res.Reason)
+		identification := e.opts.Resolver.Identify(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), e.entryLog(pl, eid))
+		if identification.Done {
+			e.applyResolution(en, identification.Resolution)
+			e.queue.Push(id)
+			return
 		}
+		e.mu.Lock()
+		en.identified = &identification
+		e.mu.Unlock()
+		e.pickQueue.Push(id)
+	default:
+		e.queue.Push(id)
 	}
+}
+
+// pickStage is the second stage: it finds the version of the video to download, the
+// official one or else the best quality.
+func (e *Engine) pickStage(ctx context.Context, id int) {
+	e.mu.Lock()
+	en := e.entries[id]
+	identification := en.identified
+	e.mu.Unlock()
+
+	pl, eid := en.info.Playlist, en.info.ID
+	if ctx.Err() != nil {
+		e.cancelEntry(en)
+		return
+	}
+
+	switch {
+	case en.track != nil:
+		if !e.findTrack(ctx, en) {
+			e.finishOne()
+			return
+		}
+		e.log(pl, eid, "%s - %s -> %s (official: %v)", en.track.Artist, en.track.Title, en.targetID, en.official)
+	case identification != nil && e.opts.Resolver != nil:
+		e.applyResolution(en, e.opts.Resolver.Pick(*identification, e.entryLog(pl, eid)))
+	}
+	e.queue.Push(id)
+}
+
+// cancelEntry ends an entry that was still waiting for a stage when the run was cancelled.
+func (e *Engine) cancelEntry(en *engineEntry) {
+	e.setState(en, StateFailed, "cancelled")
+	e.finishOne()
+}
+
+// entryLog returns a log function for the lookup of one entry.
+func (e *Engine) entryLog(pl, eid int) func(format string, a ...interface{}) {
+	return func(format string, a ...interface{}) {
+		e.log(pl, eid, "%s", strings.TrimSpace(fmt.Sprintf(format, a...)))
+	}
+}
+
+// applyResolution records the version a lookup chose for an entry.
+func (e *Engine) applyResolution(en *engineEntry, res Resolution) {
+	pl, eid := en.info.Playlist, en.info.ID
+	if res.VideoID == "" {
+		e.log(pl, eid, "kept original (%s)", res.Reason)
+		return
+	}
+	e.mu.Lock()
+	en.targetID = res.VideoID
+	en.official = res.Official
+	en.better = !res.Official
+	e.mu.Unlock()
+	e.log(pl, eid, "%s -> %s (%s)", en.info.VideoID, res.VideoID, res.Reason)
+}
+
+// process is the last stage: it downloads the version the earlier stages chose.
+func (e *Engine) process(ctx context.Context, id int) {
+	e.mu.Lock()
+	en := e.entries[id]
+	e.mu.Unlock()
+
+	pl, eid := en.info.Playlist, en.info.ID
 
 	if ctx.Err() != nil {
 		e.setState(en, StateFailed, "cancelled")
@@ -622,7 +763,7 @@ func (e *Engine) autoRetry(id int) {
 
 	e.emit(EvEntryState{Entry: id, State: StateQueued, TargetID: en.targetID, Official: en.official, Better: en.better})
 	e.log(en.info.Playlist, id, "auto-retry after cooldown")
-	e.queue.Push(id)
+	e.nameQueue.Push(id)
 }
 
 // sleepCtx waits for d or until ctx is cancelled. It returns false on cancel.
