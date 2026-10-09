@@ -24,7 +24,7 @@ func TestFindTrackPrefersTheOfficialVideo(t *testing.T) {
 		},
 	}, &asked)
 
-	got, err := FindTrack(search, "Blinding Lights", "The Weeknd", quiet)
+	got, err := FindTrack(search, "Blinding Lights", "The Weeknd", 0, quiet)
 	if err != nil || got != (FoundTrack{VideoID: "off", Official: true}) {
 		t.Fatalf("got %+v, %v; want the official video", got, err)
 	}
@@ -39,21 +39,35 @@ func TestFindTrackFallsBackToANonOfficialUpload(t *testing.T) {
 		"Blinding Lights The Weeknd official video": {
 			{ID: "cov", Title: "Blinding Lights (cover) The Weeknd", Channel: "Someone"},
 		},
-		"Blinding Lights The Weeknd": {
+		"The Weeknd - Blinding Lights": {
 			{ID: "aud", Title: "The Weeknd - Blinding Lights (Audio)", Channel: "The Weeknd - Topic"},
 		},
 	}, &asked)
 
-	got, err := FindTrack(search, "Blinding Lights", "The Weeknd", quiet)
+	got, err := FindTrack(search, "Blinding Lights", "The Weeknd", 0, quiet)
 	if err != nil || got != (FoundTrack{VideoID: "aud"}) {
 		t.Fatalf("got %+v, %v; want the non-official audio upload", got, err)
 	}
-	if len(asked) != 2 {
-		t.Errorf("asked %v, want the official search then the plain one", asked)
+	if len(asked) != 3 {
+		t.Errorf("asked %v, want every wording tried before settling for a non-official upload", asked)
 	}
 }
 
-func TestFindTrackUsesTheLooseMatchOfTheFirstSearch(t *testing.T) {
+func TestFindTrackTakesTheOfficialAudioOfTheArtistsChannel(t *testing.T) {
+	var asked []string
+	search := searchesBy(map[string][]SearchResult{
+		"Lovely Day Bill Withers official video": {
+			{ID: "audio", Title: "Lovely Day (Official Audio)", Channel: "Bill Withers"},
+		},
+	}, &asked)
+
+	got, err := FindTrack(search, "Lovely Day", "Bill Withers", 255, quiet)
+	if err != nil || got != (FoundTrack{VideoID: "audio", Official: true}) {
+		t.Fatalf("got %+v, %v; want the artist's official audio, counted as official", got, err)
+	}
+}
+
+func TestFindTrackUsesTheLooseMatchOfAnyOfTheSearches(t *testing.T) {
 	var asked []string
 	search := searchesBy(map[string][]SearchResult{
 		"Under Pressure Queen official video": {
@@ -61,12 +75,12 @@ func TestFindTrackUsesTheLooseMatchOfTheFirstSearch(t *testing.T) {
 		},
 	}, &asked)
 
-	got, err := FindTrack(search, "Under Pressure", "Queen, David Bowie", quiet)
+	got, err := FindTrack(search, "Under Pressure", "Queen, David Bowie", 0, quiet)
 	if err != nil || got.VideoID != "lyr" || got.Official {
 		t.Fatalf("got %+v, %v; want the lyric upload as a non-official match", got, err)
 	}
-	if len(asked) != 1 {
-		t.Errorf("asked %v, want a single search", asked)
+	if len(asked) != 3 {
+		t.Errorf("asked %v, want every wording tried", asked)
 	}
 }
 
@@ -78,7 +92,7 @@ func TestFindTrackAcceptsAnyOfSeveralArtists(t *testing.T) {
 		},
 	}, &asked)
 
-	got, _ := FindTrack(search, "Under Pressure", "Queen, David Bowie", quiet)
+	got, _ := FindTrack(search, "Under Pressure", "Queen, David Bowie", 0, quiet)
 	if got != (FoundTrack{VideoID: "off", Official: true}) {
 		t.Errorf("got %+v, want the video that names the second artist", got)
 	}
@@ -86,12 +100,15 @@ func TestFindTrackAcceptsAnyOfSeveralArtists(t *testing.T) {
 
 func TestArtistNames(t *testing.T) {
 	cases := map[string][]string{
-		"The Weeknd":          {"The Weeknd"},
-		"Queen, David Bowie":  {"Queen", "David Bowie"},
-		"Drake & Don Toliver": {"Drake & Don Toliver", "Drake", "Don Toliver"},
-		"A, B & C":            {"A", "B & C", "B", "C"},
-		" ,  ":                nil,
-		"":                    nil,
+		"The Weeknd":                {"The Weeknd"},
+		"Queen, David Bowie":        {"Queen", "David Bowie"},
+		"Drake & Don Toliver":       {"Drake & Don Toliver", "Drake", "Don Toliver"},
+		"A, B & C":                  {"A", "B & C", "B", "C"},
+		"Prince and the Revolution": {"Prince and the Revolution", "Prince", "the Revolution"},
+		"Dr. Dre feat. Snoop Dogg":  {"Dr. Dre feat. Snoop Dogg", "Dr. Dre", "Snoop Dogg"},
+		"Brandy":                    {"Brandy"},
+		" ,  ":                      nil,
+		"":                          nil,
 	}
 	for in, want := range cases {
 		got := artistNames(in)
@@ -116,7 +133,7 @@ func TestFindTrackSearchesForTheWholeActAndMatchesEitherArtist(t *testing.T) {
 		},
 	}, &asked)
 
-	got, _ := FindTrack(search, "Solar Eclipse", "Drake & Don Toliver", quiet)
+	got, _ := FindTrack(search, "Solar Eclipse", "Drake & Don Toliver", 0, quiet)
 	if got != (FoundTrack{VideoID: "off", Official: true}) || len(asked) != 1 {
 		t.Errorf("got %+v after %v, want the video that names only one of the two artists", got, asked)
 	}
@@ -126,10 +143,10 @@ func TestFindTrackFindsNothingWhenNothingMatches(t *testing.T) {
 	var asked []string
 	search := searchesBy(map[string][]SearchResult{
 		"Blinding Lights The Weeknd official video": {{ID: "x", Title: "Totally different song", Channel: "Other"}},
-		"Blinding Lights The Weeknd":                {{ID: "y", Title: "Blinding Lights live karaoke The Weeknd", Channel: "Other"}},
+		"The Weeknd - Blinding Lights":              {{ID: "y", Title: "Blinding Lights live karaoke The Weeknd", Channel: "Other"}},
 	}, &asked)
 
-	got, err := FindTrack(search, "Blinding Lights", "The Weeknd", quiet)
+	got, err := FindTrack(search, "Blinding Lights", "The Weeknd", 0, quiet)
 	if err != nil || got.VideoID != "" {
 		t.Errorf("got %+v, %v; want no video and no error", got, err)
 	}
@@ -137,10 +154,10 @@ func TestFindTrackFindsNothingWhenNothingMatches(t *testing.T) {
 
 func TestFindTrackReportsASearchThatFails(t *testing.T) {
 	failing := func(string) ([]SearchResult, error) { return nil, errors.New("offline") }
-	if _, err := FindTrack(failing, "Song", "Artist", quiet); err == nil {
+	if _, err := FindTrack(failing, "Song", "Artist", 0, quiet); err == nil {
 		t.Error("want the search error")
 	}
-	if _, err := FindTrack(nil, "Song", "Artist", quiet); err == nil {
+	if _, err := FindTrack(nil, "Song", "Artist", 0, quiet); err == nil {
 		t.Error("want an error when there is no searcher")
 	}
 }

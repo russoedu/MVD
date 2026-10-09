@@ -1,73 +1,54 @@
 package official
 
 import (
-	"fmt"
+	"regexp"
 	"strings"
 )
 
 // FoundTrack is the YouTube video chosen for a track.
 type FoundTrack struct {
 	VideoID string
-	// Official is true when the video is titled as the official one.
+	// Official is true when the video comes from the artist: their music video,
+	// or an official audio or lyric upload of their own channel.
 	Official bool
 }
 
 // FindTrack looks a song up on YouTube by its title and artists (as a
-// playlist from another service lists them, "A, B" for several) and returns
-// the best video: the official one when there is one, else the best
-// non-official upload. It returns an empty VideoID when nothing matches.
-func FindTrack(search Searcher, title, artists string, logf func(format string, a ...interface{})) (FoundTrack, error) {
-	if search == nil {
-		return FoundTrack{}, fmt.Errorf("no way to search YouTube")
-	}
+// playlist from another service lists them, "A, B" or "A & B" for several) and
+// returns the best video: the official one when there is one, else the best
+// non-official upload. durationSec is the length of the song, or 0 when
+// unknown. It returns an empty VideoID when nothing matches.
+func FindTrack(search Searcher, title, artists string, durationSec int, logf func(format string, a ...interface{})) (FoundTrack, error) {
 	names := artistNames(artists)
-	primary := ""
-	if len(names) > 0 {
-		primary = names[0]
+	song := Song{Title: title, Artists: names, DurationSec: durationSec}
+
+	pick, ok, results, err := FindBestVideo(search, song, logf)
+	if err != nil {
+		return FoundTrack{}, err
+	}
+	if ok {
+		return FoundTrack{VideoID: pick.ID, Official: true}, nil
 	}
 
-	// 1. The official video: "<title> <artist> official video".
-	query := SearchQuery(title, primary)
-	results, err := search(query)
-	if err != nil {
-		return FoundTrack{}, fmt.Errorf("search for %q failed: %w", query, err)
-	}
-	for _, artist := range names {
-		if id, official := pickSearchResult(results, title, artist, ""); id != "" {
-			logf("search for %q found %s", query, id)
-			return FoundTrack{VideoID: id, Official: official}, nil
-		}
-	}
+	// Nothing official turned up: take the best other upload of the song.
 	if id := PickLooseResult(results, title, names); id != "" {
-		logf("search for %q found only a non-official upload: %s", query, id)
+		logf("only a non-official upload: %s", id)
 		return FoundTrack{VideoID: id}, nil
 	}
 
-	// 2. No official video turned up: search for the song itself.
-	plain := strings.TrimSpace(title + " " + primary)
-	results, err = search(plain)
-	if err != nil {
-		return FoundTrack{}, fmt.Errorf("search for %q failed: %w", plain, err)
-	}
-	for _, artist := range names {
-		if id, official := pickSearchResult(results, title, artist, ""); id != "" {
-			logf("search for %q found %s", plain, id)
-			return FoundTrack{VideoID: id, Official: official}, nil
-		}
-	}
-	if id := PickLooseResult(results, title, names); id != "" {
-		logf("search for %q found only a non-official upload: %s", plain, id)
-		return FoundTrack{VideoID: id}, nil
-	}
-
-	logf("search for %q found nothing that matches", plain)
+	logf("nothing that matches %q", strings.TrimSpace(title+" "+artists))
 	return FoundTrack{}, nil
 }
+
+// artistJoiners join the names of artists in one credit.
+var artistJoiners = regexp.MustCompile(`(?i)\s+(?:&|and|feat\.?|featuring|ft\.?|with|x|\+)\s+`)
 
 // artistNames lists the artists a service names for a song, the first being
 // the one to search for. "A, B" gives A and B. "A & B" gives "A & B" as
 // written, since it may be one act ("Simon & Garfunkel"), then A and B, so a
-// video that names only one of them still matches.
+// video that names only one of them still matches; the same goes for "and",
+// "feat.", "with" and the like, so "Prince and the Revolution" also gives
+// Prince, whose channel has the video.
 func artistNames(artists string) []string {
 	var names []string
 	for _, name := range strings.Split(artists, ",") {
@@ -78,7 +59,7 @@ func artistNames(artists string) []string {
 
 	segments := len(names)
 	for _, segment := range names[:segments] {
-		parts := strings.Split(segment, " & ")
+		parts := artistJoiners.Split(segment, -1)
 		if len(parts) < 2 {
 			continue
 		}

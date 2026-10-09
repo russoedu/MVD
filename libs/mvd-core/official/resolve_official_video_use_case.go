@@ -32,9 +32,10 @@ type Resolver struct {
 	Log       LogFunc
 	Dumper    PageDumper // optional
 	Searcher  Searcher   // optional
-	// VideoTypes, when set, tells art tracks from real videos whatever the channel is
-	// called (YouTube Music's own tag); without it every upload is looked up.
-	VideoTypes VideoTyper
+	// TrackInfos, when set, tells art tracks from real videos whatever the channel is
+	// called (YouTube Music's own tag) and names the song's real artist; without it
+	// every upload is looked up and the artist is the channel's name.
+	TrackInfos TrackDescriber
 }
 
 // NewResolver returns a resolver pointed at the real YouTube endpoints.
@@ -62,28 +63,37 @@ func (r *Resolver) Wanted(title, _, _ string) bool {
 // given art track, or "" when none could be found. The returned reason is a
 // short human readable explanation for logging.
 func (r *Resolver) Resolve(videoID string) (string, string) {
-	return r.ResolveLog(videoID, "", "", r.Log)
+	return r.ResolveLog(videoID, "", "", 0, r.Log)
 }
 
 // ResolveLog is Resolve with a per-call log function, so concurrent
 // callers can route messages to their own entry. The title and channel of
 // the art track let it search YouTube for the video when the description
 // links none.
-func (r *Resolver) ResolveLog(videoID, title, channel string, logFn func(format string, a ...interface{})) (string, string) {
+func (r *Resolver) ResolveLog(videoID, title, channel string, durationSec int, logFn func(format string, a ...interface{})) (string, string) {
 	logf := func(format string, a ...interface{}) {
 		if logFn != nil {
 			logFn(format+"\n", a...)
 		}
 	}
-	if artTrack, why := r.isArtTrack(videoID, channel, logf); !artTrack {
+	artTrack, info, why := r.isArtTrack(videoID, channel, logf)
+	if !artTrack {
 		return "", why
+	}
+	// YouTube Music names the artist better than a channel does ("Kate Bush", not
+	// "KateBushMusic") and knows the length of the song.
+	if info.Artist != "" {
+		channel = info.Artist
+	}
+	if durationSec == 0 {
+		durationSec = info.DurationSec
 	}
 	id, reason := r.fromDescription(videoID, logf)
 	if id != "" {
 		return id, reason
 	}
-	if found := r.fromSearch(videoID, title, channel, logf); found != "" {
-		return found, "found by searching for the official video"
+	if found, why := r.fromSearch(videoID, title, channel, durationSec, logf); found != "" {
+		return found, why
 	}
 	return "", reason
 }

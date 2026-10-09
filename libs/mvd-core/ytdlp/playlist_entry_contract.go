@@ -22,6 +22,11 @@ type PlaylistEntry struct {
 	PlaylistID    string `json:"playlist_id"`
 	PlaylistIndex int    `json:"playlist_index"`
 	PlaylistCount int    `json:"playlist_count"`
+	// Duration (seconds), ViewCount and ChannelIsVerified are what a flat listing or
+	// a search says about the video; each is zero when it does not say.
+	Duration          float64 `json:"duration"`
+	ViewCount         int64   `json:"view_count"`
+	ChannelIsVerified bool    `json:"channel_is_verified"`
 }
 
 // ParsePlaylistEntries decodes the JSON lines of a flat playlist listing.

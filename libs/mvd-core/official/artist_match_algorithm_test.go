@@ -16,6 +16,7 @@ func TestChannelIsArtist(t *testing.T) {
 		{"Weeknd", "The Weeknd"},
 		{"ADÉLA", "adéla"},
 		{"Simon & Garfunkel", "Simon & Garfunkel"},
+		{"Michael Sembello (The Master)", "Michael Sembello"},
 	}
 	for _, c := range yes {
 		if !ChannelIsArtist(c.channel, c.artist) {
