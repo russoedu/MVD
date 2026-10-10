@@ -16,10 +16,10 @@ import (
 // editorDetailLines is how many lines the panel under the list takes.
 const editorDetailLines = 4
 
-// listHeight is how many songs fit on the screen: the title, a rule, the panel and the
+// listHeight is how many songs fit on the screen: the title, the column names, a rule, the panel and the
 // key bar take the rest.
 func (m editorModel) listHeight() int {
-	return max(3, m.height-(editorDetailLines+3))
+	return max(3, m.height-(editorDetailLines+4))
 }
 
 func (m editorModel) render() string {
@@ -30,6 +30,7 @@ func (m editorModel) render() string {
 
 	var lines []string
 	lines = append(lines, styTitle.Render(" "+m.title()))
+	lines = append(lines, m.columnHeader(width))
 
 	h := m.listHeight()
 	for i := m.top; i < m.top+h; i++ {
@@ -40,7 +41,7 @@ func (m editorModel) render() string {
 		lines = append(lines, m.rowLine(i, width))
 	}
 	if len(m.rows) == 0 {
-		lines[1] = styDim.Render(" There are no songs here. Open a file with l, or leave and give a playlist.")
+		lines[2] = styDim.Render(" There are no songs here. Open a file with l, or leave and give a playlist.")
 	}
 
 	lines = append(lines, styBorder.Render(strings.Repeat("─", width)))
@@ -148,6 +149,68 @@ func decisionGlyph(r playlistfile.Entry) string {
 	return "·"
 }
 
+// editorColumns are the widths of the list's columns for a window width.
+type editorColumns struct {
+	artist, song, video, replaced int
+	address                       string // "" when the window is too narrow to show it
+}
+
+// columnGap is the space between two columns.
+const columnGap = 2
+
+// rowPrefix is what comes before the columns: the cursor, the mark and the review option.
+const rowPrefix = 14
+
+// columns shares the width among artist, song, video title and, when a song has been
+// replaced, the replaced video's title. A column takes what its longest text needs, up
+// to its share.
+func (m editorModel) columns(width int) editorColumns {
+	var c editorColumns
+	rest := width - rowPrefix
+	if width >= 90 {
+		c.address = "youtube.com/watch?v=" + strings.Repeat("x", 11)
+		rest -= len(c.address) + columnGap
+	}
+
+	var longestArtist, longestSong, longestReplaced int
+	for _, r := range m.rows {
+		col := playlisteditor.ColumnsOf(r)
+		longestArtist = max(longestArtist, ansi.StringWidth(display(col.Artist)))
+		longestSong = max(longestSong, ansi.StringWidth(display(col.Song)))
+		longestReplaced = max(longestReplaced, ansi.StringWidth(display(col.Replaced)))
+	}
+
+	gaps := 2 * columnGap
+	if longestReplaced > 0 {
+		gaps += columnGap
+	}
+	rest = max(rest-gaps, 12)
+	if longestReplaced > 0 {
+		c.replaced = min(longestReplaced, max(8, rest/4))
+		rest -= c.replaced
+	}
+	c.artist = min(max(longestArtist, 6), max(6, rest*3/10))
+	rest -= c.artist
+	c.song = min(max(longestSong, 8), max(8, rest/2))
+	c.video = max(rest-c.song, 4)
+	return c
+}
+
+// columnHeader names the columns.
+func (m editorModel) columnHeader(width int) string {
+	c := m.columns(width)
+	gap := strings.Repeat(" ", columnGap)
+	line := "    " + padRight("Review", rowPrefix-4) +
+		padRight("Artist", c.artist) + gap + padRight("Song", c.song) + gap + padRight("Video", c.video)
+	if c.replaced > 0 {
+		line += gap + padRight("Replaced by", c.replaced)
+	}
+	if c.address != "" {
+		line = padRight(truncate(line, width-len(c.address)-columnGap), width-len(c.address)) + "Address"
+	}
+	return styDim.Render(fit(line, width))
+}
+
 func (m editorModel) rowLine(i, width int) string {
 	r := m.rows[i]
 	cursor := " "
@@ -155,8 +218,9 @@ func (m editorModel) rowLine(i, width int) string {
 		cursor = "▸"
 	}
 	target, _, has := playlisteditor.Target(r)
+	c := m.columns(width)
 	short := ""
-	if has && width >= 90 {
+	if has && c.address != "" {
 		short = "youtube.com/watch?v=" + target
 	}
 	kind := kindLabel(r)
@@ -167,17 +231,33 @@ func (m editorModel) rowLine(i, width int) string {
 		kind = "original"
 	}
 
-	nameWidth := width - 2 - 2 - 11 - len(short) - 2
-	name := truncate(rowName(r), max(8, nameWidth))
-	if r.Decision == playlistfile.DecisionReplaced && r.ChosenTitle != "" {
-		name = truncate(rowName(r)+"  →  "+display(r.ChosenTitle), max(8, nameWidth))
+	col := playlisteditor.ColumnsOf(r)
+	cell := func(text string, w int) string { return padRight(truncate(display(text), w), w) }
+	artist, song, video := cell(col.Artist, c.artist), cell(col.Song, c.song), cell(col.Video, c.video)
+	replaced := ""
+	if c.replaced > 0 {
+		replaced = cell(col.Replaced, c.replaced)
+	}
+	gap := strings.Repeat(" ", columnGap)
+
+	// The address stays at the right edge, whatever the columns before it took.
+	tail := func(styled func(string) string) string {
+		if c.address == "" {
+			return ""
+		}
+		used := rowPrefix + c.artist + c.song + c.video + 2*columnGap
+		if c.replaced > 0 {
+			used += c.replaced + columnGap
+		}
+		return strings.Repeat(" ", max(columnGap, width-used-len(c.address))) + styled(padRight(short, len(c.address)))
 	}
 
-	plain := fmt.Sprintf("%s %s %-9s %s", cursor, decisionGlyph(r), kind, padRight(name, max(8, nameWidth)))
-	if short != "" {
-		plain += "  " + short
-	}
 	if i == m.sel {
+		plain := fmt.Sprintf("%s %s %-9s ", cursor, decisionGlyph(r), kind) + artist + gap + song + gap + video
+		if c.replaced > 0 {
+			plain += gap + replaced
+		}
+		plain += tail(func(s string) string { return s })
 		return stySelected.Render(fit(plain, width))
 	}
 
@@ -201,14 +281,16 @@ func (m editorModel) rowLine(i, width int) string {
 	case engine.KindNone:
 		kindStyle = styRed
 	}
-	nameStyle := styText
+	artistStyle, songStyle, videoStyle := styCyan, styText, styDim
 	if r.Downloaded || r.Decision == playlistfile.DecisionSkipped {
-		nameStyle, kindStyle = styDim, styDim
+		kindStyle, artistStyle, songStyle = styDim, styDim, styDim
 	}
-	line := " " + styDim.Render(cursor) + " " + glyph + " " + kindStyle.Render(fmt.Sprintf("%-9s", kind)) + " " + nameStyle.Render(padRight(name, max(8, nameWidth)))
-	if short != "" {
-		line += "  " + styDim.Render(short)
+	line := styDim.Render(cursor) + " " + glyph + " " + kindStyle.Render(fmt.Sprintf("%-9s", kind)) + " " +
+		artistStyle.Render(artist) + gap + songStyle.Render(song) + gap + videoStyle.Render(video)
+	if c.replaced > 0 {
+		line += gap + styCyan.Render(replaced)
 	}
+	line += tail(func(s string) string { return styDim.Render(s) })
 	return fit(line, width)
 }
 
@@ -334,7 +416,7 @@ func (m editorModel) mouse(msg tea.MouseMsg) (editorModel, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if row := y - 1; row >= 0 && row < m.listHeight() && m.top+row < len(m.rows) {
+	if row := y - 2; row >= 0 && row < m.listHeight() && m.top+row < len(m.rows) {
 		m.sel = m.top + row
 	}
 	return m, nil

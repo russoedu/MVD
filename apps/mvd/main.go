@@ -135,6 +135,9 @@ func run(movedFrom string, askToMove bool, review string) error {
 		},
 		// The person is at this machine, so its own folder chooser is the one to show.
 		PickFolder: func(start string) (string, bool, error) { return folderdialog.Dialog{}.Pick(ctx, start) },
+		PickFile: func(start string) (string, bool, error) {
+			return folderdialog.Dialog{}.PickFile(ctx, start, "mvd", "MVD review")
+		},
 		Uninstall:  terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop),

@@ -85,6 +85,8 @@ type editorModel struct {
 	purpose editorInputPurpose
 	// noteFor is the row a reason is being asked for.
 	noteFor string
+	// picking is true while the system's open-file window is up.
+	picking bool
 
 	status      string
 	statusUntil time.Time
@@ -160,6 +162,17 @@ func (m editorModel) Update(msg tea.Msg) (editorModel, tea.Cmd) {
 		return m, waitEditorEvent(m.events)
 
 	case editorEvClosed:
+		return m, nil
+
+	case editorFilePickedMsg:
+		m.picking = false
+		switch {
+		case msg.err != nil:
+			// The window could not be shown: the name is typed instead.
+			return m.ask(inputLoad, "Open the file: ", m.host.SaveDir)
+		case msg.chosen:
+			return m.loadFile(msg.path)
+		}
 		return m, nil
 
 	case editorDescribedMsg:
@@ -255,6 +268,9 @@ func (m editorModel) handleKey(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
 	if key == "ctrl+l" {
 		return m, tea.ClearScreen
 	}
+	if m.picking {
+		return m, nil // the file window is up
+	}
 
 	switch m.mode {
 	case editorAskPrevious:
@@ -308,6 +324,9 @@ func (m editorModel) handleKey(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
 	case "s":
 		return m.ask(inputSave, "Save as: ", m.defaultSavePath())
 	case "l":
+		if m.host.PickFile != nil {
+			return m.pickFile()
+		}
 		return m.ask(inputLoad, "Open the file: ", m.host.SaveDir)
 	}
 	return m, nil
@@ -496,17 +515,39 @@ func (m editorModel) submitInput(text string) (editorModel, tea.Cmd) {
 		if text == "" {
 			return m, nil
 		}
-		file, err := playlistfile.Load(text)
-		if err != nil {
-			m.flash("cannot open it: " + err.Error())
-			return m, nil
-		}
-		m.rows = file.Entries
-		m.sel, m.top = 0, 0
-		m.autosave()
-		m.flash(fmt.Sprintf("opened %d songs from %s", len(m.rows), filepath.Base(text)))
+		return m.loadFile(text)
+	}
+	return m, nil
+}
+
+// editorFilePickedMsg is the answer of the system's open-file window.
+type editorFilePickedMsg struct {
+	path   string
+	chosen bool
+	err    error
+}
+
+// pickFile opens the system's open-file window and waits for it in the background.
+func (m editorModel) pickFile() (editorModel, tea.Cmd) {
+	m.picking = true
+	pick, start := m.host.PickFile, m.host.SaveDir
+	return m, func() tea.Msg {
+		path, chosen, err := pick(start)
+		return editorFilePickedMsg{path: path, chosen: chosen, err: err}
+	}
+}
+
+// loadFile replaces the review with the songs of a saved .mvd file.
+func (m editorModel) loadFile(path string) (editorModel, tea.Cmd) {
+	file, err := playlistfile.Load(path)
+	if err != nil {
+		m.flash("cannot open it: " + err.Error())
 		return m, nil
 	}
+	m.rows = file.Entries
+	m.sel, m.top = 0, 0
+	m.autosave()
+	m.flash(fmt.Sprintf("opened %d songs from %s", len(m.rows), filepath.Base(path)))
 	return m, nil
 }
 

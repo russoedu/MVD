@@ -26,6 +26,22 @@ func (Dialog) Pick(ctx context.Context, start string) (string, bool, error) {
 		return "", false, ErrNoDialog
 	}
 
+	return run(ctx, command)
+}
+
+// PickFile runs the system's open-file window and waits. extension (without its dot)
+// and label describe the files it shows first, such as "mvd" and "MVD review".
+func (Dialog) PickFile(ctx context.Context, start, extension, label string) (string, bool, error) {
+	command, ok := fileDialogCommand(runtime.GOOS, start, extension, label, oscommand.HasProgram)
+	if !ok {
+		return "", false, ErrNoDialog
+	}
+
+	return run(ctx, command)
+}
+
+// run starts a chooser program and reads what the person chose.
+func run(ctx context.Context, command oscommand.Command) (string, bool, error) {
 	cmd := exec.CommandContext(ctx, command.Name, command.Args...)
 	procwindow.Hide(cmd)
 	cmd.Env = append(os.Environ(), command.Env...)
