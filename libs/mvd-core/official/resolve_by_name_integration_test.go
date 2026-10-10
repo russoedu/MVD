@@ -312,3 +312,23 @@ func TestWhenOnlyOfficialVideosAreWantedTheBestQualityUploadIsNotLookedFor(t *te
 		t.Errorf("the quality of %d uploads was looked up for nothing", probed)
 	}
 }
+
+func TestAVideoFoundWantingIsLeftOutWhenTheSongIsSearchedAgain(t *testing.T) {
+	search := &scriptedSearch{answers: map[string][]SearchResult{
+		"Le Click": {
+			{ID: "first", Title: "Le Click - Tonight Is The Night (Official Video)", Channel: "Le Click", Views: 9_000_000},
+			{ID: "second", Title: "Le Click - Tonight Is The Night (Official Music Video)", Channel: "Le Click", Views: 3_000_000},
+		},
+	}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Le Click", "Tonight Is The Night", true },
+	})
+	identified := res.Identify("up1", "Tonight Is The Night (Le Click - Dance Mix )", "La Bouche", 0, nil)
+
+	if got := res.Pick(identified, nil); got.ID != "first" {
+		t.Fatalf("got %+v, want the best video first", got)
+	}
+	if got := res.PickWithout(identified, []string{"first"}, nil); got.ID != "second" || !got.Official {
+		t.Errorf("got %+v, want the next best video without the rejected one", got)
+	}
+}

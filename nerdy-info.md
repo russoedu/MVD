@@ -167,6 +167,7 @@ sequenceDiagram
 - `ttygo.NewSharedProgram` runs **one** program; whoever attaches (the window, or later another) sees the same screens.
 - The program owns mouse mode and the alternate screen through `tea.View`, so the same screens work in a real terminal and in the window.
 - Closing the window with downloads running asks first (`close_guard_policy.go`); a second launch finds the running copy and exits.
+- **Links.** xterm.js follows a link of the terminal (the editor's video addresses are OSC 8 links) by asking "Do you want to navigate to...? WARNING..." with `confirm()` and then opening a window with `window.open()`, which the web view answers with its own box and window. `useOpenLinksInBrowser` in `apps/mvd-web` answers the question itself and hands the address to Wails' `BrowserOpenURL`, so the default browser opens; only `http` and `https` addresses go through (`external-link.policy.ts`). The `o` key does not go through the page at all: it is `openurl.Open` in Go.
 
 ---
 
@@ -243,6 +244,10 @@ Decisions and what they download:
 | replaced | the video whose address the person pasted (`KindChosen`) |
 | original | the upload that is in the playlist |
 | skipped | nothing |
+
+**The columns.** The list shows, per song: the review option (what is proposed, or "chosen" / "original" once decided), the artist, the song, the title of the video in the playlist, the title of the video that replaced it, and the address at the right edge when the window is wide enough. `playlisteditor.ColumnsOf` makes the artist and the song: what a music database named when it did; else the title split at its first " - "; else the whole title as the song and the channel (without " - Topic") as the artist. A column takes what its longest text needs, up to its share of the width (`columns` in `playlist_editor_render_algorithm.go`).
+
+**The file windows.** `l` and `s` open the operating system's own windows when the host gives the editor `PickFile` / `SaveFile` (the desktop app does; the terminal app does not, and asks for the path on the bottom line, as it also does when a window cannot be shown). They live in `apps/mvd/folderdialog`, next to the folder chooser: PowerShell with `OpenFileDialog` / `SaveFileDialog` on Windows, `osascript` on macOS, `zenity` or `kdialog` on Linux. The folder, the file name and the filter travel as environment variables or arguments, never inside the script text. The window runs as a command in the background (`editorFilePickedMsg` is its answer) and keys are ignored while it is up; a save window asks before it replaces a file.
 
 A row is identified by its playlist and its upload (`Entry.Key`), so a review made today still lines up with the same playlist planned tomorrow: `Merge` keeps the decision and the downloaded flag, and takes the proposal from the new plan. The review in progress is saved after every change to `plan.mvd` in the app folder; the next review offers to bring it along.
 
@@ -454,6 +459,8 @@ Then, to be taken at all, it must **say it is official**, be uploaded by the **a
 | Views | + up to 1 (log10 of the count / 8) |
 | Same length as the song (within 5 %) | + 1.5 (+ 0.8 within 15 %, + 0.2 within 35 %, - 0.8 beyond) |
 
+**A tag is not proof.** YouTube Music also tags fan uploads of album tracks as official videos (`OMV`), so an upload that is tagged `OMV` and sits on a channel that is not the artist's is run through the motion check (section 9) before it is taken for the official video of itself. When it does not move, it is treated like any plain video: the song is searched for, and the upload stays when nothing is found. The artist's own channel is never doubted. Measured on the video that showed this: 1.5 % and 1.1 % of the frame changing between frames, against 10 % for a video that moves.
+
 A score of **8.5** or more, from a candidate that says it is official or is listed, ends the search at once ("confident"). The top five candidates are checked with YouTube Music, and any that is itself an art track under the artist's own name is dropped: YouTube shows many art tracks under the artist's name, so a result from "the artist's channel" may be one.
 
 ### 8.3 No official video: the best quality
@@ -549,12 +556,21 @@ flowchart TD
   B -->|no| D[claim the target]
   D --> E["yt-dlp<br/>-P temp:partial -P home:music<br/>-o template, merge to mp4"]
   E --> F{ok?}
-  F -->|yes| G[yt-dlp moved the finished file in: done]
+  F -->|yes| K{"a replacement whose sound<br/>plays on one side only?"}
+  K -->|no| G[yt-dlp moved the finished file in: done]
+  K -->|yes| L["remove it, search again<br/>without that video"]
+  L --> D
   F -->|no| H{was the target a replacement?}
   H -->|yes| I[say so, go back to the playlist's own upload]
   I --> D
   H -->|no| J[classify the error: see section 11]
 ```
+
+### Sound on one side only
+
+Some uploads carry a stereo track whose left (or right) channel is silent, which the metadata does not show (it says two channels). After a **replacement** video is downloaded, `audiofix` asks ffmpeg for the level of each channel of its first sound track (`astats`, about a third of a second for a song). One channel under -70 dB while the other is above -45 dB is a one-sided track; a track that is quiet as a whole, silent, mono or surround is not.
+
+The music is never changed. A one-sided replacement is **removed** and the song is searched for again without that video (`RePicker.PickWithout`: the rejected ids are out of the scoring, the best-quality choice and the cache of earlier runs); the next best version is downloaded, or the playlist's own upload when nothing else is found. The playlist's own upload is not checked, since there is nothing to fall back to, nor is a video the person chose themselves. A song from a plan has no lookup to repeat, so it falls back to the playlist's own upload. The log says what happened (`[check]`, "was removed ... looking for another version").
 
 ### The partial folder
 
@@ -865,4 +881,7 @@ For comparison, before the official lookup knew how to name songs, 19 of the 49 
 | **Download into a partial folder** | The library only ever holds complete files. The price is that an interrupted download is not resumed by a later run. |
 | **Plan and download are separate runs** | The editor must show proposals before anything is downloaded and then download exactly what was chosen; two small modes of one engine beat a second engine, and a retry of a planned song must not look anything up again. |
 | **The reason log is a build flag** | A question asked of every user would be noise, and a log of their choices is theirs. A constant that is false in published builds cannot be switched on by accident. |
+| **An `OMV` tag needs a picture that moves** | YouTube Music tags fan uploads of album tracks as official videos; the picture is what tells them from the real one. |
+| **A one-sided track is searched again, never repaired** | Copying one channel to both changes the music, and re-encoding it is a loss; another upload of the song has the whole recording. |
+| **The file windows are the system's own** | They remember the folders the person uses, ask before replacing a file, and look like the rest of the machine. |
 | **Merge when it is green** | Every request is an issue, every issue a branch, every branch a pull request that CI must pass; merging is the last step, not a ceremony. |

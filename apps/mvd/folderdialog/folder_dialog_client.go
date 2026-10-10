@@ -40,6 +40,19 @@ func (Dialog) PickFile(ctx context.Context, start, extension, label string) (str
 	return run(ctx, command)
 }
 
+// SaveFile runs the system's save-file window and waits. start is the folder it opens
+// in and name the file name offered; extension (without its dot) and label describe the
+// file type, and the extension is added when the person typed a name without one.
+func (Dialog) SaveFile(ctx context.Context, start, name, extension, label string) (string, bool, error) {
+	command, ok := saveDialogCommand(runtime.GOOS, start, name, extension, label, oscommand.HasProgram)
+	if !ok {
+		return "", false, ErrNoDialog
+	}
+	path, chosen, err := run(ctx, command)
+
+	return withExtension(path, extension), chosen, err
+}
+
 // run starts a chooser program and reads what the person chose.
 func run(ctx context.Context, command oscommand.Command) (string, bool, error) {
 	cmd := exec.CommandContext(ctx, command.Name, command.Args...)

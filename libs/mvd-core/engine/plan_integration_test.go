@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"testing"
 
@@ -124,29 +123,79 @@ func TestARunFromAPlanDownloadsTheVideosItNamesAndLooksForNothing(t *testing.T) 
 	}
 }
 
-func TestEveryDownloadedFileIsHandedToAfterDownload(t *testing.T) {
-	eng := stubEngine(t, false, "https://youtube.com/playlist?list=A")
-	var mu sync.Mutex
-	var seen []string
-	eng.opts.AfterDownload = func(_ context.Context, path string) (string, error) {
-		mu.Lock()
-		defer mu.Unlock()
-		seen = append(seen, filepath.Base(path))
-		return "fixed", nil
-	}
+// onceAgain is a resolver that can search again: it knows a second better version.
+type onceAgain struct{ fakeResolver }
 
+func (onceAgain) PickWithout(_ Identification, rejected []string, _ func(string, ...interface{})) Resolution {
+	for _, id := range rejected {
+		if id == "BETTER00001" {
+			return Resolution{VideoID: "BETTER00002", Reason: "the next best version"}
+		}
+	}
+	return Resolution{VideoID: "BETTER00001"}
+}
+
+func runB(t *testing.T, resolver OfficialResolver, check func(ctx context.Context, path string) (string, error)) EvEntryState {
+	t.Helper()
+	t.Setenv("MVD_STUB_YTDLP", "1")
+	eng, err := New(Options{
+		YtDlp:             os.Args[0],
+		URLs:              []string{"https://youtube.com/playlist?list=B"},
+		OutputDir:         t.TempDir(),
+		OutputTemplate:    "%(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s",
+		Quality:           "best",
+		MergeOutputFormat: "mp4",
+		Workers:           1,
+		Resolver:          resolver,
+		CheckDownload:     check,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { eng.Run(ctx); close(done) }()
-	collect(t, eng)
+	events := collect(t, eng)
 	cancel()
 	<-done
+	return final(events)[0]
+}
 
+func oneSidedFor(id string) func(ctx context.Context, path string) (string, error) {
+	return func(_ context.Context, path string) (string, error) {
+		if filepath.Base(path) == id+".mp4" {
+			return "the sound plays on one side only", nil
+		}
+		return "", nil
+	}
+}
+
+func TestAReplacementWithOneSidedSoundIsSearchedAgain(t *testing.T) {
+	st := runB(t, onceAgain{}, oneSidedFor("BETTER00001"))
+	if st.State != StateDone || st.TargetID != "BETTER00002" {
+		t.Errorf("got %+v, want the next best version", st)
+	}
+}
+
+func TestWhenNothingElseIsFoundThePlaylistsOwnUploadIsKept(t *testing.T) {
+	st := runB(t, fakeResolver{}, oneSidedFor("BETTER00001"))
+	if st.State != StateDone || st.TargetID != "bbbbbbbbbb1" || st.Official || st.Better {
+		t.Errorf("got %+v, want the playlist's own upload", st)
+	}
+}
+
+func TestTheOwnUploadIsNeverCheckedOrRejected(t *testing.T) {
+	var checked []string
+	var mu sync.Mutex
+	st := runB(t, nil, func(_ context.Context, path string) (string, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		checked = append(checked, path)
+		return "the sound plays on one side only", nil
+	})
 	mu.Lock()
 	defer mu.Unlock()
-	sort.Strings(seen)
-	// The third song of the playlist fails, so two files were produced.
-	if len(seen) != 2 || seen[0] != "aaaaaaaaaa1.mp4" || seen[1] != "aaaaaaaaaa2.mp4" {
-		t.Errorf("files handed over: %v", seen)
+	if st.State != StateDone || st.TargetID != "bbbbbbbbbb1" || len(checked) != 0 {
+		t.Errorf("got %+v, checked %v", st, checked)
 	}
 }

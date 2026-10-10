@@ -58,7 +58,7 @@ func runNow(cmd tea.Cmd) []tea.Msg {
 				out = append(out, runNow(c)...)
 			}
 			return out
-		case setupFinishedMsg, downloadFinishedMsg, runClosedMsg, planClosedMsg, editorPlannedMsg, editorLeaveMsg, editorDownloadMsg, editorDescribedMsg:
+		case setupFinishedMsg, downloadFinishedMsg, runClosedMsg, planClosedMsg, editorPlannedMsg, editorLeaveMsg, editorDownloadMsg, editorDescribedMsg, editorFilePickedMsg:
 			return []tea.Msg{msg}
 		}
 	case <-time.After(30 * time.Millisecond):

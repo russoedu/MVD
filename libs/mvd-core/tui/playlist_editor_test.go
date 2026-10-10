@@ -42,6 +42,7 @@ type editorFixture struct {
 	described []string
 	opened    []string
 	pick      func(start string) (string, bool, error)
+	save      func(dir, name string) (string, bool, error)
 }
 
 func newEditorFixture(t *testing.T, urls []string, plan []engine.PlannedEntry) *editorFixture {
@@ -64,7 +65,13 @@ func newEditorFixture(t *testing.T, urls []string, plan []engine.PlannedEntry) *
 			}
 			return f.pick(start)
 		},
-		Describe:    func(id string) (string, error) { f.described = append(f.described, id); return "Title of " + id, nil },
+		Describe: func(id string) (string, error) { f.described = append(f.described, id); return "Title of " + id, nil },
+		SaveFile: func(dir, name string) (string, bool, error) {
+			if f.save == nil {
+				return "", false, errors.New("no file window here") // the line is asked for instead
+			}
+			return f.save(dir, name)
+		},
 		SessionFile: filepath.Join(f.dir, "plan.mvd"),
 		SaveDir:     f.dir,
 		DecisionLog: filepath.Join(f.dir, "decisions.jsonl"),
@@ -341,7 +348,10 @@ func TestTheFileWindowOfTheSystemOpensTheFileItReturns(t *testing.T) {
 	if err := playlistfile.Save(target, playlistfile.File{Entries: f.app().editor.rows}); err != nil {
 		t.Fatal(err)
 	}
-	f.press("z")
+	f.press("home", "z")
+	if f.app().editor.rows[0].Decision != "" {
+		t.Fatal("the decision should be undone before the file is opened")
+	}
 
 	var started string
 	f.pick = func(start string) (string, bool, error) { started = start; return target, true, nil }
@@ -352,7 +362,7 @@ func TestTheFileWindowOfTheSystemOpensTheFileItReturns(t *testing.T) {
 	if f.app().editor.mode != editorBrowsing {
 		t.Error("no line should be asked for when the system's window is used")
 	}
-	if got := f.app().editor.rows[1].Decision; got != playlistfile.DecisionConfirmed {
+	if got := f.app().editor.rows[0].Decision; got != playlistfile.DecisionConfirmed {
 		t.Errorf("the chosen file should be open, decision %q", got)
 	}
 
@@ -407,5 +417,34 @@ func TestTheEditorHasAnOutlineForScreenReaders(t *testing.T) {
 	out := f.app().Outline()
 	if len(out.Items) != 3 || !out.Items[0].Selected || out.ItemsLabel != "Songs" || len(out.Keys) == 0 {
 		t.Errorf("outline %+v", out)
+	}
+}
+
+func TestTheSaveWindowOfTheSystemWritesTheFileItReturns(t *testing.T) {
+	f := newEditorFixture(t, []string{"https://a"}, samePlan())
+	f.press("ctrl+e")
+	f.planDone()
+	f.press("c")
+
+	target := filepath.Join(f.dir, "from-the-window")
+	var dir, name string
+	f.save = func(d, n string) (string, bool, error) { dir, name = d, n; return target, true, nil }
+	f.press("s")
+	if dir != f.dir || !strings.HasSuffix(name, ".mvd") {
+		t.Errorf("the window should offer the saved plans folder and a .mvd name, got %q and %q", dir, name)
+	}
+	if f.app().editor.mode != editorBrowsing {
+		t.Error("no line should be asked for when the system's window is used")
+	}
+	saved, err := playlistfile.Load(target + ".mvd")
+	if err != nil || len(saved.Entries) != 3 || saved.Entries[0].Decision != playlistfile.DecisionConfirmed {
+		t.Fatalf("saved %+v, %v", saved, err)
+	}
+
+	// Cancelling writes nothing.
+	f.save = func(string, string) (string, bool, error) { return "", false, nil }
+	f.press("s")
+	if left, _ := filepath.Glob(filepath.Join(f.dir, "*.mvd")); len(left) != 2 { // the one from the window and the session file
+		t.Errorf("a cancelled window should write nothing, files: %v", left)
 	}
 }

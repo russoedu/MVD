@@ -44,6 +44,9 @@ type Host struct {
 	// PickFile is the operating system's own open-file window, which the editor's open
 	// key shows; nil to ask for the file on the screen's bottom line.
 	PickFile func(start string) (string, bool, error)
+	// SaveFile is the operating system's own save-file window, which the editor's save
+	// key shows; nil to ask for the path on the screen's bottom line.
+	SaveFile func(dir, name string) (string, bool, error)
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -74,6 +77,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				Open:         openurl.Open,
 				Describe:     host.Describe,
 				PickFile:     host.PickFile,
+				SaveFile:     host.SaveFile,
 				SessionFile:  filepath.Join(appDir, "plan"+playlistfile.Extension),
 				SaveDir:      filepath.Join(appDir, "plans"),
 				DecisionLog:  filepath.Join(appDir, "editor-decisions.jsonl"),

@@ -31,6 +31,10 @@ type EditorHost struct {
 	// and returns the file chosen; chosen is false when the person cancelled. Without
 	// it, the file is asked for on the screen's bottom line.
 	PickFile func(start string) (path string, chosen bool, err error)
+	// SaveFile shows the operating system's own save-file window, starting in dir with
+	// name offered, and returns the path chosen; chosen is false when the person
+	// cancelled. Without it, the path is asked for on the screen's bottom line.
+	SaveFile func(dir, name string) (path string, chosen bool, err error)
 	// SessionFile is where the review in progress is kept after every change, so it
 	// can be brought back the next time.
 	SessionFile string

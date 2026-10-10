@@ -138,6 +138,9 @@ func run(movedFrom string, askToMove bool, review string) error {
 		PickFile: func(start string) (string, bool, error) {
 			return folderdialog.Dialog{}.PickFile(ctx, start, "mvd", "MVD review")
 		},
+		SaveFile: func(dir, name string) (string, bool, error) {
+			return folderdialog.Dialog{}.SaveFile(ctx, dir, name, "mvd", "MVD review")
+		},
 		Uninstall:  terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop),

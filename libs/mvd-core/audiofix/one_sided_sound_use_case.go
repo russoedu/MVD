@@ -31,38 +31,15 @@ func FFmpegFor(ytDlpPath string) string {
 	return ""
 }
 
-// Repair looks at the sound of the file at path and, when only one side plays, rewrites
-// the file so the audible channel plays on both sides. The picture is copied as it is.
-// It returns true when the file was rewritten, and leaves the file alone on any error.
-func Repair(ctx context.Context, ffmpeg, path string) (bool, error) {
+// OneSided reports whether the file's sound plays on one side only: a stereo track
+// whose other channel is silent. The file is only read.
+func OneSided(ctx context.Context, ffmpeg, path string) (bool, error) {
 	levels, err := channelLevels(ctx, ffmpeg, path)
 	if err != nil {
 		return false, err
 	}
-	silent, ok := SilentChannel(levels)
-	if !ok {
-		return false, nil
-	}
-
-	audible := 1 - silent
-	ext := filepath.Ext(path)
-	tmp := strings.TrimSuffix(path, ext) + ".mvd-fixing" + ext
-	args := []string{"-hide_banner", "-nostats", "-y", "-i", path, "-map", "0", "-map_metadata", "0",
-		"-c", "copy", "-c:a", audioCodecFor(ext), "-b:a", "192k",
-		"-af", fmt.Sprintf("pan=stereo|c0=c%d|c1=c%d", audible, audible), tmp}
-	cmd := exec.CommandContext(ctx, ffmpeg, args...)
-	procwindow.Hide(cmd)
-	var out bytes.Buffer
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		_ = os.Remove(tmp)
-		return false, fmt.Errorf("ffmpeg could not rewrite the sound: %s", lastLine(out.String()))
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return false, err
-	}
-	return true, nil
+	_, oneSided := SilentChannel(levels)
+	return oneSided, nil
 }
 
 // channelLevels asks ffmpeg for the RMS level of each channel of the first sound track.
@@ -76,17 +53,6 @@ func channelLevels(ctx context.Context, ffmpeg, path string) ([]float64, error) 
 		return nil, fmt.Errorf("ffmpeg could not read the sound: %s", lastLine(out.String()))
 	}
 	return ParseChannelLevels(out.String()), nil
-}
-
-// audioCodecFor is the codec a file of this kind holds its sound in once it is rewritten.
-func audioCodecFor(ext string) string {
-	switch strings.ToLower(ext) {
-	case ".mp3":
-		return "libmp3lame"
-	case ".webm", ".opus", ".ogg":
-		return "libopus"
-	}
-	return "aac"
 }
 
 func lastLine(text string) string {

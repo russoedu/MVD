@@ -167,9 +167,13 @@ func (m editorModel) Update(msg tea.Msg) (editorModel, tea.Cmd) {
 	case editorFilePickedMsg:
 		m.picking = false
 		switch {
-		case msg.err != nil:
+		case msg.err != nil && msg.save:
 			// The window could not be shown: the name is typed instead.
+			return m.ask(inputSave, "Save as: ", m.defaultSavePath())
+		case msg.err != nil:
 			return m.ask(inputLoad, "Open the file: ", m.host.SaveDir)
+		case msg.chosen && msg.save:
+			return m.saveFile(msg.path)
 		case msg.chosen:
 			return m.loadFile(msg.path)
 		}
@@ -322,6 +326,9 @@ func (m editorModel) handleKey(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
 	case "d":
 		return m.download()
 	case "s":
+		if m.host.SaveFile != nil {
+			return m.pickSaveFile()
+		}
 		return m.ask(inputSave, "Save as: ", m.defaultSavePath())
 	case "l":
 		if m.host.PickFile != nil {
@@ -501,15 +508,7 @@ func (m editorModel) submitInput(text string) (editorModel, tea.Cmd) {
 		if text == "" {
 			return m, nil
 		}
-		if filepath.Ext(text) == "" {
-			text += playlistfile.Extension
-		}
-		if err := playlistfile.Save(text, playlistfile.File{Entries: m.rows}); err != nil {
-			m.flash("cannot save: " + err.Error())
-			return m, nil
-		}
-		m.flash("saved " + text)
-		return m, nil
+		return m.saveFile(text)
 
 	case inputLoad:
 		if text == "" {
@@ -525,6 +524,32 @@ type editorFilePickedMsg struct {
 	path   string
 	chosen bool
 	err    error
+	// save is true for the answer of the save-file window.
+	save bool
+}
+
+// pickSaveFile opens the system's save-file window and waits for it in the background.
+func (m editorModel) pickSaveFile() (editorModel, tea.Cmd) {
+	m.picking = true
+	pick := m.host.SaveFile
+	dir, name := filepath.Split(m.defaultSavePath())
+	return m, func() tea.Msg {
+		path, chosen, err := pick(filepath.Clean(dir), name)
+		return editorFilePickedMsg{path: path, chosen: chosen, err: err, save: true}
+	}
+}
+
+// saveFile writes the review to a .mvd file.
+func (m editorModel) saveFile(path string) (editorModel, tea.Cmd) {
+	if filepath.Ext(path) == "" {
+		path += playlistfile.Extension
+	}
+	if err := playlistfile.Save(path, playlistfile.File{Entries: m.rows}); err != nil {
+		m.flash("cannot save: " + err.Error())
+		return m, nil
+	}
+	m.flash("saved " + path)
+	return m, nil
 }
 
 // pickFile opens the system's open-file window and waits for it in the background.

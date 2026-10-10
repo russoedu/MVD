@@ -2,6 +2,7 @@ package official
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -21,7 +22,7 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 	var uploads []SearchResult
 	seen := map[string]bool{}
 	for _, res := range results {
-		if !seen[res.ID] && isUploadOfTheSong(res, song) {
+		if !seen[res.ID] && isUploadOfTheSong(res, song) && !slices.Contains(song.Rejected, res.ID) {
 			seen[res.ID] = true
 			uploads = append(uploads, res)
 		}
