@@ -18,6 +18,8 @@ func (m appModel) Outline() ScreenOutline {
 	switch {
 	case m.stopping:
 		return ScreenOutline{Title: "MVD · Stopping the downloads"}
+	case m.editing && !m.downloading:
+		return m.editor.Outline()
 	case m.downloading:
 		return m.download.Outline()
 	default:

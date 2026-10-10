@@ -12,19 +12,30 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/deps"
+	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/openurl"
 	"youtube-downloader/libs/mvd-core/plain"
+	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/runner"
 	"youtube-downloader/libs/mvd-core/sourcelist"
 	"youtube-downloader/libs/mvd-core/tui"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
 func main() {
 	noTUI := flag.Bool("no-tui", false, "plain log output instead of the interactive screens")
+	edit := flag.String("edit", "", "open the playlist editor on a playlist address or a saved .mvd file; a .mvd file given by itself does the same")
 	flag.Parse()
+
+	review := *edit
+	if review == "" && flag.NArg() == 1 && strings.EqualFold(filepath.Ext(flag.Arg(0)), playlistfile.Extension) {
+		review = flag.Arg(0)
+	}
 
 	deps.Ensure()
 
@@ -59,70 +70,87 @@ func main() {
 	}
 
 	if tui.Enabled(*noTUI) {
-		runInteractive(ytDlpPath, cfg, cfgPath, listPath, urls, created)
+		runInteractive(ytDlpPath, cfg, cfgPath, listPath, urls, created, appDir, review)
 		return
 	}
 	runHeadless(ytDlpPath, cfg, cfgPath, listPath, urls, created)
 }
 
-// runInteractive loops between the setup screens and a download run.
-func runInteractive(ytDlpPath string, cfg config.Config, cfgPath, listPath string, urls []string, created bool) {
+// runInteractive runs the app model: the setup screens, the playlist editor and the
+// download screen, one after the other, until the person quits.
+func runInteractive(ytDlpPath string, cfg config.Config, cfgPath, listPath string, urls []string, created bool, appDir, review string) {
 	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	openConfig := created
-	for {
-		res, err := tui.RunSetup(tui.SetupInput{
-			Cfg: cfg, URLs: urls, CfgPath: cfgPath, ListPath: listPath, OpenConfig: openConfig,
-		})
-		openConfig = false
-		if err != nil {
-			fmt.Printf("Interface error: %v\n", err)
-			return
-		}
-		cfg, urls = res.Cfg, res.URLs
-		if res.Action == tui.ActionQuit {
-			return
-		}
-		if len(urls) == 0 {
-			continue
-		}
-		if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
-			fmt.Printf("Cannot create output directory %s: %v\n", cfg.OutputDir, err)
-			continue
-		}
-
+	// Nothing is printed while the screens are up; the engine writes its own log file.
+	quiet := func(string, ...interface{}) {}
+	startEngine := func(build func(context.Context) (*engine.Engine, error)) (tui.Run, error) {
 		runCtx, cancel := context.WithCancel(appCtx)
-		eng, err := runner.BuildEngine(runCtx, ytDlpPath, cfg, urls, func(f string, a ...interface{}) {
-			fmt.Printf(f+"\n", a...)
-		})
+		eng, err := build(runCtx)
 		if err != nil {
 			cancel()
-			fmt.Printf("Error: %v\n", err)
-			continue
+			return nil, err
 		}
-		done := make(chan struct{})
-		go func() { eng.Run(runCtx); close(done) }()
-
-		state, _ := tui.RunDownload(runCtx, eng)
-		cancel()
-		for range eng.Events() {
-		}
-		<-done
-
-		if state != nil {
-			t := state.Tally()
-			if t.Total > 0 && t.Queued == 0 && t.Running == 0 {
-				if err := sourcelist.Clear(listPath); err != nil {
-					fmt.Printf("Could not clear the saved list: %v\n", err)
-				}
-				urls = nil
-			}
-		}
-		if appCtx.Err() != nil {
-			return
-		}
+		run := &engineRun{Engine: eng, cancel: cancel, done: make(chan struct{})}
+		go func() { eng.Run(runCtx); close(run.done) }()
+		return run, nil
 	}
+
+	in := tui.AppInput{
+		Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: cfgPath, ListPath: listPath, OpenConfig: created},
+		Start: func(cfg config.Config, urls []string) (tui.Run, error) {
+			if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
+				return nil, fmt.Errorf("cannot create the output directory %s: %w", cfg.OutputDir, err)
+			}
+			return startEngine(func(ctx context.Context) (*engine.Engine, error) {
+				return runner.BuildEngine(ctx, ytDlpPath, cfg, urls, quiet)
+			})
+		},
+		Editor: tui.EditorHost{
+			Plan: func(cfg config.Config, urls []string) (tui.Run, error) {
+				return startEngine(func(ctx context.Context) (*engine.Engine, error) {
+					return runner.BuildPlanEngine(ctx, ytDlpPath, cfg, urls, quiet)
+				})
+			},
+			PlanDownload: func(cfg config.Config, plan []engine.PlannedEntry) (tui.Run, error) {
+				if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
+					return nil, fmt.Errorf("cannot create the output directory %s: %w", cfg.OutputDir, err)
+				}
+				return startEngine(func(ctx context.Context) (*engine.Engine, error) {
+					return runner.BuildPlanDownloadEngine(ctx, ytDlpPath, cfg, plan, quiet)
+				})
+			},
+			Open: openurl.Open,
+			Describe: func(videoID string) (string, error) {
+				return ytdlp.VideoTitle(appCtx, ytDlpPath, videoID, nil)
+			},
+			SessionFile: filepath.Join(appDir, "plan"+playlistfile.Extension),
+			SaveDir:     filepath.Join(appDir, "plans"),
+			DecisionLog: filepath.Join(appDir, "editor-decisions.jsonl"),
+		},
+	}
+	if review != "" {
+		in.Setup.URLs, in.ReviewOnStart = []string{review}, true
+	}
+
+	if err := tui.RunApp(appCtx, in); err != nil && appCtx.Err() == nil {
+		fmt.Printf("Interface error: %v\n", err)
+	}
+}
+
+// engineRun is a run the app model can close: Close cancels it and waits until the engine
+// has stopped and its events are drained.
+type engineRun struct {
+	*engine.Engine
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+func (r *engineRun) Close() {
+	r.cancel()
+	for range r.Events() {
+	}
+	<-r.done
 }
 
 // runHeadless downloads the saved list without any screens.

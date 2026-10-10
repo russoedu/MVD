@@ -68,33 +68,79 @@ func (r *Runs) Start(parent context.Context, ytDlpPath string, logf func(string,
 			cancel()
 			return nil, err
 		}
-		ledger := newFailureLedger(func(playlist int) string {
-			if sources := eng.Sources(); playlist < len(sources) {
-				return sources[playlist].URL
-			}
-			return ""
-		})
-		run := &engineRun{
-			Engine: eng,
-			cancel: cancel,
-			ledger: ledger,
-			events: watchEvents(eng.Events(), ledger, r.onFailure),
-			done:   make(chan struct{}),
-		}
-		run.release = func() {
-			r.mu.Lock()
-			defer r.mu.Unlock()
-			if r.current == run {
-				r.current = nil
-			}
-		}
-		go func() { eng.Run(ctx); close(run.done) }()
+		return r.launch(ctx, cancel, eng, true), nil
+	}
+}
 
+// StartPlan starts a run that lists, names and picks and downloads nothing, for the
+// playlist editor. It is not counted as busy: nothing is being downloaded.
+func (r *Runs) StartPlan(parent context.Context, ytDlpPath string, logf func(string, ...interface{})) tui.RunStarter {
+	return func(cfg config.Config, urls []string) (tui.Run, error) {
+		ctx, cancel := context.WithCancel(parent)
+		eng, err := runner.BuildPlanEngine(ctx, ytDlpPath, cfg, urls, logf)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		return r.launch(ctx, cancel, eng, false), nil
+	}
+}
+
+// StartPlanDownload starts the download of what the playlist editor chose.
+func (r *Runs) StartPlanDownload(parent context.Context, ytDlpPath string, logf func(string, ...interface{})) tui.PlanDownloadStarter {
+	return func(cfg config.Config, plan []engine.PlannedEntry) (tui.Run, error) {
+		if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
+			return nil, fmt.Errorf("cannot create the download folder %s: %w", cfg.OutputDir, err)
+		}
+		ctx, cancel := context.WithCancel(parent)
+		eng, err := runner.BuildPlanDownloadEngine(ctx, ytDlpPath, cfg, plan, logf)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		return r.launch(ctx, cancel, eng, true), nil
+	}
+}
+
+// launch runs an engine and returns the run the app model closes. When track is true the
+// run is the current one: its failures are tried again after an update, and it counts as
+// busy while it downloads.
+func (r *Runs) launch(ctx context.Context, cancel context.CancelFunc, eng *engine.Engine, track bool) tui.Run {
+	ledger := newFailureLedger(func(playlist int) string {
+		if sources := eng.Sources(); playlist < len(sources) {
+			return sources[playlist].URL
+		}
+		return ""
+	})
+	onFailure := r.onFailure
+	if !track {
+		onFailure = nil
+	}
+	run := &engineRun{
+		Engine: eng,
+		cancel: cancel,
+		ledger: ledger,
+		events: watchEvents(eng.Events(), ledger, onFailure),
+		done:   make(chan struct{}),
+	}
+	run.release = func() {
+		if !track {
+			return
+		}
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		if r.current == run {
+			r.current = nil
+		}
+	}
+	go func() { eng.Run(ctx); close(run.done) }()
+
+	if track {
 		r.mu.Lock()
 		r.current = run
 		r.mu.Unlock()
-		return run, nil
 	}
+	return run
 }
 
 // engineRun is a download run the app model can close: Close cancels it and waits

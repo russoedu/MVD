@@ -57,6 +57,8 @@ func hintKeyMsg(key string) (tea.KeyPressMsg, bool) {
 		return tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl}, true
 	case "ctrl+o":
 		return tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl}, true
+	case "ctrl+e":
+		return tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl}, true
 	case "ctrl+r":
 		return tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}, true
 	case "ctrl+q":

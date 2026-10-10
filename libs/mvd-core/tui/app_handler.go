@@ -17,6 +17,8 @@ type SetupAction int
 const (
 	ActionQuit SetupAction = iota
 	ActionStart
+	// ActionReview plans the list and lets the person check it before downloading.
+	ActionReview
 )
 
 // SetupInput seeds the setup screens.
@@ -142,6 +144,10 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case listStart:
 			m.saveList()
 			m.result = SetupResult{Action: ActionStart, Cfg: m.cfg, URLs: m.list.urls()}
+			return m, m.finish()
+		case listReview:
+			m.saveList()
+			m.result = SetupResult{Action: ActionReview, Cfg: m.cfg, URLs: m.list.urls()}
 			return m, m.finish()
 		case listPrefs:
 			m.saveList()

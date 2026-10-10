@@ -148,7 +148,7 @@ Config and the download list live in your OS preferences folder, created on firs
 | macOS | `~/Library/Application Support/mvd/` |
 | Linux | `~/.config/mvd/` |
 
-It holds `config.conf` (settings), `list.txt` (your URLs), `official-videos.json` (the official videos already found, so a second run asks nobody; delete it to search again) and `cookies.txt` (the exported browser cookies, private — keep it safe). You normally never touch these by hand; edit everything in the app. A legacy `setup.conf`/`downloads.conf` next to the binary is imported once on first run.
+It holds `config.conf` (settings), `list.txt` (your URLs), `plan.mvd` (the review you were doing, so you can pick it up later), `official-videos.json` (the official videos already found, so a second run asks nobody; delete it to search again) and `cookies.txt` (the exported browser cookies, private — keep it safe). You normally never touch these by hand; edit everything in the app. A legacy `setup.conf`/`downloads.conf` next to the binary is imported once on first run.
 
 ### Screens and keys
 
@@ -158,7 +158,7 @@ It holds `config.conf` (settings), `list.txt` (your URLs), `official-videos.json
   <img src="assets/screenshots/advanced.png" alt="The advanced screen" width="360">
 </p>
 
-- **List** — paste/type URLs, one per line. `Ctrl+S` start · `Ctrl+P` preferences · `Ctrl+R` reset · `Ctrl+Q`/`Esc` quit. (Ctrl here because Return makes a new line.)
+- **List** — paste/type URLs, one per line. `Ctrl+S` start · `Ctrl+E` review before downloading (see below) · `Ctrl+P` preferences · `Ctrl+R` reset · `Ctrl+Q`/`Esc` quit. (Ctrl here because Return makes a new line.)
 - **Preferences** — `↑↓` move · `Enter` edit/toggle · `a` advanced · `c` colours · `s` save · `Esc` cancel. Booleans toggle on Enter; quality/merge/cookies open a radio selector; the output and log folders open a folder navigator (`↑↓` move, `→` open, `←` up, `n` new folder, `Enter` choose, `Esc` cancel).
 - **Advanced** — raw extra yt-dlp args, parallel fragments and auto-retry. `s` save · `Esc` back.
 - **Colours** — the eight interface colours, each with a swatch. `Enter` edit (`#rgb` or `#rrggbb`, applied as soon as you accept it) · `d` default · `s` save · `Esc` back. Save on the preferences screen to keep them.
@@ -227,6 +227,44 @@ What leaves your computer for this: the song's title and artist go to YouTube (a
 Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_index)s` and the other playlist fields of `output_template` are filled in from the playlist listing and files land exactly where a playlist download would put them.
 
 The lookup depends on pages and endpoints YouTube can change without notice, so a weekly check watches it (`.github/workflows/youtube-check.yml`, the program is `tools/youtube-check`). It looks up every song of a playlist kept for the purpose (the repository variable `YT_CHECK_PLAYLIST`, 50 songs or more) against the real YouTube, without the cache, and compares the answers with the ones recorded in `tools/youtube-check/baseline.json` (record them with `go run ./tools/youtube-check -playlist <url> -record` and read what it recorded before committing). A few songs answering differently is normal, since videos get removed and blocked; when more than a tenth of them do, it opens or updates an issue labelled `youtube-change` with a table of what differs, and, when the `ANTHROPIC_API_KEY` secret is set, starts Claude Code, which may only investigate, commit under `libs/mvd-core/official` and open a draft pull request; it never merges. Without the playlist variable or the recorded answers the check does nothing.
+
+### Reviewing a playlist before downloading (the playlist editor)
+
+When you would rather check what MVD chose than trust it, press **ctrl+e** ("review") on the list instead of ctrl+s. MVD does everything except the download: it lists the playlist, names every song and picks the version it would download, then shows you the result, song by song.
+
+```
+ MVD · Review before downloading  ·  49 songs · 12 to download · 30 not reviewed · 7 downloaded
+ ▸ ✓ official  Armand Van Helden - You Don't Know Me          youtube.com/watch?v=-bsONE-kZwI
+   · better    Stardust - Music Sounds Better With You        youtube.com/watch?v=hRvrj_diWYQ
+   ↻ chosen    Modjo - Lady (Hear Me Tonight)  →  Modjo - Lady (Official Video)
+   ✗ original  Some Song (live)
+ ──────────────────────────────────────────────────────────────────────────────────────────
+ Playlist   90s UK Dance Hits  ·  1 of 49
+ In list    You Don't Know Me (Radio Edit)  ·  Armand Van Helden - Topic  https://www.youtube.com/watch?v=rnlp_avexYQ
+ Proposed   official  https://www.youtube.com/watch?v=-bsONE-kZwI  ·  official video by "London Records"
+ Your pick  confirmed
+```
+
+For each song you see what the playlist has, what MVD proposes and why, with the address of the video (the address is a link where your terminal supports links, and **o** opens it in your browser; **v** opens the upload that is in the playlist). Then you decide:
+
+| Key | Does |
+|---|---|
+| `c` | confirm what was proposed, and go to the next song |
+| `r` | replace it with a video you found: paste its address and MVD takes that one |
+| `u` | take the upload that is in the playlist, as it is |
+| `x` | skip the song |
+| `z` | undo your choice |
+| `a` | confirm every song nobody has decided on |
+| `d` | download |
+| `s` / `l` | save the review to a file / open a saved one |
+| `esc` | back to the list |
+
+**Download** takes the songs you confirmed, replaced or took the original of. When some were not looked at, MVD asks once: skip them (`y`), or download them as proposed too (`a`). Songs that were downloaded are marked, and are skipped from then on.
+
+That is what makes it possible to do a long playlist **in small chunks**:
+
+- The review is kept after every change. The next time you review a playlist, MVD asks whether to bring the previous review along; the songs you already decided on and downloaded come back as they were.
+- **Save** writes the review to a `.mvd` file (a compressed text file, one song per line) that you can keep, send or open on another machine. Open it with **l**, or put its path on the list (a line ending in `.mvd`), or start MVD with `mvd -edit playlist.mvd` (`mvd-tui -edit playlist.mvd` in the terminal app).
 
 ---
 
