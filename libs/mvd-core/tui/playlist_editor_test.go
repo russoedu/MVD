@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +41,7 @@ type editorFixture struct {
 	handed    []engine.PlannedEntry
 	described []string
 	opened    []string
+	pick      func(start string) (string, bool, error)
 }
 
 func newEditorFixture(t *testing.T, urls []string, plan []engine.PlannedEntry) *editorFixture {
@@ -55,7 +57,13 @@ func newEditorFixture(t *testing.T, urls []string, plan []engine.PlannedEntry) *
 			f.handed = plan
 			return f.download, nil
 		},
-		Open:        func(url string) error { f.opened = append(f.opened, url); return nil },
+		Open: func(url string) error { f.opened = append(f.opened, url); return nil },
+		PickFile: func(start string) (string, bool, error) {
+			if f.pick == nil {
+				return "", false, errors.New("no file window here") // the line is asked for instead
+			}
+			return f.pick(start)
+		},
 		Describe:    func(id string) (string, error) { f.described = append(f.described, id); return "Title of " + id, nil },
 		SessionFile: filepath.Join(f.dir, "plan.mvd"),
 		SaveDir:     f.dir,
@@ -321,6 +329,43 @@ func TestSaveAndOpenAPlanFile(t *testing.T) {
 	f.m = drive(t, f.m, key("enter"))
 	if got := f.app().editor.rows[1].Decision; got != playlistfile.DecisionConfirmed {
 		t.Errorf("the saved decisions should be back, got %q", got)
+	}
+}
+
+func TestTheFileWindowOfTheSystemOpensTheFileItReturns(t *testing.T) {
+	f := newEditorFixture(t, []string{"https://a"}, samePlan())
+	f.press("ctrl+e")
+	f.planDone()
+	f.press("c", "c")
+	target := filepath.Join(f.dir, "chunk.mvd")
+	if err := playlistfile.Save(target, playlistfile.File{Entries: f.app().editor.rows}); err != nil {
+		t.Fatal(err)
+	}
+	f.press("z")
+
+	var started string
+	f.pick = func(start string) (string, bool, error) { started = start; return target, true, nil }
+	f.press("l")
+	if started != f.dir {
+		t.Errorf("the window should start in the folder of saved plans, started in %q", started)
+	}
+	if f.app().editor.mode != editorBrowsing {
+		t.Error("no line should be asked for when the system's window is used")
+	}
+	if got := f.app().editor.rows[1].Decision; got != playlistfile.DecisionConfirmed {
+		t.Errorf("the chosen file should be open, decision %q", got)
+	}
+
+	// Cancelling the window leaves the review as it was.
+	f.press("x")
+	before := append([]playlistfile.Entry(nil), f.app().editor.rows...)
+	f.pick = func(string) (string, bool, error) { return "", false, nil }
+	f.press("l")
+	after := f.app().editor.rows
+	for i := range before {
+		if before[i] != after[i] {
+			t.Errorf("a cancelled window should change nothing, row %d went from %+v to %+v", i, before[i], after[i])
+		}
 	}
 }
 

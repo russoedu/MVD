@@ -97,7 +97,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.leaveEditor()
 	case editorDownloadMsg:
 		return m.startEditorDownload(msg)
-	case editorEvMsg, editorEvClosed, editorTickMsg, editorDescribedMsg:
+	case editorEvMsg, editorEvClosed, editorTickMsg, editorDescribedMsg, editorFilePickedMsg:
 		if !m.editing {
 			return m, nil
 		}

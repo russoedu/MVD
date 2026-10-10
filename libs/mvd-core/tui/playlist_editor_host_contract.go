@@ -27,6 +27,10 @@ type EditorHost struct {
 	// Describe returns the title of a YouTube video, so a video the person picked can be
 	// named; it may be slow.
 	Describe func(videoID string) (string, error)
+	// PickFile shows the operating system's own open-file window, starting in start,
+	// and returns the file chosen; chosen is false when the person cancelled. Without
+	// it, the file is asked for on the screen's bottom line.
+	PickFile func(start string) (path string, chosen bool, err error)
 	// SessionFile is where the review in progress is kept after every change, so it
 	// can be brought back the next time.
 	SessionFile string
