@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"youtube-downloader/libs/mvd-core/appdir"
+	"youtube-downloader/libs/mvd-core/audiofix"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/cookies"
 	"youtube-downloader/libs/mvd-core/engine"
@@ -98,6 +99,7 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 		AutoRetry:           cfg.AutoRetry,
 		PlanOnly:            planOnly,
 		Plan:                plan,
+		AfterDownload:       repairOneSidedSound(ytDlpPath),
 	}
 	// Videos are downloaded and merged out of the library and moved in once complete.
 	if appDir, err := appdir.Dir(); err == nil {
@@ -128,4 +130,20 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 	opts.Tracks = newPlaylistTrackSource(searcher, resolver.Sources)
 
 	return engine.New(opts)
+}
+
+// repairOneSidedSound is what runs on every finished file: an upload whose sound plays
+// on one side only has the audible side copied to both. It does nothing without ffmpeg.
+func repairOneSidedSound(ytDlpPath string) func(ctx context.Context, path string) (string, error) {
+	ffmpeg := audiofix.FFmpegFor(ytDlpPath)
+	if ffmpeg == "" {
+		return nil
+	}
+	return func(ctx context.Context, path string) (string, error) {
+		fixed, err := audiofix.Repair(ctx, ffmpeg, path)
+		if err != nil || !fixed {
+			return "", err
+		}
+		return "the sound played on one side only; the audible side now plays on both", nil
+	}
 }
