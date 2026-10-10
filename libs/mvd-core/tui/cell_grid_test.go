@@ -70,7 +70,7 @@ func gridOf(s string, w int) [][]cell {
 			i = j
 		case r == 0x1b && i+1 < len(runes) && runes[i+1] == ']':
 			j := i + 2
-			for j < len(runes) && runes[j] != 0x07 && !(runes[j] == 0x1b && j+1 < len(runes) && runes[j+1] == '\\') {
+			for j < len(runes) && runes[j] != 0x07 && (runes[j] != 0x1b || j+1 >= len(runes) || runes[j+1] != '\\') {
 				j++
 			}
 			if j < len(runes) && runes[j] == 0x1b {
