@@ -25,13 +25,10 @@ func ParseChannelLevels(report string) []float64 {
 			continue
 		}
 		text := strings.TrimSpace(after)
-		switch {
-		case text == "-inf":
+		if text == "-inf" {
 			levels = append(levels, math.Inf(-1))
-		default:
-			if value, err := strconv.ParseFloat(text, 64); err == nil {
-				levels = append(levels, value)
-			}
+		} else if value, err := strconv.ParseFloat(text, 64); err == nil {
+			levels = append(levels, value)
 		}
 	}
 	return levels
