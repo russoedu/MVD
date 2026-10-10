@@ -392,3 +392,26 @@ func TestAVideoFoundWantingIsLeftOutWhenTheSongIsSearchedAgain(t *testing.T) {
 		t.Errorf("got %+v, want the next best video without the rejected one", got)
 	}
 }
+
+func TestAPlainVideoIsNamedByTheMusicCardOfItsPageBeforeAnyDatabase(t *testing.T) {
+	card := `<script>var ytInitialData = {"x":{"horizontalCardListRenderer":{"cards":[{"videoAttributeViewModel":{"title":"I Swear (Extended Club Mix)","subtitle":"Bill Power"}}]}}};</script>`
+	f := &fakeYouTube{pages: map[string]string{"up1": card}}
+	_, res := f.server(t)
+	search := &scriptedSearch{answers: map[string][]SearchResult{
+		"Bill Power": {{ID: "official1", Title: "Bill Power - I Swear (Official Video)", Channel: "Bill Power", Views: 1_000_000}},
+	}}
+	res.Searcher = search.search
+	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC", Artist: "Trance Mundi"}, nil }
+	// A database that would name it wrongly is never asked.
+	res.Sources = Sources{Identify: func(string, string) (string, string, bool) { t.Error("a database was asked"); return "", "", false }}
+
+	got, why := res.ResolveLog("up1", "As 7 Melhores Volume 1- Bill Power - I Swear", "Trance Mundi", 0, nil)
+	if got != "official1" {
+		t.Fatalf("got %q (%s), want the official video of the song the card names", got, why)
+	}
+	for _, query := range search.asked {
+		if !strings.Contains(query, "Bill Power") || strings.Contains(query, "Melhores") {
+			t.Errorf("searched for %q", query)
+		}
+	}
+}

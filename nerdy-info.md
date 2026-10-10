@@ -362,7 +362,9 @@ Listing runs up to `list_workers` playlists at once. Each finished list gives th
 
 ## 7. Stage 2, name
 
-The goal: from the **title and channel of an upload**, say which song it is and who sings it, in the words of a music database. Titles are untidy:
+**First, the Music card.** Before any guessing, the watch page of a plain video is read for the card YouTube shows under the description ("Music, 1 song": the song's title, its artist, its album), which names the song exactly. Written in the page as `videoAttributeViewModel` inside `ytInitialData` (`SongFromWatchPage`), it is taken when the page has exactly one distinct song. When it is there, **no other source is asked**, and the search for the official video starts from its title and artist. It is what names an upload such as `As 7 Melhores Volume 1- Bill Power - I Swear` (channel Trance Mundi), whose title puts a compilation's name before the artist and the song and defeats every reading below. It costs one fetch of the watch page per plain video; an art track needs none, since YouTube Music already names it. A video that names several songs (a mix, a compilation) falls through to the readings below.
+
+If there is no card, the goal is: from the **title and channel of an upload**, say which song it is and who sings it, in the words of a music database. Titles are untidy:
 
 | Upload title | Channel | What is where |
 |---|---|---|
@@ -888,4 +890,5 @@ For comparison, before the official lookup knew how to name songs, 19 of the 49 
 | **Every official pick needs a picture that moves, the band's own included** | A tag, a link in a description and an artist's channel all point at "official audio" uploads that are one picture; the picture is what tells them from a video. The still one is only the last choice. |
 | **A one-sided track is searched again, never repaired** | Copying one channel to both changes the music, and re-encoding it is a loss; another upload of the song has the whole recording. |
 | **The file windows are the system's own** | They remember the folders the person uses, ask before replacing a file, and look like the rest of the machine. |
+| **The Music card names a song before any database does** | It is YouTube's own answer for that very video, exact where a reading of an untidy title is a guess. |
 | **Merge when it is green** | Every request is an issue, every issue a branch, every branch a pull request that CI must pass; merging is the last step, not a ceremony. |

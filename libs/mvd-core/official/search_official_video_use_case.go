@@ -10,6 +10,18 @@ import "fmt"
 // about the song.
 func (r *Resolver) songOfUpload(videoID, title, channel string, durationSec int, artTrack bool, logf func(format string, a ...interface{})) (song Song, named bool) {
 	song = Song{Title: title, Artists: artistNames(ArtistFromChannel(channel)), DurationSec: durationSec, OwnID: videoID, OwnIsStill: artTrack}
+	// The Music card of the watch page names the song exactly, whatever the upload's own
+	// title puts around it ("As 7 Melhores Volume 1- Bill Power - I Swear"): when it is
+	// there no other source is asked.
+	if !artTrack {
+		if page, err := r.get(r.WatchBase + videoID); err == nil {
+			if artist, name, ok := SongFromWatchPage(page); ok {
+				logf("[official] %s: the music card of the video names it %q by %q", videoID, name, artist)
+				song.Title, song.Artists = name, artistNames(artist)
+				return song, true
+			}
+		}
+	}
 	if r.Sources.Identify != nil && title != "" {
 		if artist, name, ok := r.Sources.Identify(title, channel); ok {
 			logf("[official] %s: a music database names it %q by %q", videoID, name, artist)
