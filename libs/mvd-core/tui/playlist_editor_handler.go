@@ -395,11 +395,7 @@ func (m editorModel) confirm() (editorModel, tea.Cmd) {
 		m.flash("nothing was found for this song: replace it, take the original or skip it")
 		return m, nil
 	}
-	next, cmd := m.decide(playlistfile.DecisionConfirmed, "", "")
-	if next.sel < len(next.rows)-1 {
-		next.move(1)
-	}
-	return next, cmd
+	return m.decide(playlistfile.DecisionConfirmed, "", "")
 }
 
 // confirmAll accepts what was proposed for every song nobody has decided on.
@@ -438,6 +434,11 @@ func (m editorModel) decide(decision, chosenID, chosenTitle string) (editorModel
 	m.rows[m.sel].Decision = decision
 	m.rows[m.sel].ChosenID, m.rows[m.sel].ChosenTitle = chosenID, chosenTitle
 	m.autosave()
+	// A decision hands the person the next song, as confirming always has; undoing one
+	// stays where it is.
+	if decision != playlistfile.DecisionNone && m.sel < len(m.rows)-1 {
+		m.move(1)
+	}
 
 	var cmd tea.Cmd
 	if decision == playlistfile.DecisionReplaced && m.host.Describe != nil {
