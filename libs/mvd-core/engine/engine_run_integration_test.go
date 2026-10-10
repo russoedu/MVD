@@ -98,6 +98,12 @@ func stubYtDlp(args []string) int {
 	fmt.Println("MVD|512|1024|NA|2048.0|1")
 	fmt.Println("MVD|1024|1024|NA|2048.0|0")
 	fmt.Printf("[Merger] Merging formats into \"%s.mp4\"\n", id)
+	// --print-to-file after_move:filepath FILE
+	for i, a := range args {
+		if a == "--print-to-file" && i+2 < len(args) {
+			_ = os.WriteFile(args[i+2], []byte(id+".mp4\n"), 0o644)
+		}
+	}
 	return 0
 }
 

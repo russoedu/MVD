@@ -54,7 +54,12 @@ type Options struct {
 	MergeOutputFormat   string
 	ConcurrentFragments int // yt-dlp --concurrent-fragments per video; 0 skips
 	ExtraArgs           []string
-	Workers             int    // videos in flight across all playlists
+	// AfterDownload, when set, is called with the path of each file a download produced,
+	// and may rewrite it (the sound of a file that plays on one side only, say). The
+	// note it returns, when not empty, is written to the log; an error is logged and
+	// never fails the download.
+	AfterDownload func(ctx context.Context, path string) (note string, err error)
+	Workers       int    // videos in flight across all playlists
 	LogPath             string // "" disables the log file
 	Resolver            OfficialResolver
 	// Tracks, when set, lists the playlists of another service and finds the
@@ -810,14 +815,20 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	if e.opts.PartialDir != "" {
 		options.OutputTemplate, options.HomeDir, options.TempDir = template, e.opts.OutputDir, e.opts.PartialDir
 	}
-	args := ytdlp.DownloadArgs(options,
-		"--newline",
-		"--progress-template", ytdlp.ProgressTemplate,
-		"--no-playlist",
-		"https://www.youtube.com/watch?v="+target,
-	)
+	trailing := []string{"--newline", "--progress-template", ytdlp.ProgressTemplate, "--no-playlist"}
+	// yt-dlp writes the path of every finished file here, for AfterDownload.
+	pathsFile := ""
+	if e.opts.AfterDownload != nil {
+		if f, err := os.CreateTemp("", "mvd-paths-*.txt"); err == nil {
+			pathsFile = f.Name()
+			_ = f.Close()
+			defer func() { _ = os.Remove(pathsFile) }()
+			trailing = append(trailing, "--print-to-file", "after_move:filepath", pathsFile)
+		}
+	}
+	args := ytdlp.DownloadArgs(options, append(trailing, "https://www.youtube.com/watch?v="+target)...)
 
-	return ytdlp.Download(ctx, e.opts.YtDlp, args, func(line string) {
+	err := ytdlp.Download(ctx, e.opts.YtDlp, args, func(line string) {
 		if p, ok := ytdlp.ParseProgressLine(line); ok {
 			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA, Parts: partsInFlight(p, e.opts.ConcurrentFragments)})
 			return
@@ -834,6 +845,31 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 		}
 		e.log(pl, eid, "%s", line)
 	})
+	if err == nil && pathsFile != "" {
+		e.afterDownload(ctx, pl, eid, pathsFile)
+	}
+	return err
+}
+
+// afterDownload hands each file yt-dlp reported to Options.AfterDownload.
+func (e *Engine) afterDownload(ctx context.Context, pl int, eid int, pathsFile string) {
+	data, err := os.ReadFile(pathsFile)
+	if err != nil {
+		return
+	}
+	for _, path := range strings.Split(string(data), "\n") {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			continue
+		}
+		note, err := e.opts.AfterDownload(ctx, path)
+		switch {
+		case err != nil:
+			e.log(pl, eid, "[after download] %s: %v", filepath.Base(path), err)
+		case note != "":
+			e.log(pl, eid, "[after download] %s: %s", filepath.Base(path), note)
+		}
+	}
 }
 
 func (e *Engine) finishOne() {

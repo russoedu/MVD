@@ -3,6 +3,9 @@ package engine
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"sort"
+	"sync"
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/ytdlp"
@@ -118,5 +121,32 @@ func TestARunFromAPlanDownloadsTheVideosItNamesAndLooksForNothing(t *testing.T) 
 	}
 	if st := states[1]; st.State != StateDone || st.TargetID != "aaaaaaaaaa2" {
 		t.Errorf("the original: %+v", st)
+	}
+}
+
+func TestEveryDownloadedFileIsHandedToAfterDownload(t *testing.T) {
+	eng := stubEngine(t, false, "https://youtube.com/playlist?list=A")
+	var mu sync.Mutex
+	var seen []string
+	eng.opts.AfterDownload = func(_ context.Context, path string) (string, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, filepath.Base(path))
+		return "fixed", nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	collect(t, eng)
+	cancel()
+	<-done
+
+	mu.Lock()
+	defer mu.Unlock()
+	sort.Strings(seen)
+	// The third song of the playlist fails, so two files were produced.
+	if len(seen) != 2 || seen[0] != "aaaaaaaaaa1.mp4" || seen[1] != "aaaaaaaaaa2.mp4" {
+		t.Errorf("files handed over: %v", seen)
 	}
 }
