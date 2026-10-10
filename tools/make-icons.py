@@ -2,7 +2,7 @@
 
     python tools/make-icons.py
 
-The source is assets/mvd-icon-1024.png when it exists (a 1024 x 1024 picture gives the
+The source is assets/mvd-logo.png when it exists (a 1024 x 1024 picture gives the
 sharpest result), else assets/mvd-icon.png (128 x 128: sizes up to 128 are exact, larger
 ones are scaled up and a little soft).
 
@@ -34,12 +34,12 @@ PNG_SIZES = [16, 32, 48, 64, 128, 256, 512, 1024]
 
 
 def source() -> Image.Image:
-    for name in ("assets/mvd-icon-1024.png", "assets/mvd-icon.png"):
+    for name in ("assets/mvd-logo.png", "assets/mvd-icon.png"):
         path = os.path.join(ROOT, name)
         if os.path.exists(path):
             print("source:", name)
             return Image.open(path).convert("RGBA")
-    sys.exit("no source picture: put assets/mvd-icon-1024.png (or mvd-icon.png) in place")
+    sys.exit("no source picture: put assets/mvd-logo.png (or mvd-icon.png) in place")
 
 
 def scaled(image: Image.Image, size: int) -> Image.Image:

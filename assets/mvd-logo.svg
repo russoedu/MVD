@@ -1,23 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg width="100%" height="100%" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g id="mvd-logo" transform="matrix(1.326883,0,0,1.923844,0,0)">
-        <rect x="0" y="0" width="771.733" height="532.268" style="fill:none;"/>
-        <clipPath id="_clip1">
-            <rect x="0" y="0" width="771.733" height="532.268"/>
-        </clipPath>
-        <g clip-path="url(#_clip1)">
-            <g transform="matrix(12.058332,0,0,8.316683,-11002.268895,-17947.418183)">
-                <rect x="912.42" y="2158.002" width="64" height="64"/>
-            </g>
-            <g transform="matrix(43.308765,0,0,18.620068,-42689.160116,-40590.646389)">
-                <g transform="matrix(0.333946,0,0,1,657.273739,0)">
-                    <text x="986.817px" y="2206.293px" style="font-family:'PrestigeEliteStd-Bd', 'Prestige Elite Std', monospace;font-weight:700;font-size:40.199px;fill:rgb(85,255,85);">M</text>
+    <g transform="matrix(1,0,0,1,-1496.576202,0)">
+        <g id="mvd-logo" transform="matrix(1.326883,0,0,1.923844,1496.576202,0)">
+            <rect x="0" y="0" width="771.733" height="532.268" style="fill:none;"/>
+            <clipPath id="_clip1">
+                <rect x="0" y="0" width="771.733" height="532.268"/>
+            </clipPath>
+            <g clip-path="url(#_clip1)">
+                <g transform="matrix(12.058332,0,0,8.316683,-11002.268895,-17947.418183)">
+                    <rect x="912.42" y="2158.002" width="64" height="64"/>
                 </g>
-            </g>
-            <g transform="matrix(2.744609,0,0,1.581064,-2201.441857,-3007.021461)">
-                <g transform="matrix(0.333946,0,0,1,621.338123,0)">
-                    <text x="932.864px" y="2212.247px" style="font-family:'LiberationMono-Bold', 'Liberation Mono', monospace;font-weight:700;font-size:322.915px;fill:rgb(170,0,170);">V<tspan x="1136.332px " y="2212.247px ">D</tspan></text>
+                <g transform="matrix(43.308765,0,0,18.620068,-42689.160116,-40590.646389)">
+                    <path d="M987.085,2182.174L987.085,2184.425L988.025,2184.425L988.025,2204.042L987.085,2204.042L987.085,2206.293L989.972,2206.293L989.972,2204.042L988.857,2204.042L988.857,2186.918L988.884,2186.918L990.844,2199.821L992.804,2186.918L992.831,2186.918L992.831,2204.042L991.73,2204.042L991.73,2206.293L994.603,2206.293L994.603,2204.042L993.663,2204.042L993.663,2184.425L994.603,2184.425L994.603,2182.174L992.683,2182.174L990.844,2194.193L989.005,2182.174L987.085,2182.174Z" style="fill:rgb(85,255,85);fill-rule:nonzero;"/>
+                </g>
+                <g transform="matrix(2.744609,0,0,1.581064,-2201.441857,-3007.021461)">
+                    <path d="M973.197,2212.247L957.454,2212.247L933.022,1999.546L949.239,1999.546L961.508,2121.743C962.456,2130.993 963.755,2144.973 965.404,2163.684L966.51,2150.124L969.195,2121.743L981.411,1999.546L997.471,1999.546L973.197,2212.247Z" style="fill:rgb(170,0,170);fill-rule:nonzero;"/>
+                </g>
+                <g transform="matrix(2.744609,0,0,1.581064,-2201.441857,-3007.021461)">
+                    <path d="M1061.311,2104.241C1061.311,2138.929 1058.608,2165.602 1053.202,2184.26C1047.796,2202.918 1040.091,2212.247 1030.087,2212.247L1007.92,2212.247L1007.92,1999.546L1026.928,1999.546C1038.442,1999.546 1047.05,2008.192 1052.755,2025.483C1058.459,2042.775 1061.311,2069.027 1061.311,2104.241ZM1045.673,2104.241C1045.673,2080.38 1044.172,2062.957 1041.171,2051.972C1038.169,2040.988 1033.334,2035.496 1026.664,2035.496L1023.453,2035.496L1023.453,2176.298L1028.823,2176.298C1040.056,2176.298 1045.673,2152.279 1045.673,2104.241Z" style="fill:rgb(170,0,170);fill-rule:nonzero;"/>
                 </g>
             </g>
         </g>
