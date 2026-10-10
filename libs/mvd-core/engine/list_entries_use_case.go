@@ -69,6 +69,11 @@ func (e *Engine) findTrack(ctx context.Context, en *engineEntry) bool {
 	e.mu.Lock()
 	en.targetID = id
 	en.official = official
+	if official {
+		en.reason = "the official video found by searching for the song"
+	} else {
+		en.reason = "the best match found by searching for the song"
+	}
 	e.mu.Unlock()
 	return true
 }

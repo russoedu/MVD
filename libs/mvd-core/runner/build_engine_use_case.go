@@ -18,6 +18,22 @@ import (
 // BuildEngine resolves cookies and builds the engine for cfg and urls. logf
 // receives human-readable progress (cookie discovery, etc.); it may be nil.
 func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, logf func(string, ...interface{})) (*engine.Engine, error) {
+	return build(ctx, ytDlpPath, cfg, urls, nil, false, logf)
+}
+
+// BuildPlanEngine builds an engine that lists, names and picks but downloads nothing:
+// its Plan says what would be downloaded for each song.
+func BuildPlanEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, logf func(string, ...interface{})) (*engine.Engine, error) {
+	return build(ctx, ytDlpPath, cfg, urls, nil, true, logf)
+}
+
+// BuildPlanDownloadEngine builds an engine that downloads exactly what a plan names, with
+// no lookup of another version.
+func BuildPlanDownloadEngine(ctx context.Context, ytDlpPath string, cfg config.Config, plan []engine.PlannedEntry, logf func(string, ...interface{})) (*engine.Engine, error) {
+	return build(ctx, ytDlpPath, cfg, nil, plan, false, logf)
+}
+
+func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, plan []engine.PlannedEntry, planOnly bool, logf func(string, ...interface{})) (*engine.Engine, error) {
 	log := func(format string, a ...interface{}) {
 		if logf != nil {
 			logf(format, a...)
@@ -27,8 +43,11 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 	// A config written for an older yt-dlp may have flags in a form it no longer accepts.
 	extraArgs := ytdlp.NormalizeArgs(cfg.ExtraArgs)
 	probe := ""
-	if len(urls) > 0 {
+	switch {
+	case len(urls) > 0:
 		probe = urls[0]
+	case len(plan) > 0:
+		probe = plan[0].PlaylistURL
 	}
 
 	// Cookies: a pinned browser is re-exported; auto mode fills the file once
@@ -77,6 +96,8 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		PickWorkers:         cfg.PickWorkers,
 		LogPath:             cfg.LogFile(),
 		AutoRetry:           cfg.AutoRetry,
+		PlanOnly:            planOnly,
+		Plan:                plan,
 	}
 	// Videos are downloaded and merged out of the library and moved in once complete.
 	if appDir, err := appdir.Dir(); err == nil {
@@ -96,9 +117,11 @@ func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls 
 		resolver.OfficialOnly = cfg.OfficialVideo == config.OfficialOnly
 		opts.Resolver = engineResolver{resolver}
 	}
-	if cfg.OfficialVideo == config.OfficialOnly {
+	// A plan already holds the choices, so nothing is left out of it for lacking an official
+	// video; and a plan is not a run that lists what it could not find.
+	if cfg.OfficialVideo == config.OfficialOnly && len(plan) == 0 {
 		opts.OfficialOnly = true
-		if cfg.SaveNotFound {
+		if cfg.SaveNotFound && !planOnly {
 			opts.NotFoundFile = filepath.Join(cfg.OutputDir, "not-found.csv")
 		}
 	}

@@ -17,6 +17,9 @@ const (
 	// StateNotFound is a song with no official video, when only official videos are
 	// wanted: it is not downloaded.
 	StateNotFound
+	// StatePlanned is a song a plan-only run has chosen the version of: it is not
+	// downloaded, the plan says what would be.
+	StatePlanned
 )
 
 func (s EntryState) String() string {
@@ -37,11 +40,13 @@ func (s EntryState) String() string {
 		return "failed"
 	case StateNotFound:
 		return "not found"
+	case StatePlanned:
+		return "planned"
 	}
 	return "unknown"
 }
 
 // Finished reports whether the state is terminal.
 func (s EntryState) Finished() bool {
-	return s == StateDone || s == StateDuplicate || s == StateFailed || s == StateNotFound
+	return s == StateDone || s == StateDuplicate || s == StateFailed || s == StateNotFound || s == StatePlanned
 }

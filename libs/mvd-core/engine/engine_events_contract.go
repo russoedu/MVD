@@ -48,6 +48,12 @@ type (
 		Official bool   // true when TargetID is the official video
 		Better   bool   // true when TargetID is a better quality upload, not the official video
 		Err      string // set for StateFailed
+		// OwnOfficial is true when the upload itself is the official video.
+		OwnOfficial bool
+		// Reason says why the version was chosen, as the lookup put it; Artist and Title
+		// are the song as a music database named it. Each is empty when not known.
+		Reason        string
+		Artist, Title string
 	}
 	// EvProgress carries a download progress tick.
 	EvProgress struct {

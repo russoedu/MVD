@@ -29,8 +29,13 @@ type Entry struct {
 	TargetID   string
 	Official   bool
 	Better     bool
-	Err        string
-	Percent    float64
+	// OwnOfficial, Reason and the named song are what the lookup learned: see EvEntryState.
+	OwnOfficial bool
+	Reason      string
+	// NamedArtist and NamedTitle are the song as a music database named it ("" when none did).
+	NamedArtist, NamedTitle string
+	Err                     string
+	Percent                 float64
 	Downloaded int64
 	Total      int64
 	Speed      float64
@@ -42,7 +47,7 @@ type Entry struct {
 
 // Tally holds the global counters shown in the header.
 type Tally struct {
-	Total, Queued, Running, Done, Official, Better, Duplicate, NotFound, Failed, Retried int
+	Total, Queued, Running, Done, Official, Better, Duplicate, NotFound, Planned, Failed, Retried int
 	// Downloading is how many files are coming in now, Parts how many parts of them
 	// at once, and Speed how fast, all of them together, in bytes per second.
 	Downloading, Parts int
@@ -116,6 +121,13 @@ func (s *State) Apply(ev interface{}) int {
 		en.TargetID = e.TargetID
 		en.Official = e.Official
 		en.Better = e.Better
+		en.OwnOfficial = e.OwnOfficial
+		if e.Reason != "" {
+			en.Reason = e.Reason
+		}
+		if e.Artist != "" {
+			en.NamedArtist, en.NamedTitle = e.Artist, e.Title
+		}
 		en.Err = e.Err
 		if e.State == engine.StateQueued {
 			en.Percent, en.Downloaded, en.Total, en.Speed, en.ETA = 0, 0, 0, 0, -1
@@ -187,6 +199,8 @@ func (s *State) Tally() Tally {
 			t.Duplicate++
 		case engine.StateNotFound:
 			t.NotFound++
+		case engine.StatePlanned:
+			t.Planned++
 		case engine.StateFailed:
 			t.Failed++
 		}

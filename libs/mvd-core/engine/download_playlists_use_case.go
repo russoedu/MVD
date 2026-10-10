@@ -36,6 +36,13 @@ type Options struct {
 	// goes quiet.
 	OfficialOnly bool
 	NotFoundFile string
+	// PlanOnly runs the listing, naming and picking stages and stops there: each song
+	// ends as StatePlanned (or not found, or failed) and Plan() says what would be
+	// downloaded. Nothing is downloaded.
+	PlanOnly bool
+	// Plan, when set, is what to download: the playlists are not listed and no version is
+	// looked for, each entry goes straight to the download stage with the video it names.
+	Plan []PlannedEntry
 	// ListWorkers, NameWorkers and PickWorkers are how many playlists are listed, uploads
 	// identified and versions picked at the same time, ahead of the downloads (Workers).
 	// Each stage has its own queue, so a slow one holds the others back no more than it
@@ -72,6 +79,9 @@ type engineEntry struct {
 	named    *namedSong
 	official bool
 	better   bool   // replaced by an upload of better quality, not the official video
+	reason   string // why the version was chosen, as the lookup put it
+	// fixed is true for an entry that came from a plan: the version is not looked for again.
+	fixed bool
 	track    *Track // set when the entry is a song with no video yet
 	err      string
 	deferred bool // failed with a transient error, eligible for the sweep
@@ -137,6 +147,7 @@ func New(opts Options) (*Engine, error) {
 		e.sources = append(e.sources, PlaylistSource{Index: i, URL: u})
 		e.toList = append(e.toList, i)
 	}
+	e.planSources()
 	return e, nil
 }
 
@@ -263,6 +274,8 @@ func (e *Engine) Run(ctx context.Context) {
 		e.process(ctx, id)
 		e.finishOne()
 	})
+
+	e.seedPlan()
 
 	// Producer: list playlists, a few at a time, feeding the pipeline as each one
 	// comes back so downloads start while later playlists are still listed.
@@ -478,7 +491,10 @@ func (e *Engine) setState(en *engineEntry, st EntryState, err string) {
 	e.mu.Lock()
 	en.state = st
 	en.err = err
-	ev := EvEntryState{Entry: en.info.ID, State: st, TargetID: en.targetID, Official: en.official, Better: en.better, Err: err}
+	ev := EvEntryState{Entry: en.info.ID, State: st, TargetID: en.targetID, Official: en.official, Better: en.better, Err: err, OwnOfficial: en.ownOfficial, Reason: en.reason}
+	if en.named != nil {
+		ev.Artist, ev.Title = en.named.artist, en.named.title
+	}
 	e.mu.Unlock()
 	e.emit(ev)
 }
@@ -505,6 +521,12 @@ func (e *Engine) claimTarget(playlist int, target string, entryID int) bool {
 func (e *Engine) nameStage(ctx context.Context, id int) {
 	e.mu.Lock()
 	en := e.entries[id]
+	if en.fixed {
+		// The version came from a plan, and stays whatever the lookup would say now.
+		e.mu.Unlock()
+		e.queue.Push(id)
+		return
+	}
 	en.targetID = en.info.VideoID
 	en.official = false
 	en.better = false
@@ -590,6 +612,11 @@ func (e *Engine) advance(en *engineEntry) {
 		e.finishOne()
 		return
 	}
+	if e.opts.PlanOnly {
+		e.setState(en, StatePlanned, "")
+		e.finishOne()
+		return
+	}
 	e.queue.Push(en.info.ID)
 }
 
@@ -666,15 +693,17 @@ func (e *Engine) entryLog(pl, eid int) func(format string, a ...interface{}) {
 func (e *Engine) applyResolution(en *engineEntry, res Resolution) {
 	pl, eid := en.info.Playlist, en.info.ID
 	if res.VideoID == "" {
+		e.mu.Lock()
+		en.reason = res.Reason
 		if res.OwnOfficial {
-			e.mu.Lock()
 			en.ownOfficial = true
-			e.mu.Unlock()
 		}
+		e.mu.Unlock()
 		e.log(pl, eid, "kept original (%s)", res.Reason)
 		return
 	}
 	e.mu.Lock()
+	en.reason = res.Reason
 	en.targetID = res.VideoID
 	en.official = res.Official
 	en.better = !res.Official
