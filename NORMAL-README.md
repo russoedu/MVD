@@ -234,10 +234,11 @@ When you would rather check what MVD chose than trust it, press **ctrl+e** ("rev
 
 ```
  MVD · Review before downloading  ·  49 songs · 12 to download · 30 not reviewed · 7 downloaded
- ▸ ✓ official  Armand Van Helden - You Don't Know Me          youtube.com/watch?v=-bsONE-kZwI
-   · better    Stardust - Music Sounds Better With You        youtube.com/watch?v=hRvrj_diWYQ
-   ↻ chosen    Modjo - Lady (Hear Me Tonight)  →  Modjo - Lady (Official Video)
-   ✗ original  Some Song (live)
+    Review    Artist              Song                         Video                             Replaced by
+ ▸ ✓ official  Armand Van Helden   You Don't Know Me            You Don't Know Me (Radio Edit)
+   · better    Stardust            Music Sounds Better With You Music Sounds Better With You
+   ↻ chosen    Modjo               Lady (Hear Me Tonight)       Modjo - Lady (Hear Me Tonight)    Modjo - Lady (Official Video)
+   ✗ original  Some Artist         Some Song (live)             Some Song (live)
  ──────────────────────────────────────────────────────────────────────────────────────────
  Playlist   90s UK Dance Hits  ·  1 of 49
  In list    You Don't Know Me (Radio Edit)  ·  Armand Van Helden - Topic  https://www.youtube.com/watch?v=rnlp_avexYQ
@@ -256,10 +257,12 @@ For each song you see what the playlist has, what MVD proposes and why, with the
 | `z` | undo your choice |
 | `a` | confirm every song nobody has decided on |
 | `d` | download |
-| `s` / `l` | save the review to a file / open a saved one |
+| `s` / `l` | save the review to a file / open a saved one (the window of your system opens, as in any other program) |
 | `esc` | back to the list |
 
 **Download** takes the songs you confirmed, replaced or took the original of. When some were not looked at, MVD asks once: skip them (`y`), or download them as proposed too (`a`). Songs that were downloaded are marked, and are skipped from then on.
+
+MVD never changes the music. If a replacement video turns out to play on one side only (some uploads are like that), it is removed and the song is searched for again without it; when nothing else is found, the upload of your playlist is kept.
 
 That is what makes it possible to do a long playlist **in small chunks**:
 

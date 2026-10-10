@@ -3,6 +3,7 @@ package official
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -194,6 +195,21 @@ func (r *Resolver) Pick(identified Identified, logFn func(format string, a ...in
 		return Version{ID: best, Reason: bestWhy}
 	}
 	return Version{Reason: identified.reason}
+}
+
+// PickWithout is Pick for a song whose earlier choices were downloaded and found
+// wanting: those videos are never chosen, and whatever an earlier run remembered for
+// the song is not trusted. The answer that was already known is kept only when it is
+// not one of them.
+func (r *Resolver) PickWithout(identified Identified, rejected []string, logFn func(format string, a ...interface{})) Version {
+	if identified.Done {
+		if slices.Contains(rejected, identified.Version.ID) {
+			return Version{Reason: "the video the description links was rejected"}
+		}
+		return identified.Version
+	}
+	identified.song.Rejected = rejected
+	return r.Pick(identified, logFn)
 }
 
 // logWith makes a log function that may be nil, and ends every message with a newline.

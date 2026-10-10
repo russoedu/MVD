@@ -77,6 +77,7 @@ func (e *Engine) planSources() {
 			ownOfficial: p.Kind == KindOwnOfficial,
 			reason:      p.Reason,
 			fixed:       true,
+			userChose:   p.Kind == KindChosen,
 		}
 		if p.Artist != "" && p.Title != "" {
 			en.named = &namedSong{artist: p.Artist, title: p.Title}

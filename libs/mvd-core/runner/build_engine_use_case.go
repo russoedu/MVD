@@ -99,7 +99,7 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 		AutoRetry:           cfg.AutoRetry,
 		PlanOnly:            planOnly,
 		Plan:                plan,
-		AfterDownload:       repairOneSidedSound(ytDlpPath),
+		CheckDownload:       checkOneSidedSound(ytDlpPath),
 	}
 	// Videos are downloaded and merged out of the library and moved in once complete.
 	if appDir, err := appdir.Dir(); err == nil {
@@ -132,18 +132,19 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 	return engine.New(opts)
 }
 
-// repairOneSidedSound is what runs on every finished file: an upload whose sound plays
-// on one side only has the audible side copied to both. It does nothing without ffmpeg.
-func repairOneSidedSound(ytDlpPath string) func(ctx context.Context, path string) (string, error) {
+// checkOneSidedSound is what runs on every replacement video that was downloaded: a file
+// whose sound plays on one side only is a defect of that upload, and the song is
+// searched for again without it. The file is only read; nothing is done without ffmpeg.
+func checkOneSidedSound(ytDlpPath string) func(ctx context.Context, path string) (string, error) {
 	ffmpeg := audiofix.FFmpegFor(ytDlpPath)
 	if ffmpeg == "" {
 		return nil
 	}
 	return func(ctx context.Context, path string) (string, error) {
-		fixed, err := audiofix.Repair(ctx, ffmpeg, path)
-		if err != nil || !fixed {
+		oneSided, err := audiofix.OneSided(ctx, ffmpeg, path)
+		if err != nil || !oneSided {
 			return "", err
 		}
-		return "the sound played on one side only; the audible side now plays on both", nil
+		return "the sound plays on one side only", nil
 	}
 }

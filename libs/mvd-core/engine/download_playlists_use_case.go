@@ -2,10 +2,12 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -54,11 +56,11 @@ type Options struct {
 	MergeOutputFormat   string
 	ConcurrentFragments int // yt-dlp --concurrent-fragments per video; 0 skips
 	ExtraArgs           []string
-	// AfterDownload, when set, is called with the path of each file a download produced,
-	// and may rewrite it (the sound of a file that plays on one side only, say). The
-	// note it returns, when not empty, is written to the log; an error is logged and
-	// never fails the download.
-	AfterDownload func(ctx context.Context, path string) (note string, err error)
+	// CheckDownload, when set, is called with the path of each file a replacement video
+	// produced. A problem it returns (the sound plays on one side only, say) sends the
+	// song to the search again, without that video; an error only means it could not be
+	// checked. The file itself is never changed.
+	CheckDownload func(ctx context.Context, path string) (problem string, err error)
 	Workers       int    // videos in flight across all playlists
 	LogPath             string // "" disables the log file
 	Resolver            OfficialResolver
@@ -87,6 +89,10 @@ type engineEntry struct {
 	reason   string // why the version was chosen, as the lookup put it
 	// fixed is true for an entry that came from a plan: the version is not looked for again.
 	fixed bool
+	// rejected are the videos that were downloaded and found wanting, never taken again.
+	rejected []string
+	// userChose is true when the person picked the video themselves: it is kept as it is.
+	userChose bool
 	track    *Track // set when the entry is a song with no video yet
 	err      string
 	deferred bool // failed with a transient error, eligible for the sweep
@@ -749,6 +755,19 @@ func (e *Engine) process(ctx context.Context, id int) {
 			return
 		}
 
+		// The video came out with a defect: another one is looked for.
+		var bad *rejectedDownload
+		if errors.As(err, &bad) {
+			e.searchAgain(en, bad)
+			if !e.claimTarget(pl, en.targetID, eid) {
+				e.log(pl, eid, "%s already downloaded for this playlist, skipping duplicate", en.targetID)
+				e.setState(en, StateDuplicate, "")
+				return
+			}
+			e.setState(en, StateDownloading, "")
+			continue
+		}
+
 		// The official video could not be downloaded: fall back to the art
 		// track itself rather than losing the entry.
 		if (en.official || en.better) && en.info.VideoID != "" {
@@ -816,9 +835,10 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 		options.OutputTemplate, options.HomeDir, options.TempDir = template, e.opts.OutputDir, e.opts.PartialDir
 	}
 	trailing := []string{"--newline", "--progress-template", ytdlp.ProgressTemplate, "--no-playlist"}
-	// yt-dlp writes the path of every finished file here, for AfterDownload.
+	// yt-dlp writes the path of every finished file here, for CheckDownload. Only a
+	// replacement is checked: the playlist's own upload is what there is to fall back to.
 	pathsFile := ""
-	if e.opts.AfterDownload != nil {
+	if e.opts.CheckDownload != nil && target != en.info.VideoID && en.info.VideoID != "" && !en.userChose {
 		if f, err := os.CreateTemp("", "mvd-paths-*.txt"); err == nil {
 			pathsFile = f.Name()
 			_ = f.Close()
@@ -846,30 +866,78 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 		e.log(pl, eid, "%s", line)
 	})
 	if err == nil && pathsFile != "" {
-		e.afterDownload(ctx, pl, eid, pathsFile)
+		return e.checkDownloaded(ctx, pl, eid, target, pathsFile)
 	}
 	return err
 }
 
-// afterDownload hands each file yt-dlp reported to Options.AfterDownload.
-func (e *Engine) afterDownload(ctx context.Context, pl int, eid int, pathsFile string) {
+// rejectedDownload is the answer of download when the file came out but is not one to
+// keep: the file is removed and another version is looked for.
+type rejectedDownload struct {
+	problem string
+	files   []string
+}
+
+func (r *rejectedDownload) Error() string { return r.problem }
+
+// checkDownloaded hands each file yt-dlp reported to Options.CheckDownload. A problem
+// with any of them rejects the download.
+func (e *Engine) checkDownloaded(ctx context.Context, pl, eid int, target, pathsFile string) error {
 	data, err := os.ReadFile(pathsFile)
 	if err != nil {
-		return
+		return nil
 	}
+	var files []string
+	problem := ""
 	for _, path := range strings.Split(string(data), "\n") {
 		path = strings.TrimSpace(path)
 		if path == "" {
 			continue
 		}
-		note, err := e.opts.AfterDownload(ctx, path)
+		files = append(files, path)
+		found, err := e.opts.CheckDownload(ctx, path)
 		switch {
 		case err != nil:
-			e.log(pl, eid, "[after download] %s: %v", filepath.Base(path), err)
-		case note != "":
-			e.log(pl, eid, "[after download] %s: %s", filepath.Base(path), note)
+			e.log(pl, eid, "[check] %s: %v", filepath.Base(path), err)
+		case found != "" && problem == "":
+			problem = found
 		}
 	}
+	if problem == "" {
+		return nil
+	}
+	return &rejectedDownload{problem: fmt.Sprintf("%s: %s", target, problem), files: files}
+}
+
+// searchAgain takes a rejected replacement out of the running: its files are removed,
+// and the song gets another version (the next best one the search finds, else the
+// playlist's own upload). It reports false when there is nothing left to try.
+func (e *Engine) searchAgain(en *engineEntry, bad *rejectedDownload) {
+	pl, eid := en.info.Playlist, en.info.ID
+	for _, path := range bad.files {
+		_ = os.Remove(path)
+	}
+
+	e.mu.Lock()
+	en.rejected = append(en.rejected, en.targetID)
+	rejected := append([]string(nil), en.rejected...)
+	identified := en.identified
+	e.mu.Unlock()
+	e.log(pl, eid, "%s was removed (%s); looking for another version", en.targetID, bad.problem)
+
+	var res Resolution
+	if picker, ok := e.opts.Resolver.(RePicker); ok && identified != nil {
+		res = picker.PickWithout(*identified, rejected, e.entryLog(pl, eid))
+	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if res.VideoID != "" && !slices.Contains(en.rejected, res.VideoID) {
+		en.targetID, en.official, en.better, en.reason = res.VideoID, res.Official, !res.Official, res.Reason
+		return
+	}
+	en.targetID, en.official, en.better = en.info.VideoID, false, false
+	en.reason = "the other versions of the song play on one side only; the playlist's own upload is kept"
 }
 
 func (e *Engine) finishOne() {

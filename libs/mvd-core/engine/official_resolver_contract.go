@@ -18,6 +18,12 @@ type OfficialResolver interface {
 	Pick(identification Identification, logf func(format string, a ...interface{})) Resolution
 }
 
+// RePicker is implemented by a resolver that can search again for a song, leaving out
+// videos that were downloaded and found wanting.
+type RePicker interface {
+	PickWithout(identification Identification, rejected []string, logf func(format string, a ...interface{})) Resolution
+}
+
 // Identification is what Identify learned about an upload, handed to Pick.
 type Identification struct {
 	// Done is true when Resolution is already the answer.

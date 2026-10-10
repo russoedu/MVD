@@ -26,6 +26,15 @@ func (r engineResolver) Pick(identification engine.Identification, logf func(for
 	return resolutionOf(r.Resolver.Pick(identified, logf))
 }
 
+// PickWithout searches again for the song, leaving out the videos that were found wanting.
+func (r engineResolver) PickWithout(identification engine.Identification, rejected []string, logf func(format string, a ...interface{})) engine.Resolution {
+	identified, ok := identification.State.(official.Identified)
+	if !ok {
+		return engine.Resolution{}
+	}
+	return resolutionOf(r.Resolver.PickWithout(identified, rejected, logf))
+}
+
 func resolutionOf(version official.Version) engine.Resolution {
 	return engine.Resolution{VideoID: version.ID, Official: version.Official, OwnOfficial: version.OwnOfficial, Reason: version.Reason}
 }

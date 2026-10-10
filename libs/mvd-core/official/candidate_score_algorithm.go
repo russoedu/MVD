@@ -3,6 +3,7 @@ package official
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -18,6 +19,9 @@ type Song struct {
 	DurationSec int
 	// OwnID is the upload the song came from, never a candidate.
 	OwnID string
+	// Rejected are videos that must not be chosen: they were downloaded and found
+	// wanting (the sound plays on one side only).
+	Rejected []string
 	// OwnIsStill is true when that upload is an art track, whose picture is a still
 	// image over the audio: only its sound counts when it is compared with the
 	// videos of the song.
@@ -90,7 +94,7 @@ func hasAny(title, original string, words []string) bool {
 // scoreCandidate scores one search result for a song. ok is false when the
 // result cannot be the song's video at all.
 func scoreCandidate(res SearchResult, song Song) (Pick, bool) {
-	if res.ID == "" || res.ID == song.OwnID || IsTopicChannel(res.Channel) {
+	if res.ID == "" || res.ID == song.OwnID || IsTopicChannel(res.Channel) || slices.Contains(song.Rejected, res.ID) {
 		return Pick{}, false
 	}
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +50,7 @@ func (c *ResolutionCache) Get(song Song) (CachedPick, bool) {
 	c.load()
 
 	pick, ok := c.entries[CacheKey(song)]
-	if !ok || c.now().Sub(pick.At) > c.ttl || pick.ID == song.OwnID {
+	if !ok || c.now().Sub(pick.At) > c.ttl || pick.ID == song.OwnID || slices.Contains(song.Rejected, pick.ID) {
 		return CachedPick{}, false
 	}
 	return pick, true
