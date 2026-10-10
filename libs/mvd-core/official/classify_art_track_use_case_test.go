@@ -33,7 +33,7 @@ func TestAnArtTrackUnderTheArtistsNameIsResolved(t *testing.T) {
 	}
 }
 
-func TestARealVideoIsLeftAloneWithoutFetchingAnything(t *testing.T) {
+func TestARealVideoIsLeftAlone(t *testing.T) {
 	f := &fakeYouTube{
 		pages: map[string]string{artTrackID: artTrackPage("-bsONE-kZwI")},
 	}
@@ -45,8 +45,10 @@ func TestARealVideoIsLeftAloneWithoutFetchingAnything(t *testing.T) {
 			t.Errorf("%s: want it left alone with the reason, got %q (%s)", tag, got, reason)
 		}
 	}
-	if f.count("watch") != 0 || f.count("oembed") != 0 {
-		t.Errorf("a real video needs no lookup, but the page was fetched %d times", f.count("watch"))
+	// Only a video that is not the artist's own is read for the song of its Music card,
+	// and nothing else of it is fetched.
+	if f.count("watch") != 1 || f.count("oembed") != 0 {
+		t.Errorf("the page was fetched %d times, want once for the card of the plain video", f.count("watch"))
 	}
 }
 
