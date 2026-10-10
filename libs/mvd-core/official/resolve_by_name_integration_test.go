@@ -264,6 +264,38 @@ func TestAVideoYouTubeMusicSaysTheArtistUploadedIsTheOfficialOne(t *testing.T) {
 	}
 }
 
+func TestAFanUploadTaggedOfficialThatDoesNotMoveIsNotTheOfficialVideo(t *testing.T) {
+	search := &scriptedSearch{answers: map[string][]SearchResult{
+		"Double You": {{ID: "real", Title: "Double You - Part Time Lover (Official Video)", Channel: "Double You", Views: 2_000_000}},
+	}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Double You", "Part Time Lover", true },
+		Static: func(id string) (bool, error) { return id == "up1", nil },
+	})
+	res.TrackInfos = func(string) (TrackInfo, error) {
+		return TrackInfo{Type: "OMV", Artist: "Double You", Title: "Part-Time Lover"}, nil
+	}
+
+	got := res.ResolveVersion("up1", "04 Double You - Part Time Lover (The Blue Album 1994)", "Double You Forever", 0, nil)
+	if got.OwnOfficial {
+		t.Fatalf("got %+v: a picture that does not move, from a fan channel, is not the official video", got)
+	}
+	if got.ID != "real" || !got.Official {
+		t.Errorf("got %+v, want the real official video", got)
+	}
+}
+
+func TestAnArtistsOwnUploadTaggedOfficialStaysEvenWhenItBarelyMoves(t *testing.T) {
+	res := resolverWith(t, &scriptedSearch{}, Sources{
+		Static: func(string) (bool, error) { return true, nil },
+	})
+	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "OMV", Artist: "Rage"}, nil }
+
+	if got := res.ResolveVersion("up1", "Rage - Run to You", "RageVEVO", 0, nil); !got.OwnOfficial {
+		t.Errorf("got %+v, want the artist's own upload kept as the official video", got)
+	}
+}
+
 func TestWhenOnlyOfficialVideosAreWantedTheBestQualityUploadIsNotLookedFor(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": fanUploads()}}
 	var probed int
