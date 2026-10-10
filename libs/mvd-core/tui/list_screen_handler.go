@@ -18,6 +18,7 @@ const (
 	listStart
 	listPrefs
 	listSongs
+	listReview
 	listQuit
 )
 
@@ -88,6 +89,11 @@ func (m listModel) update(msg tea.Msg) (listModel, tea.Cmd, listOutcome) {
 				return m, nil, listNone
 			}
 			return m, nil, listStart
+		case "ctrl+e":
+			if len(m.urls()) == 0 {
+				return m, nil, listNone
+			}
+			return m, nil, listReview
 		case "ctrl+p":
 			return m, nil, listPrefs
 		case "ctrl+o":
@@ -126,7 +132,7 @@ func (m listModel) view(width, height int) string {
 
 func (m listModel) hints() []keyHint {
 	return []keyHint{
-		{"ctrl+s", "start"}, {"ctrl+o", "songs"}, {"ctrl+p", "preferences"},
+		{"ctrl+s", "start"}, {"ctrl+o", "songs"}, {"ctrl+e", "review"}, {"ctrl+p", "preferences"},
 		{"ctrl+r", "reset"}, {"ctrl+q", "quit"},
 	}
 }

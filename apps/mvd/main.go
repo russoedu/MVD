@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"youtube-downloader/apps/mvd/appwindow"
@@ -25,6 +26,8 @@ import (
 	"youtube-downloader/apps/mvd/uninstall"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
+	"youtube-downloader/libs/mvd-core/playlistfile"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
 var version = "dev"
@@ -40,6 +43,7 @@ func main() {
 	flag.Bool("no-tray", false, "no longer used (kept for older scripts)")
 	move := flag.Bool("move", false, "ask to move the app to its own folder now, whatever was answered before")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
+	edit := flag.String("edit", "", "open the playlist editor on a playlist address or a saved .mvd file; a .mvd file given by itself does the same")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
 
@@ -53,14 +57,18 @@ func main() {
 		return
 	}
 
-	if err := run(*movedFrom, *move); err != nil {
+	review := *edit
+	if review == "" && flag.NArg() == 1 && strings.EqualFold(filepath.Ext(flag.Arg(0)), playlistfile.Extension) {
+		review = flag.Arg(0)
+	}
+	if err := run(*movedFrom, *move, review); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(movedFrom string, askToMove bool) error {
+func run(movedFrom string, askToMove bool, review string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -117,8 +125,14 @@ func run(movedFrom string, askToMove bool) error {
 	program := terminalui.NewShared(terminalui.NewModelFactory(appDir, terminalui.Files{
 		Config: terminalui.ConfigPath(appDir),
 		List:   filepath.Join(appDir, "list.txt"),
+		Review: review,
 	}, terminalui.Host{
-		Start: terminalRuns.Start(ctx, ytDlpPath, logf),
+		Start:        terminalRuns.Start(ctx, ytDlpPath, logf),
+		Plan:         terminalRuns.StartPlan(ctx, ytDlpPath, logf),
+		PlanDownload: terminalRuns.StartPlanDownload(ctx, ytDlpPath, logf),
+		Describe: func(videoID string) (string, error) {
+			return ytdlp.VideoTitle(ctx, ytDlpPath, videoID, nil)
+		},
 		// The person is at this machine, so its own folder chooser is the one to show.
 		PickFolder: func(start string) (string, bool, error) { return folderdialog.Dialog{}.Pick(ctx, start) },
 		Uninstall:  terminalui.Uninstall(removal),

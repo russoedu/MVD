@@ -210,6 +210,44 @@ flowchart LR
 | 3 Pick | `pick_workers` | 4 | Searches for the official video, else the best quality | Each step is a yt-dlp process; YouTube answers bursts with 429 and 403 |
 | 4 Download | `max_concurrent_downloads` | 4 | Downloads and merges | The user's own limit, as before |
 
+### 4.1 Plan first, download later: the playlist editor
+
+The four stages can be cut in two. A run built with `Options.PlanOnly` does stages 1 to 3 and stops: each song ends in `StatePlanned` (or `StateNotFound`), and `Engine.Plan()` returns, per song, the upload, the video it would download, its kind, the reason, and the artist and title the music databases gave it. A run built with `Options.Plan` does the opposite: it takes a list of `PlannedEntry`, never lists or looks anything up (not even on a retry: the entries are `fixed`), and sends each straight to stage 4.
+
+```mermaid
+flowchart LR
+  URL[playlist] --> PLAN["plan-only run<br/>stages 1 to 3"]
+  PLAN -->|Plan| ROWS[(rows)]
+  FILE[(".mvd file")] --> ROWS
+  ROWS --> ED{{"editor screen<br/>confirm / replace /<br/>original / skip"}}
+  ED -->|"revised rows"| DL["plan run<br/>stage 4 only"]
+  DL --> OUT[(your music folder)]
+  DL -->|"which songs finished"| ROWS
+  ROWS -->|autosave| SESSION[("plan.mvd<br/>in the app folder")]
+```
+
+| Piece | Where | What it is |
+|---|---|---|
+| Plan run | `engine` (`PlanOnly`, `Plan()`) | The first three stages, without the fourth |
+| Download run | `engine` (`Options.Plan`) | The fourth stage only, for exactly the videos a plan names |
+| Rows and file | `playlistfile` | One `Entry` per song: the upload, the proposal, the person's decision, whether it was downloaded. A `.mvd` file is gzip-compressed JSON lines, a header first (`{"mvd":1,...}`) |
+| Rules | `playlisteditor` | `Target` (what a row downloads, given its decision), `Selection` (what a download takes), `Merge` (decisions of an earlier review onto a fresh plan), `VideoID` (the address a person pasted) |
+| Screen | `tui` (`playlist_editor_*`) | The list, the panel under it, the questions; inside the app model next to the setup and download screens |
+
+Decisions and what they download:
+
+| Decision | Downloads |
+|---|---|
+| none (not reviewed) | what was proposed, only when the person says so at the download question |
+| confirmed | what was proposed |
+| replaced | the video whose address the person pasted (`KindChosen`) |
+| original | the upload that is in the playlist |
+| skipped | nothing |
+
+A row is identified by its playlist and its upload (`Entry.Key`), so a review made today still lines up with the same playlist planned tomorrow: `Merge` keeps the decision and the downloaded flag, and takes the proposal from the new plan. The review in progress is saved after every change to `plan.mvd` in the app folder; the next review offers to bring it along.
+
+**The reason log.** A build made for testing (`go build -tags mvddebug`) asks "why?" in one line whenever the person goes against a proposal (replace, take the original, skip) and appends `{song, proposed, kind, reason, decision, chosen, note}` to `editor-decisions.jsonl` in the app folder. It is a compile-time constant (`playlisteditor.DebugBuild`): published builds are made without the tag, so the question and the file do not exist in them. The file never leaves the machine; its use is reading it, finding what the algorithm got wrong, and writing a test for it. `go test -tags mvddebug ./libs/mvd-core/...` runs the tests of that path.
+
 ### How entries move
 
 An entry enters at the name queue. The stage that handles it decides where it goes next:
@@ -825,4 +863,6 @@ For comparison, before the official lookup knew how to name songs, 19 of the 49 
 | **`ResolveLog` answers with official videos only** | The weekly check must not alert on view counts. |
 | **The weekly check does not use the cache** | A remembered answer would hide a change in YouTube. |
 | **Download into a partial folder** | The library only ever holds complete files. The price is that an interrupted download is not resumed by a later run. |
+| **Plan and download are separate runs** | The editor must show proposals before anything is downloaded and then download exactly what was chosen; two small modes of one engine beat a second engine, and a retry of a planned song must not look anything up again. |
+| **The reason log is a build flag** | A question asked of every user would be noise, and a log of their choices is theirs. A constant that is false in published builds cannot be switched on by accident. |
 | **Merge when it is green** | Every request is an issue, every issue a branch, every branch a pull request that CI must pass; merging is the last step, not a ceremony. |

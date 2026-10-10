@@ -42,7 +42,7 @@ func TestSetupScreensKeyBarSettingsAndWheel(t *testing.T) {
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 
 	// Clicking "preferences" in the key bar opens the preferences.
-	m, _ = m.Update(click(30, 29))
+	m, _ = m.Update(click(48, 29))
 	if m.(setupModel).screen != screenConfig {
 		t.Fatalf("the click should open the preferences, on screen %d", m.(setupModel).screen)
 	}

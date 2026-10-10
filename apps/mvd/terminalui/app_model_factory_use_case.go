@@ -4,10 +4,14 @@
 package terminalui
 
 import (
+	"path/filepath"
+
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/openurl"
+	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/sourcelist"
 	"youtube-downloader/libs/mvd-core/tui"
 )
@@ -16,6 +20,9 @@ import (
 // terminal app and the settings page use.
 type Files struct {
 	Config, List string
+	// Review, when set, is a playlist address or a saved .mvd file the first window opens
+	// in the playlist editor, instead of on the list.
+	Review string
 }
 
 // Host is what the app needs from the machine it runs on.
@@ -29,12 +36,18 @@ type Host struct {
 	Uninstall tui.Uninstaller
 	// Move moves the app to its own folder after asking; nil to offer no move.
 	Move tui.Mover
+	// Plan and PlanDownload run the playlist editor's plan-only run and the download of
+	// what it chose; Describe names a video the person picked. Each may be nil.
+	Plan         tui.RunStarter
+	PlanDownload tui.PlanDownloadStarter
+	Describe     func(videoID string) (string, error)
 }
 
 // NewModelFactory returns what the server calls when the first window connects
 // (and again after the user quits the app from it). Each start reads the files
 // again, so a change made elsewhere since is the one it shows.
 func NewModelFactory(appDir string, files Files, host Host, logf func(string, ...interface{})) func() tea.Model {
+	review := files.Review // only the first window opens on it
 	return func() tea.Model {
 		cfg, created, err := config.LoadOrCreate(files.Config, appDir, appdir.DefaultDownloadsDir())
 		if err != nil {
@@ -43,10 +56,24 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 		}
 		tui.ApplyTheme(cfg.Colors)
 		urls, _ := sourcelist.Load(files.List)
+		reviewNow := false
+		if review != "" {
+			urls, reviewNow, review = []string{review}, true, ""
+		}
 
 		return accessibleApp{tui.NewAppModel(tui.AppInput{
-			Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
-			Start: host.Start,
+			Setup:         tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
+			Start:         host.Start,
+			ReviewOnStart: reviewNow,
+			Editor: tui.EditorHost{
+				Plan:         host.Plan,
+				PlanDownload: host.PlanDownload,
+				Open:         openurl.Open,
+				Describe:     host.Describe,
+				SessionFile:  filepath.Join(appDir, "plan"+playlistfile.Extension),
+				SaveDir:      filepath.Join(appDir, "plans"),
+				DecisionLog:  filepath.Join(appDir, "editor-decisions.jsonl"),
+			},
 		})}
 	}
 }
