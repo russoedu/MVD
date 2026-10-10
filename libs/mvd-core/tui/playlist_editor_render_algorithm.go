@@ -253,7 +253,7 @@ func (m editorModel) detail(width int) []string {
 	}
 	lines = append(lines, fit(prop, width))
 
-	lines = append(lines, fit(" "+styDim.Render("Your pick ")+" "+m.decisionText(r), width))
+	lines = append(lines, fit(" "+styDim.Render("Your pick ")+m.decisionText(r), width))
 	return lines
 }
 
