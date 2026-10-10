@@ -448,3 +448,38 @@ func TestTheSaveWindowOfTheSystemWritesTheFileItReturns(t *testing.T) {
 		t.Errorf("a cancelled window should write nothing, files: %v", left)
 	}
 }
+
+func TestEveryDecisionMovesOnToTheNextSongButUndoingStaysPut(t *testing.T) {
+	f := newEditorFixture(t, []string{"https://a"}, samePlan())
+	f.press("ctrl+e")
+	f.planDone()
+
+	f.m = drive(t, f.m, key("r"))
+	f.m = drive(t, f.m, tea.PasteMsg{Content: "https://www.youtube.com/watch?v=CHOSEN00001"})
+	f.m = drive(t, f.m, key("enter"))
+	if got := f.app().editor.sel; got != 1 {
+		t.Errorf("after replacing the selection is on %d, want 1", got)
+	}
+	if got := f.app().editor.rows[0]; got.Decision != playlistfile.DecisionReplaced || got.ChosenTitle != "Title of CHOSEN00001" {
+		t.Errorf("the first song should be the replaced one, named: %+v", got)
+	}
+
+	f.press("x")
+	if got := f.app().editor.sel; got != 2 {
+		t.Errorf("after skipping the selection is on %d, want 2", got)
+	}
+
+	// The last song has no next one: the selection stays.
+	f.press("u")
+	if got := f.app().editor.sel; got != 2 {
+		t.Errorf("on the last song the selection is on %d, want 2", got)
+	}
+
+	f.press("up", "z")
+	if got := f.app().editor.sel; got != 1 {
+		t.Errorf("undoing should stay on the song, selection on %d, want 1", got)
+	}
+	if got := f.app().editor.rows[1].Decision; got != playlistfile.DecisionNone {
+		t.Errorf("the skip should be undone, decision %q", got)
+	}
+}

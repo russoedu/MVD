@@ -250,7 +250,7 @@ For each song you see what the playlist has, what MVD proposes and why, with the
 
 | Key | Does |
 |---|---|
-| `c` | confirm what was proposed, and go to the next song |
+| `c` | confirm what was proposed |
 | `r` | replace it with a video you found: paste its address and MVD takes that one |
 | `u` | take the upload that is in the playlist, as it is |
 | `x` | skip the song |
@@ -259,6 +259,8 @@ For each song you see what the playlist has, what MVD proposes and why, with the
 | `d` | download |
 | `s` / `l` | save the review to a file / open a saved one (the window of your system opens, as in any other program) |
 | `esc` | back to the list |
+
+Every decision (`c`, `r`, `u`, `x`) moves on to the next song, so you can go through the list with one hand; `z` stays on the song it undoes.
 
 **Download** takes the songs you confirmed, replaced or took the original of. When some were not looked at, MVD asks once: skip them (`y`), or download them as proposed too (`a`). Songs that were downloaded are marked, and are skipped from then on.
 
