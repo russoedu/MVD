@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AboutThisApp } from '../about-this-app'
 import { PageHeader } from '../page-header'
 import { useCaptureBrowserShortcuts } from './capture-browser-shortcuts.hook'
+import { useOpenLinksInBrowser } from './open-links-in-browser.hook'
 
 /** Created once: a new function on every render would make the terminal reconnect. */
 const wailsSocket = createWailsSocket()
@@ -15,6 +16,7 @@ const wailsSocket = createWailsSocket()
 export function TerminalWindow () {
   const [aboutOpen, setAboutOpen] = useState(false)
   useCaptureBrowserShortcuts()
+  useOpenLinksInBrowser()
 
   return (
     <>
