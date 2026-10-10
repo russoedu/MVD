@@ -675,6 +675,8 @@ Everything the app keeps is in one app-data folder (`os.UserConfigDir()/mvd`).
 | `official-videos.json` | The resolution cache, 90 days |
 | `partial/` | Unfinished downloads, only while a run lasts |
 | `mvd-downloads.log` | Every log line of a run |
+| `install-offered` | That the person was asked to move the app, which version was put in place (`installed 0.0.54`) and the running version they said Not now to updating with (`declined 0.0.62`) |
+| `plan.mvd`, `plans/` | The review in progress, and where the editor offers to save reviews |
 
 Settings that shape the pipeline (the rest are in `NORMAL-README.md`):
 
@@ -687,6 +689,10 @@ Settings that shape the pipeline (the rest are in `NORMAL-README.md`):
 | `concurrent_fragments` | 4 | Fragments of one video fetched in parallel |
 | `download_official_music_video` | false | Turn the whole lookup on |
 | `auto_retry` | true | Immediate retries and the sweep |
+
+### Moving in and updating
+
+A release started from somewhere else (Downloads) offers once to move itself to its own folder (`apps/mvd/install`); the answer is kept in `install-offered`, and a successful install writes which version it put in place. After that the question is never asked again, **but** a start from elsewhere of a different version offers to replace the installed copy (`updateOffer`): not for a developer build, a run without a window, the copy a move just started, the installed program itself, someone who never moved the app (no program in the folders), the same version, or an older one. *Not now* is kept as `declined <version>`, so only the next release asks again. A marker written by an earlier release only says `asked`: it counts as an installed copy of unknown version. A replacement is a plain copy through a temporary name, so it fails with a message, and the app keeps running from where it is, when the installed copy is open.
 
 ### Tools
 

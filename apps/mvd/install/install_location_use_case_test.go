@@ -594,3 +594,99 @@ func TestAnOldCopyThatCannotBeRemovedIsGivenUpOnAfterTheAttempts(t *testing.T) {
 		t.Errorf("done=%v attempts=%d, want false after 5", done, attempts)
 	}
 }
+
+// installedCopy puts a program where the app's own folder would hold one, and records in
+// the marker that the person moved the app there, as an earlier run did.
+func (p *moveProbe) installedCopy(t *testing.T, marker string) installTarget {
+	t.Helper()
+	target := p.targets()[len(p.targets())-1]
+	if err := os.MkdirAll(filepath.Dir(target.Program), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target.Program, []byte("old program"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(p.env.AppDir, movedMarkerName), []byte(marker), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	return target
+}
+
+func TestADifferentVersionFromElsewhereOffersToUpdateTheInstalledCopy(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerFirst)
+	target := p.installedCopy(t, "asked\ninstalled 0.0.6\n")
+
+	if got := moveOffer(p.env); got != offerMoved {
+		t.Fatalf("outcome %v, want the installed copy replaced and started", got)
+	}
+	if len(p.installed) != 1 || p.installed[0] != target {
+		t.Errorf("installed %+v, want the copy that was there replaced", p.installed)
+	}
+	if len(p.started) != 1 || !strings.Contains(strings.Join(p.started[0].args, " "), "-moved-from="+p.env.Exe) {
+		t.Errorf("started %+v, want the installed copy started with the old path", p.started)
+	}
+	if !strings.Contains(p.questions[0], "version 0.0.6") || !strings.Contains(p.questions[0], "0.0.7") {
+		t.Errorf("the question should name both versions: %q", p.questions[0])
+	}
+	data, _ := os.ReadFile(filepath.Join(p.env.AppDir, movedMarkerName))
+	if got := parseMarker(string(data)); got.InstalledVersion != "0.0.7" {
+		t.Errorf("the marker should say which version is installed now, got %q", data)
+	}
+}
+
+func TestNotNowIsRememberedForThatVersionOnly(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerLeave)
+	p.installedCopy(t, "asked\ninstalled 0.0.6\n")
+
+	if got := moveOffer(p.env); got != offerDeclined {
+		t.Fatalf("outcome %v, want declined", got)
+	}
+	if got := moveOffer(p.env); got != offerSkipped || len(p.questions) != 1 {
+		t.Errorf("outcome %v after %d questions, want it not asked again for the same version", got, len(p.questions))
+	}
+
+	p.env.Version = "0.0.8"
+	p.answers = []question.Answer{question.AnswerLeave}
+	if moveOffer(p.env); len(p.questions) != 2 {
+		t.Errorf("a newer version should be asked about again, %d questions", len(p.questions))
+	}
+}
+
+func TestAnInstalledCopyOfAnUnknownVersionIsOfferedTheUpdate(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerFirst)
+	p.installedCopy(t, "asked\n")
+
+	if got := moveOffer(p.env); got != offerMoved {
+		t.Errorf("outcome %v, want the update offered to a copy moved by an older version", got)
+	}
+}
+
+func TestNobodyIsAskedToUpdateWhatWasNeverInstalledOrIsNewer(t *testing.T) {
+	p := newMoveProbe(t, "windows")
+	if err := os.WriteFile(filepath.Join(p.env.AppDir, movedMarkerName), []byte("asked\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := moveOffer(p.env); got != offerSkipped || len(p.questions) != 0 {
+		t.Errorf("never moved: outcome %v, %d questions", got, len(p.questions))
+	}
+
+	p = newMoveProbe(t, "windows")
+	p.installedCopy(t, "asked\ninstalled 0.0.70\n")
+	if got := moveOffer(p.env); got != offerSkipped || len(p.questions) != 0 {
+		t.Errorf("running an older version: outcome %v, %d questions", got, len(p.questions))
+	}
+}
+
+func TestAnUpdateThatCannotReplaceTheRunningCopySaysSoAndKeepsRunning(t *testing.T) {
+	p := newMoveProbe(t, "windows", question.AnswerFirst)
+	p.installedCopy(t, "asked\ninstalled 0.0.6\n")
+	p.installErrs = []error{errors.New("the copy already there cannot be replaced")}
+
+	if got := moveOffer(p.env); got != offerDeclined {
+		t.Fatalf("outcome %v, want declined", got)
+	}
+	if len(p.told) != 1 || !strings.Contains(p.told[0], "close it") || len(p.started) != 0 {
+		t.Errorf("told %v, started %v", p.told, p.started)
+	}
+}

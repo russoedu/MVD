@@ -12,7 +12,8 @@ import (
 )
 
 // movedMarkerName is the file in the app-data folder that records the person has been
-// asked to move the app, whatever they answered.
+// asked to move the app, whatever they answered, and which version was put in place (see
+// markerState).
 const movedMarkerName = "install-offered"
 
 // moveEnvironment is what moving the app needs from the machine, so that every branch
@@ -98,10 +99,14 @@ func moveOffer(env moveEnvironment) offerOutcome {
 			return offerAlreadyThere
 		}
 	} else {
-		_, markerErr := os.Stat(marker)
+		// Asked before: the only question left is whether to update the copy that was
+		// installed then with this version, if it is another one.
+		if data, err := os.ReadFile(marker); err == nil {
+			return updateOffer(env, targets, installed, parseMarker(string(data)), marker)
+		}
 		if !shouldOfferMove(moveSituation{
 			Version: env.Version, Window: env.Window, MovedFrom: env.MovedFrom,
-			Asked: markerErr == nil, HasTarget: true, Installed: installed,
+			HasTarget: true, Installed: installed,
 		}) {
 			return offerSkipped
 		}
@@ -150,6 +155,8 @@ func moveOffer(env moveEnvironment) offerOutcome {
 
 		return offerDeclined
 	}
+
+	rememberInstalled(marker, env.Version)
 
 	args := append(append([]string{}, env.Args...), "-moved-from="+env.Exe)
 	if err := env.Start(chosen, args); err != nil {
