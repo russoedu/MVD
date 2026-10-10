@@ -285,14 +285,74 @@ func TestAFanUploadTaggedOfficialThatDoesNotMoveIsNotTheOfficialVideo(t *testing
 	}
 }
 
-func TestAnArtistsOwnUploadTaggedOfficialStaysEvenWhenItBarelyMoves(t *testing.T) {
+func TestAnOfficialTaggedUploadThatDoesNotMoveIsNotTheOfficialVideoEvenFromTheBand(t *testing.T) {
 	res := resolverWith(t, &scriptedSearch{}, Sources{
 		Static: func(string) (bool, error) { return true, nil },
 	})
 	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "OMV", Artist: "Rage"}, nil }
 
-	if got := res.ResolveVersion("up1", "Rage - Run to You", "RageVEVO", 0, nil); !got.OwnOfficial {
-		t.Errorf("got %+v, want the artist's own upload kept as the official video", got)
+	got := res.ResolveVersion("up1", "Rage - Run to You", "RageVEVO", 0, nil)
+	if got.OwnOfficial {
+		t.Errorf("got %+v: a picture that does not move is not the official video", got)
+	}
+	if got.ID != "" {
+		t.Errorf("got %+v, want the upload kept when nothing better is found", got)
+	}
+}
+
+func TestAnOfficialVideoThatDoesNotMoveGivesWayToAMovingBetterUpload(t *testing.T) {
+	search := &scriptedSearch{answers: map[string][]SearchResult{
+		"Le Click": {
+			{ID: "still", Title: "Le Click - Tonight Is The Night (Official Video)", Channel: "Le Click", Views: 900_000},
+			{ID: "moving", Title: "Le Click - Tonight Is The Night (HD, 1080p)", Channel: "90s music in high quality", Views: 10_000},
+		},
+	}}
+	qualities := map[string]Quality{"up1": {AudioKbps: 130}, "still": {Height: 1080, AudioKbps: 130}, "moving": {Height: 1080, AudioKbps: 129}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Le Click", "Tonight Is The Night", true },
+		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
+		Static:   func(id string) (bool, error) { return id == "still" || id == "up1", nil },
+	})
+
+	got := res.ResolveVersion("up1", "Tonight Is The Night", "Le Click - Topic", 0, nil)
+	if got.ID != "moving" || got.Official {
+		t.Errorf("got %+v, want the moving upload over the official video that is a picture", got)
+	}
+}
+
+func TestAnOfficialVideoThatDoesNotMoveIsKeptWhenNothingMovesBetter(t *testing.T) {
+	search := &scriptedSearch{answers: map[string][]SearchResult{
+		"Le Click": {{ID: "still", Title: "Le Click - Tonight Is The Night (Official Video)", Channel: "Le Click", Views: 900_000}},
+	}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Le Click", "Tonight Is The Night", true },
+		Quality:  func(string) (Quality, error) { return Quality{Height: 1080, AudioKbps: 130}, nil },
+		Static:   func(string) (bool, error) { return true, nil },
+	})
+
+	got := res.ResolveVersion("up1", "Tonight Is The Night", "Le Click - Topic", 0, nil)
+	if got.ID != "still" || !got.Official {
+		t.Errorf("got %+v, want the official upload as the last choice", got)
+	}
+}
+
+func TestAnUploadThatAdvertisesItsQualityIsLookedAtEvenWithFewViews(t *testing.T) {
+	var uploads []SearchResult
+	qualities := map[string]Quality{"up1": {Height: 480, AudioKbps: 130}}
+	for i, id := range []string{"v1", "v2", "v3", "v4", "v5", "v6"} {
+		uploads = append(uploads, SearchResult{ID: id, Title: "Rage - Run To You", Channel: "fan " + id, Views: int64(100_000 - i*1000)})
+		qualities[id] = Quality{Height: 480, AudioKbps: 130}
+	}
+	uploads = append(uploads, SearchResult{ID: "hd", Title: "Rage - Run To You (HD, 1080p, 16:9)", Channel: "90s music in high quality", Views: 10_000})
+	qualities["hd"] = Quality{Height: 1080, AudioKbps: 129}
+	search := &scriptedSearch{answers: map[string][]SearchResult{"Rage": uploads}}
+	res := resolverWith(t, search, Sources{
+		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
+		Quality:  func(id string) (Quality, error) { return qualities[id], nil },
+	})
+
+	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "hd" {
+		t.Errorf("got %+v, want the 1080p upload although six uploads have more views", got)
 	}
 }
 
