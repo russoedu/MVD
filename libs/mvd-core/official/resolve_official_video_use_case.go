@@ -137,6 +137,7 @@ func (r *Resolver) ResolveVersion(videoID, title, channel string, durationSec in
 // music databases.
 func (r *Resolver) Identify(videoID, title, channel string, durationSec int, logFn func(format string, a ...interface{})) Identified {
 	logf := logWith(logFn)
+	uploader := channel
 	artTrack, info, why := r.isArtTrack(videoID, channel, logf)
 	// YouTube Music names the artist better than a channel does ("Kate Bush", not
 	// "KateBushMusic") and knows the length of the song.
@@ -148,8 +149,13 @@ func (r *Resolver) Identify(videoID, title, channel string, durationSec int, log
 	}
 
 	// A video YouTube Music says the artist uploaded as an official video is one already.
+	// YouTube Music also tags a fan's album upload that way, so a picture that does not
+	// move, from a channel that is not the artist's, is not taken for the official video.
 	if !artTrack && info.Type == "OMV" {
-		return Identified{Done: true, Version: Version{OwnOfficial: true, Reason: why}}
+		if ChannelIsArtist(uploader, info.Artist) || !r.isStatic(videoID, videoID, logf) {
+			return Identified{Done: true, Version: Version{OwnOfficial: true, Reason: why}}
+		}
+		why = "YouTube Music calls it an official video, but it is a picture that does not move, from a channel that is not the artist's"
 	}
 
 	reason := why
