@@ -8,7 +8,7 @@ import (
 
 // maxQualityChecked is how many uploads of a song have their formats looked up: each
 // costs a yt-dlp run.
-const maxQualityChecked = 3
+const maxQualityChecked = 5
 
 // fromBestQuality is what is left when no upload says it is the official video: the
 // upload of the song with the best picture and sound, among the most viewed ones the
@@ -30,7 +30,15 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 	if len(uploads) == 0 {
 		return "", ""
 	}
-	sort.SliceStable(uploads, func(i, j int) bool { return uploads[i].Views > uploads[j].Views })
+	// The most viewed come first, but an upload that says in its title that it is in high
+	// quality is looked at before them: a real HD video often has few views.
+	sort.SliceStable(uploads, func(i, j int) bool {
+		hi, hj := AdvertisesQuality(uploads[i].Title), AdvertisesQuality(uploads[j].Title)
+		if hi != hj {
+			return hi
+		}
+		return uploads[i].Views > uploads[j].Views
+	})
 
 	// An art track is no better than the playlist's own, and YouTube shows many under the
 	// artist's own name, so YouTube Music's tag is asked of each before it is taken.

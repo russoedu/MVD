@@ -461,7 +461,7 @@ Then, to be taken at all, it must **say it is official**, be uploaded by the **a
 | Views | + up to 1 (log10 of the count / 8) |
 | Same length as the song (within 5 %) | + 1.5 (+ 0.8 within 15 %, + 0.2 within 35 %, - 0.8 beyond) |
 
-**A tag is not proof.** YouTube Music also tags fan uploads of album tracks as official videos (`OMV`), so an upload that is tagged `OMV` and sits on a channel that is not the artist's is run through the motion check (section 9) before it is taken for the official video of itself. When it does not move, it is treated like any plain video: the song is searched for, and the upload stays when nothing is found. The artist's own channel is never doubted. Measured on the video that showed this: 1.5 % and 1.1 % of the frame changing between frames, against 10 % for a video that moves.
+**A tag, a link or a name is not proof.** Every video that is about to be taken as official goes through the motion check (section 9) first, **whoever uploaded it**: an upload tagged `OMV` (YouTube Music also tags fan uploads of album tracks that way, and an artist's channel has audio and lyric uploads that are a picture), the video an art track's description links, and the video the search picks. One that does not move is **not** the official video. A version that moves is looked for among the other uploads (section 8.3), and the still official video is kept only as the **last choice**, when nothing that moves is found (it is no worse than before, and still the artist's). Measured on the first video that showed this: 1.5 % and 1.1 % of the frame changing between frames, against 10 % for a video that moves; on the second, the band's own upload of "Don't Go Away": 0.2 % and 0.5 %.
 
 A score of **8.5** or more, from a candidate that says it is official or is listed, ends the search at once ("confident"). The top five candidates are checked with YouTube Music, and any that is itself an art track under the artist's own name is dropped: YouTube shows many art tracks under the artist's name, so a result from "the artist's channel" may be one.
 
@@ -470,8 +470,8 @@ A score of **8.5** or more, from a candidate that says it is official or is list
 ```mermaid
 flowchart TD
   R[all the results the searches saw] --> F["keep uploads of the song:<br/>title and artist match,<br/>no cover, live, remix, interview,<br/>lyric or audio markers"]
-  F --> V[sort by views]
-  V --> T["for the top ones, until 3 are kept:<br/>drop art tracks (YouTube Music tag)<br/>drop videos that do not really move"]
+  F --> V["sort: titles that advertise<br/>their quality first, then by views"]
+  V --> T["for the top ones, until 5 are kept:<br/>drop art tracks (YouTube Music tag)<br/>drop videos that do not really move"]
   T --> Q["yt-dlp -J on each:<br/>best picture height, best audio kbps"]
   Q --> O["the playlist's own upload:<br/>same probe; if it is an art track<br/>or does not move, its picture counts 0"]
   O --> S["score = 0.7 x picture + 0.3 x audio<br/>(ceilings 2160 px, 320 kbps)"]
@@ -479,6 +479,8 @@ flowchart TD
   M -->|yes| W[take it: replaced by better quality]
   M -->|no| K[keep the playlist's own]
 ```
+
+Only five uploads have their formats looked up, since each costs a yt-dlp run, so the order matters: views first would never reach a 1080p upload with 10,000 views (the real "Don't Go Away" video among fan uploads of millions). A title that says it is in high quality (`HD`, `1080p`, `4K`, `high quality`, `remastered`, see `AdvertisesQuality`) is looked at before the more viewed ones. It is only a hint; the formats decide.
 
 The 0.1 margin is there so a different file is only taken for a clear improvement. The picture counts more than the sound because it is what varies most between uploads.
 
@@ -883,7 +885,7 @@ For comparison, before the official lookup knew how to name songs, 19 of the 49 
 | **Download into a partial folder** | The library only ever holds complete files. The price is that an interrupted download is not resumed by a later run. |
 | **Plan and download are separate runs** | The editor must show proposals before anything is downloaded and then download exactly what was chosen; two small modes of one engine beat a second engine, and a retry of a planned song must not look anything up again. |
 | **The reason log is a build flag** | A question asked of every user would be noise, and a log of their choices is theirs. A constant that is false in published builds cannot be switched on by accident. |
-| **An `OMV` tag needs a picture that moves** | YouTube Music tags fan uploads of album tracks as official videos; the picture is what tells them from the real one. |
+| **Every official pick needs a picture that moves, the band's own included** | A tag, a link in a description and an artist's channel all point at "official audio" uploads that are one picture; the picture is what tells them from a video. The still one is only the last choice. |
 | **A one-sided track is searched again, never repaired** | Copying one channel to both changes the music, and re-encoding it is a loss; another upload of the song has the whole recording. |
 | **The file windows are the system's own** | They remember the folders the person uses, ask before replacing a file, and look like the rest of the machine. |
 | **Merge when it is green** | Every request is an issue, every issue a branch, every branch a pull request that CI must pass; merging is the last step, not a ceremony. |

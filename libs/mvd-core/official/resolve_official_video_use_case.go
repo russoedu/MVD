@@ -111,6 +111,9 @@ type Identified struct {
 
 	song   Song
 	reason string
+	// still is an official video found while naming that does not move; Pick looks for
+	// one that does first.
+	still *Version
 }
 
 // Named returns the artist and the title a music database gave the song, when it did.
@@ -138,7 +141,6 @@ func (r *Resolver) ResolveVersion(videoID, title, channel string, durationSec in
 // music databases.
 func (r *Resolver) Identify(videoID, title, channel string, durationSec int, logFn func(format string, a ...interface{})) Identified {
 	logf := logWith(logFn)
-	uploader := channel
 	artTrack, info, why := r.isArtTrack(videoID, channel, logf)
 	// YouTube Music names the artist better than a channel does ("Kate Bush", not
 	// "KateBushMusic") and knows the length of the song.
@@ -150,20 +152,27 @@ func (r *Resolver) Identify(videoID, title, channel string, durationSec int, log
 	}
 
 	// A video YouTube Music says the artist uploaded as an official video is one already.
-	// YouTube Music also tags a fan's album upload that way, so a picture that does not
-	// move, from a channel that is not the artist's, is not taken for the official video.
+	// YouTube Music also tags a fan's album upload that way, and an artist's own channel
+	// has pictures with the song over them (an audio or lyric upload), so a picture that
+	// does not move is not taken for the official video, whoever uploaded it.
 	if !artTrack && info.Type == "OMV" {
-		if ChannelIsArtist(uploader, info.Artist) || !r.isStatic(videoID, videoID, logf) {
+		if !r.isStatic(videoID, videoID, logf) {
 			return Identified{Done: true, Version: Version{OwnOfficial: true, Reason: why}}
 		}
-		why = "YouTube Music calls it an official video, but it is a picture that does not move, from a channel that is not the artist's"
+		why = "YouTube Music calls it an official video, but it is a picture that does not move"
 	}
 
 	reason := why
 	if artTrack {
 		var id string
 		if id, reason = r.fromDescription(videoID, logf); id != "" {
-			return Identified{Done: true, Version: Version{ID: id, Official: true, Reason: reason}}
+			if !r.isStatic(id, videoID, logf) {
+				return Identified{Done: true, Version: Version{ID: id, Official: true, Reason: reason}}
+			}
+			// The video the description links is a picture with the song over it: a
+			// better one is looked for, and this one stays as the last choice.
+			still := Version{ID: id, Official: true, Reason: reason + " (but it does not move)"}
+			return Identified{song: r.songOrEmpty(videoID, title, channel, durationSec, artTrack, logf), reason: reason, still: &still}
 		}
 	}
 
@@ -175,6 +184,16 @@ func (r *Resolver) Identify(videoID, title, channel string, durationSec int, log
 	return Identified{song: song, reason: reason}
 }
 
+// songOrEmpty names the song of an upload, or returns an empty song when no database
+// does; a Pick of an empty song looks for nothing.
+func (r *Resolver) songOrEmpty(videoID, title, channel string, durationSec int, artTrack bool, logf func(format string, a ...interface{})) Song {
+	song, named := r.songOfUpload(videoID, title, channel, durationSec, artTrack, logf)
+	if !named {
+		return Song{OwnID: videoID}
+	}
+	return song
+}
+
 // Pick is the second half of ResolveVersion: it searches for the official video of the
 // song under its right name and artist and, failing that, takes the upload of the song
 // with the best picture and sound.
@@ -183,16 +202,26 @@ func (r *Resolver) Pick(identified Identified, logFn func(format string, a ...in
 		return identified.Version
 	}
 	logf := logWith(logFn)
+	// still is the official video that turned out to be a picture with the song over
+	// it: a version that moves is better, and this one is only the last choice.
+	still := identified.still
 	found, foundWhy, results := r.fromSearch(identified.song, logf)
 	if found != "" {
-		return Version{ID: found, Official: true, Reason: foundWhy}
+		if !r.isStatic(found, identified.song.OwnID, logf) {
+			return Version{ID: found, Official: true, Reason: foundWhy}
+		}
+		if still == nil {
+			still = &Version{ID: found, Official: true, Reason: foundWhy + " (but it does not move)"}
+		}
 	}
 	// Only an official video is wanted: the best quality upload is not looked for.
-	if r.OfficialOnly {
-		return Version{Reason: identified.reason}
+	if !r.OfficialOnly {
+		if best, bestWhy := r.fromBestQuality(identified.song, results, logf); best != "" {
+			return Version{ID: best, Reason: bestWhy}
+		}
 	}
-	if best, bestWhy := r.fromBestQuality(identified.song, results, logf); best != "" {
-		return Version{ID: best, Reason: bestWhy}
+	if still != nil {
+		return *still
 	}
 	return Version{Reason: identified.reason}
 }
@@ -209,6 +238,9 @@ func (r *Resolver) PickWithout(identified Identified, rejected []string, logFn f
 		return identified.Version
 	}
 	identified.song.Rejected = rejected
+	if identified.still != nil && slices.Contains(rejected, identified.still.ID) {
+		identified.still = nil
+	}
 	return r.Pick(identified, logFn)
 }
 
