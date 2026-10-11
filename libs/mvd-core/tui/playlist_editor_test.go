@@ -457,6 +457,7 @@ func TestEveryDecisionMovesOnToTheNextSongButUndoingStaysPut(t *testing.T) {
 	f.m = drive(t, f.m, key("r"))
 	f.m = drive(t, f.m, tea.PasteMsg{Content: "https://www.youtube.com/watch?v=CHOSEN00001"})
 	f.m = drive(t, f.m, key("enter"))
+	f.skipNote()
 	if got := f.app().editor.sel; got != 1 {
 		t.Errorf("after replacing the selection is on %d, want 1", got)
 	}
@@ -465,12 +466,14 @@ func TestEveryDecisionMovesOnToTheNextSongButUndoingStaysPut(t *testing.T) {
 	}
 
 	f.press("x")
+	f.skipNote()
 	if got := f.app().editor.sel; got != 2 {
 		t.Errorf("after skipping the selection is on %d, want 2", got)
 	}
 
 	// The last song has no next one: the selection stays.
 	f.press("u")
+	f.skipNote()
 	if got := f.app().editor.sel; got != 2 {
 		t.Errorf("on the last song the selection is on %d, want 2", got)
 	}

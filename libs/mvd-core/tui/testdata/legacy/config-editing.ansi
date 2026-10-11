@@ -1,0 +1,30 @@
+[1;38;2;255;0;127m MVD · Preferences[m                                                                                  
+  Output Folder                            [38;2;0;240;255mC:\Music\logs[m                                            
+[38;2;255;0;127m▸ [mVideo Quality                            [38;2;0;240;255m[38;2;255;230;0m(best)[m [38;2;107;114;128m2160p[m [38;2;107;114;128m1440p[m [38;2;107;114;128m1080p[m [38;2;107;114;128m720p[m [38;2;107;114;128m480p[m[m                       
+  Audio Quality                            [38;2;0;240;255mbest[m                                                     
+  Merge Format                             [38;2;0;240;255mmp4[m                                                      
+  Output Template                          [38;2;0;240;255m%(playlist_title,playlist)s/%(playlist_index)02d - %(t…[m  
+  Max Concurrent Downloads                 [38;2;0;240;255m4[m                                                        
+  Download Official Music Video            [38;2;0;240;255myes[m                                                      
+  Cookies from Browser                     [38;2;0;240;255mall (try every browser)[m                                  
+  Create Log File                          [38;2;0;240;255myes[m                                                      
+  Log File Location                        [38;2;0;240;255mC:\Music[m                                                 
+  Save Songs Without Official Video (CSV)  [38;2;0;240;255myes (used when Download Official is only)[m                
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ [1;38;2;255;230;0menter[m [38;2;107;114;128mapply[m  [1;38;2;255;230;0mesc[m [38;2;107;114;128mcancel[m                                                                            

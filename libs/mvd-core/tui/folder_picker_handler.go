@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -150,27 +151,35 @@ func (m folderModel) hints() []keyHint {
 }
 
 func (m folderModel) view(width, height int) string {
-	var rows []string
+	var rows []screens.FolderFoldersRow
 	for i, name := range m.entries {
-		line := "  " + name + "/"
+		row := screens.FolderFoldersRow{Entry: "  " + name + "/"}
 		if i == m.cursor {
-			line = stySelected.Render("▸ " + name + "/")
+			row.Entry, row.Style = "▸ "+name+"/", screens.RowSelected
 		}
-		rows = append(rows, line)
+		rows = append(rows, row)
 	}
 	if len(rows) == 0 {
-		rows = []string{styDim.Render("(no sub-folders)")}
+		rows = []screens.FolderFoldersRow{{Entry: "(no sub-folders)", EntryStyle: screens.CellStyle{Fg: currentColours.Dim}}}
 	}
-	rows = window(rows, m.cursor, max(1, height-5))
+	visible := max(1, height-5)
+	if len(rows) > visible {
+		start := windowStart(len(rows), m.cursor, visible)
+		rows = rows[start : start+visible]
+	}
 
-	head := styCyan.Render(truncate(m.dir, width-2))
+	props := screens.DefaultFolderProps()
+	props.Palette = screens.FolderPalette(palette())
+	props.Hints = hintsOf[screens.FolderHintsHint](m.hints())
+	props.Path = truncate(m.dir, width-2)
+	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
+	props.Problem = truncate(m.err, width-2)
+	props.Folders = rows
+	props.FolderRows, props.ProblemRows = len(rows), 0
 	if m.err != "" {
-		head += "\n" + styRed.Render(truncate(m.err, width-2))
+		props.ProblemRows = 1
 	}
-	body := head + "\n\n" + strings.Join(rows, "\n")
-
-	if m.creating {
-		body += "\n\n" + m.input.View()
-	}
-	return screenFrame(width, height, "MVD · Choose folder", body, keyBar(width, m.hints()))
+	props.Creating = m.creating
+	props.NewFolderView = m.input.View()
+	return screens.Folder(props, width, height).View
 }

@@ -2,10 +2,8 @@ package tui
 
 import (
 	"path/filepath"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/sourcelist"
@@ -259,27 +257,5 @@ func (m setupModel) saveList() {
 // --- key bar shared by setup screens ----------------------------------------
 
 type keyHint struct{ key, desc string }
-
-func keyBar(width int, hints []keyHint) string {
-	var b strings.Builder
-	b.WriteString(" ")
-	for i, h := range hints {
-		if i > 0 {
-			b.WriteString("  ")
-		}
-		b.WriteString(styKey.Render(h.key) + " " + styDim.Render(h.desc))
-	}
-	return fit(b.String(), width)
-}
-
-func screenFrame(width, height int, title, body, bar string) string {
-	head := styTitle.Render(" " + title)
-	bodyH := height - 2
-	if bodyH < 1 {
-		bodyH = 1
-	}
-	body = lipgloss.NewStyle().Width(width).Height(bodyH).Render(body)
-	return lipgloss.JoinVertical(lipgloss.Left, head, body, bar)
-}
 
 func (m setupModel) View() tea.View { return screenView(m.render()) }
