@@ -94,14 +94,35 @@ func (g *sketchGrid) Set(x, y int, c sketchCell) {
 func (g *sketchGrid) Text(x, y int, text string, s sketchStyle, maxW int) int {
 	n := 0
 	for _, ch := range text {
-		if maxW > 0 && n >= maxW {
+		w := sketchRuneWidth(ch)
+		if w == 0 {
+			continue
+		}
+		if maxW > 0 && n+w > maxW || w == 2 && x+n+w > g.W {
 			break
 		}
 		g.Set(x+n, y, sketchCell{Ch: ch, Style: s})
-		n++
+		if w == 2 {
+			g.Set(x+n+1, y, sketchCell{Ch: sketchWideTail, Style: s})
+		}
+		n += w
 	}
 	return n
 }
+
+// sketchWideTail is the second cell of a double-width character.
+const sketchWideTail rune = -1
+
+// sketchRuneWidth is the number of terminal cells of a rune: 0, 1 or 2.
+func sketchRuneWidth(r rune) int {
+	if r < 0x300 {
+		return 1
+	}
+	return lipgloss.Width(string(r))
+}
+
+// sketchWidth is the number of terminal cells of a text.
+func sketchWidth(s string) int { return lipgloss.Width(s) }
 
 func (g *sketchGrid) Fill(r sketchRect, ch rune, s sketchStyle) {
 	for y := r.Y; y < r.Y+r.H; y++ {
@@ -160,6 +181,9 @@ func (g *sketchGrid) String() string {
 		}
 		for x := 0; x < g.W; x++ {
 			c := g.c[y*g.W+x]
+			if c.Ch == sketchWideTail {
+				continue
+			}
 			if c.Style != cur {
 				flush()
 				cur = c.Style
@@ -620,7 +644,7 @@ func hex2(n int) string {
 func runesWidth(runs []sgrRun) int {
 	n := 0
 	for _, r := range runs {
-		n += len([]rune(r.text))
+		n += sketchWidth(r.text)
 	}
 	return n
 }
@@ -645,13 +669,18 @@ func cutRuns(runs []sgrRun, w int, ellipsis bool) []sgrRun {
 		if keep <= 0 {
 			break
 		}
-		rs := []rune(r.text)
-		if len(rs) > keep {
-			rs = rs[:keep]
+		var kept []rune
+		for _, c := range r.text {
+			w := sketchRuneWidth(c)
+			if w > keep {
+				keep = 0
+				break
+			}
+			kept = append(kept, c)
+			keep -= w
 		}
-		out = append(out, sgrRun{string(rs), r.style})
+		out = append(out, sgrRun{string(kept), r.style})
 		last = r.style
-		keep -= len(rs)
 	}
 	if ellipsis {
 		out = append(out, sgrRun{"…", last})
@@ -1104,7 +1133,7 @@ func drawProgressLine(g *sketchGrid, p props) {
 	gap := min(max(p.integer("gap", 3), 0), 16)
 	barWidth := p.integer("barWidth", 32)
 	if barWidth <= 0 {
-		barWidth = g.W - gap - len([]rune(suffix))
+		barWidth = g.W - gap - sketchWidth(suffix)
 	}
 	barWidth = min(max(barWidth, 0), g.W)
 	value := p.float("value", 0)
