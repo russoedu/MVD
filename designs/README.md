@@ -1,6 +1,6 @@
 # Designs
 
-Every screen of MVD is a page of one [Cuppa](https://github.com/meta-ui-labs/cuppa) design, `mvd.cuppa`. Cuppa exports it in the slice layout: a package per page in its feature folder (`libs/mvd-core/setup`, `run`, `editor`) and the shared drawing code once in `libs/mvd-core/internal`. The models of `libs/mvd-core/tui` fill each page's props and print it.
+Every screen of MVD is a page of one [Cuppa](https://github.com/meta-ui-labs/cuppa) design, `mvd.cuppa`. Cuppa exports it in the slice layout: a package per page in its feature folder (`libs/mvd-core/setup`, `run`, `editor`) and the shared drawing code once in `libs/mvd-core/internal`. A generated file is `<page>.cuppa.go` (cuppa-tui 0.0.77+), so it is told apart from the hand written files that will sit beside it. The models of `libs/mvd-core/tui` fill each page's props and print it.
 
 - Open the design with `cuppa-tui designs/mvd.cuppa` (or the desktop or web app), change a page with the pages bar, save it.
 - Export again: `cuppa screens designs/mvd.cuppa -o libs/mvd-core --layout slices --library -m youtube-downloader/libs/mvd-core`.

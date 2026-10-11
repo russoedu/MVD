@@ -156,7 +156,7 @@ type LinesRow struct {
 }
 
 // DefaultHelpProps is the screen as it was designed: each input holds the value
-// it had in the design.
+// it had in the design, unless the design gives the input an app default.
 func Default() Props {
 	return Props{
 		Lines:      []LinesRow{{Line: "help", Style: cuppa.RowNormal}},
