@@ -23,18 +23,6 @@ type legacyCase struct {
 	draw func(t *testing.T) string
 }
 
-func keysOf(keys ...string) []tea.Msg {
-	var out []tea.Msg
-	for _, k := range keys {
-		if k == "backspace" {
-			out = append(out, tea.KeyPressMsg{Code: tea.KeyBackspace})
-			continue
-		}
-		out = append(out, key(k))
-	}
-	return out
-}
-
 func legacyCases() []legacyCase {
 	cases := []legacyCase{}
 
