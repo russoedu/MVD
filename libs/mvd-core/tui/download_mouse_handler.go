@@ -3,7 +3,6 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
-	"youtube-downloader/libs/mvd-core/viewport"
 )
 
 // rect is a region of the screen, in cells.
@@ -26,13 +25,7 @@ func (m model) layout() (l downloadLayout, ok bool) {
 	if m.width < 60 || m.height < 16 || m.showHelp {
 		return l, false
 	}
-	p := downloadpage.Default()
-	p.LeftWidth = m.leftWidth(m.width)
-	p.FullLog = 0
-	if m.fullLog {
-		p.FullLog = 1
-	}
-	p.PlaylistCount = len(m.state.Playlists)
+	p := m.downloadProps(m.width, m.height)
 	frame := downloadpage.Layout(p, m.width, m.height)
 
 	box := func(name string) rect {
@@ -80,9 +73,9 @@ func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if l.hasLists && l.playlists.rows().contains(msg.Mouse().X, msg.Mouse().Y) {
-		m.clickPlaylist(l.playlists.rows(), msg.Mouse().Y)
+		m.clickPlaylist(msg.Mouse().Y)
 	} else if l.hasLists && l.entries.rows().contains(msg.Mouse().X, msg.Mouse().Y) {
-		m.clickEntry(l.entries.rows(), msg.Mouse().Y)
+		m.clickEntry(msg.Mouse().Y)
 	} else if l.hasOutput && l.output.contains(msg.Mouse().X, msg.Mouse().Y) {
 		m.focus = paneOutput
 	}
@@ -105,18 +98,17 @@ func (m model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, te
 	return m, nil
 }
 
-func (m *model) clickPlaylist(inner rect, y int) {
-	n := len(m.state.Playlists)
-	i := viewport.Start(n, m.selPlaylist, inner.h) + (y - inner.y)
+func (m *model) clickPlaylist(y int) {
+	i, ok := downloadpage.PlaylistsAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
 	m.focus = paneLists
-	if i < 0 || i >= n {
+	if !ok {
 		return
 	}
 	m.follow = false
 	m.selPlaylist, m.selEntry, m.outScroll = i, 0, 0
 }
 
-func (m *model) clickEntry(inner rect, y int) {
+func (m *model) clickEntry(y int) {
 	m.focus = paneEntries
 	if m.selPlaylist >= len(m.state.Playlists) {
 		return
@@ -124,10 +116,8 @@ func (m *model) clickEntry(inner rect, y int) {
 	if pl := m.state.Playlists[m.selPlaylist]; pl.Err != "" || !pl.Listed {
 		return
 	}
-	n := len(m.visibleEntries())
-	sel := viewport.Clamp(m.selEntry, 0, max(0, n-1))
-	i := viewport.Start(n, sel, inner.h) + (y - inner.y)
-	if i < 0 || i >= n {
+	i, ok := downloadpage.EntriesAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
+	if !ok {
 		return
 	}
 	m.follow = false

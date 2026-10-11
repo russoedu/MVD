@@ -79,12 +79,30 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 			return 0, 3, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 5.0))
 		}},
 		Event: "Pick",
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.FoldersRows != nil {
+				rs, _ := p.FoldersRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Entry}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.EntryStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.FoldersRows == nil {
 				rows := make([][]string, len(p.Folders))
 				cellStyles := make([][]string, len(p.Folders))
 				styles := make([]string, len(p.Folders))
@@ -105,12 +123,30 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 			return 0, 4, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 5.0))
 		}},
 		Event: "Pick",
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.FoldersRows != nil {
+				rs, _ := p.FoldersRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Entry}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.EntryStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.FoldersRows == nil {
 				rows := make([][]string, len(p.Folders))
 				cellStyles := make([][]string, len(p.Folders))
 				styles := make([]string, len(p.Folders))
@@ -193,6 +229,8 @@ type Props struct {
 	HasProblem bool
 	// Folders is the Sample rows (; between rows, , between cells) of "Folders", Sample rows (; between rows, , between cells) of "Folders after problem".
 	Folders []FoldersRow
+	// FoldersRows is the function that gives the rows of "Folders" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	FoldersRows func(w, h int) ([]FoldersRow, int)
 	// NoProblem is the whether "Folders" is shown.
 	NoProblem bool
 	// NewFolderView is the Sample view (| starts a line) of "New folder view".
@@ -263,6 +301,26 @@ func HintsHintAt(p Props, x int) (int, bool) {
 	return master.HintsHintAt(masterProps(p), x)
 }
 
+// FolderFoldersAt is the index in Folders of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func FoldersAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Folders")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Folders, 0
+	if p.FoldersRows != nil {
+		rows, first = p.FoldersRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
 // DefaultFolderProps is the screen as it was designed: each input holds the value
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
@@ -274,6 +332,7 @@ func Default() Props {
 		Problem:       "could not read the folder",
 		HasProblem:    true,
 		Folders:       []FoldersRow{{Entry: "  90s/", Style: cuppa.RowNormal}, {Entry: "  Dance/", Style: cuppa.RowNormal}, {Entry: "  Rock/", Style: cuppa.RowNormal}},
+		FoldersRows:   nil,
 		NoProblem:     true,
 		NewFolderView: "new folder: ",
 		Creating:      true,

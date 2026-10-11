@@ -196,6 +196,9 @@ func PartsFor[P any](conv func(P) Props, hide ...string) []cuppa.ScreenPart[P] {
 			continue
 		}
 		shared := cuppa.ScreenPart[P]{Placed: part.Placed, Roles: part.Roles, Event: part.Event}
+		if late := part.Late; late != nil {
+			shared.Late = func(p P, v map[string]string, w, h int) { late(conv(p), v, w, h) }
+		}
 		if apply := part.Apply; apply != nil {
 			shared.Apply = func(p P, v map[string]string, w, h int) bool { return apply(conv(p), v, w, h) }
 		}

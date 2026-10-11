@@ -40,12 +40,30 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Body", X: 0, Y: 1, W: 120, H: 28, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "gap": "0", "rows": "text", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(max(3.0, ((float64(h) * 100.0 / 100.0) - 2.0)))
 		}},
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.BodyRows != nil {
+				rs, _ := p.BodyRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Line}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.LineStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.BodyRows == nil {
 				rows := make([][]string, len(p.Body))
 				cellStyles := make([][]string, len(p.Body))
 				styles := make([]string, len(p.Body))
@@ -121,6 +139,8 @@ type Props struct {
 	ShowKeys bool
 	// Body is the Sample rows (; between rows, , between cells) of "Body".
 	Body []BodyRow
+	// BodyRows is the function that gives the rows of "Body" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	BodyRows func(w, h int) ([]BodyRow, int)
 	// Bottom is the Text of "Bottom line".
 	Bottom string
 	// ShowLine is the whether "Bottom line" is shown.
@@ -185,6 +205,26 @@ func HintsHintAt(p Props, x int) (int, bool) {
 	return master.HintsHintAt(masterProps(p), x)
 }
 
+// EditorPlanningBodyAt is the index in Body of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func BodyAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Body")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Body, 0
+	if p.BodyRows != nil {
+		rows, first = p.BodyRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
 // DefaultEditorPlanningProps is the screen as it was designed: each input holds the value
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
@@ -193,6 +233,7 @@ func Default() Props {
 		Hints:    []HintsHint{{Key: "esc", Label: "cancel"}},
 		ShowKeys: true,
 		Body:     []BodyRow{{Line: "text", Style: cuppa.RowNormal}},
+		BodyRows: nil,
 		Bottom:   " ",
 		ShowLine: true,
 		Palette:  DefaultPalette(),

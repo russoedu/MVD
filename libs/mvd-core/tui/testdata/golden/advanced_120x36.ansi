@@ -1,0 +1,36 @@
+[38;2;255;0;127;1m MVD · Advanced[m
+[38;2;255;0;127m▸ [38;2;229;231;235;48;2;59;15;42;1mExtra yt-dlp args[39;22m           [m  [38;2;0;240;255m(none)[m
+[38;2;255;0;127m  [mParallel fragments per video  [38;2;0;240;255m4[m
+[38;2;255;0;127m  [mAuto Retry                    [38;2;0;240;255myes[m
+
+[38;2;107;114;128mThese are passed straight to yt-dlp. Parallel fragments and the cookie[m
+[38;2;107;114;128mflags are already handled; only add things you understand.[m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ [38;2;255;230;0;1m↑↓[m [38;2;107;114;128mmove[m  [38;2;255;230;0;1menter[m [38;2;107;114;128medit[m  [38;2;255;230;0;1ms[m [38;2;107;114;128msave[m  [38;2;255;230;0;1mesc[m [38;2;107;114;128mback[m

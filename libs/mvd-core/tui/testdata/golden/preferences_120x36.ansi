@@ -1,0 +1,36 @@
+[38;2;255;0;127;1m MVD · Preferences[m
+[38;2;255;0;127m▸ [38;2;229;231;235;48;2;59;15;42;1mOutput Folder[39;22m                          [m  [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mVideo Quality                            [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mAudio Quality                            [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mMerge Format                             [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mOutput Template                          [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mMax Concurrent Downloads                 [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mDownload Official Music Video            [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mCookies from Browser                     [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mCreate Log File                          [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mLog File Location                        [38;2;0;240;255mvalue[m
+[38;2;255;0;127m  [mSave Songs Without Official Video (CSV)  [38;2;0;240;255mvalue[m
+
+[38;2;107;114;128mTemplate uses yt-dlp fields, e.g. %(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s[m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[38;2;255;0;127m saved[m

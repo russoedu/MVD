@@ -46,12 +46,30 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 			return 0, 1, cuppa.Cells(((float64(w) * 100.0 / 100.0) - 2.0)), 11
 		}},
 		Event: "Pick",
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.ItemsRows != nil {
+				rs, _ := p.ItemsRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Mark, r.Name, r.Gap, r.Value}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.MarkStyle), cuppa.CellStyleCode(r.NameStyle), cuppa.CellStyleCode(r.GapStyle), cuppa.CellStyleCode(r.ValueStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.ItemsRows == nil {
 				rows := make([][]string, len(p.Items))
 				cellStyles := make([][]string, len(p.Items))
 				styles := make([]string, len(p.Items))
@@ -140,6 +158,8 @@ type Props struct {
 	ShowKeys bool
 	// Items is the Sample rows (; between rows, , between cells) of "Items".
 	Items []ItemsRow
+	// ItemsRows is the function that gives the rows of "Items" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	ItemsRows func(w, h int) ([]ItemsRow, int)
 	// ShowTemplateHint is the whether "Template hint" is shown.
 	ShowTemplateHint bool
 	// Status is the Text of "Status".
@@ -218,6 +238,26 @@ func HintsHintAt(p Props, x int) (int, bool) {
 	return master.HintsHintAt(masterProps(p), x)
 }
 
+// PreferencesItemsAt is the index in Items of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func ItemsAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Items")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Items, 0
+	if p.ItemsRows != nil {
+		rows, first = p.ItemsRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
 // DefaultPreferencesProps is the screen as it was designed: each input holds the value
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
@@ -226,6 +266,7 @@ func Default() Props {
 		Hints:            []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "a", Label: "advanced"}, {Key: "c", Label: "colours"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "cancel"}},
 		ShowKeys:         true,
 		Items:            []ItemsRow{{Mark: "▸ ", Name: "Output Folder", Gap: "", Value: "value", Style: cuppa.RowSelected}, {Mark: "  ", Name: "Video Quality", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Audio Quality", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Merge Format", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Output Template", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Max Concurrent Downloads", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Download Official Music Video", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Cookies from Browser", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Create Log File", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Log File Location", Gap: "", Value: "value", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Save Songs Without Official Video (CSV)", Gap: "", Value: "value", Style: cuppa.RowNormal}},
+		ItemsRows:        nil,
 		ShowTemplateHint: true,
 		Status:           " saved",
 		ShowStatus:       true,

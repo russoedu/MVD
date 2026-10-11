@@ -41,12 +41,30 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 			return 0, 1, cuppa.Cells((float64(w) * 100.0 / 100.0)), 8
 		}},
 		Event: "Pick",
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.SlotsRows != nil {
+				rs, _ := p.SlotsRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Mark, r.Name, r.Gap, r.Swatch, r.Space, r.Value}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.MarkStyle), cuppa.CellStyleCode(r.NameStyle), cuppa.CellStyleCode(r.GapStyle), cuppa.CellStyleCode(r.SwatchStyle), cuppa.CellStyleCode(r.SpaceStyle), cuppa.CellStyleCode(r.ValueStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.SlotsRows == nil {
 				rows := make([][]string, len(p.Slots))
 				cellStyles := make([][]string, len(p.Slots))
 				styles := make([]string, len(p.Slots))
@@ -146,6 +164,8 @@ type Props struct {
 	ShowKeys bool
 	// Slots is the Sample rows (; between rows, , between cells) of "Slots".
 	Slots []SlotsRow
+	// SlotsRows is the function that gives the rows of "Slots" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	SlotsRows func(w, h int) ([]SlotsRow, int)
 	// Status is the Text of "Status".
 	Status string
 	// ShowStatus is the whether "Status" is shown.
@@ -230,6 +250,26 @@ func HintsHintAt(p Props, x int) (int, bool) {
 	return master.HintsHintAt(masterProps(p), x)
 }
 
+// ColoursSlotsAt is the index in Slots of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func SlotsAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Slots")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Slots, 0
+	if p.SlotsRows != nil {
+		rows, first = p.SlotsRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
 // DefaultColoursProps is the screen as it was designed: each input holds the value
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
@@ -238,6 +278,7 @@ func Default() Props {
 		Hints:      []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "back"}},
 		ShowKeys:   true,
 		Slots:      []SlotsRow{{Mark: "▸ ", Name: "Accent (title)", Gap: "", Swatch: "#ff007f", Space: "", Value: "#ff007f", Style: cuppa.RowSelected}, {Mark: "  ", Name: "Focus (active border)", Gap: "", Swatch: "#00f0ff", Space: "", Value: "#00f0ff", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Highlight (keys, bars)", Gap: "", Swatch: "#ffe600", Space: "", Value: "#ffe600", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Success", Gap: "", Swatch: "#3ddc84", Space: "", Value: "#3ddc84", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Error", Gap: "", Swatch: "#ff4d4d", Space: "", Value: "#ff4d4d", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Dim (borders, hints)", Gap: "", Swatch: "#6b7280", Space: "", Value: "#6b7280", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Text", Gap: "", Swatch: "#e5e7eb", Space: "", Value: "#e5e7eb", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Selected row (background)", Gap: "", Swatch: "#3b0f2a", Space: "", Value: "#3b0f2a", Style: cuppa.RowNormal}},
+		SlotsRows:  nil,
 		Status:     "Use a colour like #ff007f or #f07.",
 		ShowStatus: true,
 		Palette:    DefaultPalette(),

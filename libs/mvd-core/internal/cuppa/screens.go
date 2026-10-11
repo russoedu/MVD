@@ -87,6 +87,9 @@ type ScreenPart[P any] struct {
 	// Apply puts the program's values into the properties and reports whether
 	// the component is shown, for a window of w by h cells.
 	Apply func(p P, v map[string]string, w, h int) bool
+	// Late sets properties that depend on the size the layout gave the
+	// component: w and h are its own.
+	Late func(p P, v map[string]string, w, h int)
 }
 
 // drawScreen draws the parts for the values p in an area of w by h cells.
@@ -126,6 +129,9 @@ func DrawScreen[P any](parts []ScreenPart[P], p P, th Theme, w, h int, backgroun
 		}
 		c.Y += containerDY(c.Props)
 		e.rects[c.Name] = [4]int{c.X, c.Y, c.W, c.H}
+		if Part.Late != nil {
+			Part.Late(p, c.Props, c.W, c.H)
+		}
 		layers = append(layers, lipgloss.NewLayer(build(c).view()).X(c.X).Y(c.Y).Z(i+1))
 		regions = append(regions, Region{Name: c.Name, Event: Part.Event, X: c.X, Y: c.Y, W: c.W, H: c.H})
 	}
@@ -161,6 +167,27 @@ func LayoutScreen[P any](parts []ScreenPart[P], p P, th Theme, w, h int, env fun
 		regions = append(regions, Region{Name: c.Name, Event: Part.Event, X: c.X, Y: c.Y, W: c.W, H: c.H})
 	}
 	return Frame{Regions: regions}
+}
+
+// Window cuts the rows a list of h rows shows out of all of them, keeping the
+// selected row centred while there is room on both sides and pinned to the top
+// or the bottom near the ends. first is the index of visible[0] in rows, so a
+// click on visible row k is rows[first+k]. A selected index outside the list is
+// clamped; h <= 0 or a list that fits returns every row with first 0.
+func Window[T any](rows []T, selected, h int) (visible []T, first int) {
+	n := len(rows)
+	if h <= 0 || n <= h {
+		return rows, 0
+	}
+	selected = min(max(selected, 0), n-1)
+	first = selected - h/2
+	if first < 0 {
+		first = 0
+	}
+	if first+h > n {
+		first = n - h
+	}
+	return rows[first : first+h], first
 }
 
 // hintIndexAt is the index of the key bar hint under column x of the bar (the
