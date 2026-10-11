@@ -3,6 +3,7 @@ package tui
 import (
 	"path/filepath"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
+	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -78,7 +79,7 @@ type setupModel struct {
 	list          listModel
 	config        configModel
 	advanced      advancedpage.Model
-	colours       coloursModel
+	colours       colourspage.Model
 	songs         songsModel
 	result        SetupResult
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
@@ -128,7 +129,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list = m.list.setSize(msg.Width, msg.Height)
 		m.config = m.config.setSize(msg.Width, msg.Height)
 		m.advanced = m.advanced.SetSize(msg.Width, msg.Height)
-		m.colours = m.colours.setSize(msg.Width, msg.Height)
+		m.colours = m.colours.SetSize(msg.Width, msg.Height)
 		m.songs = m.songs.setSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.MouseMsg:
@@ -184,7 +185,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.screen = screenAdvanced
 			return m, nil
 		case cfgColours:
-			m.colours = newColoursModel(m.config.cfg).setSize(m.width, m.height)
+			m.colours = colourspage.New(m.config.cfg).SetSize(m.width, m.height)
 			m.screen = screenColours
 			return m, nil
 		}
@@ -217,14 +218,14 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	case screenColours:
-		next, cmd, out, cfg := m.colours.update(msg)
+		next, cmd, out, cfg := m.colours.Update(msg)
 		m.colours = next
 		switch out {
-		case colSave:
+		case colourspage.Save:
 			m.config.cfg = cfg
 			m.screen = screenConfig
 			return m, nil
-		case colCancel:
+		case colourspage.Cancel:
 			ApplyTheme(m.config.cfg.Colors)
 			m.screen = screenConfig
 			return m, nil
@@ -241,7 +242,7 @@ func (m setupModel) render() string {
 	case screenAdvanced:
 		return m.advanced.View(m.width, m.height)
 	case screenColours:
-		return m.colours.view(m.width, m.height)
+		return m.colours.View(m.width, m.height)
 	case screenSongs:
 		return m.songs.view(m.width, m.height)
 	default:

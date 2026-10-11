@@ -196,3 +196,10 @@ func TestCookieChoice(t *testing.T) {
 
 // keyText is the key press that types text.
 func keyText(text string) tea.KeyPressMsg { return keys.Text(text) }
+
+func TestConfigColoursTransition(t *testing.T) {
+	m := newConfigModel(config.Default("/app", "/dl"))
+	if _, _, out, _ := m.update(key("c")); out != cfgColours {
+		t.Errorf("'c' should request the colours screen, got %d", out)
+	}
+}

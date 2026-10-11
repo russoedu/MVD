@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
+	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -46,11 +47,11 @@ func legacyCases() []legacyCase {
 	colours := func(keys ...string) func(t *testing.T) string {
 		return func(t *testing.T) string {
 			ApplyTheme(config.DefaultThemeColors())
-			m := newColoursModel(cfg()).setSize(w, h)
+			m := colourspage.New(cfg()).SetSize(w, h)
 			for _, msg := range keysOf(keys...) {
-				m, _, _, _ = m.update(msg)
+				m, _, _, _ = m.Update(msg)
 			}
-			return m.view(w, h)
+			return m.View(w, h)
 		}
 	}
 	advanced := func(extra []string, keys ...string) func(t *testing.T) string {

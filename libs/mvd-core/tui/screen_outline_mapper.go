@@ -15,7 +15,7 @@ func (m setupModel) Outline() ScreenOutline {
 	case screenAdvanced:
 		return m.advanced.Outline()
 	case screenColours:
-		return m.colours.outline()
+		return m.colours.Outline()
 	case screenSongs:
 		return m.songs.outline()
 	default:
@@ -61,18 +61,6 @@ func (m configModel) outline() ScreenOutline {
 		}
 	}
 	return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.hints())}
-}
-
-func (m coloursModel) outline() ScreenOutline {
-	items := make([]OutlineItem, len(colourLabels))
-	for i, label := range colourLabels {
-		items[i] = OutlineItem{Label: label, Value: m.display(i), Selected: i == m.cursor}
-	}
-	if m.editing {
-		items[m.cursor].Editing = true
-		items[m.cursor].Value = m.input.Value()
-	}
-	return ScreenOutline{Title: "MVD · Colours", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.hints())}
 }
 
 func (m folderModel) outline() ScreenOutline {
