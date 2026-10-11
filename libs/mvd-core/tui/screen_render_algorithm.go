@@ -29,76 +29,6 @@ func (m model) render() string {
 	return view
 }
 
-func (m model) playlistGlyph(pl *runstate.Playlist) string {
-	if pl.Err != "" {
-		return styRed.Render("✗")
-	}
-	if !pl.Listed {
-		return styDim.Render(spinnerFrames[m.spin])
-	}
-	finished, failed, active := m.state.PlaylistTally(pl)
-	switch {
-	case active > 0:
-		return styYellow.Render(spinnerFrames[m.spin])
-	case finished == len(pl.Entries) && failed > 0:
-		return styRed.Render("✗")
-	case finished == len(pl.Entries):
-		return styGreen.Render("✓")
-	}
-	return styDim.Render("·")
-}
-
-func (m model) entryGlyph(en *runstate.Entry) string {
-	switch en.State {
-	case engine.StateQueued:
-		return styDim.Render("·")
-	case engine.StateResolving:
-		return styCyan.Render("⟲")
-	case engine.StateDownloading:
-		return styYellow.Render(spinnerFrames[m.spin])
-	case engine.StateMerging:
-		return styYellow.Render("⚙")
-	case engine.StateDone:
-		return styGreen.Render("✓")
-	case engine.StateDuplicate:
-		return styDim.Render("≡")
-	case engine.StateNotFound:
-		return styDim.Render("∅")
-	case engine.StateFailed:
-		return styRed.Render("✗")
-	}
-	return " "
-}
-
-func (m model) entryTag(en *runstate.Entry) (string, int) {
-	switch en.State {
-	case engine.StateResolving:
-		return styCyan.Render("res."), 4
-	case engine.StateDownloading:
-		if en.Total > 0 {
-			s := fmt.Sprintf("%3.0f%%", en.Percent)
-			return styYellow.Render(s), len(s)
-		}
-		return styYellow.Render("dl"), 2
-	case engine.StateMerging:
-		return styYellow.Render("merge"), 5
-	case engine.StateDuplicate:
-		return styDim.Render("dup"), 3
-	case engine.StateNotFound:
-		return styDim.Render("n/f"), 3
-	case engine.StateFailed:
-		return styRed.Render("ERR"), 3
-	case engine.StateDone:
-		if en.Official {
-			return styCyan.Render("⇄"), 1
-		}
-		if en.Better {
-			return styCyan.Render("↑"), 1
-		}
-	}
-	return "", 0
-}
-
 // outputLines returns the log lines for the current selection.
 func (m model) outputLines() []string {
 	if m.focus == paneLists || m.selectedEntry() == nil {
@@ -200,4 +130,79 @@ func counted(n int, word string) string {
 		return fmt.Sprintf("%d %s", n, word)
 	}
 	return fmt.Sprintf("%d %ss", n, word)
+}
+
+// playlistGlyph is the mark at the end of a playlist row and its colour.
+func (m model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
+	c := currentColours
+	if pl.Err != "" {
+		return "✗", c.Error
+	}
+	if !pl.Listed {
+		return spinnerFrames[m.spin], c.Dim
+	}
+	finished, failed, active := m.state.PlaylistTally(pl)
+	switch {
+	case active > 0:
+		return spinnerFrames[m.spin], c.Highlight
+	case finished == len(pl.Entries) && failed > 0:
+		return "✗", c.Error
+	case finished == len(pl.Entries):
+		return "✓", c.Success
+	}
+	return "·", c.Dim
+}
+
+// entryGlyph is the mark at the start of an entry row and its colour.
+func (m model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
+	c := currentColours
+	switch en.State {
+	case engine.StateQueued:
+		return "·", c.Dim
+	case engine.StateResolving:
+		return "⟲", c.Focus
+	case engine.StateDownloading:
+		return spinnerFrames[m.spin], c.Highlight
+	case engine.StateMerging:
+		return "⚙", c.Highlight
+	case engine.StateDone:
+		return "✓", c.Success
+	case engine.StateDuplicate:
+		return "≡", c.Dim
+	case engine.StateNotFound:
+		return "∅", c.Dim
+	case engine.StateFailed:
+		return "✗", c.Error
+	}
+	return " ", c.Text
+}
+
+// entryTag is what is said at the end of an entry row and its colour.
+func (m model) entryTag(en *runstate.Entry) (tag, colour string) {
+	c := currentColours
+	switch en.State {
+	case engine.StateResolving:
+		return "res.", c.Focus
+	case engine.StateDownloading:
+		if en.Total > 0 {
+			return fmt.Sprintf("%3.0f%%", en.Percent), c.Highlight
+		}
+		return "dl", c.Highlight
+	case engine.StateMerging:
+		return "merge", c.Highlight
+	case engine.StateDuplicate:
+		return "dup", c.Dim
+	case engine.StateNotFound:
+		return "n/f", c.Dim
+	case engine.StateFailed:
+		return "ERR", c.Error
+	case engine.StateDone:
+		if en.Official {
+			return "⇄", c.Focus
+		}
+		if en.Better {
+			return "↑", c.Focus
+		}
+	}
+	return "", c.Text
 }

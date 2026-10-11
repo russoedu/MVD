@@ -19,16 +19,6 @@ func downloadEnv(p DownloadProps, w, h int) fitEnv {
 	_ = p
 	return fitEnv{W: w, H: h, Inputs: func(name string) float64 {
 		switch name {
-		case "Show lists":
-			if p.ShowLists {
-				return 1
-			}
-			return 0
-		case "Show output":
-			if p.ShowOutput {
-				return 1
-			}
-			return 0
 		case "BarWidth":
 			return float64(p.BarWidth)
 		case "Percent":
@@ -62,6 +52,10 @@ func downloadEnv(p DownloadProps, w, h int) fitEnv {
 			return float64(p.LeftWidth)
 		case "PlaylistCount":
 			return float64(p.PlaylistCount)
+		case "HasNotes":
+			return float64(p.HasNotes)
+		case "FullLog":
+			return float64(p.FullLog)
 		case "FooterLines":
 			return float64(p.FooterLines)
 		}
@@ -118,11 +112,12 @@ var downloadParts = []screenPart[DownloadProps]{
 			}
 			v["color"] = p.PlaylistsBorder
 			v["right"] = p.PlaylistsRight
-			return p.ShowLists
+			e := downloadEnv(p, w, h)
+			return (e.In("LeftWidth") > 0.0)
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Playlists rows", X: 1, Y: 4, W: 43, H: 6, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "rows": "playlist", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Playlists rows", X: 1, Y: 4, W: 43, H: 6, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Count:auto:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1,End:1", "gap": "0", "rows": "▸, ,90s UK Dance Hits, ,3/6, ,⠋,", "styles": "selected", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cells((e.Rect("Playlists box", "x") + 1.0)), cells((e.Rect("Playlists box", "y") + 1.0)), cells((e.Rect("Playlists box", "w") - 2.0)), cells((e.Rect("Playlists box", "h") - 2.0))
@@ -138,15 +133,16 @@ var downloadParts = []screenPart[DownloadProps]{
 				cellStyles := make([][]string, len(p.Playlists))
 				styles := make([]string, len(p.Playlists))
 				for i, r := range p.Playlists {
-					rows[i] = []string{r.Line}
-					cellStyles[i] = []string{cellStyleCode(r.LineStyle)}
+					rows[i] = []string{r.Mark, r.Sp, r.Title, r.Sp2, r.Count, r.Sp3, r.Glyph, r.End}
+					cellStyles[i] = []string{cellStyleCode(r.MarkStyle), cellStyleCode(r.SpStyle), cellStyleCode(r.TitleStyle), cellStyleCode(r.Sp2Style), cellStyleCode(r.CountStyle), cellStyleCode(r.Sp3Style), cellStyleCode(r.GlyphStyle), cellStyleCode(r.EndStyle)}
 					styles[i] = rowStyleName(r.Style)
 				}
 				v["rows"] = joinRows(rows)
 				v["cellstyles"] = joinRows(cellStyles)
 				v["styles"] = joinList(styles)
 			}
-			return p.ShowLists
+			e := downloadEnv(p, w, h)
+			return (e.In("LeftWidth") > 0.0)
 		},
 	},
 	{
@@ -168,11 +164,12 @@ var downloadParts = []screenPart[DownloadProps]{
 			v["color"] = p.EntriesBorder
 			v["right"] = p.EntriesRight
 			v["title"] = p.EntriesTitle
-			return p.ShowLists
+			e := downloadEnv(p, w, h)
+			return (e.In("LeftWidth") > 0.0)
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Entries rows", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "rows": "entry", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Entries rows", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Glyph:1,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Idx:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Tag:auto", "gap": "0", "rows": "✓, ,01, ,You Don't Know Me, ,⇄", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cells((e.Rect("Entries box", "x") + 1.0)), cells((e.Rect("Entries box", "y") + 1.0)), cells((e.Rect("Entries box", "w") - 2.0)), cells((e.Rect("Entries box", "h") - 2.0))
@@ -188,6 +185,34 @@ var downloadParts = []screenPart[DownloadProps]{
 				cellStyles := make([][]string, len(p.Entries))
 				styles := make([]string, len(p.Entries))
 				for i, r := range p.Entries {
+					rows[i] = []string{r.Glyph, r.Sp, r.Idx, r.Sp2, r.Title, r.Sp3, r.Tag}
+					cellStyles[i] = []string{cellStyleCode(r.GlyphStyle), cellStyleCode(r.SpStyle), cellStyleCode(r.IdxStyle), cellStyleCode(r.Sp2Style), cellStyleCode(r.TitleStyle), cellStyleCode(r.Sp3Style), cellStyleCode(r.TagStyle)}
+					styles[i] = rowStyleName(r.Style)
+				}
+				v["rows"] = joinRows(rows)
+				v["cellstyles"] = joinRows(cellStyles)
+				v["styles"] = joinList(styles)
+			}
+			e := downloadEnv(p, w, h)
+			return ((e.In("LeftWidth") > 0.0) && (e.In("HasNotes") == 0.0))
+		},
+	},
+	{
+		placed: placed{Kind: "lipgloss.rows", Name: "Entry notes", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "gap": "0", "rows": "note", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
+			w, h := e.W, e.H
+			_, _ = w, h
+			return cells((e.Rect("Entries box", "x") + 1.0)), cells((e.Rect("Entries box", "y") + 1.0)), cells((e.Rect("Entries box", "w") - 2.0)), cells((e.Rect("Entries box", "h") - 2.0))
+		}},
+		Apply: func(p DownloadProps, v map[string]string, w, h int) bool {
+			v["theme.palette"] = paletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
+			if p.Palette.Selected != "" {
+				v["color"] = p.Palette.Selected
+			}
+			{
+				rows := make([][]string, len(p.Notes))
+				cellStyles := make([][]string, len(p.Notes))
+				styles := make([]string, len(p.Notes))
+				for i, r := range p.Notes {
 					rows[i] = []string{r.Line}
 					cellStyles[i] = []string{cellStyleCode(r.LineStyle)}
 					styles[i] = rowStyleName(r.Style)
@@ -196,7 +221,8 @@ var downloadParts = []screenPart[DownloadProps]{
 				v["cellstyles"] = joinRows(cellStyles)
 				v["styles"] = joinList(styles)
 			}
-			return p.ShowLists
+			e := downloadEnv(p, w, h)
+			return ((e.In("LeftWidth") > 0.0) && (e.In("HasNotes") > 0.0))
 		},
 	},
 	{
@@ -218,11 +244,12 @@ var downloadParts = []screenPart[DownloadProps]{
 			v["color"] = p.OutputBorder
 			v["right"] = p.OutputRight
 			v["title"] = p.OutputTitle
-			return p.ShowOutput
+			e := downloadEnv(p, w, h)
+			return ((float64(e.W) >= 100.0) || (e.In("FullLog") > 0.0))
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Output rows", X: 46, Y: 4, W: 73, H: 30, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "rows": "line", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Output rows", X: 46, Y: 4, W: 73, H: 30, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "gap": "0", "rows": "line", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cells((e.Rect("Output box", "x") + 1.0)), cells((e.Rect("Output box", "y") + 1.0)), cells((e.Rect("Output box", "w") - 2.0)), cells(((e.Rect("Output box", "h") - 2.0) - e.In("FooterLines")))
@@ -245,7 +272,8 @@ var downloadParts = []screenPart[DownloadProps]{
 				v["cellstyles"] = joinRows(cellStyles)
 				v["styles"] = joinList(styles)
 			}
-			return p.ShowOutput
+			e := downloadEnv(p, w, h)
+			return ((float64(e.W) >= 100.0) || (e.In("FullLog") > 0.0))
 		},
 	},
 	{

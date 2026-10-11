@@ -26,8 +26,11 @@ func (m model) layout() (l downloadLayout, ok bool) {
 		return l, false
 	}
 	p := screens.DefaultDownloadProps()
-	p.LeftWidth, p.ShowOutput = m.leftWidth(m.width), m.fullLog || m.width >= minWideWidth
-	p.ShowLists = p.LeftWidth > 0
+	p.LeftWidth = m.leftWidth(m.width)
+	p.FullLog = 0
+	if m.fullLog {
+		p.FullLog = 1
+	}
 	p.PlaylistCount = len(m.state.Playlists)
 	frame := screens.DownloadLayout(p, m.width, m.height)
 
@@ -35,7 +38,7 @@ func (m model) layout() (l downloadLayout, ok bool) {
 		r, _ := frame.RegionNamed(name)
 		return rect{r.X, r.Y, r.W, r.H}
 	}
-	l.hasLists, l.hasOutput = p.ShowLists, p.ShowOutput
+	l.hasLists, l.hasOutput = p.LeftWidth > 0, m.fullLog || m.width >= minWideWidth
 	if l.hasLists {
 		l.playlists, l.entries = box("Playlists box"), box("Entries box")
 	}

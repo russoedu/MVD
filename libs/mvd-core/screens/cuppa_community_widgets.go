@@ -677,11 +677,25 @@ type rowsColumn struct {
 	// fit limits the selected background to the cells the text uses, not the
 	// column's whole width.
 	fit bool
+	// fill takes what the other columns leave (shared by the fill columns), and
+	// auto is as wide as the text of its own cell in that row: columns after a
+	// fill column are therefore flush with the right end, however wide an
+	// auto cell is.
+	fill, auto bool
+	// hasFit sizes the column from its longest cell: at least fitMin, at most
+	// fitMax cells, or fitPct percent of the width the fixed columns leave but
+	// never below floor (fitMin when 0). hideEmpty gives it no width and no
+	// gap when every cell is empty; minWidth is the least a fill column takes.
+	hasFit         bool
+	fitMin, fitMax int
+	fitPct, floor  int
+	hideEmpty      bool
+	minWidth       int
 }
 
 // rowsColumns reads "Name[:width][:token]..." items separated by commas. A
 // token is colour, glyph, ellipsis, fg=<colour>, bg=<colour>,
-// selbg=<colour>, selfg=<colour>, selbold or fit. A column without a width takes twelve cells, except the
+// selbg=<colour>, selfg=<colour>, selbold, fit, fill or auto. A column without a width takes twelve cells, except the
 // last, which takes what is left of the row.
 func rowsColumns(spec string) []rowsColumn {
 	var out []rowsColumn
@@ -704,6 +718,27 @@ func rowsColumns(spec string) []rowsColumn {
 				col.ellipsis = true
 			case lower == "fit":
 				col.fit = true
+			case strings.HasPrefix(lower, "fit="):
+				col.hasFit = true
+				spec := strings.TrimSpace(extra[4:])
+				lo, hi, _ := strings.Cut(spec, "..")
+				col.fitMin, _ = strconv.Atoi(strings.TrimSpace(lo))
+				hi = strings.TrimSpace(hi)
+				if pct, ok := strings.CutSuffix(hi, "%"); ok {
+					col.fitPct, _ = strconv.Atoi(strings.TrimSpace(pct))
+				} else if hi != "" {
+					col.fitMax, _ = strconv.Atoi(hi)
+				}
+			case strings.HasPrefix(lower, "floor="):
+				col.floor, _ = strconv.Atoi(strings.TrimSpace(extra[6:]))
+			case strings.HasPrefix(lower, "min="):
+				col.minWidth, _ = strconv.Atoi(strings.TrimSpace(extra[4:]))
+			case lower == "hide-empty":
+				col.hideEmpty = true
+			case lower == "fill":
+				col.fill = true
+			case lower == "auto":
+				col.auto = true
 			case lower == "selbold":
 				col.selBold = true
 			case strings.HasPrefix(lower, "selfg="):
@@ -719,7 +754,7 @@ func rowsColumns(spec string) []rowsColumn {
 		out = append(out, col)
 	}
 	for i := range out {
-		if out[i].width == 0 && i < len(out)-1 {
+		if out[i].width == 0 && i < len(out)-1 && !out[i].fill && !out[i].auto && !out[i].hasFit {
 			out[i].width = 12
 		}
 	}
@@ -764,6 +799,109 @@ func rowsCells(s string) [][]string {
 		rows = append(rows, rowsSplit(raw, ",", true))
 	}
 	return rows
+}
+
+// rowsPlan decides the widths of the columns of all the rows: a fixed column
+// as it is, a fit column from its longest cell (within its bounds, a share of
+// what the fixed columns leave), a column that hide-empty hides when it has no
+// text, an auto column as wide as the cell of each row, and a fill column what
+// is left.
+type rowsPlan struct {
+	columns []rowsColumn
+	visible []bool
+	// shared is the width of the fixed and fit columns, -1 for the others.
+	shared []int
+	// used is the total of shared, gaps the cells between visible columns.
+	used, gaps, total int
+	gap               int
+}
+
+func newRowsPlan(columns []rowsColumn, rows [][]string, total, gap int) rowsPlan {
+	p := rowsPlan{columns: columns, total: total, gap: gap}
+	p.visible = make([]bool, len(columns))
+	p.shared = make([]int, len(columns))
+	longest := make([]int, len(columns))
+	shown := 0
+	for i, c := range columns {
+		empty := true
+		for _, r := range rows {
+			if i < len(r) && r[i] != "" {
+				empty = false
+				longest[i] = max(longest[i], runesWidth(parseSGR(r[i], sketchStyle{})))
+			}
+		}
+		p.visible[i] = !c.hideEmpty || !empty
+		if p.visible[i] {
+			shown++
+		}
+	}
+	p.gaps = gap * max(shown-1, 0)
+	for i, c := range columns {
+		switch {
+		case !p.visible[i]:
+			p.shared[i] = 0
+		case c.hasFit:
+			p.shared[i] = -2
+		case c.auto || c.fill || c.width == 0 && i == len(columns)-1:
+			p.shared[i] = -1
+		default:
+			p.shared[i] = c.width
+			p.used += c.width
+		}
+	}
+	rest := max(total-p.used-p.gaps, 0)
+	for i, c := range columns {
+		if p.shared[i] != -2 {
+			continue
+		}
+		upper := longest[i]
+		switch {
+		case c.fitPct > 0:
+			upper = max(max(c.floor, c.fitMin), rest*c.fitPct/100)
+		case c.fitMax > 0:
+			upper = c.fitMax
+		}
+		w := min(max(longest[i], c.fitMin), max(upper, c.fitMin))
+		p.shared[i] = w
+		p.used += w
+	}
+	return p
+}
+
+// row is the width of each column in one row.
+func (p rowsPlan) row(row []string) []int {
+	widths := make([]int, len(p.columns))
+	used, fills := p.used, 0
+	for i, c := range p.columns {
+		switch {
+		case !p.visible[i]:
+		case p.shared[i] >= 0:
+			widths[i] = p.shared[i]
+		case c.auto:
+			cell := ""
+			if i < len(row) {
+				cell = row[i]
+			}
+			widths[i] = runesWidth(parseSGR(cell, sketchStyle{}))
+			used += widths[i]
+		default:
+			fills++
+		}
+	}
+	left := max(p.total-used-p.gaps, 0)
+	for i, c := range p.columns {
+		if !p.visible[i] || p.shared[i] >= 0 || c.auto {
+			continue
+		}
+		share := left / fills
+		if fills == 1 {
+			share = left
+		}
+		widths[i] = max(share, c.minWidth)
+		left = max(left-widths[i], 0)
+		fills--
+	}
+	return widths
 }
 
 // paletteColour resolves a colour of a column or a cell: a name of the
@@ -824,7 +962,16 @@ func drawRows(g *sketchGrid, p props) {
 	for _, c := range columns {
 		anySelBg = anySelBg || c.selBg != "" || c.selFg != "" || c.selBold
 	}
-	for y, row := range rowsCells(p.str("rows")) {
+	allRows := rowsCells(p.str("rows"))
+	gap := min(max(p.integer("gap", 0), 0), 8)
+	plan := newRowsPlan(columns, allRows, g.W, gap)
+	lastVisible := -1
+	for i := range columns {
+		if plan.visible[i] {
+			lastVisible = i
+		}
+	}
+	for y, row := range allRows {
 		if y >= g.H {
 			break
 		}
@@ -845,12 +992,12 @@ func drawRows(g *sketchGrid, p props) {
 			}
 		}
 		x := 0
+		widths := plan.row(row)
 		for i, col := range columns {
-			w := col.width
-			if w == 0 {
-				w = max(g.W-x, 0)
+			if !plan.visible[i] {
+				continue
 			}
-			w = min(w, max(g.W-x, 0))
+			w := min(widths[i], max(g.W-x, 0))
 			cell := ""
 			if i < len(row) {
 				cell = row[i]
@@ -892,6 +1039,9 @@ func drawRows(g *sketchGrid, p props) {
 				}
 			}
 			x += w
+			if i < lastVisible {
+				x += gap
+			}
 		}
 	}
 }

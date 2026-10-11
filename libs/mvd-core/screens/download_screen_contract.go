@@ -12,8 +12,6 @@ type DownloadProps struct {
 	PlaylistsBorder string
 	// PlaylistsRight is the Right label (in the top edge) of "Playlists box".
 	PlaylistsRight string
-	// ShowLists is the whether "Playlists box" is shown, whether "Playlists rows" is shown, whether "Entries box" is shown, whether "Entries rows" is shown.
-	ShowLists bool
 	// Playlists is the Sample rows (; between rows, , between cells) of "Playlists rows".
 	Playlists []DownloadPlaylistsRow
 	// EntriesBorder is the Border color of "Entries box".
@@ -24,14 +22,14 @@ type DownloadProps struct {
 	EntriesTitle string
 	// Entries is the Sample rows (; between rows, , between cells) of "Entries rows".
 	Entries []DownloadEntriesRow
+	// Notes is the Sample rows (; between rows, , between cells) of "Entry notes".
+	Notes []DownloadNotesRow
 	// OutputBorder is the Border color of "Output box".
 	OutputBorder string
 	// OutputRight is the Right label (in the top edge) of "Output box".
 	OutputRight string
 	// OutputTitle is the Title of "Output box".
 	OutputTitle string
-	// ShowOutput is the whether "Output box" is shown, whether "Output rows" is shown.
-	ShowOutput bool
 	// Output is the Sample rows (; between rows, , between cells) of "Output rows".
 	Output []DownloadOutputRow
 	// BarWidth is the Bar width (0: what the text leaves) of "Progress".
@@ -62,6 +60,10 @@ type DownloadProps struct {
 	LeftWidth int
 	// PlaylistCount is the read by a layout expression or a condition.
 	PlaylistCount int
+	// HasNotes is the read by a layout expression or a condition.
+	HasNotes int
+	// FullLog is the read by a layout expression or a condition.
+	FullLog int
 	// FooterLines is the read by a layout expression or a condition.
 	FooterLines int
 	// Palette is the design's named colours; set one and every component that
@@ -107,16 +109,78 @@ func DefaultDownloadPalette() DownloadPalette {
 
 // DownloadPlaylistsRow is one row of Playlists. Style says how the row is drawn.
 type DownloadPlaylistsRow struct {
-	// Line is a cell.
-	Line string
-	// LineStyle restyles the Line cell of this row; the zero value keeps the column's style.
-	LineStyle CellStyle
+	// Mark is a cell.
+	Mark string
+	// Sp is a cell.
+	Sp string
+	// Title is a cell.
+	Title string
+	// Sp2 is a cell.
+	Sp2 string
+	// Count is a cell.
+	Count string
+	// Sp3 is a cell.
+	Sp3 string
+	// Glyph is a cell.
+	Glyph string
+	// End is a cell.
+	End string
+	// MarkStyle restyles the Mark cell of this row; the zero value keeps the column's style.
+	MarkStyle CellStyle
+	// SpStyle restyles the Sp cell of this row; the zero value keeps the column's style.
+	SpStyle CellStyle
+	// TitleStyle restyles the Title cell of this row; the zero value keeps the column's style.
+	TitleStyle CellStyle
+	// Sp2Style restyles the Sp2 cell of this row; the zero value keeps the column's style.
+	Sp2Style CellStyle
+	// CountStyle restyles the Count cell of this row; the zero value keeps the column's style.
+	CountStyle CellStyle
+	// Sp3Style restyles the Sp3 cell of this row; the zero value keeps the column's style.
+	Sp3Style CellStyle
+	// GlyphStyle restyles the Glyph cell of this row; the zero value keeps the column's style.
+	GlyphStyle CellStyle
+	// EndStyle restyles the End cell of this row; the zero value keeps the column's style.
+	EndStyle CellStyle
 	// Style is how the row is drawn: RowNormal, RowSelected, RowDim or RowAccent.
 	Style RowStyle
 }
 
 // DownloadEntriesRow is one row of Entries. Style says how the row is drawn.
 type DownloadEntriesRow struct {
+	// Glyph is a cell.
+	Glyph string
+	// Sp is a cell.
+	Sp string
+	// Idx is a cell.
+	Idx string
+	// Sp2 is a cell.
+	Sp2 string
+	// Title is a cell.
+	Title string
+	// Sp3 is a cell.
+	Sp3 string
+	// Tag is a cell.
+	Tag string
+	// GlyphStyle restyles the Glyph cell of this row; the zero value keeps the column's style.
+	GlyphStyle CellStyle
+	// SpStyle restyles the Sp cell of this row; the zero value keeps the column's style.
+	SpStyle CellStyle
+	// IdxStyle restyles the Idx cell of this row; the zero value keeps the column's style.
+	IdxStyle CellStyle
+	// Sp2Style restyles the Sp2 cell of this row; the zero value keeps the column's style.
+	Sp2Style CellStyle
+	// TitleStyle restyles the Title cell of this row; the zero value keeps the column's style.
+	TitleStyle CellStyle
+	// Sp3Style restyles the Sp3 cell of this row; the zero value keeps the column's style.
+	Sp3Style CellStyle
+	// TagStyle restyles the Tag cell of this row; the zero value keeps the column's style.
+	TagStyle CellStyle
+	// Style is how the row is drawn: RowNormal, RowSelected, RowDim or RowAccent.
+	Style RowStyle
+}
+
+// DownloadNotesRow is one row of Notes. Style says how the row is drawn.
+type DownloadNotesRow struct {
 	// Line is a cell.
 	Line string
 	// LineStyle restyles the Line cell of this row; the zero value keeps the column's style.
@@ -146,16 +210,15 @@ func DefaultDownloadProps() DownloadProps {
 		Counters:        "Queue 0   Running 0   Done 0",
 		PlaylistsBorder: "#6b7280",
 		PlaylistsRight:  "0",
-		ShowLists:       true,
-		Playlists:       []DownloadPlaylistsRow{{Line: "playlist", Style: RowNormal}},
+		Playlists:       []DownloadPlaylistsRow{{Mark: "▸", Sp: " ", Title: "90s UK Dance Hits", Sp2: " ", Count: "3/6", Sp3: " ", Glyph: "⠋", End: "", Style: RowSelected}},
 		EntriesBorder:   "#6b7280",
 		EntriesRight:    "0",
 		EntriesTitle:    "Entries",
-		Entries:         []DownloadEntriesRow{{Line: "entry", Style: RowNormal}},
+		Entries:         []DownloadEntriesRow{{Glyph: "✓", Sp: " ", Idx: "01", Sp2: " ", Title: "You Don't Know Me", Sp3: " ", Tag: "⇄", Style: RowNormal}},
+		Notes:           []DownloadNotesRow{{Line: "note", Style: RowNormal}},
 		OutputBorder:    "#6b7280",
 		OutputRight:     "follow",
 		OutputTitle:     "Output",
-		ShowOutput:      true,
 		Output:          []DownloadOutputRow{{Line: "line", Style: RowNormal}},
 		BarWidth:        32,
 		ProgressText:    "34.2% of 112.4MiB at 8.1MiB/s ETA 0:09",
@@ -171,6 +234,8 @@ func DefaultDownloadProps() DownloadProps {
 		ShowStatus:      true,
 		LeftWidth:       0,
 		PlaylistCount:   0,
+		HasNotes:        0,
+		FullLog:         0,
 		FooterLines:     0,
 		Palette:         DefaultDownloadPalette(),
 	}

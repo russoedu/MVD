@@ -78,7 +78,7 @@ var folderParts = []screenPart[FolderProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Folders", X: 0, Y: 3, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry:selbg=@Selected:selfg=@Text:selbold:fit", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Folders", X: 0, Y: 3, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry:selbg=@Selected:selfg=@Text:selbold:fit", "gap": "0", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 3, cells((float64(w) * 100.0 / 100.0)), cells(((float64(h) * 100.0 / 100.0) - 5.0))
 		}},
 		Event: "Pick",
@@ -104,7 +104,7 @@ var folderParts = []screenPart[FolderProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Folders after problem", X: 0, Y: 4, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry:selbg=@Selected:selfg=@Text:selbold:fit", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Folders after problem", X: 0, Y: 4, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry:selbg=@Selected:selfg=@Text:selbold:fit", "gap": "0", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 4, cells((float64(w) * 100.0 / 100.0)), cells(((float64(h) * 100.0 / 100.0) - 5.0))
 		}},
 		Event: "Pick",

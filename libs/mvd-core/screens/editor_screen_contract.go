@@ -6,8 +6,6 @@ package screens
 type EditorProps struct {
 	// Title is the Text of "Title".
 	Title string
-	// Header is the Text of "Header".
-	Header string
 	// Songs is the Sample rows (; between rows, , between cells) of "List".
 	Songs []EditorSongsRow
 	// ShowEmpty is the whether "Empty" is shown.
@@ -71,10 +69,66 @@ func DefaultEditorPalette() EditorPalette {
 
 // EditorSongsRow is one row of Songs. Style says how the row is drawn.
 type EditorSongsRow struct {
-	// Line is a cell.
-	Line string
-	// LineStyle restyles the Line cell of this row; the zero value keeps the column's style.
-	LineStyle CellStyle
+	// Mark is a cell.
+	Mark string
+	// S1 is a cell.
+	S1 string
+	// Glyph is a cell.
+	Glyph string
+	// S2 is a cell.
+	S2 string
+	// Review is a cell.
+	Review string
+	// S3 is a cell.
+	S3 string
+	// Artist is a cell.
+	Artist string
+	// S4 is a cell.
+	S4 string
+	// Song is a cell.
+	Song string
+	// S5 is a cell.
+	S5 string
+	// Video is a cell.
+	Video string
+	// S6 is a cell.
+	S6 string
+	// Replaced is a cell.
+	Replaced string
+	// S7 is a cell.
+	S7 string
+	// Address is a cell.
+	Address string
+	// MarkStyle restyles the Mark cell of this row; the zero value keeps the column's style.
+	MarkStyle CellStyle
+	// S1Style restyles the S1 cell of this row; the zero value keeps the column's style.
+	S1Style CellStyle
+	// GlyphStyle restyles the Glyph cell of this row; the zero value keeps the column's style.
+	GlyphStyle CellStyle
+	// S2Style restyles the S2 cell of this row; the zero value keeps the column's style.
+	S2Style CellStyle
+	// ReviewStyle restyles the Review cell of this row; the zero value keeps the column's style.
+	ReviewStyle CellStyle
+	// S3Style restyles the S3 cell of this row; the zero value keeps the column's style.
+	S3Style CellStyle
+	// ArtistStyle restyles the Artist cell of this row; the zero value keeps the column's style.
+	ArtistStyle CellStyle
+	// S4Style restyles the S4 cell of this row; the zero value keeps the column's style.
+	S4Style CellStyle
+	// SongStyle restyles the Song cell of this row; the zero value keeps the column's style.
+	SongStyle CellStyle
+	// S5Style restyles the S5 cell of this row; the zero value keeps the column's style.
+	S5Style CellStyle
+	// VideoStyle restyles the Video cell of this row; the zero value keeps the column's style.
+	VideoStyle CellStyle
+	// S6Style restyles the S6 cell of this row; the zero value keeps the column's style.
+	S6Style CellStyle
+	// ReplacedStyle restyles the Replaced cell of this row; the zero value keeps the column's style.
+	ReplacedStyle CellStyle
+	// S7Style restyles the S7 cell of this row; the zero value keeps the column's style.
+	S7Style CellStyle
+	// AddressStyle restyles the Address cell of this row; the zero value keeps the column's style.
+	AddressStyle CellStyle
 	// Style is how the row is drawn: RowNormal, RowSelected, RowDim or RowAccent.
 	Style RowStyle
 }
@@ -87,8 +141,7 @@ type EditorHintsHint struct{ Key, Label string }
 func DefaultEditorProps() EditorProps {
 	return EditorProps{
 		Title:     " MVD · Review before downloading",
-		Header:    "    Review    Artist   Song   Video   Address",
-		Songs:     []EditorSongsRow{{Line: "song", Style: RowNormal}},
+		Songs:     []EditorSongsRow{{Mark: "", S1: "", Glyph: "", S2: "", Review: "Review", S3: "", Artist: "Artist", S4: "", Song: "Song", S5: "", Video: "Video", S6: "", Replaced: "", S7: "", Address: "Address", Style: RowDim}},
 		ShowEmpty: true,
 		Detail1:   " ",
 		Detail2:   " ",
