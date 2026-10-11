@@ -1,10 +1,13 @@
-package ytdlp
+// Package probe asks yt-dlp what a video offers to download (its formats and sizes) and
+// reduces the answer to the quality a person would get.
+package probe
 
 import (
 	"context"
 	"fmt"
 	"os/exec"
 	"strings"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
 )
@@ -26,7 +29,7 @@ func ProbeVideo(ctx context.Context, bin, videoID string, extraArgs []string) (V
 		if msg == "" {
 			msg = err.Error()
 		}
-		return VideoProbe{}, fmt.Errorf("yt-dlp -J failed: %s", lastLine(msg))
+		return VideoProbe{}, fmt.Errorf("yt-dlp -J failed: %s", ytdlp.LastLine(msg))
 	}
 	return ParseVideoProbe(out)
 }

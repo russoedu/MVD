@@ -33,7 +33,7 @@ func ExportCookies(ctx context.Context, bin, browserSpec, file, probeURL string,
 		if msg == "" {
 			msg = err.Error()
 		}
-		return fmt.Errorf("cannot export cookies from %s: %s", browserSpec, lastLine(msg))
+		return fmt.Errorf("cannot export cookies from %s: %s", browserSpec, LastLine(msg))
 	}
 	return nil
 }

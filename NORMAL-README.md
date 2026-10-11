@@ -288,7 +288,7 @@ The code follows vertical feature slices: `apps/mvd-tui/main.go` only wires thin
 | `libs/mvd-core/sourcelist` | Load/save/clear the saved URL list. |
 | `libs/mvd-core/runner` | Assemble a ready-to-run engine (cookies, resolver, the Spotify and Apple Music playlist sources, options) from a config. |
 | `libs/mvd-core/deps` | Make yt-dlp, ffmpeg and a JavaScript runtime available, check what it downloads against the published checksum, and keep the ones the app owns up to date. |
-| `libs/mvd-core/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. |
+| `libs/mvd-core/ytdlp` | Run yt-dlp: list a playlist, download one video with captured output, decode progress lines, render the output template, export cookies, dump pages. Downloading is `ytdlp/fetch` and asking what a video offers is `ytdlp/probe`. |
 | `libs/mvd-core/cookies` | Acquire a YouTube cookie file by trying the installed browsers and keeping the first with a live login. |
 | `libs/mvd-core/official` | Find the official video of a song: tell art tracks from real videos, follow the Music card, ask Wikidata and YouTube Music, search YouTube, score the candidates (fuzzy titles, artist channels, length) and remember what was found. The package is the resolver; its parts are `official/titlematch`, `trackpick`, `trackfind`, `musicsource` and `cookiejar`. |
 | `libs/mvd-core/songfile` | Read a list of songs from a text file or CSV (or a pasted text): link policy, line and CSV mappers, file and pasted-list stores. |

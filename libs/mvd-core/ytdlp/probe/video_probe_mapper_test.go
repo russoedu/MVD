@@ -1,4 +1,4 @@
-package ytdlp
+package probe
 
 import "testing"
 

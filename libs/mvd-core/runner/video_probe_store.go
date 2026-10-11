@@ -3,8 +3,7 @@ package runner
 import (
 	"context"
 	"sync"
-
-	"youtube-downloader/libs/mvd-core/ytdlp"
+	"youtube-downloader/libs/mvd-core/ytdlp/probe"
 )
 
 // videoProbes asks yt-dlp about each video once: its quality and its storyboard come
@@ -20,7 +19,7 @@ type videoProbes struct {
 
 type probeEntry struct {
 	once  sync.Once
-	probe ytdlp.VideoProbe
+	probe probe.VideoProbe
 	err   error
 }
 
@@ -29,7 +28,7 @@ func newVideoProbes(ctx context.Context, ytDlp string, extraArgs []string) *vide
 }
 
 // of returns what yt-dlp says of a video, asking only the first time.
-func (p *videoProbes) of(videoID string) (ytdlp.VideoProbe, error) {
+func (p *videoProbes) of(videoID string) (probe.VideoProbe, error) {
 	p.mu.Lock()
 	entry, ok := p.probes[videoID]
 	if !ok {
@@ -39,7 +38,7 @@ func (p *videoProbes) of(videoID string) (ytdlp.VideoProbe, error) {
 	p.mu.Unlock()
 
 	entry.once.Do(func() {
-		entry.probe, entry.err = ytdlp.ProbeVideo(p.ctx, p.ytDlp, videoID, p.extraArgs)
+		entry.probe, entry.err = probe.ProbeVideo(p.ctx, p.ytDlp, videoID, p.extraArgs)
 	})
 	return entry.probe, entry.err
 }
