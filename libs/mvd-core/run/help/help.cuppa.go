@@ -30,7 +30,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Box", X: 40, Y: 8, W: 40, H: 20, Props: map[string]string{"border": "rounded", "color": "#00f0ff", "gradient": "", "right": "", "rightColor": "240", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Help", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Box", X: 40, Y: 8, W: 40, H: 20, Props: map[string]string{"blurColor": "240", "border": "rounded", "color": "#00f0ff", "focused": "true", "gradient": "", "right": "", "rightColor": "240", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Help", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells(cuppa.Div(((float64(w) * 100.0 / 100.0) - e.In("HelpWidth")), 2.0)), cuppa.Cells(cuppa.Div(((float64(h) * 100.0 / 100.0) - e.In("HelpHeight")), 2.0)), cuppa.Cells(e.In("HelpWidth")), cuppa.Cells(e.In("HelpHeight"))
@@ -46,7 +46,7 @@ var parts = []cuppa.ScreenPart[Props]{
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Lines", X: 41, Y: 9, W: 38, H: 18, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "gap": "0", "rows": "help", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Lines", X: 41, Y: 9, W: 38, H: 18, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "focused": "true", "gap": "0", "rows": "help", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Box", "x") + 1.0)), cuppa.Cells((e.Rect("Box", "y") + 1.0)), cuppa.Cells((e.Rect("Box", "w") - 2.0)), cuppa.Cells((e.Rect("Box", "h") - 2.0))
@@ -210,6 +210,24 @@ func Default() Props {
 // HelpEvent is what a click on a component or a key raises. The concrete types
 // are the Help... structs below.
 type Event interface{ isEvent() }
+
+// HelpInputs is the props by the input names of the design, as the live
+// connection publishes them.
+func Inputs(p Props) map[string]any {
+	return map[string]any{
+		"Lines":      p.Lines,
+		"HelpWidth":  p.HelpWidth,
+		"HelpHeight": p.HelpHeight,
+	}
+}
+
+// HelpEventNamed is the event the design calls name, with the cell x, y inside
+// the component that raised it; false when the screen has no such event.
+func EventNamed(name string, x, y int) (Event, bool) {
+	switch name {
+	}
+	return nil, false
+}
 
 // HelpKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}

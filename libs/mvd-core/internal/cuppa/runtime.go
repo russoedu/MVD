@@ -308,10 +308,26 @@ func box(w, h int, border, color, title, gradient string) string {
 	return strings.Join(lines, "\n")
 }
 
+// blurredBox is the box's props as drawn: a box without focus (the "focused"
+// prop is false) takes its blurred colour and loses its gradient.
+func blurredBox(p Props) Props {
+	if p.Str("focused") != "false" {
+		return p
+	}
+	q := make(Props, len(p)+1)
+	for k, v := range p {
+		q[k] = v
+	}
+	q["color"] = orDefault(p.Str("blurColor"), "240")
+	q["gradient"] = ""
+	return q
+}
+
 // boxOf is a box with its title in the top edge and, optionally, a right label
 // before the last border cell: ╭─ Title ───── right ─╮. A title that would
 // leave the label no room is cut with an ellipsis.
 func boxOf(w, h int, p Props) string {
+	p = blurredBox(p)
 	if w < 2 || h < 2 || p.Str("gradient") != "" && p.Str("color") != "" {
 		return box(w, h, p.Str("border"), p.Str("color"), p.Str("title"), p.Str("gradient"))
 	}

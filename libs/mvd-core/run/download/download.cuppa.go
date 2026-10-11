@@ -27,6 +27,21 @@ func env(p Props, w, h int) cuppa.FitEnv {
 				return 1
 			}
 			return 0
+		case "Playlists focus":
+			if p.PlaylistsFocus {
+				return 1
+			}
+			return 0
+		case "Entries focus":
+			if p.EntriesFocus {
+				return 1
+			}
+			return 0
+		case "Output focus":
+			if p.OutputFocus {
+				return 1
+			}
+			return 0
 		case "BarWidth":
 			return float64(p.BarWidth)
 		case "Percent":
@@ -68,7 +83,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Header", X: 0, Y: 0, W: 120, H: 3, Props: map[string]string{"border": "rounded", "color": "#6b7280", "gradient": "", "right": "00:00:00", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "MVD · Music Video Downloader", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Header", X: 0, Y: 0, W: 120, H: 3, Props: map[string]string{"blurColor": "240", "border": "rounded", "color": "#6b7280", "focused": "true", "gradient": "", "right": "00:00:00", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "MVD · Music Video Downloader", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 3
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
@@ -98,14 +113,17 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Playlists box", X: 0, Y: 3, W: 45, H: 8, Props: map[string]string{"border": "rounded", "color": "#6b7280", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Playlists", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Playlists box", X: 0, Y: 3, W: 45, H: 8, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "false", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Playlists", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return 0, 3, cuppa.Cells(e.In("LeftWidth")), cuppa.Cells(min(min((e.In("PlaylistCount")+2.0), max(5.0, cuppa.Div(((float64(h)*100.0/100.0)-4.0), 3.0))), ((float64(h) * 100.0 / 100.0) - 9.0)))
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
-				v["color"] = p.Palette.Dim
+				v["blurColor"] = p.Palette.Dim
+			}
+			if p.Palette.Focus != "" {
+				v["color"] = p.Palette.Focus
 			}
 			if p.Palette.Dim != "" {
 				v["rightColor"] = p.Palette.Dim
@@ -113,14 +131,14 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			if p.Palette.Accent != "" {
 				v["titleColor"] = p.Palette.Accent
 			}
-			v["color"] = p.PlaylistsBorder
+			v["focused"] = strconv.FormatBool(p.PlaylistsFocus)
 			v["right"] = p.PlaylistsRight
 			e := env(p, w, h)
 			return (e.In("LeftWidth") > 0.0)
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Playlists rows", X: 1, Y: 4, W: 43, H: 6, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Count:auto:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1,End:1", "gap": "0", "rows": "▸, ,90s UK Dance Hits, ,3/6, ,⠋,", "styles": "selected", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Playlists rows", X: 1, Y: 4, W: 43, H: 6, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Count:auto:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1,End:1", "focused": "true", "gap": "0", "rows": "▸, ,90s UK Dance Hits, ,3/6, ,⠋,", "styles": "selected", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Playlists box", "x") + 1.0)), cuppa.Cells((e.Rect("Playlists box", "y") + 1.0)), cuppa.Cells((e.Rect("Playlists box", "w") - 2.0)), cuppa.Cells((e.Rect("Playlists box", "h") - 2.0))
@@ -167,14 +185,17 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Entries box", X: 0, Y: 11, W: 45, H: 25, Props: map[string]string{"border": "rounded", "color": "#6b7280", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Entries", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Entries box", X: 0, Y: 11, W: 45, H: 25, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "true", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Entries", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return 0, cuppa.Cells(e.Rect("Playlists box", "bottom")), cuppa.Cells(e.In("LeftWidth")), cuppa.Cells((((float64(h) * 100.0 / 100.0) - e.Rect("Playlists box", "bottom")) - 1.0))
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
-				v["color"] = p.Palette.Dim
+				v["blurColor"] = p.Palette.Dim
+			}
+			if p.Palette.Focus != "" {
+				v["color"] = p.Palette.Focus
 			}
 			if p.Palette.Dim != "" {
 				v["rightColor"] = p.Palette.Dim
@@ -182,7 +203,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			if p.Palette.Accent != "" {
 				v["titleColor"] = p.Palette.Accent
 			}
-			v["color"] = p.EntriesBorder
+			v["focused"] = strconv.FormatBool(p.EntriesFocus)
 			v["right"] = p.EntriesRight
 			v["title"] = p.EntriesTitle
 			e := env(p, w, h)
@@ -190,7 +211,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entries rows", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Glyph:1,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Idx:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Tag:auto", "gap": "0", "rows": "✓, ,01, ,You Don't Know Me, ,⇄", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entries rows", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#ff007f", "columns": "Glyph:1,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Idx:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Tag:auto", "focused": "true", "gap": "0", "rows": "✓, ,01, ,You Don't Know Me, ,⇄", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0))
@@ -216,9 +237,10 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
-			if p.Palette.Selected != "" {
-				v["color"] = p.Palette.Selected
+			if p.Palette.Accent != "" {
+				v["color"] = p.Palette.Accent
 			}
+			v["focused"] = strconv.FormatBool(p.EntriesFocus)
 			if p.EntriesRows == nil {
 				rows := make([][]string, len(p.Entries))
 				cellStyles := make([][]string, len(p.Entries))
@@ -237,7 +259,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entry notes", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "gap": "0", "rows": "note", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entry notes", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "focused": "true", "gap": "0", "rows": "note", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0))
@@ -283,14 +305,17 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Output box", X: 45, Y: 3, W: 75, H: 32, Props: map[string]string{"border": "rounded", "color": "#6b7280", "gradient": "", "right": "follow", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Output", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Output box", X: 45, Y: 3, W: 75, H: 32, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "false", "gradient": "", "right": "follow", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Output", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells(e.In("LeftWidth")), cuppa.Cells(3.0), cuppa.Cells(((float64(w) * 100.0 / 100.0) - e.In("LeftWidth"))), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 4.0))
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
-				v["color"] = p.Palette.Dim
+				v["blurColor"] = p.Palette.Dim
+			}
+			if p.Palette.Focus != "" {
+				v["color"] = p.Palette.Focus
 			}
 			if p.Palette.Dim != "" {
 				v["rightColor"] = p.Palette.Dim
@@ -298,7 +323,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			if p.Palette.Accent != "" {
 				v["titleColor"] = p.Palette.Accent
 			}
-			v["color"] = p.OutputBorder
+			v["focused"] = strconv.FormatBool(p.OutputFocus)
 			v["right"] = p.OutputRight
 			v["title"] = p.OutputTitle
 			e := env(p, w, h)
@@ -306,7 +331,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Output rows", X: 46, Y: 4, W: 73, H: 30, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "gap": "0", "rows": "line", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Output rows", X: 46, Y: 4, W: 73, H: 30, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "focused": "true", "gap": "0", "rows": "line", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Output box", "x") + 1.0)), cuppa.Cells((e.Rect("Output box", "y") + 1.0)), cuppa.Cells((e.Rect("Output box", "w") - 2.0)), cuppa.Cells(((e.Rect("Output box", "h") - 2.0) - e.In("FooterLines")))
@@ -463,16 +488,16 @@ type Props struct {
 	HeaderRight string
 	// Counters is the Text of "Counters".
 	Counters string
-	// PlaylistsBorder is the Border color of "Playlists box".
-	PlaylistsBorder string
+	// PlaylistsFocus is the Has focus (false: the border takes the blurred colour) of "Playlists box".
+	PlaylistsFocus bool
 	// PlaylistsRight is the Right label (in the top edge) of "Playlists box".
 	PlaylistsRight string
 	// Playlists is the Sample rows (; between rows, , between cells) of "Playlists rows".
 	Playlists []PlaylistsRow
 	// PlaylistsRows is the function that gives the rows of "Playlists rows" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
 	PlaylistsRows func(w, h int) ([]PlaylistsRow, int)
-	// EntriesBorder is the Border color of "Entries box".
-	EntriesBorder string
+	// EntriesFocus is the Has focus (false: the border takes the blurred colour) of "Entries box", Has focus (false: a selected row is accent text, not inverted) of "Entries rows".
+	EntriesFocus bool
 	// EntriesRight is the Right label (in the top edge) of "Entries box".
 	EntriesRight string
 	// EntriesTitle is the Title of "Entries box".
@@ -485,8 +510,8 @@ type Props struct {
 	Notes []NotesRow
 	// NotesRows is the function that gives the rows of "Entry notes" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
 	NotesRows func(w, h int) ([]NotesRow, int)
-	// OutputBorder is the Border color of "Output box".
-	OutputBorder string
+	// OutputFocus is the Has focus (false: the border takes the blurred colour) of "Output box".
+	OutputFocus bool
 	// OutputRight is the Right label (in the top edge) of "Output box".
 	OutputRight string
 	// OutputTitle is the Title of "Output box".
@@ -751,42 +776,42 @@ func OutputAt(p Props, w, h, y int) (int, bool) {
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
 	return Props{
-		Hints:           []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "tab", Label: "pane"}, {Key: "⏎", Label: "follow"}, {Key: "f", Label: "failed"}, {Key: "r", Label: "retry"}, {Key: "l", Label: "full log"}, {Key: "?", Label: "help"}, {Key: "q", Label: "quit"}},
-		ShowKeys:        false,
-		HeaderRight:     "00:00:00",
-		Counters:        "Queue 0   Running 0   Done 0",
-		PlaylistsBorder: "#6b7280",
-		PlaylistsRight:  "0",
-		Playlists:       []PlaylistsRow{{Mark: "▸", Sp: " ", Title: "90s UK Dance Hits", Sp2: " ", Count: "3/6", Sp3: " ", Glyph: "⠋", End: "", Style: cuppa.RowSelected}},
-		PlaylistsRows:   nil,
-		EntriesBorder:   "#6b7280",
-		EntriesRight:    "0",
-		EntriesTitle:    "Entries",
-		Entries:         []EntriesRow{{Glyph: "✓", Sp: " ", Idx: "01", Sp2: " ", Title: "You Don't Know Me", Sp3: " ", Tag: "⇄", Style: cuppa.RowNormal}},
-		EntriesRows:     nil,
-		Notes:           []NotesRow{{Line: "note", Style: cuppa.RowNormal}},
-		NotesRows:       nil,
-		OutputBorder:    "#6b7280",
-		OutputRight:     "follow",
-		OutputTitle:     "Output",
-		Output:          []OutputRow{{Line: "line", Style: cuppa.RowNormal}},
-		OutputRows:      nil,
-		BarWidth:        32,
-		ProgressText:    "34.2% of 112.4MiB at 8.1MiB/s ETA 0:09",
-		Percent:         34.2,
-		ShowProgress:    false,
-		Note:            "✓ downloaded",
-		ShowNote:        false,
-		Confirm:         " Downloads are still running. Quit? y/n",
-		ConfirmQuit:     false,
-		Status:          " status",
-		ShowStatus:      false,
-		LeftWidth:       45,
-		PlaylistCount:   6,
-		HasNotes:        0,
-		FullLog:         0,
-		FooterLines:     0,
-		Palette:         DefaultPalette(),
+		Hints:          []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "tab", Label: "pane"}, {Key: "⏎", Label: "follow"}, {Key: "f", Label: "failed"}, {Key: "r", Label: "retry"}, {Key: "l", Label: "full log"}, {Key: "?", Label: "help"}, {Key: "q", Label: "quit"}},
+		ShowKeys:       false,
+		HeaderRight:    "00:00:00",
+		Counters:       "Queue 0   Running 0   Done 0",
+		PlaylistsFocus: false,
+		PlaylistsRight: "0",
+		Playlists:      []PlaylistsRow{{Mark: "▸", Sp: " ", Title: "90s UK Dance Hits", Sp2: " ", Count: "3/6", Sp3: " ", Glyph: "⠋", End: "", Style: cuppa.RowSelected}},
+		PlaylistsRows:  nil,
+		EntriesFocus:   true,
+		EntriesRight:   "0",
+		EntriesTitle:   "Entries",
+		Entries:        []EntriesRow{{Glyph: "✓", Sp: " ", Idx: "01", Sp2: " ", Title: "You Don't Know Me", Sp3: " ", Tag: "⇄", Style: cuppa.RowNormal}},
+		EntriesRows:    nil,
+		Notes:          []NotesRow{{Line: "note", Style: cuppa.RowNormal}},
+		NotesRows:      nil,
+		OutputFocus:    false,
+		OutputRight:    "follow",
+		OutputTitle:    "Output",
+		Output:         []OutputRow{{Line: "line", Style: cuppa.RowNormal}},
+		OutputRows:     nil,
+		BarWidth:       32,
+		ProgressText:   "34.2% of 112.4MiB at 8.1MiB/s ETA 0:09",
+		Percent:        34.2,
+		ShowProgress:   false,
+		Note:           "✓ downloaded",
+		ShowNote:       false,
+		Confirm:        " Downloads are still running. Quit? y/n",
+		ConfirmQuit:    false,
+		Status:         " status",
+		ShowStatus:     false,
+		LeftWidth:      45,
+		PlaylistCount:  6,
+		HasNotes:       0,
+		FullLog:        0,
+		FooterLines:    0,
+		Palette:        DefaultPalette(),
 	}
 }
 
@@ -811,6 +836,58 @@ func (PickPlaylistEvent) isEvent() {}
 type PickEntryEvent struct{ X, Y int }
 
 func (PickEntryEvent) isEvent() {}
+
+// DownloadInputs is the props by the input names of the design, as the live
+// connection publishes them.
+func Inputs(p Props) map[string]any {
+	return map[string]any{
+		"Hints":           p.Hints,
+		"Show keys":       p.ShowKeys,
+		"HeaderRight":     p.HeaderRight,
+		"Counters":        p.Counters,
+		"Playlists focus": p.PlaylistsFocus,
+		"PlaylistsRight":  p.PlaylistsRight,
+		"Playlists":       p.Playlists,
+		"Entries focus":   p.EntriesFocus,
+		"EntriesRight":    p.EntriesRight,
+		"EntriesTitle":    p.EntriesTitle,
+		"Entries":         p.Entries,
+		"Notes":           p.Notes,
+		"Output focus":    p.OutputFocus,
+		"OutputRight":     p.OutputRight,
+		"OutputTitle":     p.OutputTitle,
+		"Output":          p.Output,
+		"BarWidth":        p.BarWidth,
+		"ProgressText":    p.ProgressText,
+		"Percent":         p.Percent,
+		"Show progress":   p.ShowProgress,
+		"Note":            p.Note,
+		"Show note":       p.ShowNote,
+		"Confirm":         p.Confirm,
+		"Confirm quit":    p.ConfirmQuit,
+		"Status":          p.Status,
+		"Show status":     p.ShowStatus,
+		"LeftWidth":       p.LeftWidth,
+		"PlaylistCount":   p.PlaylistCount,
+		"HasNotes":        p.HasNotes,
+		"FullLog":         p.FullLog,
+		"FooterLines":     p.FooterLines,
+	}
+}
+
+// DownloadEventNamed is the event the design calls name, with the cell x, y inside
+// the component that raised it; false when the screen has no such event.
+func EventNamed(name string, x, y int) (Event, bool) {
+	switch name {
+	case "Hint":
+		return HintEvent{X: x, Y: y}, true
+	case "PickPlaylist":
+		return PickPlaylistEvent{X: x, Y: y}, true
+	case "PickEntry":
+		return PickEntryEvent{X: x, Y: y}, true
+	}
+	return nil, false
+}
 
 // DownloadKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}

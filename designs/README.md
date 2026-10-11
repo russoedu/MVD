@@ -14,4 +14,6 @@ The design has a **master page** (the ◆ entry of the pages list, cuppa-tui 0.0
 
 A page has **app defaults** (the *App defaults* panel of the designer, cuppa-tui 0.0.78+): the value `Default()` starts from for an input, so the optional parts a model turns on (`Show progress`, `Show note`, `Confirm quit`, `Show status`, `Show keys`) start hidden and `FooterLines` starts at 0 on Download, and the model has no lines that undo the design. The designer still previews the design's own value. Rows come as functions of the room the design gives them (cuppa-tui 0.0.81+): a model sets `p.EntriesRows = func(w, h int) ([]EntriesRow, int) { return cuppa.Window(all, sel, h) }` and the page cuts them to fit, keeping the selected row centred; `EntriesAt(p, w, h, y)` gives the index under a click with no arithmetic of the model's own.
 
+A pane's focus is the design's (cuppa-tui 0.0.85+): a box and its rows have a `focused` property bound to one input (`Entries focus`), and a pane without focus draws its border in `blurColor` and its selected row as accent text instead of inverted. The model only sets one bool per pane.
+
 Generated files are never edited by hand. See `nerdy-info.md`, section 2.1.

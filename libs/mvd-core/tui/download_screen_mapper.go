@@ -51,7 +51,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 		return cuppa.Window(m.playlistRows(), m.selPlaylist, h)
 	}
 	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
-	p.PlaylistsBorder = m.borderColour(m.focus == paneLists)
+	p.PlaylistsFocus = m.focus == paneLists
 
 	// Entries.
 	p.EntriesTitle, p.EntriesRight = m.entryHeader()
@@ -64,7 +64,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 		p.HasNotes = 1
 	}
 	p.NotesRows = func(w, _ int) ([]downloadpage.NotesRow, int) { return m.entryNotes(w), 0 }
-	p.EntriesBorder = m.borderColour(m.focus == paneEntries)
+	p.EntriesFocus = m.focus == paneEntries
 
 	// Output.
 	p.OutputRows = func(_, h int) ([]downloadpage.OutputRow, int) {
@@ -83,7 +83,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	if m.outScroll > 0 {
 		p.OutputRight = fmt.Sprintf("↑%d", m.outScroll)
 	}
-	p.OutputBorder = m.borderColour(m.focus == paneOutput)
+	p.OutputFocus = m.focus == paneOutput
 
 	// The footer of the output pane: a progress bar, or a note.
 	if len(footer.lines) > 0 {
@@ -114,13 +114,6 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 		p.ShowKeys = true
 	}
 	return p
-}
-
-func (m model) borderColour(focused bool) string {
-	if focused {
-		return look.Colours.Focus
-	}
-	return look.Colours.Dim
 }
 
 // headerTexts are the counters inside the header box and the label on its top edge.
@@ -195,13 +188,9 @@ func (m model) entryRows() (rows []downloadpage.EntriesRow, sel int) {
 			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cells.CellText(entryTitle(en)), Tag: tag,
 			GlyphStyle: downloadpage.CellStyle{Fg: glyphColour}, TagStyle: downloadpage.CellStyle{Fg: tagColour},
 		}
-		switch {
-		case i == sel && m.focus == paneEntries:
+		if i == sel {
+			// Whether the pane has the focus is the design's: an unfocused pane draws it as text.
 			row.Style = downloadpage.RowSelected
-		case i == sel:
-			// A selected row in a pane that does not have the focus is only coloured.
-			accent := downloadpage.CellStyle{Fg: look.Colours.Accent}
-			row.SpStyle, row.IdxStyle, row.Sp2Style, row.TitleStyle, row.Sp3Style = accent, accent, accent, accent, accent
 		}
 		rows = append(rows, row)
 	}
