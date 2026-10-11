@@ -9,15 +9,15 @@ import (
 
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
-	"youtube-downloader/libs/mvd-core/screens"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 // downloadProps fills the properties of the Download screen, drawn from its design, for
 // a window of w by h cells. The design owns where everything goes; what is here is what
 // the screen shows. The rows are windowed to the room the design gives them.
-func (m model) downloadProps(w, h int) screens.DownloadProps {
-	p := screens.DefaultDownloadProps()
-	p.Palette = screens.DownloadPalette(palette())
+func (m model) downloadProps(w, h int) downloadpage.Props {
+	p := downloadpage.Default()
+	p.Palette = downloadpage.Palette(palette())
 	// A design shows its optional parts by default; only what applies is shown.
 	p.ShowProgress, p.ShowNote, p.ConfirmQuit, p.ShowStatus, p.ShowKeys = false, false, false, false, false
 
@@ -44,11 +44,11 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 	}
 
 	// Place the panes first, so the rows can be cut to the room there is.
-	p.Playlists = []screens.DownloadPlaylistsRow{{}}
-	p.Entries = []screens.DownloadEntriesRow{{}}
-	p.Output = []screens.DownloadOutputRow{{}}
-	frame := screens.DownloadLayout(p, w, h)
-	region := func(name string) screens.Region { r, _ := frame.RegionNamed(name); return r }
+	p.Playlists = []downloadpage.PlaylistsRow{{}}
+	p.Entries = []downloadpage.EntriesRow{{}}
+	p.Output = []downloadpage.OutputRow{{}}
+	frame := downloadpage.Layout(p, w, h)
+	region := func(name string) downloadpage.Region { r, _ := frame.RegionNamed(name); return r }
 
 	// Playlists.
 	pl := region("Playlists rows")
@@ -71,7 +71,7 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 	out := region("Output rows")
 	p.Output = nil
 	for _, line := range m.outputWindow(out.H) {
-		p.Output = append(p.Output, screens.DownloadOutputRow{Line: cellText(line)})
+		p.Output = append(p.Output, downloadpage.OutputRow{Line: cellText(line)})
 	}
 	p.OutputTitle = m.outputTitle()
 	p.OutputRight = ""
@@ -99,7 +99,7 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 	}
 
 	// The bottom line: what was asked, what just happened, or the keys.
-	p.Hints = hintsOf[screens.DownloadHintsHint](m.hints())
+	p.Hints = hintsOf[downloadpage.HintsHint](m.hints())
 	switch {
 	case m.confirmQuit:
 		p.ConfirmQuit = true
@@ -155,8 +155,8 @@ func (m model) headerTexts() (counters, right string) {
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the
 // title, the count and the glyph; the app says what each says and the colour of the glyph.
-func (m model) playlistRows() []screens.DownloadPlaylistsRow {
-	rows := make([]screens.DownloadPlaylistsRow, 0, len(m.state.Playlists))
+func (m model) playlistRows() []downloadpage.PlaylistsRow {
+	rows := make([]downloadpage.PlaylistsRow, 0, len(m.state.Playlists))
 	for i, pl := range m.state.Playlists {
 		finished, _, _ := m.state.PlaylistTally(pl)
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
@@ -166,12 +166,12 @@ func (m model) playlistRows() []screens.DownloadPlaylistsRow {
 			count = "listing"
 		}
 		glyph, colour := m.playlistGlyph(pl)
-		row := screens.DownloadPlaylistsRow{
+		row := downloadpage.PlaylistsRow{
 			Mark: " ", Title: cellText(display(pl.Title)), Count: count, Glyph: glyph,
-			GlyphStyle: screens.CellStyle{Fg: colour},
+			GlyphStyle: downloadpage.CellStyle{Fg: colour},
 		}
 		if i == m.selPlaylist {
-			row.Mark, row.Style = "▸", screens.RowSelected
+			row.Mark, row.Style = "▸", downloadpage.RowSelected
 		}
 		rows = append(rows, row)
 	}
@@ -180,7 +180,7 @@ func (m model) playlistRows() []screens.DownloadPlaylistsRow {
 
 // entryRows are the rows of the entries pane for the selected playlist, with the title
 // and the label of the pane and the row that is selected.
-func (m model) entryRows(innerW int) (title, right string, rows []screens.DownloadEntriesRow, notes []screens.DownloadNotesRow, sel int) {
+func (m model) entryRows(innerW int) (title, right string, rows []downloadpage.EntriesRow, notes []downloadpage.NotesRow, sel int) {
 	ids := m.visibleEntries()
 	sel = clamp(m.selEntry, 0, max(0, len(ids)-1))
 
@@ -188,16 +188,16 @@ func (m model) entryRows(innerW int) (title, right string, rows []screens.Downlo
 		en := m.state.Entries[id]
 		glyph, glyphColour := m.entryGlyph(en)
 		tag, tagColour := m.entryTag(en)
-		row := screens.DownloadEntriesRow{
+		row := downloadpage.EntriesRow{
 			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cellText(entryTitle(en)), Tag: tag,
-			GlyphStyle: screens.CellStyle{Fg: glyphColour}, TagStyle: screens.CellStyle{Fg: tagColour},
+			GlyphStyle: downloadpage.CellStyle{Fg: glyphColour}, TagStyle: downloadpage.CellStyle{Fg: tagColour},
 		}
 		switch {
 		case i == sel && m.focus == paneEntries:
-			row.Style = screens.RowSelected
+			row.Style = downloadpage.RowSelected
 		case i == sel:
 			// A selected row in a pane that does not have the focus is only coloured.
-			accent := screens.CellStyle{Fg: currentColours.Accent}
+			accent := downloadpage.CellStyle{Fg: currentColours.Accent}
 			row.SpStyle, row.IdxStyle, row.Sp2Style, row.TitleStyle, row.Sp3Style = accent, accent, accent, accent, accent
 		}
 		rows = append(rows, row)
@@ -213,12 +213,12 @@ func (m model) entryRows(innerW int) (title, right string, rows []screens.Downlo
 		switch {
 		case pl.Err != "":
 			for _, l := range wrap("✗ "+display(pl.Err), innerW) {
-				notes = append(notes, screens.DownloadNotesRow{Line: cellText(l), LineStyle: screens.CellStyle{Fg: currentColours.Error}})
+				notes = append(notes, downloadpage.NotesRow{Line: cellText(l), LineStyle: downloadpage.CellStyle{Fg: currentColours.Error}})
 			}
 		case !pl.Listed:
-			notes = []screens.DownloadNotesRow{{Line: "listing playlist...", LineStyle: screens.CellStyle{Fg: currentColours.Dim}}}
+			notes = []downloadpage.NotesRow{{Line: "listing playlist...", LineStyle: downloadpage.CellStyle{Fg: currentColours.Dim}}}
 		case len(ids) == 0 && m.filterFailed:
-			notes = []screens.DownloadNotesRow{{Line: "no failed entries", LineStyle: screens.CellStyle{Fg: currentColours.Dim}}}
+			notes = []downloadpage.NotesRow{{Line: "no failed entries", LineStyle: downloadpage.CellStyle{Fg: currentColours.Dim}}}
 		}
 	}
 	return title, right, rows, notes, sel

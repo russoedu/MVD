@@ -2,7 +2,7 @@ package tui
 
 import (
 	"strings"
-	"youtube-downloader/libs/mvd-core/screens"
+	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -126,21 +126,21 @@ func (m coloursModel) display(i int) string {
 }
 
 func (m coloursModel) view(width, height int) string {
-	props := screens.DefaultColoursProps()
-	props.Palette = screens.ColoursPalette(palette())
-	props.Hints = hintsOf[screens.ColoursHintsHint](m.hints())
+	props := colourspage.Default()
+	props.Palette = colourspage.Palette(palette())
+	props.Hints = hintsOf[colourspage.HintsHint](m.hints())
 
-	rows := make([]screens.ColoursSlotsRow, 0, len(colourLabels))
+	rows := make([]colourspage.SlotsRow, 0, len(colourLabels))
 	for i, label := range colourLabels {
 		val := m.display(i)
-		row := screens.ColoursSlotsRow{Mark: "  ", Name: label, Swatch: val, Value: val}
+		row := colourspage.SlotsRow{Mark: "  ", Name: label, Swatch: val, Value: val}
 		if i == m.cursor {
 			row.Mark = "▸ "
 			if m.editing {
 				row.Value = m.input.View()
-				row.ValueStyle = screens.CellStyle{Plain: true} // the input draws in the terminal's own colour
+				row.ValueStyle = colourspage.CellStyle{Plain: true} // the input draws in the terminal's own colour
 			} else {
-				row.Style = screens.RowSelected
+				row.Style = colourspage.RowSelected
 			}
 		}
 		rows = append(rows, row)
@@ -148,5 +148,5 @@ func (m coloursModel) view(width, height int) string {
 	props.Slots = rows
 	props.Status = m.status
 	props.ShowStatus = m.status != ""
-	return screens.Colours(props, width, height).View
+	return colourspage.View(props, width, height).View
 }

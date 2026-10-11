@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"youtube-downloader/libs/mvd-core/screens"
+	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -151,16 +151,16 @@ func (m folderModel) hints() []keyHint {
 }
 
 func (m folderModel) view(width, height int) string {
-	var rows []screens.FolderFoldersRow
+	var rows []folderpage.FoldersRow
 	for i, name := range m.entries {
-		row := screens.FolderFoldersRow{Entry: "  " + name + "/"}
+		row := folderpage.FoldersRow{Entry: "  " + name + "/"}
 		if i == m.cursor {
-			row.Entry, row.Style = "▸ "+name+"/", screens.RowSelected
+			row.Entry, row.Style = "▸ "+name+"/", folderpage.RowSelected
 		}
 		rows = append(rows, row)
 	}
 	if len(rows) == 0 {
-		rows = []screens.FolderFoldersRow{{Entry: "(no sub-folders)", EntryStyle: screens.CellStyle{Fg: currentColours.Dim}}}
+		rows = []folderpage.FoldersRow{{Entry: "(no sub-folders)", EntryStyle: folderpage.CellStyle{Fg: currentColours.Dim}}}
 	}
 	visible := max(1, height-5)
 	if len(rows) > visible {
@@ -168,9 +168,9 @@ func (m folderModel) view(width, height int) string {
 		rows = rows[start : start+visible]
 	}
 
-	props := screens.DefaultFolderProps()
-	props.Palette = screens.FolderPalette(palette())
-	props.Hints = hintsOf[screens.FolderHintsHint](m.hints())
+	props := folderpage.Default()
+	props.Palette = folderpage.Palette(palette())
+	props.Hints = hintsOf[folderpage.HintsHint](m.hints())
 	props.Path = truncate(m.dir, width-2)
 	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
 	props.Problem = truncate(m.err, width-2)
@@ -181,5 +181,5 @@ func (m folderModel) view(width, height int) string {
 	}
 	props.Creating = m.creating
 	props.NewFolderView = m.input.View()
-	return screens.Folder(props, width, height).View
+	return folderpage.View(props, width, height).View
 }

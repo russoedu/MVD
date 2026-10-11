@@ -3,7 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
-	"youtube-downloader/libs/mvd-core/screens"
+	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -479,18 +479,18 @@ func (m configModel) view(width, height int) string {
 		labelW = max(labelW, len(l))
 	}
 
-	props := screens.DefaultPreferencesProps()
-	props.Palette = screens.PreferencesPalette(palette())
-	props.Hints = hintsOf[screens.PreferencesHintsHint](m.hints())
-	rows := make([]screens.PreferencesItemsRow, 0, len(cfgLabels))
+	props := preferencespage.Default()
+	props.Palette = preferencespage.Palette(palette())
+	props.Hints = hintsOf[preferencespage.HintsHint](m.hints())
+	rows := make([]preferencespage.ItemsRow, 0, len(cfgLabels))
 	for i, label := range cfgLabels {
-		row := screens.PreferencesItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
+		row := preferencespage.ItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
 			row.Mark = "▸ "
 			if m.mode != editNone {
 				row.Value = truncate(m.editorView(), max(10, width-labelW-6))
 			} else {
-				row.Style = screens.RowSelected
+				row.Style = preferencespage.RowSelected
 			}
 		}
 		rows = append(rows, row)
@@ -499,7 +499,7 @@ func (m configModel) view(width, height int) string {
 	props.ShowTemplateHint = m.cursor == 4
 	props.ShowStatus, props.ShowKeys = m.status != "", m.status == ""
 	props.Status = " " + m.status
-	return screens.Preferences(props, width, height).View
+	return preferencespage.View(props, width, height).View
 }
 
 func (m configModel) hints() []keyHint {
