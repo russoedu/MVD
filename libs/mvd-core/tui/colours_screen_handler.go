@@ -127,6 +127,7 @@ func (m coloursModel) display(i int) string {
 
 func (m coloursModel) view(width, height int) string {
 	props := colourspage.Default()
+	props.Title = " MVD · Colours"
 	props.Palette = colourspage.Palette(palette())
 	props.Hints = hintsOf[colourspage.HintsHint](m.hints())
 

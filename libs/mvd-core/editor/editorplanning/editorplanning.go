@@ -36,14 +36,37 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 120, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Review before downloading", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Preferences", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Accent != "" {
 				v["color"] = p.Palette.Accent
 			}
+			v["text"] = p.Title
 			return true
+		},
+	},
+	{
+		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,enter:edit,a:advanced,c:colours,s:save,esc:cancel", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Event: "Hint",
+		Apply: func(p Props, v map[string]string, w, h int) bool {
+			if p.Palette.Highlight != "" {
+				v["keyColor"] = p.Palette.Highlight
+			}
+			if p.Palette.Dim != "" {
+				v["labelColor"] = p.Palette.Dim
+			}
+			{
+				items := make([]string, len(p.Hints))
+				for i, h := range p.Hints {
+					items[i] = h.Key + ":" + h.Label
+				}
+				v["hints"] = cuppa.JoinList(items)
+			}
+			return p.ShowKeys
 		},
 	},
 	{
@@ -69,28 +92,6 @@ var parts = []cuppa.ScreenPart[Props]{
 				v["styles"] = cuppa.JoinList(styles)
 			}
 			return true
-		},
-	},
-	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "esc:cancel", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Event: "Hint",
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Highlight != "" {
-				v["keyColor"] = p.Palette.Highlight
-			}
-			if p.Palette.Dim != "" {
-				v["labelColor"] = p.Palette.Dim
-			}
-			{
-				items := make([]string, len(p.Hints))
-				for i, h := range p.Hints {
-					items[i] = h.Key + ":" + h.Label
-				}
-				v["hints"] = cuppa.JoinList(items)
-			}
-			return p.ShowKeys
 		},
 	},
 	{
@@ -140,12 +141,14 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 
 // EditorPlanningProps is everything the EditorPlanning screen takes from the program that owns it.
 type Props struct {
-	// Body is the Sample rows (; between rows, , between cells) of "Body".
-	Body []BodyRow
+	// Title is the Text of "Title".
+	Title string
 	// Hints is the Hints (key:label, comma separated) of "Key bar".
 	Hints []HintsHint
 	// ShowKeys is the whether "Key bar" is shown.
 	ShowKeys bool
+	// Body is the Sample rows (; between rows, , between cells) of "Body".
+	Body []BodyRow
 	// Bottom is the Text of "Bottom line".
 	Bottom string
 	// ShowLine is the whether "Bottom line" is shown.
@@ -218,9 +221,10 @@ func HintsHintAt(p Props, x int) (int, bool) {
 // it had in the design.
 func Default() Props {
 	return Props{
-		Body:     []BodyRow{{Line: "text", Style: cuppa.RowNormal}},
-		Hints:    []HintsHint{{Key: "esc", Label: "cancel"}},
+		Title:    " MVD · Preferences",
+		Hints:    []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "a", Label: "advanced"}, {Key: "c", Label: "colours"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "cancel"}},
 		ShowKeys: true,
+		Body:     []BodyRow{{Line: "text", Style: cuppa.RowNormal}},
 		Bottom:   " ",
 		ShowLine: true,
 		Palette:  DefaultPalette(),

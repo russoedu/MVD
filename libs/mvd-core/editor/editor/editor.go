@@ -19,13 +19,13 @@ func env(p Props, w, h int) cuppa.FitEnv {
 	_ = p
 	return cuppa.FitEnv{W: w, H: h, Inputs: func(name string) float64 {
 		switch name {
-		case "Show empty":
-			if p.ShowEmpty {
+		case "Show keys":
+			if p.ShowKeys {
 				return 1
 			}
 			return 0
-		case "Show keys":
-			if p.ShowKeys {
+		case "Show empty":
+			if p.ShowEmpty {
 				return 1
 			}
 			return 0
@@ -41,7 +41,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 120, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Review before downloading", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Preferences", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
@@ -50,6 +50,28 @@ var parts = []cuppa.ScreenPart[Props]{
 			}
 			v["text"] = p.Title
 			return true
+		},
+	},
+	{
+		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,enter:edit,a:advanced,c:colours,s:save,esc:cancel", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Event: "Hint",
+		Apply: func(p Props, v map[string]string, w, h int) bool {
+			if p.Palette.Highlight != "" {
+				v["keyColor"] = p.Palette.Highlight
+			}
+			if p.Palette.Dim != "" {
+				v["labelColor"] = p.Palette.Dim
+			}
+			{
+				items := make([]string, len(p.Hints))
+				for i, h := range p.Hints {
+					items[i] = h.Key + ":" + h.Label
+				}
+				v["hints"] = cuppa.JoinList(items)
+			}
+			return p.ShowKeys
 		},
 	},
 	{
@@ -149,28 +171,6 @@ var parts = []cuppa.ScreenPart[Props]{
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "o:open,c:confirm,r:replace,u:original,x:skip,a:confirm all,d:download,s:save,l:open file,esc:back", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Event: "Hint",
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Highlight != "" {
-				v["keyColor"] = p.Palette.Highlight
-			}
-			if p.Palette.Dim != "" {
-				v["labelColor"] = p.Palette.Dim
-			}
-			{
-				items := make([]string, len(p.Hints))
-				for i, h := range p.Hints {
-					items[i] = h.Key + ":" + h.Label
-				}
-				v["hints"] = cuppa.JoinList(items)
-			}
-			return p.ShowKeys
-		},
-	},
-	{
 		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Bottom line", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#e5e7eb", "text": " ", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
@@ -206,10 +206,10 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 	case tea.MouseClickMsg:
 		if r, ok := f.EventAt(m.X, m.Y); ok {
 			switch r.Event {
-			case "Pick":
-				return PickEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
 			case "Hint":
 				return HintEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
+			case "Pick":
+				return PickEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
 			}
 		}
 	}
@@ -221,6 +221,10 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 type Props struct {
 	// Title is the Text of "Title".
 	Title string
+	// Hints is the Hints (key:label, comma separated) of "Key bar".
+	Hints []HintsHint
+	// ShowKeys is the whether "Key bar" is shown.
+	ShowKeys bool
 	// Songs is the Sample rows (; between rows, , between cells) of "List".
 	Songs []SongsRow
 	// ShowEmpty is the whether "Empty" is shown.
@@ -233,10 +237,6 @@ type Props struct {
 	Detail3 string
 	// Detail4 is the Text of "Detail 4".
 	Detail4 string
-	// Hints is the Hints (key:label, comma separated) of "Key bar".
-	Hints []HintsHint
-	// ShowKeys is the whether "Key bar" is shown.
-	ShowKeys bool
 	// Bottom is the Text of "Bottom line".
 	Bottom string
 	// ShowLine is the whether "Bottom line" is shown.
@@ -365,15 +365,15 @@ func HintsHintAt(p Props, x int) (int, bool) {
 // it had in the design.
 func Default() Props {
 	return Props{
-		Title:     " MVD · Review before downloading",
+		Title:     " MVD · Preferences",
+		Hints:     []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "a", Label: "advanced"}, {Key: "c", Label: "colours"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "cancel"}},
+		ShowKeys:  true,
 		Songs:     []SongsRow{{Mark: "", S1: "", Glyph: "", S2: "", Review: "Review", S3: "", Artist: "Artist", S4: "", Song: "Song", S5: "", Video: "Video", S6: "", Replaced: "", S7: "", Address: "Address", Style: cuppa.RowDim}},
 		ShowEmpty: true,
 		Detail1:   " ",
 		Detail2:   " ",
 		Detail3:   " ",
 		Detail4:   " ",
-		Hints:     []HintsHint{{Key: "o", Label: "open"}, {Key: "c", Label: "confirm"}, {Key: "r", Label: "replace"}, {Key: "u", Label: "original"}, {Key: "x", Label: "skip"}, {Key: "a", Label: "confirm all"}, {Key: "d", Label: "download"}, {Key: "s", Label: "save"}, {Key: "l", Label: "open file"}, {Key: "esc", Label: "back"}},
-		ShowKeys:  true,
 		Bottom:    " ",
 		ShowLine:  true,
 		Palette:   DefaultPalette(),
@@ -384,17 +384,17 @@ func Default() Props {
 // are the Editor... structs below.
 type Event interface{ isEvent() }
 
-// EditorPick is raised by a click on "List". X and Y are the cell inside the component that was
-// clicked, and 0 for a key.
-type PickEvent struct{ X, Y int }
-
-func (PickEvent) isEvent() {}
-
 // EditorHint is raised by a click on "Key bar". X and Y are the cell inside the component that was
 // clicked, and 0 for a key.
 type HintEvent struct{ X, Y int }
 
 func (HintEvent) isEvent() {}
+
+// EditorPick is raised by a click on "List". X and Y are the cell inside the component that was
+// clicked, and 0 for a key.
+type PickEvent struct{ X, Y int }
+
+func (PickEvent) isEvent() {}
 
 // EditorKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}

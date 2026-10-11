@@ -21,6 +21,11 @@ func env(p Props, w, h int) cuppa.FitEnv {
 	_ = p
 	return cuppa.FitEnv{W: w, H: h, Inputs: func(name string) float64 {
 		switch name {
+		case "Show keys":
+			if p.ShowKeys {
+				return 1
+			}
+			return 0
 		case "BarWidth":
 			return float64(p.BarWidth)
 		case "Percent":
@@ -32,11 +37,6 @@ func env(p Props, w, h int) cuppa.FitEnv {
 			return 0
 		case "Show note":
 			if p.ShowNote {
-				return 1
-			}
-			return 0
-		case "Show keys":
-			if p.ShowKeys {
 				return 1
 			}
 			return 0
@@ -66,6 +66,28 @@ func env(p Props, w, h int) cuppa.FitEnv {
 }
 
 var parts = []cuppa.ScreenPart[Props]{
+	{
+		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,enter:edit,a:advanced,c:colours,s:save,esc:cancel", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Event: "Hint",
+		Apply: func(p Props, v map[string]string, w, h int) bool {
+			if p.Palette.Highlight != "" {
+				v["keyColor"] = p.Palette.Highlight
+			}
+			if p.Palette.Dim != "" {
+				v["labelColor"] = p.Palette.Dim
+			}
+			{
+				items := make([]string, len(p.Hints))
+				for i, h := range p.Hints {
+					items[i] = h.Key + ":" + h.Label
+				}
+				v["hints"] = cuppa.JoinList(items)
+			}
+			return p.ShowKeys
+		},
+	},
 	{
 		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Header", X: 0, Y: 0, W: 120, H: 3, Props: map[string]string{"border": "rounded", "color": "#6b7280", "gradient": "", "right": "00:00:00", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "MVD · Music Video Downloader", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 3
@@ -315,28 +337,6 @@ var parts = []cuppa.ScreenPart[Props]{
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,tab:pane,⏎:follow,f:failed,r:retry,l:full log,?:help,q:quit", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Event: "Hint",
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Highlight != "" {
-				v["keyColor"] = p.Palette.Highlight
-			}
-			if p.Palette.Dim != "" {
-				v["labelColor"] = p.Palette.Dim
-			}
-			{
-				items := make([]string, len(p.Hints))
-				for i, h := range p.Hints {
-					items[i] = h.Key + ":" + h.Label
-				}
-				v["hints"] = cuppa.JoinList(items)
-			}
-			return p.ShowKeys
-		},
-	},
-	{
 		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Confirm", X: 0, Y: 35, W: 120, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#ff4d4d", "text": " Downloads are still running. Quit? y/n", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
@@ -384,12 +384,12 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 	case tea.MouseClickMsg:
 		if r, ok := f.EventAt(m.X, m.Y); ok {
 			switch r.Event {
+			case "Hint":
+				return HintEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
 			case "PickPlaylist":
 				return PickPlaylistEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
 			case "PickEntry":
 				return PickEntryEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
-			case "Hint":
-				return HintEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
 			}
 		}
 	}
@@ -399,6 +399,10 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 
 // DownloadProps is everything the Download screen takes from the program that owns it.
 type Props struct {
+	// Hints is the Hints (key:label, comma separated) of "Key bar".
+	Hints []HintsHint
+	// ShowKeys is the whether "Key bar" is shown.
+	ShowKeys bool
 	// HeaderRight is the Right label (in the top edge) of "Header".
 	HeaderRight string
 	// Counters is the Text of "Counters".
@@ -439,10 +443,6 @@ type Props struct {
 	Note string
 	// ShowNote is the whether "Note" is shown.
 	ShowNote bool
-	// Hints is the Hints (key:label, comma separated) of "Key bar".
-	Hints []HintsHint
-	// ShowKeys is the whether "Key bar" is shown.
-	ShowKeys bool
 	// Confirm is the Text of "Confirm".
 	Confirm string
 	// ConfirmQuit is the whether "Confirm" is shown.
@@ -611,6 +611,8 @@ func HintsHintAt(p Props, x int) (int, bool) {
 // it had in the design.
 func Default() Props {
 	return Props{
+		Hints:           []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "a", Label: "advanced"}, {Key: "c", Label: "colours"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "cancel"}},
+		ShowKeys:        true,
 		HeaderRight:     "00:00:00",
 		Counters:        "Queue 0   Running 0   Done 0",
 		PlaylistsBorder: "#6b7280",
@@ -631,8 +633,6 @@ func Default() Props {
 		ShowProgress:    true,
 		Note:            "✓ downloaded",
 		ShowNote:        true,
-		Hints:           []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "tab", Label: "pane"}, {Key: "⏎", Label: "follow"}, {Key: "f", Label: "failed"}, {Key: "r", Label: "retry"}, {Key: "l", Label: "full log"}, {Key: "?", Label: "help"}, {Key: "q", Label: "quit"}},
-		ShowKeys:        true,
 		Confirm:         " Downloads are still running. Quit? y/n",
 		ConfirmQuit:     true,
 		Status:          " status",
@@ -650,6 +650,12 @@ func Default() Props {
 // are the Download... structs below.
 type Event interface{ isEvent() }
 
+// DownloadHint is raised by a click on "Key bar". X and Y are the cell inside the component that was
+// clicked, and 0 for a key.
+type HintEvent struct{ X, Y int }
+
+func (HintEvent) isEvent() {}
+
 // DownloadPickPlaylist is raised by a click on "Playlists rows". X and Y are the cell inside the component that was
 // clicked, and 0 for a key.
 type PickPlaylistEvent struct{ X, Y int }
@@ -661,12 +667,6 @@ func (PickPlaylistEvent) isEvent() {}
 type PickEntryEvent struct{ X, Y int }
 
 func (PickEntryEvent) isEvent() {}
-
-// DownloadHint is raised by a click on "Key bar". X and Y are the cell inside the component that was
-// clicked, and 0 for a key.
-type HintEvent struct{ X, Y int }
-
-func (HintEvent) isEvent() {}
 
 // DownloadKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}

@@ -69,6 +69,7 @@ func (m songsModel) update(msg tea.Msg) (songsModel, tea.Cmd, songsOutcome) {
 
 func (m songsModel) view(width, height int) string {
 	props := songspage.Default()
+	props.Title = " MVD · Add songs"
 	props.Palette = songspage.Palette(palette())
 	props.Hints = hintsOf[songspage.HintsHint](m.hints())
 	props.SongsView = m.ta.View()
