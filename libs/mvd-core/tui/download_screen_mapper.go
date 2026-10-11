@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/keybar"
 
 	"github.com/charmbracelet/x/ansi"
 
@@ -101,7 +102,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	}
 
 	// The bottom line: what was asked, what just happened, or the keys.
-	p.Hints = hintsOf[downloadpage.HintsHint](m.hints())
+	p.Hints = keybar.Of[downloadpage.HintsHint](m.hints())
 	switch {
 	case m.confirmQuit:
 		p.ConfirmQuit = true

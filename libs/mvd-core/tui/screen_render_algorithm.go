@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	helppage "youtube-downloader/libs/mvd-core/run/help"
@@ -55,20 +56,20 @@ func (m model) outputTitle() string {
 
 // hints lists the keys the download screen offers now. The key bar and the
 // outline both read it, so they cannot drift apart.
-func (m model) hints() []keyHint {
-	var hints []keyHint
+func (m model) hints() []keybar.Hint {
+	var hints []keybar.Hint
 	if m.state.Idle {
-		hints = []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"f", "failed"}, {"r", "retry failed"}, {"l", "full log"}}
+		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry failed"}, {Key: "l", Desc: "full log"}}
 	} else {
-		hints = []keyHint{{"↑↓", "move"}, {"tab", "pane"}, {"⏎", "follow"}, {"f", "failed"}, {"r", "retry"}, {"l", "full log"}}
+		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "l", Desc: "full log"}}
 	}
 	if m.canAdd() {
-		hints = append(hints, keyHint{"a", "add links"})
+		hints = append(hints, keybar.Hint{Key: "a", Desc: "add links"})
 	}
 	if !m.state.Idle {
-		hints = append(hints, keyHint{"?", "help"})
+		hints = append(hints, keybar.Hint{Key: "?", Desc: "help"})
 	}
-	return append(hints, keyHint{"q", "quit"})
+	return append(hints, keybar.Hint{Key: "q", Desc: "quit"})
 }
 
 func (m model) renderHelp() string {

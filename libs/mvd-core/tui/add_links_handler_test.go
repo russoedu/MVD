@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/keybar"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -100,7 +101,7 @@ func TestARunThatCannotTakeLinksHasNoAddKey(t *testing.T) {
 	m.width, m.height = 120, 36
 
 	for _, h := range m.hints() {
-		if h.key == "a" {
+		if h.Key == "a" {
 			t.Error("the key bar should not offer add")
 		}
 	}
@@ -115,7 +116,7 @@ func TestTheAddKeyIsInTheKeyBarAndClickable(t *testing.T) {
 
 	found := false
 	for x := 0; x < m.width && !found; x++ {
-		if h, ok := hintAt(m.hints(), x); ok && h.key == "a" {
+		if h, ok := keybar.At(m.hints(), x); ok && h.Key == "a" {
 			found = true
 			m = press(t, m, click(x, m.height-1))
 		}

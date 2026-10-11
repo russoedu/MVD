@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/keybar"
+	"youtube-downloader/libs/mvd-core/pointer"
 )
 
 // mouse handles a click or a wheel notch on the setup screens: a click on a key
@@ -11,15 +13,15 @@ func (m setupModel) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.height == 0 {
 		return m, nil
 	}
-	if dir := wheelDirection(msg); dir != 0 {
+	if dir := pointer.WheelDirection(msg); dir != 0 {
 		return m.pressArrow(dir)
 	}
-	if !isLeftClick(msg) {
+	if !pointer.IsLeftClick(msg) {
 		return m, nil
 	}
 	if msg.Mouse().Y == m.height-1 {
-		if h, found := hintAt(m.hints(), msg.Mouse().X); found {
-			if key, clickable := hintKeyMsg(h.key); clickable {
+		if h, found := keybar.At(m.hints(), msg.Mouse().X); found {
+			if key, clickable := keybar.KeyMsg(h.Key); clickable {
 				return m.Update(key)
 			}
 		}
@@ -30,7 +32,7 @@ func (m setupModel) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 }
 
 // hints is the key bar of the screen being shown.
-func (m setupModel) hints() []keyHint {
+func (m setupModel) hints() []keybar.Hint {
 	switch m.screen {
 	case screenConfig:
 		if m.config.mode == editFolder {
@@ -48,7 +50,7 @@ func (m setupModel) hints() []keyHint {
 	}
 }
 
-// pressArrow presses the arrow key wheelStep times, up for a negative direction.
+// pressArrow presses the arrow key pointer.WheelStep times, up for a negative direction.
 func (m setupModel) pressArrow(dir int) (tea.Model, tea.Cmd) {
 	key := tea.KeyPressMsg{Code: tea.KeyDown}
 	if dir < 0 {
@@ -56,7 +58,7 @@ func (m setupModel) pressArrow(dir int) (tea.Model, tea.Cmd) {
 	}
 	var model tea.Model = m
 	var cmds []tea.Cmd
-	for i := 0; i < wheelStep; i++ {
+	for i := 0; i < pointer.WheelStep; i++ {
 		var cmd tea.Cmd
 		model, cmd = model.Update(key)
 		cmds = append(cmds, cmd)

@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"time"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
@@ -71,7 +72,7 @@ func (m songsModel) update(msg tea.Msg) (songsModel, tea.Cmd, songsOutcome) {
 func (m songsModel) view(width, height int) string {
 	props := songspage.Default()
 	props.Palette = songspage.Palette(look.CurrentPalette())
-	props.Hints = hintsOf[songspage.HintsHint](m.hints())
+	props.Hints = keybar.Of[songspage.HintsHint](m.hints())
 	props.SongsView = m.ta.View()
 	if m.err != "" {
 		props.ShowSummary, props.ShowProblem = false, true
@@ -99,8 +100,8 @@ func (m songsModel) summaryText() string {
 	return text
 }
 
-func (m songsModel) hints() []keyHint {
-	return []keyHint{{"ctrl+s", "add to the list"}, {"esc", "cancel"}}
+func (m songsModel) hints() []keybar.Hint {
+	return []keybar.Hint{{Key: "ctrl+s", Desc: "add to the list"}, {Key: "esc", Desc: "cancel"}}
 }
 
 func (m songsModel) outline() ScreenOutline {

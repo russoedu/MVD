@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/keybar"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -82,7 +83,7 @@ func TestWithoutAnUninstallerThereIsNoKeyAndNoHint(t *testing.T) {
 		t.Errorf("mode %d, cmd %v", m.mode, cmd)
 	}
 	for _, h := range m.hints() {
-		if h.key == "u" {
+		if h.Key == "u" {
 			t.Error("the key bar should not offer uninstall")
 		}
 	}
@@ -97,7 +98,7 @@ func TestTheUninstallHintIsClickableOnThePreferences(t *testing.T) {
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 
 	for x := 0; x < 100; x++ {
-		if h, ok := hintAt(m.(setupModel).hints(), x); ok && h.key == "u" {
+		if h, ok := keybar.At(m.(setupModel).hints(), x); ok && h.Key == "u" {
 			m, cmd := m.Update(click(x, 29))
 			if m.(setupModel).config.mode != editConfirming || cmd == nil {
 				t.Fatal("clicking the entry should ask")

@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+	"youtube-downloader/libs/mvd-core/keybar"
+	"youtube-downloader/libs/mvd-core/pointer"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -17,7 +19,7 @@ func wheel(x, y int, button tea.MouseButton) tea.MouseMsg {
 }
 
 func TestHintAtFindsTheEntryDrawnUnderAColumn(t *testing.T) {
-	hints := []keyHint{{"ctrl+s", "start"}, {"ctrl+p", "preferences"}}
+	hints := []keybar.Hint{{Key: "ctrl+s", Desc: "start"}, {Key: "ctrl+p", Desc: "preferences"}}
 
 	// " ctrl+s start  ctrl+p preferences": the first entry fills columns 1-12, the second 15-32.
 	cases := []struct {
@@ -25,12 +27,12 @@ func TestHintAtFindsTheEntryDrawnUnderAColumn(t *testing.T) {
 		want string
 	}{{1, "ctrl+s"}, {12, "ctrl+s"}, {15, "ctrl+p"}, {32, "ctrl+p"}}
 	for _, c := range cases {
-		if got, ok := hintAt(hints, c.x); !ok || got.key != c.want {
-			t.Errorf("column %d: got %q, %v, want %q", c.x, got.key, ok, c.want)
+		if got, ok := keybar.At(hints, c.x); !ok || got.Key != c.want {
+			t.Errorf("column %d: got %q, %v, want %q", c.x, got.Key, ok, c.want)
 		}
 	}
 	for _, x := range []int{0, 13, 14, 33} {
-		if _, ok := hintAt(hints, x); ok {
+		if _, ok := keybar.At(hints, x); ok {
 			t.Errorf("column %d is between entries, not on one", x)
 		}
 	}
@@ -71,7 +73,7 @@ func TestSetupScreensKeyBarSettingsAndWheel(t *testing.T) {
 	hints := m.(setupModel).hints()
 	cancelAt := 1
 	for _, h := range hints[:len(hints)-1] {
-		cancelAt += len(h.key) + 1 + len(h.desc) + 2
+		cancelAt += len(h.Key) + 1 + len(h.Desc) + 2
 	}
 	m, _ = m.Update(click(cancelAt, 29))
 	if m.(setupModel).screen != screenList {
@@ -127,7 +129,7 @@ func TestDownloadScreenWheelScrollsThePaneUnderThePointer(t *testing.T) {
 
 	next, _ := m.Update(wheel(80, 10, tea.MouseWheelUp)) // over the output box
 	m = next.(model)
-	if m.focus != paneOutput || m.outScroll != wheelStep {
+	if m.focus != paneOutput || m.outScroll != pointer.WheelStep {
 		t.Errorf("wheel up over the output: focus %d, scrolled %d", m.focus, m.outScroll)
 	}
 

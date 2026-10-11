@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
 	"youtube-downloader/libs/mvd-core/viewport"
@@ -143,13 +144,13 @@ func (m folderModel) update(msg tea.Msg) (folderModel, tea.Cmd, folderOutcome) {
 	return m, nil, folderNone
 }
 
-func (m folderModel) hints() []keyHint {
+func (m folderModel) hints() []keybar.Hint {
 	if m.creating {
-		return []keyHint{{"enter", "create"}, {"esc", "cancel"}}
+		return []keybar.Hint{{Key: "enter", Desc: "create"}, {Key: "esc", Desc: "cancel"}}
 	}
-	return []keyHint{
-		{"↑↓", "move"}, {"→", "open"}, {"←", "up"},
-		{"n", "new folder"}, {"enter", "choose this folder"}, {"esc", "cancel"},
+	return []keybar.Hint{
+		{Key: "↑↓", Desc: "move"}, {Key: "→", Desc: "open"}, {Key: "←", Desc: "up"},
+		{Key: "n", Desc: "new folder"}, {Key: "enter", Desc: "choose this folder"}, {Key: "esc", Desc: "cancel"},
 	}
 }
 
@@ -173,7 +174,7 @@ func (m folderModel) view(width, height int) string {
 
 	props := folderpage.Default()
 	props.Palette = folderpage.Palette(look.CurrentPalette())
-	props.Hints = hintsOf[folderpage.HintsHint](m.hints())
+	props.Hints = keybar.Of[folderpage.HintsHint](m.hints())
 	props.Path = cells.Truncate(m.dir, width-2)
 	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
 	props.Problem = cells.Truncate(m.err, width-2)

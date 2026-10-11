@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	addlinkspage "youtube-downloader/libs/mvd-core/run/addlinks"
 
@@ -96,13 +97,13 @@ func (m model) addBoxWidth() int {
 func (m model) renderAddBox() string {
 	props := addlinkspage.Default()
 	props.Palette = addlinkspage.Palette(look.CurrentPalette())
-	props.Hints = hintsOf[addlinkspage.HintsHint](addLinksHints())
+	props.Hints = keybar.Of[addlinkspage.HintsHint](addLinksHints())
 	props.LinksView = m.links.View()
 	return paddedFrame(addlinkspage.View(props, m.width, m.height).View, m.width)
 }
 
-func addLinksHints() []keyHint {
-	return []keyHint{{"ctrl+s", "add"}, {"esc", "cancel"}}
+func addLinksHints() []keybar.Hint {
+	return []keybar.Hint{{Key: "ctrl+s", Desc: "add"}, {Key: "esc", Desc: "cancel"}}
 }
 
 // addingOutline describes the box while it is open.

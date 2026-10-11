@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/keybar"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -56,7 +57,7 @@ func TestWithoutAMoverThereIsNoMoveKeyAndNoHint(t *testing.T) {
 		t.Errorf("mode %d, cmd %v: nothing should happen", m.mode, cmd)
 	}
 	for _, h := range m.hints() {
-		if h.key == "m" {
+		if h.Key == "m" {
 			t.Error("the key bar should not offer to move")
 		}
 	}
@@ -70,7 +71,7 @@ func TestTheMoveHintIsOfferedBesideUninstall(t *testing.T) {
 
 	var keys []string
 	for _, h := range m.hints() {
-		keys = append(keys, h.key)
+		keys = append(keys, h.Key)
 	}
 	got := strings.Join(keys, " ")
 	if !strings.Contains(got, "m u") {
@@ -87,7 +88,7 @@ func TestTheMoveHintIsClickableOnThePreferences(t *testing.T) {
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 
 	for x := 0; x < 100; x++ {
-		if h, ok := hintAt(m.(setupModel).hints(), x); ok && h.key == "m" {
+		if h, ok := keybar.At(m.(setupModel).hints(), x); ok && h.Key == "m" {
 			m, cmd := m.Update(click(x, 29))
 			if m.(setupModel).config.mode != editConfirming || cmd == nil {
 				t.Fatal("clicking the entry should ask")

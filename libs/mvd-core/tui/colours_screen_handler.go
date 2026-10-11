@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 
@@ -115,11 +116,11 @@ func (m coloursModel) update(msg tea.Msg) (coloursModel, tea.Cmd, coloursOutcome
 	return m, nil, colNone, m.cfg
 }
 
-func (m coloursModel) hints() []keyHint {
+func (m coloursModel) hints() []keybar.Hint {
 	if m.editing {
-		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
+		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
 	}
-	return []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"d", "default"}, {"s", "save"}, {"esc", "back"}}
+	return []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "d", Desc: "default"}, {Key: "s", Desc: "save"}, {Key: "esc", Desc: "back"}}
 }
 
 func (m coloursModel) display(i int) string {
@@ -129,7 +130,7 @@ func (m coloursModel) display(i int) string {
 func (m coloursModel) view(width, height int) string {
 	props := colourspage.Default()
 	props.Palette = colourspage.Palette(look.CurrentPalette())
-	props.Hints = hintsOf[colourspage.HintsHint](m.hints())
+	props.Hints = keybar.Of[colourspage.HintsHint](m.hints())
 
 	rows := make([]colourspage.SlotsRow, 0, len(colourLabels))
 	for i, label := range colourLabels {
