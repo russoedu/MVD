@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 
 	"youtube-downloader/libs/mvd-core/applemusic"
 	"youtube-downloader/libs/mvd-core/engine"
@@ -22,11 +23,11 @@ type playlistProvider interface {
 // is none.
 type playlistTrackSource struct {
 	providers []playlistProvider
-	search    official.Searcher
+	search    trackpick.Searcher
 	sources   official.Sources
 }
 
-func newPlaylistTrackSource(search official.Searcher, sources official.Sources) playlistTrackSource {
+func newPlaylistTrackSource(search trackpick.Searcher, sources official.Sources) playlistTrackSource {
 	return playlistTrackSource{
 		providers: []playlistProvider{
 			spotifyProvider{client: spotify.NewClient()},

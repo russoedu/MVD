@@ -1,4 +1,7 @@
-package official
+// Package trackpick chooses among the videos a search found for a song: it scores each
+// candidate against the song, tells an official video from an art track or a fan upload,
+// and ranks what is left.
+package trackpick
 
 // SearchResult is one video returned by a YouTube search.
 type SearchResult struct {

@@ -1,4 +1,4 @@
-package official
+package trackpick
 
 // Quality is the best a video offers to download: the tallest picture, in pixels, and
 // the best audio, in kilobits a second. Each is zero when there is none.
@@ -13,9 +13,9 @@ const (
 	pictureCeiling = 2160
 	audioCeiling   = 320
 
-	// qualityMargin is how much better (on a scale of 0 to 1) an upload must be to be
+	// QualityMargin is how much better (on a scale of 0 to 1) an upload must be to be
 	// taken instead of the playlist's own: not worth a different file for less.
-	qualityMargin = 0.1
+	QualityMargin = 0.1
 )
 
 // Score rates a quality from 0 to 1, the picture counting for more than the audio

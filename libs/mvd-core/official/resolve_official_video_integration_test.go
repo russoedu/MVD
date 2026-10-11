@@ -10,13 +10,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 func TestTopicChannel(t *testing.T) {
-	if !IsTopicChannel("Armand Van Helden - Topic") {
+	if !trackpick.IsTopicChannel("Armand Van Helden - Topic") {
 		t.Error("a Topic channel should be recognised")
 	}
-	if IsTopicChannel("ModjoOfficial") {
+	if trackpick.IsTopicChannel("ModjoOfficial") {
 		t.Error("an artist channel is not a Topic channel")
 	}
 }

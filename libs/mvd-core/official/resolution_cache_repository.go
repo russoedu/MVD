@@ -9,15 +9,16 @@ import (
 	"sync"
 	"time"
 	"youtube-downloader/libs/mvd-core/official/titlematch"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 // CachedPick is a video remembered for a song.
 type CachedPick struct {
-	ID      string    `json:"id"`
-	Kind    Kind      `json:"kind"`
-	Channel string    `json:"channel"`
-	Why     string    `json:"why"`
-	At      time.Time `json:"at"`
+	ID      string         `json:"id"`
+	Kind    trackpick.Kind `json:"kind"`
+	Channel string         `json:"channel"`
+	Why     string         `json:"why"`
+	At      time.Time      `json:"at"`
 }
 
 // ResolutionCache remembers the video found for a song, in a JSON file, so a
@@ -40,12 +41,12 @@ func NewResolutionCache(path string, ttl time.Duration) *ResolutionCache {
 
 // CacheKey is what identifies a song: its title and artists, in a spelling that
 // does not depend on case, accents or punctuation.
-func CacheKey(song Song) string {
+func CacheKey(song trackpick.Song) string {
 	return titlematch.Normalize(titlematch.SearchTitle(song.Title)) + "|" + titlematch.Normalize(strings.Join(song.Artists, ","))
 }
 
 // Get returns the video remembered for a song, if it is still fresh.
-func (c *ResolutionCache) Get(song Song) (CachedPick, bool) {
+func (c *ResolutionCache) Get(song trackpick.Song) (CachedPick, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.load()
@@ -59,7 +60,7 @@ func (c *ResolutionCache) Get(song Song) (CachedPick, bool) {
 
 // Put remembers the video found for a song and saves the file. A file that
 // cannot be written only means the next run asks again.
-func (c *ResolutionCache) Put(song Song, pick Pick) {
+func (c *ResolutionCache) Put(song trackpick.Song, pick trackpick.Pick) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.load()

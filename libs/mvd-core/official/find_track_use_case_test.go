@@ -3,13 +3,14 @@ package official
 import (
 	"errors"
 	"testing"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 func quiet(string, ...interface{}) {}
 
 // searchesBy answers each query with the results listed for it.
-func searchesBy(answers map[string][]SearchResult, asked *[]string) Searcher {
-	return func(query string) ([]SearchResult, error) {
+func searchesBy(answers map[string][]trackpick.SearchResult, asked *[]string) trackpick.Searcher {
+	return func(query string) ([]trackpick.SearchResult, error) {
 		*asked = append(*asked, query)
 		return answers[query], nil
 	}
@@ -17,7 +18,7 @@ func searchesBy(answers map[string][]SearchResult, asked *[]string) Searcher {
 
 func TestFindTrackPrefersTheOfficialVideo(t *testing.T) {
 	var asked []string
-	search := searchesBy(map[string][]SearchResult{
+	search := searchesBy(map[string][]trackpick.SearchResult{
 		"Blinding Lights The Weeknd official video": {
 			{ID: "lyr", Title: "The Weeknd - Blinding Lights (Lyric Video)", Channel: "Fan"},
 			{ID: "off", Title: "The Weeknd - Blinding Lights (Official Video)", Channel: "TheWeekndVEVO"},
@@ -35,7 +36,7 @@ func TestFindTrackPrefersTheOfficialVideo(t *testing.T) {
 
 func TestFindTrackFallsBackToANonOfficialUpload(t *testing.T) {
 	var asked []string
-	search := searchesBy(map[string][]SearchResult{
+	search := searchesBy(map[string][]trackpick.SearchResult{
 		"Blinding Lights The Weeknd official video": {
 			{ID: "cov", Title: "Blinding Lights (cover) The Weeknd", Channel: "Someone"},
 		},
@@ -55,7 +56,7 @@ func TestFindTrackFallsBackToANonOfficialUpload(t *testing.T) {
 
 func TestFindTrackTakesTheOfficialAudioOfTheArtistsChannel(t *testing.T) {
 	var asked []string
-	search := searchesBy(map[string][]SearchResult{
+	search := searchesBy(map[string][]trackpick.SearchResult{
 		"Lovely Day Bill Withers official video": {
 			{ID: "audio", Title: "Lovely Day (Official Audio)", Channel: "Bill Withers"},
 		},
@@ -69,7 +70,7 @@ func TestFindTrackTakesTheOfficialAudioOfTheArtistsChannel(t *testing.T) {
 
 func TestFindTrackUsesTheLooseMatchOfAnyOfTheSearches(t *testing.T) {
 	var asked []string
-	search := searchesBy(map[string][]SearchResult{
+	search := searchesBy(map[string][]trackpick.SearchResult{
 		"Under Pressure Queen official video": {
 			{ID: "lyr", Title: "Queen & David Bowie - Under Pressure (Lyrics)", Channel: "Lyrics Channel"},
 		},
@@ -86,7 +87,7 @@ func TestFindTrackUsesTheLooseMatchOfAnyOfTheSearches(t *testing.T) {
 
 func TestFindTrackAcceptsAnyOfSeveralArtists(t *testing.T) {
 	var asked []string
-	search := searchesBy(map[string][]SearchResult{
+	search := searchesBy(map[string][]trackpick.SearchResult{
 		"Under Pressure Queen official video": {
 			{ID: "off", Title: "Under Pressure - David Bowie (Official Video)", Channel: "David Bowie"},
 		},
@@ -127,7 +128,7 @@ func TestArtistNames(t *testing.T) {
 
 func TestFindTrackSearchesForTheWholeActAndMatchesEitherArtist(t *testing.T) {
 	var asked []string
-	search := searchesBy(map[string][]SearchResult{
+	search := searchesBy(map[string][]trackpick.SearchResult{
 		"Solar Eclipse Drake & Don Toliver official video": {
 			{ID: "off", Title: "Don Toliver - Solar Eclipse (Official Video)", Channel: "Don Toliver"},
 		},
@@ -141,7 +142,7 @@ func TestFindTrackSearchesForTheWholeActAndMatchesEitherArtist(t *testing.T) {
 
 func TestFindTrackFindsNothingWhenNothingMatches(t *testing.T) {
 	var asked []string
-	search := searchesBy(map[string][]SearchResult{
+	search := searchesBy(map[string][]trackpick.SearchResult{
 		"Blinding Lights The Weeknd official video": {{ID: "x", Title: "Totally different song", Channel: "Other"}},
 		"The Weeknd - Blinding Lights":              {{ID: "y", Title: "Blinding Lights live karaoke The Weeknd", Channel: "Other"}},
 	}, &asked)
@@ -153,7 +154,7 @@ func TestFindTrackFindsNothingWhenNothingMatches(t *testing.T) {
 }
 
 func TestFindTrackReportsASearchThatFails(t *testing.T) {
-	failing := func(string) ([]SearchResult, error) { return nil, errors.New("offline") }
+	failing := func(string) ([]trackpick.SearchResult, error) { return nil, errors.New("offline") }
 	if _, err := FindTrack(failing, Sources{}, "Song", "Artist", 0, quiet); err == nil {
 		t.Error("want the search error")
 	}

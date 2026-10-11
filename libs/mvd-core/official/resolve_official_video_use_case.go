@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 // LogFunc receives progress messages, printf style.
@@ -31,8 +32,8 @@ type Resolver struct {
 	UserAgent string
 	Attempts  int
 	Log       LogFunc
-	Dumper    PageDumper // optional
-	Searcher  Searcher   // optional
+	Dumper    PageDumper         // optional
+	Searcher  trackpick.Searcher // optional
 	// TrackInfos, when set, tells art tracks from real videos whatever the channel is
 	// called (YouTube Music's own tag) and names the song's real artist; without it
 	// every upload is looked up and the artist is the channel's name.
@@ -63,7 +64,7 @@ func NewResolver(log LogFunc) *Resolver {
 // is decided by ResolveLog, which can ask YouTube; the channel name cannot tell,
 // because many art tracks carry the artist's own name instead of "- Topic".
 func (r *Resolver) Wanted(title, _, _ string) bool {
-	return !LooksLikeOfficialVideo(title)
+	return !trackpick.LooksLikeOfficialVideo(title)
 }
 
 // Version is the video ResolveVersion chose to download in place of an upload.
@@ -109,7 +110,7 @@ type Identified struct {
 	// Version is the answer when Done.
 	Version Version
 
-	song   Song
+	song   trackpick.Song
 	reason string
 	// still is an official video found while naming that does not move; Pick looks for
 	// one that does first.
@@ -186,10 +187,10 @@ func (r *Resolver) Identify(videoID, title, channel string, durationSec int, log
 
 // songOrEmpty names the song of an upload, or returns an empty song when no database
 // does; a Pick of an empty song looks for nothing.
-func (r *Resolver) songOrEmpty(videoID, title, channel string, durationSec int, artTrack bool, logf func(format string, a ...interface{})) Song {
+func (r *Resolver) songOrEmpty(videoID, title, channel string, durationSec int, artTrack bool, logf func(format string, a ...interface{})) trackpick.Song {
 	song, named := r.songOfUpload(videoID, title, channel, durationSec, artTrack, logf)
 	if !named {
-		return Song{OwnID: videoID}
+		return trackpick.Song{OwnID: videoID}
 	}
 	return song
 }
@@ -310,7 +311,7 @@ func (r *Resolver) fromDescription(videoID string, logf func(format string, a ..
 			return cand, "linked from description (unverified channel)"
 		case !ok:
 			logf("[official] %s: candidate %s does not exist, skipping", videoID, cand)
-		case IsTopicChannel(author):
+		case trackpick.IsTopicChannel(author):
 			logf("[official] %s: candidate %s is another auto-generated track (%s), skipping", videoID, cand, author)
 		default:
 			return cand, fmt.Sprintf("official video by %q", author)

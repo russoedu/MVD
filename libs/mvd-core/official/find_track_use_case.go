@@ -3,6 +3,7 @@ package official
 import (
 	"regexp"
 	"strings"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 // FoundTrack is the YouTube video chosen for a track.
@@ -18,9 +19,9 @@ type FoundTrack struct {
 // returns the best video: the official one when there is one, else the best
 // non-official upload. durationSec is the length of the song, or 0 when
 // unknown. It returns an empty VideoID when nothing matches.
-func FindTrack(search Searcher, sources Sources, title, artists string, durationSec int, logf func(format string, a ...interface{})) (FoundTrack, error) {
+func FindTrack(search trackpick.Searcher, sources Sources, title, artists string, durationSec int, logf func(format string, a ...interface{})) (FoundTrack, error) {
 	names := artistNames(artists)
-	song := Song{Title: title, Artists: names, DurationSec: durationSec}
+	song := trackpick.Song{Title: title, Artists: names, DurationSec: durationSec}
 
 	pick, ok, results, err := FindBestVideo(search, sources, song, logf)
 	if err != nil {
@@ -31,7 +32,7 @@ func FindTrack(search Searcher, sources Sources, title, artists string, duration
 	}
 
 	// Nothing official turned up: take the best other upload of the song.
-	if id := PickLooseResult(results, title, names); id != "" {
+	if id := trackpick.PickLooseResult(results, title, names); id != "" {
 		logf("only a non-official upload: %s", id)
 		return FoundTrack{VideoID: id}, nil
 	}

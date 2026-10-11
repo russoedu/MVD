@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"youtube-downloader/libs/mvd-core/official/titlematch"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 // confidentScore is a score that needs no further search, for a video that says
@@ -15,7 +16,7 @@ const confidentScore = 8.5
 const maxChecked = 5
 
 // searchQueries are what is searched for on YouTube, the most precise first.
-func searchQueries(song Song) []string {
+func searchQueries(song trackpick.Song) []string {
 	title := titlematch.SearchTitle(song.Title)
 	raw := strings.Join(strings.Fields(song.Title), " ")
 	artist := ""
@@ -57,22 +58,22 @@ func searchQueries(song Song) []string {
 // one gives a confident music video. The error is that of the YouTube search,
 // when it fails first and nothing else answered; the other sources only fail
 // silently.
-func FindBestVideo(search Searcher, sources Sources, song Song, logf func(format string, a ...interface{})) (Pick, bool, []SearchResult, error) {
+func FindBestVideo(search trackpick.Searcher, sources Sources, song trackpick.Song, logf func(format string, a ...interface{})) (trackpick.Pick, bool, []trackpick.SearchResult, error) {
 	if sources.Cache != nil {
 		if cached, ok := sources.Cache.Get(song); ok {
 			logf("remembered from an earlier run: %s %s by %q", cached.Kind, cached.ID, cached.Channel)
-			return Pick{ID: cached.ID, Kind: cached.Kind, Score: confidentScore, Channel: cached.Channel, Sure: true, Why: "remembered (" + cached.Why + ")"}, true, nil, nil
+			return trackpick.Pick{ID: cached.ID, Kind: cached.Kind, Score: confidentScore, Channel: cached.Channel, Sure: true, Why: "remembered (" + cached.Why + ")"}, true, nil, nil
 		}
 	}
 
-	var results []SearchResult
+	var results []trackpick.SearchResult
 	checked := map[string]string{}
 
 	// best is the best candidate that is not an art track: the top few are checked
 	// with YouTube Music, since an art track of the artist's channel looks like a
 	// video of it in a search result.
-	best := func() (Pick, bool) {
-		for i, pick := range RankCandidates(results, song) {
+	best := func() (trackpick.Pick, bool) {
+		for i, pick := range trackpick.RankCandidates(results, song) {
 			if i == maxChecked {
 				break
 			}
@@ -86,19 +87,19 @@ func FindBestVideo(search Searcher, sources Sources, song Song, logf func(format
 					checked[pick.ID] = kind
 				}
 			}
-			if artTrack, _ := ArtTrackFromVideoType(kind); artTrack {
+			if artTrack, _ := trackpick.ArtTrackFromVideoType(kind); artTrack {
 				logf("not %s by %q: an auto-generated track too", pick.ID, pick.Channel)
 				continue
 			}
 			return pick, true
 		}
-		return Pick{}, false
+		return trackpick.Pick{}, false
 	}
-	confident := func() (Pick, bool) {
+	confident := func() (trackpick.Pick, bool) {
 		pick, ok := best()
-		return pick, ok && pick.Kind == KindVideo && pick.Sure && pick.Score >= confidentScore
+		return pick, ok && pick.Kind == trackpick.KindVideo && pick.Sure && pick.Score >= confidentScore
 	}
-	finish := func(pick Pick) (Pick, bool, []SearchResult, error) {
+	finish := func(pick trackpick.Pick) (trackpick.Pick, bool, []trackpick.SearchResult, error) {
 		if sources.Cache != nil {
 			sources.Cache.Put(song, pick)
 		}
@@ -127,13 +128,13 @@ func FindBestVideo(search Searcher, sources Sources, song Song, logf func(format
 	}
 
 	if search == nil {
-		return Pick{}, false, results, fmt.Errorf("no way to search YouTube")
+		return trackpick.Pick{}, false, results, fmt.Errorf("no way to search YouTube")
 	}
 	for i, query := range searchQueries(song) {
 		found, err := search(query)
 		if err != nil {
 			if i == 0 && len(results) == 0 {
-				return Pick{}, false, nil, fmt.Errorf("search for %q failed: %w", query, err)
+				return trackpick.Pick{}, false, nil, fmt.Errorf("search for %q failed: %w", query, err)
 			}
 			logf("search for %q failed: %v", query, err)
 			break
@@ -149,22 +150,22 @@ func FindBestVideo(search Searcher, sources Sources, song Song, logf func(format
 	pick, ok := best()
 	if !ok {
 		logf("no candidate among %d results", len(results))
-		return Pick{}, false, results, nil
+		return trackpick.Pick{}, false, results, nil
 	}
-	ranked := RankCandidates(results, song)
+	ranked := trackpick.RankCandidates(results, song)
 	for i, candidate := range ranked[:min(len(ranked), 3)] {
 		logf("candidate %d: %s", i+1, describePick(candidate))
 	}
 	return finish(pick)
 }
 
-func firstArtist(song Song) string {
+func firstArtist(song trackpick.Song) string {
 	if len(song.Artists) == 0 {
 		return ""
 	}
 	return song.Artists[0]
 }
 
-func describePick(pick Pick) string {
+func describePick(pick trackpick.Pick) string {
 	return fmt.Sprintf("%s %s by %q (score %.1f: %s)", pick.Kind, pick.ID, pick.Channel, pick.Score, pick.Why)
 }

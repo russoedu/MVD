@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 // maxQualityChecked is how many uploads of a song have their formats looked up: each
@@ -14,15 +15,15 @@ const maxQualityChecked = 5
 // upload of the song with the best picture and sound, among the most viewed ones the
 // searches saw and the playlist's own. It returns the id of the best, or "" when the
 // playlist's own is as good as any (or the quality cannot be looked up).
-func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(format string, a ...interface{})) (string, string) {
+func (r *Resolver) fromBestQuality(song trackpick.Song, results []trackpick.SearchResult, logf func(format string, a ...interface{})) (string, string) {
 	if r.Sources.Quality == nil {
 		return "", ""
 	}
 
-	var uploads []SearchResult
+	var uploads []trackpick.SearchResult
 	seen := map[string]bool{}
 	for _, res := range results {
-		if !seen[res.ID] && isUploadOfTheSong(res, song) && !slices.Contains(song.Rejected, res.ID) {
+		if !seen[res.ID] && trackpick.IsUploadOfTheSong(res, song) && !slices.Contains(song.Rejected, res.ID) {
 			seen[res.ID] = true
 			uploads = append(uploads, res)
 		}
@@ -33,7 +34,7 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 	// The most viewed come first, but an upload that says in its title that it is in high
 	// quality is looked at before them: a real HD video often has few views.
 	sort.SliceStable(uploads, func(i, j int) bool {
-		hi, hj := AdvertisesQuality(uploads[i].Title), AdvertisesQuality(uploads[j].Title)
+		hi, hj := trackpick.AdvertisesQuality(uploads[i].Title), trackpick.AdvertisesQuality(uploads[j].Title)
 		if hi != hj {
 			return hi
 		}
@@ -42,7 +43,7 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 
 	// An art track is no better than the playlist's own, and YouTube shows many under the
 	// artist's own name, so YouTube Music's tag is asked of each before it is taken.
-	var chosen []SearchResult
+	var chosen []trackpick.SearchResult
 	for _, res := range uploads {
 		if len(chosen) == maxQualityChecked {
 			break
@@ -51,7 +52,7 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 		if kind == "" && r.Sources.Type != nil {
 			kind, _ = r.Sources.Type(res.ID)
 		}
-		if artTrack, _ := ArtTrackFromVideoType(kind); artTrack {
+		if artTrack, _ := trackpick.ArtTrackFromVideoType(kind); artTrack {
 			continue
 		}
 		// Nor is a picture with the song over it, or a lyric video over one picture, a
@@ -63,7 +64,7 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 	}
 	uploads = chosen
 
-	own := Quality{}
+	own := trackpick.Quality{}
 	if song.OwnID != "" {
 		if quality, err := r.Sources.Quality(song.OwnID); err == nil {
 			own = quality
@@ -74,7 +75,7 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 		}
 	}
 
-	best, bestQuality, bestScore := SearchResult{}, Quality{}, -1.0
+	best, bestQuality, bestScore := trackpick.SearchResult{}, trackpick.Quality{}, -1.0
 	for _, res := range uploads {
 		quality, err := r.Sources.Quality(res.ID)
 		if err != nil {
@@ -85,7 +86,7 @@ func (r *Resolver) fromBestQuality(song Song, results []SearchResult, logf func(
 			best, bestQuality, bestScore = res, quality, score
 		}
 	}
-	if bestScore < 0 || bestScore <= own.Score()+qualityMargin {
+	if bestScore < 0 || bestScore <= own.Score()+trackpick.QualityMargin {
 		return "", ""
 	}
 	return best.ID, fmt.Sprintf("no official video found; the best quality is %s by %q (%dp, %d kbps, against %dp, %d kbps)",

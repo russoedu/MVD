@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 // videosFilter is the search filter of YouTube Music that lists videos only.
@@ -17,7 +18,7 @@ const videosFilter = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
 // SearchVideos searches the videos of YouTube Music, whose results carry its
 // own tag: OMV for a video the artist's channel uploaded, UGC for anyone
 // else's. The channel of a result is the artist the entry names.
-func (c *YouTubeMusicClient) SearchVideos(query string) ([]SearchResult, error) {
+func (c *YouTubeMusicClient) SearchVideos(query string) ([]trackpick.SearchResult, error) {
 	body, err := json.Marshal(map[string]interface{}{
 		"context": map[string]interface{}{
 			"client": map[string]interface{}{"clientName": "WEB_REMIX", "clientVersion": "1.20240925.01.00", "hl": "en"},
@@ -55,18 +56,18 @@ func (c *YouTubeMusicClient) SearchVideos(query string) ([]SearchResult, error) 
 }
 
 // parseVideoResults reads the videos out of a YouTube Music search answer.
-func parseVideoResults(data []byte) ([]SearchResult, error) {
+func parseVideoResults(data []byte) ([]trackpick.SearchResult, error) {
 	var answer interface{}
 	if err := json.Unmarshal(data, &answer); err != nil {
 		return nil, err
 	}
 
-	var results []SearchResult
+	var results []trackpick.SearchResult
 	collectVideos(answer, &results)
 	return results, nil
 }
 
-func collectVideos(node interface{}, out *[]SearchResult) {
+func collectVideos(node interface{}, out *[]trackpick.SearchResult) {
 	switch value := node.(type) {
 	case []interface{}:
 		for _, item := range value {
@@ -86,14 +87,14 @@ func collectVideos(node interface{}, out *[]SearchResult) {
 }
 
 // videoRow reads one row of the results: its title, and "Artist • 327K views • 4:08".
-func videoRow(row map[string]interface{}) (SearchResult, bool) {
+func videoRow(row map[string]interface{}) (trackpick.SearchResult, bool) {
 	raw, err := json.Marshal(row)
 	if err != nil {
-		return SearchResult{}, false
+		return trackpick.SearchResult{}, false
 	}
 	idMatch := videoIDField.FindSubmatch(raw)
 	if idMatch == nil {
-		return SearchResult{}, false
+		return trackpick.SearchResult{}, false
 	}
 
 	columns, _ := row["flexColumns"].([]interface{})
@@ -106,7 +107,7 @@ func videoRow(row map[string]interface{}) (SearchResult, bool) {
 		return panelText(renderer["text"])
 	}
 
-	result := SearchResult{ID: string(idMatch[1]), Title: column(0)}
+	result := trackpick.SearchResult{ID: string(idMatch[1]), Title: column(0)}
 	if match := musicVideoType.FindSubmatch(raw); match != nil {
 		result.MusicType = string(match[1])
 	}
@@ -122,7 +123,7 @@ func videoRow(row map[string]interface{}) (SearchResult, bool) {
 		}
 	}
 	if result.Title == "" {
-		return SearchResult{}, false
+		return trackpick.SearchResult{}, false
 	}
 	return result, true
 }

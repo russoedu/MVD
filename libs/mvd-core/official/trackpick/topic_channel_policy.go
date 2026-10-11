@@ -1,6 +1,6 @@
 // Package official finds the official music video that YouTube links from
 // the "Music" card in the description of an auto-generated art track.
-package official
+package trackpick
 
 import "strings"
 

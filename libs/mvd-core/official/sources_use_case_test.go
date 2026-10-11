@@ -7,19 +7,20 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 func TestFindBestVideoStopsAtAKnownVideoWithoutSearching(t *testing.T) {
 	search := &scriptedSearch{}
 	var music int
 	sources := Sources{
-		Known: func(Song, func(string, ...interface{})) []SearchResult {
-			return []SearchResult{{ID: "known", Title: "Billy Joel - Uptown Girl (Official Video)", Channel: "billyjoelVEVO", MusicType: "OMV", Source: "Wikidata"}}
+		Known: func(trackpick.Song, func(string, ...interface{})) []trackpick.SearchResult {
+			return []trackpick.SearchResult{{ID: "known", Title: "Billy Joel - Uptown Girl (Official Video)", Channel: "billyjoelVEVO", MusicType: "OMV", Source: "Wikidata"}}
 		},
-		Music: func(string) ([]SearchResult, error) { music++; return nil, nil },
+		Music: func(string) ([]trackpick.SearchResult, error) { music++; return nil, nil },
 	}
 
-	pick, ok, _, err := FindBestVideo(search.search, sources, Song{Title: "Uptown Girl", Artists: []string{"Billy Joel"}}, quietLog)
+	pick, ok, _, err := FindBestVideo(search.search, sources, trackpick.Song{Title: "Uptown Girl", Artists: []string{"Billy Joel"}}, quietLog)
 	if err != nil || !ok || pick.ID != "known" || !strings.Contains(pick.Why, "listed by Wikidata") {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
@@ -29,12 +30,12 @@ func TestFindBestVideoStopsAtAKnownVideoWithoutSearching(t *testing.T) {
 }
 
 func TestAKnownVideoIsTrustedWithoutTheWordOfficialOrTheArtistsChannel(t *testing.T) {
-	song := Song{Title: "Funkytown", Artists: []string{"Lipps Inc"}}
-	known := []SearchResult{{ID: "known", Title: "Lipps Inc - Funky Town", Channel: "TopPop", Source: "Wikidata"}}
+	song := trackpick.Song{Title: "Funkytown", Artists: []string{"Lipps Inc"}}
+	known := []trackpick.SearchResult{{ID: "known", Title: "Lipps Inc - Funky Town", Channel: "TopPop", Source: "Wikidata"}}
 	if id, _ := pickID(t, known, song); id != "known" {
 		t.Errorf("got %q, want the video a database lists", id)
 	}
-	listedAudio := []SearchResult{{ID: "audio", Title: "Lipps Inc - Funkytown (Audio)", Channel: "SomeFan", Source: "Wikidata"}}
+	listedAudio := []trackpick.SearchResult{{ID: "audio", Title: "Lipps Inc - Funkytown (Audio)", Channel: "SomeFan", Source: "Wikidata"}}
 	if id, _ := pickID(t, listedAudio, song); id != "" {
 		t.Errorf("got %q, an audio upload still needs the artist's own channel", id)
 	}
@@ -44,17 +45,17 @@ func TestFindBestVideoUsesYouTubeMusicWhenNothingIsKnown(t *testing.T) {
 	search := &scriptedSearch{}
 	var asked string
 	sources := Sources{
-		Known: func(Song, func(string, ...interface{})) []SearchResult { return nil },
-		Music: func(query string) ([]SearchResult, error) {
+		Known: func(trackpick.Song, func(string, ...interface{})) []trackpick.SearchResult { return nil },
+		Music: func(query string) ([]trackpick.SearchResult, error) {
 			asked = query
-			return []SearchResult{
+			return []trackpick.SearchResult{
 				{ID: "cover", Title: "Paradise Fears - MMMBop", Channel: "Paradise Fears", MusicType: "OMV", Views: 446000},
 				{ID: "own", Title: "MMMBop (Official Music Video)", Channel: "Hanson", MusicType: "OMV", Views: 187000000},
 			}, nil
 		},
 	}
 
-	pick, ok, _, err := FindBestVideo(search.search, sources, Song{Title: "MMMBop", Artists: []string{"Hanson"}}, quietLog)
+	pick, ok, _, err := FindBestVideo(search.search, sources, trackpick.Song{Title: "MMMBop", Artists: []string{"Hanson"}}, quietLog)
 	if err != nil || !ok || pick.ID != "own" {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
@@ -66,15 +67,15 @@ func TestFindBestVideoUsesYouTubeMusicWhenNothingIsKnown(t *testing.T) {
 func TestFindBestVideoDoesNotStopAtAnArtistUploadThatSaysNothing(t *testing.T) {
 	// Dr. Alban's channel has the official video and a TV performance of the same
 	// song; YouTube Music's search tags both as official videos.
-	search := &scriptedSearch{answers: map[string][]SearchResult{
+	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"official video": {{ID: "official", Title: "Dr.Alban - It's My Life (Official 4K Video)", Channel: "Dr. Alban", Verified: true, Views: 93000000, Duration: 230}},
 	}}
 	sources := Sources{
-		Music: func(string) ([]SearchResult, error) {
-			return []SearchResult{{ID: "totp", Title: "Dr. Alban - It's My Life (Top Of The Pops, 1st October, 1992)", Channel: "Dr. Alban", MusicType: "OMV", Views: 4000000, Duration: 189}}, nil
+		Music: func(string) ([]trackpick.SearchResult, error) {
+			return []trackpick.SearchResult{{ID: "totp", Title: "Dr. Alban - It's My Life (Top Of The Pops, 1st October, 1992)", Channel: "Dr. Alban", MusicType: "OMV", Views: 4000000, Duration: 189}}, nil
 		},
 	}
-	song := Song{Title: "It's My Life", Artists: []string{"Dr. Alban"}, DurationSec: 235}
+	song := trackpick.Song{Title: "It's My Life", Artists: []string{"Dr. Alban"}, DurationSec: 235}
 
 	pick, ok, _, err := FindBestVideo(search.search, sources, song, quietLog)
 	if err != nil || !ok || pick.ID != "official" {
@@ -88,7 +89,7 @@ func TestFindBestVideoDoesNotStopAtAnArtistUploadThatSaysNothing(t *testing.T) {
 func TestFindBestVideoSkipsAnArtTrackThatLooksLikeTheArtistsVideo(t *testing.T) {
 	// YouTube shows an art track under the artist's name: verified, same length, no
 	// "official" in its title. YouTube Music knows it for what it is.
-	search := &scriptedSearch{answers: map[string][]SearchResult{
+	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"official video": {
 			{ID: "arttrack1", Title: "Radio Edit - It's My Life", Channel: "Dr. Alban", Verified: true, Duration: 235, Views: 6000000},
 			{ID: "official1", Title: "Dr.Alban - It's My Life (Official 4K Video)", Channel: "Dr. Alban", Verified: true, Duration: 230, Views: 93000000},
@@ -104,7 +105,7 @@ func TestFindBestVideoSkipsAnArtTrackThatLooksLikeTheArtistsVideo(t *testing.T) 
 			return "OMV", nil
 		},
 	}
-	song := Song{Title: "It's My Life", Artists: []string{"Dr. Alban"}, DurationSec: 235}
+	song := trackpick.Song{Title: "It's My Life", Artists: []string{"Dr. Alban"}, DurationSec: 235}
 
 	pick, ok, _, err := FindBestVideo(search.search, sources, song, quietLog)
 	if err != nil || !ok || pick.ID != "official1" {
@@ -119,15 +120,15 @@ func TestFindBestVideoSkipsAnArtTrackThatLooksLikeTheArtistsVideo(t *testing.T) 
 }
 
 func TestFindBestVideoAsksOnlyAboutTheBestCandidates(t *testing.T) {
-	var results []SearchResult
+	var results []trackpick.SearchResult
 	for i := 0; i < 12; i++ {
-		results = append(results, SearchResult{ID: "video" + string(rune('a'+i)), Title: "Band - Song", Channel: "Band", Views: int64(1000 + i)})
+		results = append(results, trackpick.SearchResult{ID: "video" + string(rune('a'+i)), Title: "Band - Song", Channel: "Band", Views: int64(1000 + i)})
 	}
-	search := &scriptedSearch{answers: map[string][]SearchResult{"official video": results}}
+	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"official video": results}}
 	asked := 0
 	sources := Sources{Type: func(string) (string, error) { asked++; return "ATV", nil }}
 
-	if _, ok, _, _ := FindBestVideo(search.search, sources, Song{Title: "Song", Artists: []string{"Band"}}, quietLog); ok {
+	if _, ok, _, _ := FindBestVideo(search.search, sources, trackpick.Song{Title: "Song", Artists: []string{"Band"}}, quietLog); ok {
 		t.Error("every candidate is an art track, so there is no pick")
 	}
 	if asked != maxChecked {
@@ -136,13 +137,13 @@ func TestFindBestVideoAsksOnlyAboutTheBestCandidates(t *testing.T) {
 }
 
 func TestFindBestVideoGoesOnWhenASourceFails(t *testing.T) {
-	search := &scriptedSearch{answers: map[string][]SearchResult{
+	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"official video": {{ID: "official", Title: "Seal - Killer (Official Video)", Channel: "Seal", Verified: true, Views: 1400000}},
 	}}
 	sources := Sources{
-		Music: func(string) ([]SearchResult, error) { return nil, http.ErrHandlerTimeout },
+		Music: func(string) ([]trackpick.SearchResult, error) { return nil, http.ErrHandlerTimeout },
 	}
-	pick, ok, _, err := FindBestVideo(search.search, sources, Song{Title: "Killer", Artists: []string{"Seal"}}, quietLog)
+	pick, ok, _, err := FindBestVideo(search.search, sources, trackpick.Song{Title: "Killer", Artists: []string{"Seal"}}, quietLog)
 	if err != nil || !ok || pick.ID != "official" {
 		t.Errorf("a failing YouTube Music must not stop the search: got %+v, %v, %v", pick, ok, err)
 	}
@@ -150,10 +151,10 @@ func TestFindBestVideoGoesOnWhenASourceFails(t *testing.T) {
 
 func TestFindBestVideoRemembersAndAsksNobodyTheSecondTime(t *testing.T) {
 	cache := NewResolutionCache(filepath.Join(t.TempDir(), "official.json"), time.Hour)
-	search := &scriptedSearch{answers: map[string][]SearchResult{
+	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"official video": {{ID: "official", Title: "Seal - Killer (Official Video)", Channel: "Seal", Verified: true, Views: 1400000}},
 	}}
-	song := Song{Title: "Killer", Artists: []string{"Seal"}}
+	song := trackpick.Song{Title: "Killer", Artists: []string{"Seal"}}
 	sources := Sources{Cache: cache}
 
 	first, ok, _, err := FindBestVideo(search.search, sources, song, quietLog)
@@ -195,7 +196,7 @@ func TestKnownCandidatesKeepsRealVideosOnly(t *testing.T) {
 	 {"vid":{"value":"GoneGoneGon"},"perfLabel":{"value":"Billy Joel"}}
 	]}}`, nil)
 
-	known := res.KnownCandidates(wikidata)(Song{Title: "Uptown Girl", Artists: []string{"Billy Joel"}, OwnID: "OwnUploadI1"}, quietLog)
+	known := res.KnownCandidates(wikidata)(trackpick.Song{Title: "Uptown Girl", Artists: []string{"Billy Joel"}, OwnID: "OwnUploadI1"}, quietLog)
 	if len(known) != 1 {
 		t.Fatalf("got %+v, want only the real video: the art track, the Topic upload, the song's own upload and a deleted video are out", known)
 	}
@@ -208,7 +209,7 @@ func TestKnownCandidatesSurvivesAWikidataFailure(t *testing.T) {
 	f := &fakeYouTube{}
 	_, res := f.server(t)
 	wikidata := wikidataServer(t, http.StatusServiceUnavailable, "down", nil)
-	if known := res.KnownCandidates(wikidata)(Song{Title: "Song", Artists: []string{"Band"}}, quietLog); known != nil {
+	if known := res.KnownCandidates(wikidata)(trackpick.Song{Title: "Song", Artists: []string{"Band"}}, quietLog); known != nil {
 		t.Errorf("got %+v, want nothing when Wikidata is down", known)
 	}
 }
@@ -239,7 +240,7 @@ func TestSearchVideosReadsYouTubeMusicRows(t *testing.T) {
 	if err != nil || len(got) != 2 {
 		t.Fatalf("got %+v, %v; want the two rows that name a video", got, err)
 	}
-	want := SearchResult{ID: "sJ0FFbRBQlE", Title: "Killer", Channel: "ATB", Views: 327000, Duration: 248, MusicType: "OMV"}
+	want := trackpick.SearchResult{ID: "sJ0FFbRBQlE", Title: "Killer", Channel: "ATB", Views: 327000, Duration: 248, MusicType: "OMV"}
 	if got[0] != want {
 		t.Errorf("got %+v, want %+v", got[0], want)
 	}
