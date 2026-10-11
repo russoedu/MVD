@@ -457,6 +457,7 @@ func TestEveryDecisionMovesOnToTheNextSongButUndoingStaysPut(t *testing.T) {
 	f.m = drive(t, f.m, key("r"))
 	f.m = drive(t, f.m, tea.PasteMsg{Content: "https://www.youtube.com/watch?v=CHOSEN00001"})
 	f.m = drive(t, f.m, key("enter"))
+	f.skipNote()
 	if got := f.app().editor.sel; got != 1 {
 		t.Errorf("after replacing the selection is on %d, want 1", got)
 	}
