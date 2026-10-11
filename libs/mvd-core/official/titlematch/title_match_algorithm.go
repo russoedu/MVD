@@ -1,4 +1,4 @@
-package official
+package titlematch
 
 import (
 	"regexp"
@@ -15,16 +15,16 @@ var titleNoise = map[string]bool{
 	"clean": true, "feat": true, "ft": true, "featuring": true,
 }
 
-var yearToken = regexp.MustCompile(`^(19|20)\d\d$`)
+var YearToken = regexp.MustCompile(`^(19|20)\d\d$`)
 
 // titleTokens lowercases a title and splits it into words, leaving out the
-// bracketed parts, the noise words and years ("Killer 2000" is "Killer"), and
+// Bracketed parts, the noise words and years ("Killer 2000" is "Killer"), and
 // the words of the artists named in skip, unless keep has them (a song called
 // "Fire" by "Earth, Wind & Fire" keeps its word).
 func titleTokens(title string, skip, keep map[string]bool) []string {
 	var tokens []string
-	for _, word := range strings.Fields(normalize(bracketed.ReplaceAllString(title, " "))) {
-		if titleNoise[word] || yearToken.MatchString(word) || (skip[word] && !keep[word]) {
+	for _, word := range strings.Fields(Normalize(Bracketed.ReplaceAllString(title, " "))) {
+		if titleNoise[word] || YearToken.MatchString(word) || (skip[word] && !keep[word]) {
 			continue
 		}
 		tokens = append(tokens, word)
@@ -49,7 +49,7 @@ func tokenSet(tokens []string) map[string]bool {
 func TitleSimilarity(song, candidate string, artists []string) float64 {
 	artistWords := map[string]bool{}
 	for _, artist := range artists {
-		for _, word := range strings.Fields(normalize(artist)) {
+		for _, word := range strings.Fields(Normalize(artist)) {
 			artistWords[word] = true
 		}
 	}

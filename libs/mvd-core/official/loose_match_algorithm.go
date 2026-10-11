@@ -1,5 +1,9 @@
 package official
 
+import (
+	"youtube-downloader/libs/mvd-core/official/titlematch"
+)
+
 // looseUnwanted are the cuts that are never the song people mean, even when
 // no official video exists. Lyric and audio uploads are fine here.
 var looseUnwanted = []string{
@@ -13,18 +17,18 @@ var looseUnwanted = []string{
 // not a cover, live, remix or other cut the song is not. It returns "" when
 // none qualifies.
 func PickLooseResult(results []SearchResult, title string, artists []string) string {
-	song := normalize(bracketed.ReplaceAllString(title, " "))
+	song := titlematch.Normalize(titlematch.Bracketed.ReplaceAllString(title, " "))
 	if song == "" {
 		return ""
 	}
-	original := normalize(title)
+	original := titlematch.Normalize(title)
 
 	for _, res := range results {
 		if res.ID == "" {
 			continue
 		}
-		resTitle := normalize(res.Title)
-		if !containsWords(resTitle, song) || !fromAnyArtist(res, resTitle, artists) {
+		resTitle := titlematch.Normalize(res.Title)
+		if !titlematch.ContainsWords(resTitle, song) || !fromAnyArtist(res, resTitle, artists) {
 			continue
 		}
 		if hasLooseUnwanted(resTitle, original) {
@@ -41,10 +45,10 @@ func fromAnyArtist(res SearchResult, resTitle string, artists []string) bool {
 	if len(artists) == 0 {
 		return true
 	}
-	channel := normalize(res.Channel)
+	channel := titlematch.Normalize(res.Channel)
 	for _, artist := range artists {
-		band := normalize(artist)
-		if band != "" && (containsWords(resTitle, band) || containsWords(channel, band)) {
+		band := titlematch.Normalize(artist)
+		if band != "" && (titlematch.ContainsWords(resTitle, band) || titlematch.ContainsWords(channel, band)) {
 			return true
 		}
 	}
@@ -53,7 +57,7 @@ func fromAnyArtist(res SearchResult, resTitle string, artists []string) bool {
 
 func hasLooseUnwanted(resultTitle, originalTitle string) bool {
 	for _, word := range looseUnwanted {
-		if containsWords(resultTitle, word) && !containsWords(originalTitle, word) {
+		if titlematch.ContainsWords(resultTitle, word) && !titlematch.ContainsWords(originalTitle, word) {
 			return true
 		}
 	}

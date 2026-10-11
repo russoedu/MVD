@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/titlematch"
 )
 
 // CachedPick is a video remembered for a song.
@@ -40,7 +41,7 @@ func NewResolutionCache(path string, ttl time.Duration) *ResolutionCache {
 // CacheKey is what identifies a song: its title and artists, in a spelling that
 // does not depend on case, accents or punctuation.
 func CacheKey(song Song) string {
-	return normalize(SearchTitle(song.Title)) + "|" + normalize(strings.Join(song.Artists, ","))
+	return titlematch.Normalize(titlematch.SearchTitle(song.Title)) + "|" + titlematch.Normalize(strings.Join(song.Artists, ","))
 }
 
 // Get returns the video remembered for a song, if it is still fresh.

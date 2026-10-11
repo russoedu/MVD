@@ -3,6 +3,7 @@ package official
 import (
 	"fmt"
 	"strings"
+	"youtube-downloader/libs/mvd-core/official/titlematch"
 )
 
 // confidentScore is a score that needs no further search, for a video that says
@@ -15,7 +16,7 @@ const maxChecked = 5
 
 // searchQueries are what is searched for on YouTube, the most precise first.
 func searchQueries(song Song) []string {
-	title := SearchTitle(song.Title)
+	title := titlematch.SearchTitle(song.Title)
 	raw := strings.Join(strings.Fields(song.Title), " ")
 	artist := ""
 	if len(song.Artists) > 0 {
@@ -113,7 +114,7 @@ func FindBestVideo(search Searcher, sources Sources, song Song, logf func(format
 	}
 
 	if sources.Music != nil {
-		query := strings.Join(strings.Fields(SearchTitle(song.Title)+" "+firstArtist(song)), " ")
+		query := strings.Join(strings.Fields(titlematch.SearchTitle(song.Title)+" "+firstArtist(song)), " ")
 		if found, err := sources.Music(query); err != nil {
 			logf("YouTube Music could not be searched: %v", err)
 		} else {

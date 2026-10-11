@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"youtube-downloader/libs/mvd-core/official/titlematch"
 )
 
 // Song is what is known about the song to find a video for.
@@ -84,7 +85,7 @@ var audioMarkers = []string{"audio", "lyric", "lyrics", "visualizer", "visualise
 
 func hasAny(title, original string, words []string) bool {
 	for _, word := range words {
-		if containsWords(title, word) && !containsWords(original, word) {
+		if titlematch.ContainsWords(title, word) && !titlematch.ContainsWords(original, word) {
 			return true
 		}
 	}
@@ -98,25 +99,25 @@ func scoreCandidate(res SearchResult, song Song) (Pick, bool) {
 		return Pick{}, false
 	}
 
-	resTitle := normalize(res.Title)
-	original := normalize(song.Title)
+	resTitle := titlematch.Normalize(res.Title)
+	original := titlematch.Normalize(song.Title)
 	if hasAny(resTitle, original, cutsToReject) {
 		return Pick{}, false
 	}
 
-	similarity := TitleSimilarity(song.Title, res.Title, song.Artists)
+	similarity := titlematch.TitleSimilarity(song.Title, res.Title, song.Artists)
 	if similarity < minTitleSimilarity {
 		return Pick{}, false
 	}
 
 	artistInTitle, artistChannel := len(song.Artists) == 0, false
 	for _, artist := range song.Artists {
-		if band := normalize(artist); band != "" && containsWords(resTitle, band) {
+		if band := titlematch.Normalize(artist); band != "" && titlematch.ContainsWords(resTitle, band) {
 			artistInTitle = true
 		}
 		// A verified channel that carries the artist's name is theirs too ("Deep Purple
 		// Official", "Michael Sembello (The Master)").
-		if ChannelIsArtist(res.Channel, artist) || (res.Verified && containsWords(normalize(res.Channel), normalize(artist))) {
+		if titlematch.ChannelIsArtist(res.Channel, artist) || (res.Verified && titlematch.ContainsWords(titlematch.Normalize(res.Channel), titlematch.Normalize(artist))) {
 			artistChannel = true
 		}
 	}
@@ -131,7 +132,7 @@ func scoreCandidate(res SearchResult, song Song) (Pick, bool) {
 	if hasAny(resTitle, original, audioMarkers) {
 		kind = KindAudio
 	}
-	official := containsWords(resTitle, "official")
+	official := titlematch.ContainsWords(resTitle, "official")
 
 	// A video is taken when it says it is official or when the artist's own
 	// channel uploaded it (Nickelback's "How You Remind Me" never says it). An

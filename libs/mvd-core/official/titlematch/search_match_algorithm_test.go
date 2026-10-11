@@ -1,4 +1,4 @@
-package official
+package titlematch
 
 import "testing"
 
@@ -19,7 +19,7 @@ func TestNormalizeFoldsAccentsAndPunctuation(t *testing.T) {
 		"  Mr.  Brightside ":     "mr brightside",
 	}
 	for in, want := range cases {
-		if got := normalize(in); got != want {
+		if got := Normalize(in); got != want {
 			t.Errorf("normalize(%q) = %q, want %q", in, got, want)
 		}
 	}

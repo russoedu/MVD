@@ -1,4 +1,4 @@
-package official
+package titlematch
 
 import "strings"
 
@@ -20,5 +20,5 @@ var versionTerms = map[string]bool{"mix": true, "mixes": true, "remix": true, "e
 
 // isIgnoredWord reports whether a normalized word is one a search leaves out.
 func isIgnoredWord(word string) bool {
-	return ignoredTerms[word] || titleNoise[word] || yearToken.MatchString(word) || strings.Trim(word, "0123456789") == ""
+	return ignoredTerms[word] || titleNoise[word] || YearToken.MatchString(word) || strings.Trim(word, "0123456789") == ""
 }

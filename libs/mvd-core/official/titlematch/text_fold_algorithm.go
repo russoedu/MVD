@@ -1,4 +1,7 @@
-package official
+// Package titlematch compares the titles and the artists of songs as the people who wrote
+// them would: folding accents, ignoring the words that name a version, and scoring how
+// close two titles are.
+package titlematch
 
 import (
 	"unicode"

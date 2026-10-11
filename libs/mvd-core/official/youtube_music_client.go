@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/titlematch"
 )
 
 // YouTubeMusicClient asks YouTube Music what an upload is. It is an optional
@@ -118,7 +119,7 @@ func parseTrackInfo(data []byte, videoID string) (TrackInfo, error) {
 		if info.Artist == "" {
 			info.Artist = strings.TrimSpace(parts[0])
 		}
-		if album := strings.TrimSpace(parts[1]); album != "" && !yearToken.MatchString(album) && !looksLikeCount(album) {
+		if album := strings.TrimSpace(parts[1]); album != "" && !titlematch.YearToken.MatchString(album) && !looksLikeCount(album) {
 			info.Album = album
 		}
 	}

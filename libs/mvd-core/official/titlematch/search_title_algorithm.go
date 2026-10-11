@@ -1,4 +1,4 @@
-package official
+package titlematch
 
 import (
 	"regexp"
@@ -8,12 +8,12 @@ import (
 // creditSuffix is the credit of a featured artist after the title ("Love Is Gone feat. Jane").
 var creditSuffix = regexp.MustCompile(`(?i)\s+(?:feat|ft|featuring)\.?(?:\s.*)?$`)
 
-// SearchTitle is a song's title as it is searched for: without the bracketed
+// SearchTitle is a song's title as it is searched for: without the Bracketed
 // parts, the credit of a featured artist, and the version words (see
 // ignoredTerms) after a dash or at the end, which only narrow a search down to
 // nothing ("Them Bones (2022 Remaster)" is searched as "Them Bones").
 func SearchTitle(title string) string {
-	cleaned := strings.TrimSpace(bracketed.ReplaceAllString(title, " "))
+	cleaned := strings.TrimSpace(Bracketed.ReplaceAllString(title, " "))
 	cleaned = creditSuffix.ReplaceAllString(cleaned, "")
 	if head, tail, found := strings.Cut(cleaned, " - "); found && hasNoise(tail) {
 		cleaned = head
@@ -31,8 +31,8 @@ func SearchTitle(title string) string {
 func withoutTrailingVersion(title string) string {
 	words := strings.Fields(title)
 	keep, named := len(words), false
-	for keep > 1 && isIgnoredWord(normalize(words[keep-1])) {
-		if versionTerms[normalize(words[keep-1])] {
+	for keep > 1 && isIgnoredWord(Normalize(words[keep-1])) {
+		if versionTerms[Normalize(words[keep-1])] {
 			named = true
 		}
 		keep--
@@ -45,7 +45,7 @@ func withoutTrailingVersion(title string) string {
 
 // hasNoise reports whether a text is made of version words and years only.
 func hasNoise(text string) bool {
-	words := strings.Fields(normalize(text))
+	words := strings.Fields(Normalize(text))
 	if len(words) == 0 {
 		return false
 	}

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/titlematch"
 )
 
 // WikidataClient asks Wikidata which YouTube videos it lists for a song. Many
@@ -113,7 +114,7 @@ func (c *WikidataClient) wait() {
 func titleLabels(title string) []string {
 	var labels []string
 	seen := map[string]bool{}
-	for _, candidate := range []string{strings.TrimSpace(title), SearchTitle(title)} {
+	for _, candidate := range []string{strings.TrimSpace(title), titlematch.SearchTitle(title)} {
 		if candidate == "" || seen[candidate] {
 			continue
 		}
@@ -126,9 +127,9 @@ func titleLabels(title string) []string {
 
 // performedBy reports whether a performer's name is one of the artists.
 func performedBy(performer string, artists []string) bool {
-	key := strings.TrimPrefix(compactName(performer), "the")
+	key := strings.TrimPrefix(titlematch.CompactName(performer), "the")
 	for _, artist := range artists {
-		if other := strings.TrimPrefix(compactName(artist), "the"); key != "" && key == other {
+		if other := strings.TrimPrefix(titlematch.CompactName(artist), "the"); key != "" && key == other {
 			return true
 		}
 	}

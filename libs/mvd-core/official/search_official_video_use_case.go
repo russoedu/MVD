@@ -1,6 +1,9 @@
 package official
 
-import "fmt"
+import (
+	"fmt"
+	"youtube-downloader/libs/mvd-core/official/titlematch"
+)
 
 // songOfUpload is the song an upload stands for, as it is searched for: the one a
 // music database names when it knows ("Tonight Is The Night" by "Le Click" for an
@@ -9,7 +12,7 @@ import "fmt"
 // did not know and the upload is a plain video, whose title and channel say little
 // about the song.
 func (r *Resolver) songOfUpload(videoID, title, channel string, durationSec int, artTrack bool, logf func(format string, a ...interface{})) (song Song, named bool) {
-	song = Song{Title: title, Artists: artistNames(ArtistFromChannel(channel)), DurationSec: durationSec, OwnID: videoID, OwnIsStill: artTrack}
+	song = Song{Title: title, Artists: artistNames(titlematch.ArtistFromChannel(channel)), DurationSec: durationSec, OwnID: videoID, OwnIsStill: artTrack}
 	// The Music card of the watch page names the song exactly, whatever the upload's own
 	// title puts around it ("As 7 Melhores Volume 1- Bill Power - I Swear"): when it is
 	// there no other source is asked.

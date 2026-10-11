@@ -270,7 +270,7 @@ func TestAFanUploadTaggedOfficialThatDoesNotMoveIsNotTheOfficialVideo(t *testing
 	}}
 	res := resolverWith(t, search, Sources{
 		Identify: func(string, string) (string, string, bool) { return "Double You", "Part Time Lover", true },
-		Static: func(id string) (bool, error) { return id == "up1", nil },
+		Static:   func(id string) (bool, error) { return id == "up1", nil },
 	})
 	res.TrackInfos = func(string) (TrackInfo, error) {
 		return TrackInfo{Type: "OMV", Artist: "Double You", Title: "Part-Time Lover"}, nil

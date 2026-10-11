@@ -1,6 +1,8 @@
 package songid
 
-import "youtube-downloader/libs/mvd-core/official"
+import (
+	"youtube-downloader/libs/mvd-core/official/titlematch"
+)
 
 // Identifier names the song of an upload with the help of three databases. Any may be
 // nil; a database that fails is skipped, since the answer is only a help. iTunes and
@@ -26,7 +28,7 @@ func (i *Identifier) Identify(uploadTitle, channel string) (artist, title string
 		for _, guess := range guesses {
 			if found, err := i.ITunes.Songs(guess.Artist + " " + guess.Title); err == nil {
 				if identity, hit := firstThatNamesTheUpload(found, uploadTitle, channel); hit {
-					return identity.Artist, official.SearchTitle(identity.Title), true
+					return identity.Artist, titlematch.SearchTitle(identity.Title), true
 				}
 			}
 		}
@@ -35,7 +37,7 @@ func (i *Identifier) Identify(uploadTitle, channel string) (artist, title string
 		for _, guess := range guesses {
 			if found, err := i.Deezer.Tracks(guess.Artist + " " + guess.Title); err == nil {
 				if identity, hit := firstThatNamesTheUpload(found, uploadTitle, channel); hit {
-					return identity.Artist, official.SearchTitle(identity.Title), true
+					return identity.Artist, titlematch.SearchTitle(identity.Title), true
 				}
 			}
 		}
@@ -44,7 +46,7 @@ func (i *Identifier) Identify(uploadTitle, channel string) (artist, title string
 		for _, guess := range guesses {
 			if found, err := i.MusicBrainz.Recordings(guess.Artist, guess.Title); err == nil {
 				if identity, hit := firstThatNamesTheUpload(found, uploadTitle, channel); hit {
-					return identity.Artist, official.SearchTitle(identity.Title), true
+					return identity.Artist, titlematch.SearchTitle(identity.Title), true
 				}
 			}
 		}

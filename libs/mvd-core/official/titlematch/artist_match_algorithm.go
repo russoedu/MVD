@@ -1,4 +1,4 @@
-package official
+package titlematch
 
 import (
 	"strings"
@@ -15,7 +15,7 @@ var channelNoise = []string{"vevo", "official", "music", "records", "tv", "video
 // is the artist of "EarthWindandFireVEVO".
 func ChannelIsArtist(channel, artist string) bool {
 	// "Michael Sembello (The Master)" is Michael Sembello's.
-	channelKey := stripNoise(compactName(bracketed.ReplaceAllString(channel, " ")))
+	channelKey := stripNoise(CompactName(Bracketed.ReplaceAllString(channel, " ")))
 	if channelKey == "" {
 		return false
 	}
@@ -29,13 +29,13 @@ func ChannelIsArtist(channel, artist string) bool {
 
 // artistKeys are the spellings an artist's name may have in a channel name.
 func artistKeys(artist string) []string {
-	withAnd := compactName(strings.ReplaceAll(artist, "&", " and "))
-	withoutAnd := compactName(strings.ReplaceAll(artist, "&", " "))
+	withAnd := CompactName(strings.ReplaceAll(artist, "&", " and "))
+	withoutAnd := CompactName(strings.ReplaceAll(artist, "&", " "))
 	return []string{withAnd, withoutAnd, strings.TrimPrefix(withAnd, "the"), strings.TrimPrefix(withoutAnd, "the")}
 }
 
-// compactName lowercases a name and keeps only its letters and digits.
-func compactName(name string) string {
+// CompactName lowercases a name and keeps only its letters and digits.
+func CompactName(name string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			return unicode.ToLower(r)

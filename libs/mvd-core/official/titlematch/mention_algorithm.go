@@ -1,4 +1,4 @@
-package official
+package titlematch
 
 import "strings"
 
@@ -7,12 +7,12 @@ import "strings"
 // An initialism is also found written together: "M/A/R/R/S" is in "Pump Up The
 // Volume MARRS".
 func Mentions(text, name string) bool {
-	phrase := normalize(name)
+	phrase := Normalize(name)
 	if phrase == "" {
 		return false
 	}
-	spelled := normalize(text)
-	if containsWords(spelled, phrase) {
+	spelled := Normalize(text)
+	if ContainsWords(spelled, phrase) {
 		return true
 	}
 
@@ -25,5 +25,5 @@ func Mentions(text, name string) bool {
 	if len(letters) < 3 {
 		return false
 	}
-	return containsWords(spelled, strings.Join(letters, ""))
+	return ContainsWords(spelled, strings.Join(letters, ""))
 }
