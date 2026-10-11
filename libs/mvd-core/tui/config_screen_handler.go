@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 
@@ -483,7 +484,7 @@ func (m configModel) view(width, height int) string {
 
 	props := preferencespage.Default()
 	props.Palette = preferencespage.Palette(look.CurrentPalette())
-	props.Hints = hintsOf[preferencespage.HintsHint](m.hints())
+	props.Hints = keybar.Of[preferencespage.HintsHint](m.hints())
 	rows := make([]preferencespage.ItemsRow, 0, len(cfgLabels))
 	for i, label := range cfgLabels {
 		row := preferencespage.ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
@@ -504,21 +505,21 @@ func (m configModel) view(width, height int) string {
 	return preferencespage.View(props, width, height).View
 }
 
-func (m configModel) hints() []keyHint {
+func (m configModel) hints() []keybar.Hint {
 	if m.mode == editPicking || m.mode == editConfirming {
 		return nil
 	}
 	if m.mode != editNone {
-		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
+		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
 	}
-	hints := []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"a", "advanced"}, {"c", "colours"}, {"s", "save"}}
+	hints := []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "a", Desc: "advanced"}, {Key: "c", Desc: "colours"}, {Key: "s", Desc: "save"}}
 	if m.move != nil {
-		hints = append(hints, keyHint{"m", "move app"})
+		hints = append(hints, keybar.Hint{Key: "m", Desc: "move app"})
 	}
 	if m.uninstall != nil {
-		hints = append(hints, keyHint{"u", "uninstall"})
+		hints = append(hints, keybar.Hint{Key: "u", Desc: "uninstall"})
 	}
-	return append(hints, keyHint{"esc", "cancel"})
+	return append(hints, keybar.Hint{Key: "esc", Desc: "cancel"})
 }
 
 func (m configModel) editorView() string {

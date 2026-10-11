@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	listpage "youtube-downloader/libs/mvd-core/setup/list"
 
@@ -128,15 +129,15 @@ func (m listModel) view(width, height int) string {
 	props.Title = title
 	props.LinksView = m.ta.View()
 	props.ShowConfirm, props.ShowKeys = m.confirmQuit, !m.confirmQuit
-	props.Hints = hintsOf[listpage.HintsHint](m.hints())
+	props.Hints = keybar.Of[listpage.HintsHint](m.hints())
 	props.Confirm = " " + look.Red.Render("Discard the list and quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
 	return listpage.View(props, width, height).View
 }
 
-func (m listModel) hints() []keyHint {
-	return []keyHint{
-		{"ctrl+s", "start"}, {"ctrl+o", "songs"}, {"ctrl+e", "review"}, {"ctrl+p", "preferences"},
-		{"ctrl+r", "reset"}, {"ctrl+q", "quit"},
+func (m listModel) hints() []keybar.Hint {
+	return []keybar.Hint{
+		{Key: "ctrl+s", Desc: "start"}, {Key: "ctrl+o", Desc: "songs"}, {Key: "ctrl+e", Desc: "review"}, {Key: "ctrl+p", Desc: "preferences"},
+		{Key: "ctrl+r", Desc: "reset"}, {Key: "ctrl+q", Desc: "quit"},
 	}
 }
 

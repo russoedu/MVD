@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/keybar"
+	"youtube-downloader/libs/mvd-core/pointer"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
@@ -45,7 +47,7 @@ func (m model) layout() (l downloadLayout, ok bool) {
 // mouse handles a click or a wheel notch on the download screen.
 func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.showHelp {
-		if isLeftClick(msg) {
+		if pointer.IsLeftClick(msg) {
 			m.showHelp = false
 		}
 		return m, nil
@@ -58,15 +60,15 @@ func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if dir := wheelDirection(msg); dir != 0 {
+	if dir := pointer.WheelDirection(msg); dir != 0 {
 		return m.wheel(l, msg, dir)
 	}
-	if !isLeftClick(msg) {
+	if !pointer.IsLeftClick(msg) {
 		return m, nil
 	}
 	if msg.Mouse().Y == m.height-1 {
-		if h, found := hintAt(m.hints(), msg.Mouse().X); found {
-			if key, clickable := hintKeyMsg(h.key); clickable {
+		if h, found := keybar.At(m.hints(), msg.Mouse().X); found {
+			if key, clickable := keybar.KeyMsg(h.Key); clickable {
 				return m.handleKey(key)
 			}
 		}
@@ -94,7 +96,7 @@ func (m model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, te
 	default:
 		return m, nil
 	}
-	m.move(dir * wheelStep)
+	m.move(dir * pointer.WheelStep)
 	return m, nil
 }
 

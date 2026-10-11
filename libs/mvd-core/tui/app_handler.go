@@ -254,8 +254,4 @@ func (m setupModel) saveList() {
 	}
 }
 
-// --- key bar shared by setup screens ----------------------------------------
-
-type keyHint struct{ key, desc string }
-
 func (m setupModel) View() tea.View { return screenView(m.render()) }

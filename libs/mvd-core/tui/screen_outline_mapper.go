@@ -1,6 +1,9 @@
 package tui
 
-import "strconv"
+import (
+	"strconv"
+	"youtube-downloader/libs/mvd-core/keybar"
+)
 
 // Outline describes the current screen. It reads the same state and the same
 // key hints the views draw from, so the two cannot drift apart.
@@ -19,10 +22,10 @@ func (m setupModel) Outline() ScreenOutline {
 	}
 }
 
-func outlineKeys(hints []keyHint) []OutlineKey {
+func outlineKeys(hints []keybar.Hint) []OutlineKey {
 	keys := make([]OutlineKey, len(hints))
 	for i, h := range hints {
-		keys[i] = OutlineKey{Key: h.key, Description: h.desc}
+		keys[i] = OutlineKey{Key: h.Key, Description: h.Desc}
 	}
 	return keys
 }

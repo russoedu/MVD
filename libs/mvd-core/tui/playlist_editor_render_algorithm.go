@@ -7,7 +7,9 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	editorplanningpage "youtube-downloader/libs/mvd-core/editor/editorplanning"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/pointer"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -42,7 +44,7 @@ func (m editorModel) render() string {
 	props.Detail1, props.Detail2, props.Detail3, props.Detail4 = cells.CellText(detail[0]), cells.CellText(detail[1]), cells.CellText(detail[2]), cells.CellText(detail[3])
 
 	line, keys := m.bottomParts(width)
-	props.Hints = hintsOf[editorpage.HintsHint](m.hints())
+	props.Hints = keybar.Of[editorpage.HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
 	return paddedFrame(editorpage.View(props, width, m.height).View, width)
@@ -74,7 +76,7 @@ func (m editorModel) renderPlanning(width int) string {
 		props.Body = append(props.Body, editorplanningpage.BodyRow{Line: l})
 	}
 	line, keys := m.bottomParts(width)
-	props.Hints = hintsOf[editorplanningpage.HintsHint](m.hints())
+	props.Hints = keybar.Of[editorplanningpage.HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
 	return paddedFrame(editorplanningpage.View(props, width, m.height).View, width)
@@ -311,13 +313,13 @@ func (m editorModel) decisionText(r playlistfile.Entry) string {
 	return look.Yellow.Render("not reviewed yet")
 }
 
-func (m editorModel) hints() []keyHint {
+func (m editorModel) hints() []keybar.Hint {
 	if m.planning {
-		return []keyHint{{"esc", "cancel"}}
+		return []keybar.Hint{{Key: "esc", Desc: "cancel"}}
 	}
-	return []keyHint{
-		{"o", "open"}, {"c", "confirm"}, {"r", "replace"}, {"u", "original"}, {"x", "skip"},
-		{"a", "confirm all"}, {"d", "download"}, {"s", "save"}, {"l", "open file"}, {"esc", "back"},
+	return []keybar.Hint{
+		{Key: "o", Desc: "open"}, {Key: "c", Desc: "confirm"}, {Key: "r", Desc: "replace"}, {Key: "u", Desc: "original"}, {Key: "x", Desc: "skip"},
+		{Key: "a", Desc: "confirm all"}, {Key: "d", Desc: "download"}, {Key: "s", Desc: "save"}, {Key: "l", Desc: "open file"}, {Key: "esc", Desc: "back"},
 	}
 }
 
@@ -354,17 +356,17 @@ func (m editorModel) mouse(msg tea.MouseMsg) (editorModel, tea.Cmd) {
 	if m.planning || m.mode != editorBrowsing {
 		return m, nil
 	}
-	if dir := wheelDirection(msg); dir != 0 {
-		m.move(dir * wheelStep)
+	if dir := pointer.WheelDirection(msg); dir != 0 {
+		m.move(dir * pointer.WheelStep)
 		return m, nil
 	}
-	if !isLeftClick(msg) {
+	if !pointer.IsLeftClick(msg) {
 		return m, nil
 	}
 	x, y := msg.Mouse().X, msg.Mouse().Y
 	if y == m.height-1 {
-		if h, found := hintAt(m.hints(), x); found {
-			if key, ok := hintKeyMsg(h.key); ok {
+		if h, found := keybar.At(m.hints(), x); found {
+			if key, ok := keybar.KeyMsg(h.Key); ok {
 				return m.handleKey(key)
 			}
 		}

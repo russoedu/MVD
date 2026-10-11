@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 
@@ -153,17 +154,17 @@ func (m advancedModel) display(i int) string {
 	return ""
 }
 
-func (m advancedModel) hints() []keyHint {
+func (m advancedModel) hints() []keybar.Hint {
 	if m.mode != editNone {
-		return []keyHint{{"enter", "apply"}, {"esc", "cancel"}}
+		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
 	}
-	return []keyHint{{"↑↓", "move"}, {"enter", "edit"}, {"s", "save"}, {"esc", "back"}}
+	return []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "s", Desc: "save"}, {Key: "esc", Desc: "back"}}
 }
 
 func (m advancedModel) view(width, height int) string {
 	props := advancedpage.Default()
 	props.Palette = advancedpage.Palette(look.CurrentPalette())
-	props.Hints = hintsOf[advancedpage.HintsHint](m.hints())
+	props.Hints = keybar.Of[advancedpage.HintsHint](m.hints())
 
 	var labelW = 0
 	for _, l := range advLabels {
