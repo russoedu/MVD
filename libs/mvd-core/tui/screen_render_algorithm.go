@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"youtube-downloader/libs/mvd-core/screens"
 
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"youtube-downloader/libs/mvd-core/engine"
@@ -25,7 +24,7 @@ func (m model) render() string {
 		return m.renderAddBox()
 	}
 	if m.showHelp {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.renderHelp(), lipgloss.WithWhitespaceChars(" "))
+		return m.renderHelp()
 	}
 	return view
 }
@@ -175,13 +174,18 @@ func (m model) renderHelp() string {
 	if len(lines) > m.height-2 {
 		lines = lines[:m.height-2]
 	}
-	w := 0
+	props := screens.DefaultHelpProps()
+	props.Palette = screens.HelpPalette(palette())
+	width := 0
 	for _, l := range lines {
-		if lw := ansi.StringWidth(l); lw > w {
-			w = lw
-		}
+		width = max(width, ansi.StringWidth(l))
 	}
-	return renderBox("Help", "", w+4, len(lines)+2, lines, true)
+	props.HelpWidth, props.HelpHeight = width+4, len(lines)+2
+	props.Lines = nil
+	for _, l := range lines {
+		props.Lines = append(props.Lines, screens.HelpLinesRow{Line: cellText(l)})
+	}
+	return paddedFrame(screens.Help(props, m.width, m.height).View, m.width)
 }
 
 // downloadingSummary is the speed of all the downloads together, and how many files and

@@ -29,3 +29,12 @@ func hintsOf[T ~struct{ Key, Label string }](hints []keyHint) []T {
 	}
 	return out
 }
+
+// cellText is the text of a row cell: a blank line is a space, since a row with nothing
+// in it is not kept by a design's rows.
+func cellText(s string) string {
+	if s == "" {
+		return " "
+	}
+	return s
+}

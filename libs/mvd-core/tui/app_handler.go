@@ -272,14 +272,4 @@ func keyBar(width int, hints []keyHint) string {
 	return fit(b.String(), width)
 }
 
-func screenFrame(width, height int, title, body, bar string) string {
-	head := styTitle.Render(" " + title)
-	bodyH := height - 2
-	if bodyH < 1 {
-		bodyH = 1
-	}
-	body = lipgloss.NewStyle().Width(width).Height(bodyH).Render(body)
-	return lipgloss.JoinVertical(lipgloss.Left, head, body, bar)
-}
-
 func (m setupModel) View() tea.View { return screenView(m.render()) }

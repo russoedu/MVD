@@ -68,7 +68,7 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 	out := region("Output rows")
 	p.Output = nil
 	for _, line := range m.outputWindow(out.W, out.H) {
-		p.Output = append(p.Output, screens.DownloadOutputRow{Line: line})
+		p.Output = append(p.Output, screens.DownloadOutputRow{Line: cellText(line)})
 	}
 	p.OutputTitle = m.outputTitle()
 	p.OutputRight = ""

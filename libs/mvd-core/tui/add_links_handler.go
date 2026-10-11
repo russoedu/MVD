@@ -3,10 +3,10 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/engine"
 )
@@ -91,11 +91,13 @@ func (m model) addBoxWidth() int {
 	return max(20, min(100, m.width-8))
 }
 
-// renderAddBox draws the box for adding links, centred over the screen.
+// renderAddBox draws the box for adding links, centred over the screen by its design.
 func (m model) renderAddBox() string {
-	body := m.links.View() + "\n\n" + keyBar(m.addBoxWidth(), addLinksHints())
-	box := renderBox("Add links", "", m.addBoxWidth()+4, 8+4, strings.Split(body, "\n"), true)
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box, lipgloss.WithWhitespaceChars(" "))
+	props := screens.DefaultAddLinksProps()
+	props.Palette = screens.AddLinksPalette(palette())
+	props.Hints = hintsOf[screens.AddLinksHintsHint](addLinksHints())
+	props.LinksView = m.links.View()
+	return paddedFrame(screens.AddLinks(props, m.width, m.height).View, m.width)
 }
 
 func addLinksHints() []keyHint {
