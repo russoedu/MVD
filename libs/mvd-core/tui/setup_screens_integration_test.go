@@ -12,41 +12,6 @@ import (
 
 func key(s string) tea.KeyPressMsg { return keys.Press(s) }
 
-func TestListModel(t *testing.T) {
-	m := newListModel([]string{"https://a", "https://b"})
-	if got := m.urls(); len(got) != 2 {
-		t.Fatalf("want 2 urls, got %v", got)
-	}
-
-	// ctrl+s with entries starts; empty does nothing.
-	if _, _, out := m.update(key("ctrl+s")); out != listStart {
-		t.Errorf("ctrl+s should start, got %d", out)
-	}
-	if _, _, out := m.update(key("ctrl+p")); out != listPrefs {
-		t.Errorf("ctrl+p should open prefs, got %d", out)
-	}
-
-	cleared, _, _ := m.update(key("ctrl+r"))
-	if len(cleared.urls()) != 0 {
-		t.Errorf("ctrl+r should clear, got %v", cleared.urls())
-	}
-	if _, _, out := cleared.update(key("ctrl+s")); out != listNone {
-		t.Errorf("ctrl+s on empty list should do nothing, got %d", out)
-	}
-	if _, _, out := cleared.update(key("ctrl+q")); out != listQuit {
-		t.Errorf("ctrl+q on empty list should quit, got %d", out)
-	}
-
-	// Quit with entries asks to confirm, then y quits.
-	confirming, _, out := m.update(key("ctrl+q"))
-	if out != listNone || !confirming.confirmQuit {
-		t.Fatalf("ctrl+q with entries should ask to confirm")
-	}
-	if _, _, out := confirming.update(key("y")); out != listQuit {
-		t.Errorf("y should confirm quit, got %d", out)
-	}
-}
-
 func TestConfigModelRadioAndSave(t *testing.T) {
 	m := newConfigModel(config.Default("/app", "/dl"))
 	if m.cfg.OfficialVideo != config.OfficialYes {

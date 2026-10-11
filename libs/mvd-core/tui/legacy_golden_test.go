@@ -9,6 +9,7 @@ import (
 	"testing"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
+	listpage "youtube-downloader/libs/mvd-core/setup/list"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	tea "charm.land/bubbletea/v2"
@@ -70,11 +71,11 @@ func legacyCases() []legacyCase {
 	list := func(urls []string, keys ...string) func(t *testing.T) string {
 		return func(t *testing.T) string {
 			ApplyTheme(config.DefaultThemeColors())
-			m := newListModel(urls).setSize(w, h)
+			m := listpage.New(urls).SetSize(w, h)
 			for _, msg := range keysOf(keys...) {
-				m, _, _ = m.update(msg)
+				m, _, _ = m.Update(msg)
 			}
-			return m.view(w, h)
+			return m.View(w, h)
 		}
 	}
 	songs := func(text string) func(t *testing.T) string {
