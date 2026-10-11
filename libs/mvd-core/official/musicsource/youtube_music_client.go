@@ -1,4 +1,7 @@
-package official
+// Package musicsource asks the places that know music: YouTube Music for what an upload
+// is and for its videos, Wikidata for the videos it lists for a song, and the music card of a
+// watch page for the song it names.
+package musicsource
 
 import (
 	"bytes"

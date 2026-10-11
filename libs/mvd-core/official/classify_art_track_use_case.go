@@ -2,6 +2,7 @@ package official
 
 import (
 	"fmt"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
@@ -13,9 +14,9 @@ import (
 // page. The returned reason says why an upload was left alone.
 //
 // Without a TrackDescriber every upload is treated as an art track, as before.
-func (r *Resolver) isArtTrack(videoID, channel string, logf func(format string, a ...interface{})) (bool, TrackInfo, string) {
+func (r *Resolver) isArtTrack(videoID, channel string, logf func(format string, a ...interface{})) (bool, musicsource.TrackInfo, string) {
 	if r.TrackInfos == nil {
-		return true, TrackInfo{}, ""
+		return true, musicsource.TrackInfo{}, ""
 	}
 
 	info, err := r.TrackInfos(videoID)

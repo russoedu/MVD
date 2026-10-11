@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 
@@ -57,11 +58,11 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 		}
 		return out, err
 	}
-	music := official.NewYouTubeMusicClient()
+	music := musicsource.NewYouTubeMusicClient()
 	resolver.Searcher = searcher
 	resolver.TrackInfos = music.Describe
 	resolver.Sources = trackfind.Sources{
-		Known: resolver.KnownCandidates(official.NewWikidataClient()),
+		Known: resolver.KnownCandidates(musicsource.NewWikidataClient()),
 		Music: music.SearchVideos,
 		// A music database names the song of an upload.
 		Identify: songid.NewIdentifier().Identify,

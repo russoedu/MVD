@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
@@ -41,7 +42,7 @@ func TestTheOfficialVideoIsSearchedForUnderTheNameADatabaseGives(t *testing.T) {
 func TestAPlainVideoIsLeftAloneUnlessADatabaseNamesIt(t *testing.T) {
 	search := &scriptedSearch{}
 	res := resolverWith(t, search, trackfind.Sources{})
-	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC"}, nil }
+	res.TrackInfos = func(string) (musicsource.TrackInfo, error) { return musicsource.TrackInfo{Type: "UGC"}, nil }
 
 	if got, _ := res.ResolveLog("up1", "ICE MC - Cinema (Radio Edit) (1990)", "Some Channel", 0, nil); got != "" {
 		t.Errorf("got %q, a plain video no database knows is kept", got)
@@ -98,7 +99,7 @@ func TestThePlaylistsOwnUploadStaysWhenNothingIsBetter(t *testing.T) {
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 	})
-	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC"}, nil }
+	res.TrackInfos = func(string) (musicsource.TrackInfo, error) { return musicsource.TrackInfo{Type: "UGC"}, nil }
 
 	if got := res.ResolveVersion("up1", "Rage - Run to You", "Some Channel", 0, nil); got.ID != "" {
 		t.Errorf("got %+v, an upload only as good as the playlist's own is no improvement", got)
@@ -230,7 +231,7 @@ func TestThePlaylistsOwnStillPictureCountsForNoPicture(t *testing.T) {
 		Static:   func(id string) (bool, error) { return id == "up1", nil },
 	})
 	// The playlist's own upload is not an art track, but a plain video that is only a picture.
-	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC"}, nil }
+	res.TrackInfos = func(string) (musicsource.TrackInfo, error) { return musicsource.TrackInfo{Type: "UGC"}, nil }
 
 	if got := res.ResolveVersion("up1", "Rage - Run to You", "Some Channel", 0, nil); got.ID != "fanB" {
 		t.Errorf("got %+v, want the 480p video over a 1080p still picture", got)
@@ -255,7 +256,7 @@ func TestWhenStillnessCannotBeToldNothingIsLeftOut(t *testing.T) {
 func TestAVideoYouTubeMusicSaysTheArtistUploadedIsTheOfficialOne(t *testing.T) {
 	search := &scriptedSearch{}
 	res := resolverWith(t, search, trackfind.Sources{})
-	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "OMV"}, nil }
+	res.TrackInfos = func(string) (musicsource.TrackInfo, error) { return musicsource.TrackInfo{Type: "OMV"}, nil }
 
 	got := res.ResolveVersion("up1", "Rage - Run to You", "Rage", 0, nil)
 	if got.ID != "" || !got.OwnOfficial || got.Official {
@@ -274,8 +275,8 @@ func TestAFanUploadTaggedOfficialThatDoesNotMoveIsNotTheOfficialVideo(t *testing
 		Identify: func(string, string) (string, string, bool) { return "Double You", "Part Time Lover", true },
 		Static:   func(id string) (bool, error) { return id == "up1", nil },
 	})
-	res.TrackInfos = func(string) (TrackInfo, error) {
-		return TrackInfo{Type: "OMV", Artist: "Double You", Title: "Part-Time Lover"}, nil
+	res.TrackInfos = func(string) (musicsource.TrackInfo, error) {
+		return musicsource.TrackInfo{Type: "OMV", Artist: "Double You", Title: "Part-Time Lover"}, nil
 	}
 
 	got := res.ResolveVersion("up1", "04 Double You - Part Time Lover (The Blue Album 1994)", "Double You Forever", 0, nil)
@@ -291,7 +292,9 @@ func TestAnOfficialTaggedUploadThatDoesNotMoveIsNotTheOfficialVideoEvenFromTheBa
 	res := resolverWith(t, &scriptedSearch{}, trackfind.Sources{
 		Static: func(string) (bool, error) { return true, nil },
 	})
-	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "OMV", Artist: "Rage"}, nil }
+	res.TrackInfos = func(string) (musicsource.TrackInfo, error) {
+		return musicsource.TrackInfo{Type: "OMV", Artist: "Rage"}, nil
+	}
 
 	got := res.ResolveVersion("up1", "Rage - Run to You", "RageVEVO", 0, nil)
 	if got.OwnOfficial {
@@ -406,7 +409,9 @@ func TestAPlainVideoIsNamedByTheMusicCardOfItsPageBeforeAnyDatabase(t *testing.T
 		"Bill Power": {{ID: "official1", Title: "Bill Power - I Swear (Official Video)", Channel: "Bill Power", Views: 1_000_000}},
 	}}
 	res.Searcher = search.search
-	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC", Artist: "Trance Mundi"}, nil }
+	res.TrackInfos = func(string) (musicsource.TrackInfo, error) {
+		return musicsource.TrackInfo{Type: "UGC", Artist: "Trance Mundi"}, nil
+	}
 	// A database that would name it wrongly is never asked.
 	res.Sources = trackfind.Sources{Identify: func(string, string) (string, string, bool) { t.Error("a database was asked"); return "", "", false }}
 

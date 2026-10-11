@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
@@ -38,7 +39,7 @@ type Resolver struct {
 	// TrackInfos, when set, tells art tracks from real videos whatever the channel is
 	// called (YouTube Music's own tag) and names the song's real artist; without it
 	// every upload is looked up and the artist is the channel's name.
-	TrackInfos TrackDescriber
+	TrackInfos musicsource.TrackDescriber
 	// OfficialOnly leaves out the choice of the best quality upload when there is no
 	// official video: the caller only wants official videos.
 	OfficialOnly bool
@@ -264,7 +265,7 @@ func (r *Resolver) fromDescription(videoID string, logf func(format string, a ..
 	if err != nil {
 		logf("[official] %s: cannot fetch watch page: %v", videoID, err)
 	} else {
-		candidates = append(candidates, candidatesFromWatchPage(html, videoID)...)
+		candidates = append(candidates, musicsource.CandidatesFromWatchPage(html, videoID)...)
 	}
 
 	// 2. The watch page sometimes ships a stripped down description panel.
@@ -274,7 +275,7 @@ func (r *Resolver) fromDescription(videoID string, logf func(format string, a ..
 		if err != nil {
 			logf("[official] %s: innertube next request failed: %v", videoID, err)
 		} else {
-			candidates = append(candidates, candidatesFromInitialData(nextJSON, videoID)...)
+			candidates = append(candidates, musicsource.CandidatesFromInitialData(nextJSON, videoID)...)
 		}
 	}
 
@@ -288,9 +289,9 @@ func (r *Resolver) fromDescription(videoID string, logf func(format string, a ..
 		for _, p := range pages {
 			switch {
 			case strings.Contains(p.URL, "/watch?"):
-				candidates = append(candidates, candidatesFromWatchPage(p.Body, videoID)...)
+				candidates = append(candidates, musicsource.CandidatesFromWatchPage(p.Body, videoID)...)
 			case strings.Contains(p.URL, "/youtubei/v1/next"):
-				candidates = append(candidates, candidatesFromInitialData(p.Body, videoID)...)
+				candidates = append(candidates, musicsource.CandidatesFromInitialData(p.Body, videoID)...)
 			}
 		}
 		if len(candidates) > 0 {
@@ -302,7 +303,7 @@ func (r *Resolver) fromDescription(videoID string, logf func(format string, a ..
 		return "", "no official video link found in description"
 	}
 
-	for _, cand := range uniqueStrings(candidates) {
+	for _, cand := range musicsource.UniqueStrings(candidates) {
 		author, ok, err := r.lookupAuthor(cand)
 		switch {
 		case err != nil:

@@ -1,4 +1,4 @@
-package official
+package musicsource
 
 import (
 	"encoding/json"
@@ -10,9 +10,9 @@ import (
 // the song it names. ok is false when the page has no such card or names several songs
 // (a compilation or a mix, where the card cannot say which one this upload is).
 func SongFromWatchPage(html []byte) (artist, title string, ok bool) {
-	raw := extractJSONAfter(html, "var ytInitialData = ")
+	raw := ExtractJSONAfter(html, "var ytInitialData = ")
 	if raw == nil {
-		raw = extractJSONAfter(html, `window["ytInitialData"] = `)
+		raw = ExtractJSONAfter(html, `window["ytInitialData"] = `)
 	}
 	if raw == nil {
 		return "", "", false

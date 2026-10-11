@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 )
 
 const artTrackID = "rnlp_avexYQ"
@@ -13,8 +14,8 @@ func artTrackPage(musicID string) string {
 	return strings.Replace(watchPage(artTrackID, musicID, ""), "Tricky", "Provided to YouTube by Label Tricky", 1)
 }
 
-func tagged(tag string) TrackDescriber {
-	return func(string) (TrackInfo, error) { return TrackInfo{Type: tag}, nil }
+func tagged(tag string) musicsource.TrackDescriber {
+	return func(string) (musicsource.TrackInfo, error) { return musicsource.TrackInfo{Type: tag}, nil }
 }
 
 func quietLog(string, ...interface{}) {}
@@ -55,13 +56,13 @@ func TestARealVideoIsLeftAlone(t *testing.T) {
 func TestWithoutATagTheChannelAndTheDescriptionDecide(t *testing.T) {
 	cases := []struct {
 		name    string
-		typer   TrackDescriber
+		typer   musicsource.TrackDescriber
 		channel string
 		page    string
 		want    string
 	}{
 		{"a Topic channel", tagged(""), "Artist - Topic", "", "-bsONE-kZwI"},
-		{"YouTube Music is down, the description says art track", func(string) (TrackInfo, error) { return TrackInfo{}, errors.New("down") }, "ATB", artTrackPage("-bsONE-kZwI"), "-bsONE-kZwI"},
+		{"YouTube Music is down, the description says art track", func(string) (musicsource.TrackInfo, error) { return musicsource.TrackInfo{}, errors.New("down") }, "ATB", artTrackPage("-bsONE-kZwI"), "-bsONE-kZwI"},
 		{"the description is a normal one", tagged(""), "ATB", `<script>var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":"Official video for the song. Subscribe!"}};</script>`, ""},
 	}
 	for _, c := range cases {

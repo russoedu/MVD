@@ -1,4 +1,4 @@
-package official
+package musicsource
 
 import (
 	"bytes"
@@ -11,10 +11,10 @@ var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 // youtubeLinkPattern finds watch links inside free text (description).
 var youtubeLinkPattern = regexp.MustCompile(`(?:youtube\.com/watch\?(?:[^\s"&]*&)?v=|youtu\.be/|youtube\.com/shorts/)([A-Za-z0-9_-]{11})`)
 
-// extractJSONAfter finds `marker` in data and decodes the single JSON value
+// ExtractJSONAfter finds `marker` in data and decodes the single JSON value
 // that follows it. It returns nil when the marker is absent or the value is
 // not valid JSON.
-func extractJSONAfter(data []byte, marker string) []byte {
+func ExtractJSONAfter(data []byte, marker string) []byte {
 	idx := bytes.Index(data, []byte(marker))
 	if idx < 0 {
 		return nil
@@ -28,16 +28,16 @@ func extractJSONAfter(data []byte, marker string) []byte {
 	return v
 }
 
-// candidatesFromWatchPage extracts official-video candidates from the raw
+// CandidatesFromWatchPage extracts official-video candidates from the raw
 // HTML of a watch page, most trustworthy first.
-func candidatesFromWatchPage(html []byte, selfID string) []string {
+func CandidatesFromWatchPage(html []byte, selfID string) []string {
 	var out []string
-	if raw := extractJSONAfter(html, "var ytInitialData = "); raw != nil {
-		out = append(out, candidatesFromInitialData(raw, selfID)...)
-	} else if raw := extractJSONAfter(html, `window["ytInitialData"] = `); raw != nil {
-		out = append(out, candidatesFromInitialData(raw, selfID)...)
+	if raw := ExtractJSONAfter(html, "var ytInitialData = "); raw != nil {
+		out = append(out, CandidatesFromInitialData(raw, selfID)...)
+	} else if raw := ExtractJSONAfter(html, `window["ytInitialData"] = `); raw != nil {
+		out = append(out, CandidatesFromInitialData(raw, selfID)...)
 	}
-	if raw := extractJSONAfter(html, "var ytInitialPlayerResponse = "); raw != nil {
+	if raw := ExtractJSONAfter(html, "var ytInitialPlayerResponse = "); raw != nil {
 		var pr struct {
 			VideoDetails struct {
 				ShortDescription string `json:"shortDescription"`
@@ -47,15 +47,15 @@ func candidatesFromWatchPage(html []byte, selfID string) []string {
 			out = append(out, linksInText(pr.VideoDetails.ShortDescription, selfID)...)
 		}
 	}
-	return uniqueStrings(out)
+	return UniqueStrings(out)
 }
 
-// candidatesFromInitialData walks a ytInitialData / innertube "next"
+// CandidatesFromInitialData walks a ytInitialData / innertube "next"
 // response. Priority:
 //  1. video ids inside the "Music" card of the description panel
 //  2. any other video linked from the structured description panel
 //  3. watch links written as plain text in the description
-func candidatesFromInitialData(raw []byte, selfID string) []string {
+func CandidatesFromInitialData(raw []byte, selfID string) []string {
 	var root interface{}
 	if err := json.Unmarshal(raw, &root); err != nil {
 		return nil
@@ -95,7 +95,7 @@ func candidatesFromInitialData(raw []byte, selfID string) []string {
 	}
 	walk(root, false, false)
 
-	return uniqueStrings(append(append(music, panel...), text...))
+	return UniqueStrings(append(append(music, panel...), text...))
 }
 
 // isMusicSectionKey matches the renderers YouTube has used for the
@@ -121,7 +121,7 @@ func linksInText(text, selfID string) []string {
 	return out
 }
 
-func uniqueStrings(in []string) []string {
+func UniqueStrings(in []string) []string {
 	seen := make(map[string]bool, len(in))
 	var out []string
 	for _, s := range in {

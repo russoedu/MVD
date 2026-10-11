@@ -2,6 +2,7 @@ package official
 
 import (
 	"fmt"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/titlematch"
 	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
@@ -20,7 +21,7 @@ func (r *Resolver) songOfUpload(videoID, title, channel string, durationSec int,
 	// there no other source is asked.
 	if !artTrack {
 		if page, err := r.get(r.WatchBase + videoID); err == nil {
-			if artist, name, ok := SongFromWatchPage(page); ok {
+			if artist, name, ok := musicsource.SongFromWatchPage(page); ok {
 				logf("[official] %s: the music card of the video names it %q by %q", videoID, name, artist)
 				song.Title, song.Artists = name, trackfind.ArtistNames(artist)
 				return song, true

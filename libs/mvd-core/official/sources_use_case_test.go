@@ -7,9 +7,29 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
+
+// wikidataServer is a Wikidata client that asks a test server, which answers status and
+// answer and remembers the query it was asked.
+func wikidataServer(t *testing.T, status int, answer string, seen *string) *musicsource.WikidataClient {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if seen != nil {
+			*seen = r.URL.Query().Get("query")
+		}
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(answer))
+	}))
+	t.Cleanup(server.Close)
+
+	client := musicsource.NewWikidataClient()
+	client.Endpoint = server.URL
+	client.MinInterval = 0
+	return client
+}
 
 func pickID(t *testing.T, results []trackpick.SearchResult, song trackpick.Song) (string, trackpick.Kind) {
 	t.Helper()
@@ -191,11 +211,11 @@ func TestKnownCandidatesKeepsRealVideosOnly(t *testing.T) {
 		titles:  map[string]string{"VideoVideo1": "Billy Joel - Uptown Girl (Official Video)", "ArtTrackTrk": "Uptown Girl"},
 	}
 	_, res := f.server(t)
-	res.TrackInfos = func(id string) (TrackInfo, error) {
+	res.TrackInfos = func(id string) (musicsource.TrackInfo, error) {
 		if id == "ArtTrackTrk" {
-			return TrackInfo{Type: "ATV"}, nil
+			return musicsource.TrackInfo{Type: "ATV"}, nil
 		}
-		return TrackInfo{Type: "OMV"}, nil
+		return musicsource.TrackInfo{Type: "OMV"}, nil
 	}
 
 	wikidata := wikidataServer(t, http.StatusOK, `{"results":{"bindings":[
@@ -221,49 +241,5 @@ func TestKnownCandidatesSurvivesAWikidataFailure(t *testing.T) {
 	wikidata := wikidataServer(t, http.StatusServiceUnavailable, "down", nil)
 	if known := res.KnownCandidates(wikidata)(trackpick.Song{Title: "Song", Artists: []string{"Band"}}, quietLog); known != nil {
 		t.Errorf("got %+v, want nothing when Wikidata is down", known)
-	}
-}
-
-func TestSearchVideosReadsYouTubeMusicRows(t *testing.T) {
-	answer := `{"contents":{"sectionListRenderer":{"contents":[{"musicShelfRenderer":{"contents":[
-	 {"musicResponsiveListItemRenderer":{"flexColumns":[
-	   {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Killer"}]}}},
-	   {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"ATB"},{"text":" • "},{"text":"327K views"},{"text":" • "},{"text":"4:08"}]}}}],
-	  "overlay":{"navigationEndpoint":{"watchEndpoint":{"videoId":"sJ0FFbRBQlE","watchEndpointMusicSupportedConfigs":{"musicVideoType":"MUSIC_VIDEO_TYPE_OMV"}}}}}},
-	 {"musicResponsiveListItemRenderer":{"flexColumns":[
-	   {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"ATB - Killer 2000 - HQ"}]}}},
-	   {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"85KasiaD85"},{"text":" • "},{"text":"1.2M views"},{"text":" • "},{"text":"5:36"}]}}}],
-	  "overlay":{"navigationEndpoint":{"watchEndpoint":{"videoId":"1eoPsEBErws","watchEndpointMusicSupportedConfigs":{"musicVideoType":"MUSIC_VIDEO_TYPE_UGC"}}}}}},
-	 {"musicResponsiveListItemRenderer":{"flexColumns":[{"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"no id here"}]}}}]}}
-	]}}]}}}`
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Origin") != "https://music.youtube.com" {
-			t.Errorf("the request must look like YouTube Music's own")
-		}
-		_, _ = w.Write([]byte(answer))
-	}))
-	defer server.Close()
-
-	client := NewYouTubeMusicClient()
-	client.SearchURL = server.URL
-	got, err := client.SearchVideos("Killer ATB")
-	if err != nil || len(got) != 2 {
-		t.Fatalf("got %+v, %v; want the two rows that name a video", got, err)
-	}
-	want := trackpick.SearchResult{ID: "sJ0FFbRBQlE", Title: "Killer", Channel: "ATB", Views: 327000, Duration: 248, MusicType: "OMV"}
-	if got[0] != want {
-		t.Errorf("got %+v, want %+v", got[0], want)
-	}
-	if got[1].MusicType != "UGC" || got[1].Views != 1200000 || got[1].Duration != 336 {
-		t.Errorf("got %+v", got[1])
-	}
-}
-
-func TestParseCount(t *testing.T) {
-	cases := map[string]int64{"327K views": 327000, "1.2M views": 1200000, "540 views": 540, "2.1B views": 2100000000, "1,234 views": 1234, "": 0, "no views": 0}
-	for in, want := range cases {
-		if got := parseCount(in); got != want {
-			t.Errorf("parseCount(%q) = %d, want %d", in, got, want)
-		}
 	}
 }

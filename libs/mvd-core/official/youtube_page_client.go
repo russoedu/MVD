@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 )
 
 // do sends a request with browser-like headers, retrying on 429 and 5xx.
@@ -77,7 +78,7 @@ func (r *Resolver) fetchNext(videoID string, pageHTML []byte) ([]byte, error) {
 	}
 	clientVersion := "2.20240101.00.00"
 	if pageHTML != nil {
-		if raw := extractJSONAfter(pageHTML, `"INNERTUBE_CONTEXT":`); raw != nil {
+		if raw := musicsource.ExtractJSONAfter(pageHTML, `"INNERTUBE_CONTEXT":`); raw != nil {
 			var pageCtx map[string]interface{}
 			if json.Unmarshal(raw, &pageCtx) == nil {
 				ctx = pageCtx

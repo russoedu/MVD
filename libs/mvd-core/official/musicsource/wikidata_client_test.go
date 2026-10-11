@@ -1,4 +1,4 @@
-package official
+package musicsource
 
 import (
 	"net/http"

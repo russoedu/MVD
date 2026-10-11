@@ -1,6 +1,7 @@
 package official
 
 import (
+	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
@@ -12,7 +13,7 @@ const maxKnownCandidates = 4
 // a song and keeps those that exist, are not art tracks (YouTube Music's tag,
 // when it answers) and are not the song's own upload. Wikidata lists many a
 // song's art track as its video ("Lovely Day"), which would be no improvement.
-func (r *Resolver) KnownCandidates(wikidata *WikidataClient) func(trackpick.Song, func(string, ...interface{})) []trackpick.SearchResult {
+func (r *Resolver) KnownCandidates(wikidata *musicsource.WikidataClient) func(trackpick.Song, func(string, ...interface{})) []trackpick.SearchResult {
 	return func(song trackpick.Song, logf func(format string, a ...interface{})) []trackpick.SearchResult {
 		ids, err := wikidata.VideoIDs(song.Title, song.Artists)
 		if err != nil {
