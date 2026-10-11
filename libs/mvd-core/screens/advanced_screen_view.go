@@ -12,12 +12,22 @@ const (
 	advancedBackground = ""
 )
 
+// advancedEnv is what the layout expressions and conditions of the screen read.
+func advancedEnv(p AdvancedProps, w, h int) fitEnv {
+	_ = p
+	return fitEnv{W: w, H: h, Inputs: func(name string) float64 {
+		switch name {
+		}
+		return 0
+	}}
+}
+
 var advancedParts = []screenPart[AdvancedProps]{
 	{
 		placed: placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Advanced", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p AdvancedProps, v map[string]string) bool {
+		Apply: func(p AdvancedProps, v map[string]string, w, h int) bool {
 			if p.Palette.Accent != "" {
 				v["color"] = p.Palette.Accent
 			}
@@ -25,11 +35,11 @@ var advancedParts = []screenPart[AdvancedProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 3, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:28:selbg=@Selected,Gap:2,Value:ellipsis:fg=@Focus", "rows": "▸ ,Extra yt-dlp args,,(none);  ,Parallel fragments per video,,4;  ,Auto Retry,,yes", "styles": "selected,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 3, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:28:selbg=@Selected:selfg=@Text:selbold,Gap:2,Value:ellipsis:fg=@Focus", "rows": "▸ ,Extra yt-dlp args,,(none);  ,Parallel fragments per video,,4;  ,Auto Retry,,yes", "styles": "selected,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cells(((float64(w) * 100.0 / 100.0) - 2.0)), 3
 		}},
 		Event: "Pick",
-		Apply: func(p AdvancedProps, v map[string]string) bool {
+		Apply: func(p AdvancedProps, v map[string]string, w, h int) bool {
 			v["theme.palette"] = paletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
@@ -54,7 +64,7 @@ var advancedParts = []screenPart[AdvancedProps]{
 		placed: placed{Kind: "lipgloss.label", Name: "Hint 1", X: 0, Y: 5, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "These are passed straight to yt-dlp. Parallel fragments and the cookie", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 5, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p AdvancedProps, v map[string]string) bool {
+		Apply: func(p AdvancedProps, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
 				v["color"] = p.Palette.Dim
 			}
@@ -65,7 +75,7 @@ var advancedParts = []screenPart[AdvancedProps]{
 		placed: placed{Kind: "lipgloss.label", Name: "Hint 2", X: 0, Y: 6, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "flags are already handled; only add things you understand.", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 6, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p AdvancedProps, v map[string]string) bool {
+		Apply: func(p AdvancedProps, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
 				v["color"] = p.Palette.Dim
 			}
@@ -77,7 +87,7 @@ var advancedParts = []screenPart[AdvancedProps]{
 			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Event: "Hint",
-		Apply: func(p AdvancedProps, v map[string]string) bool {
+		Apply: func(p AdvancedProps, v map[string]string, w, h int) bool {
 			if p.Palette.Highlight != "" {
 				v["keyColor"] = p.Palette.Highlight
 			}
@@ -98,7 +108,7 @@ var advancedParts = []screenPart[AdvancedProps]{
 
 // Advanced draws the screen in an area of w by h cells for the values in p.
 func Advanced(p AdvancedProps, w, h int) Frame {
-	return drawScreen(advancedParts, p, p.Theme, w, h, advancedBackground)
+	return drawScreen(advancedParts, p, p.Theme, w, h, advancedBackground, advancedEnv)
 }
 
 // AdvancedSize is the size of area the screen was designed for.
@@ -108,7 +118,7 @@ func AdvancedSize() (w, h int) { return advancedWidth, advancedHeight }
 // visible components, so a program can size a model of its own before it is
 // drawn into one of them.
 func AdvancedLayout(p AdvancedProps, w, h int) Frame {
-	return layoutScreen(advancedParts, p, p.Theme, w, h)
+	return layoutScreen(advancedParts, p, p.Theme, w, h, advancedEnv)
 }
 
 // AdvancedHandle turns a click or a key into the screen's event. ok is false when

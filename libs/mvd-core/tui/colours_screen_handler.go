@@ -137,10 +137,10 @@ func (m coloursModel) view(width, height int) string {
 		if i == m.cursor {
 			row.Mark = "▸ "
 			if m.editing {
-				row.Value = "[39m" + m.input.View() // the input draws in the terminal's own colour
+				row.Value = m.input.View()
+				row.ValueStyle = screens.CellStyle{Plain: true} // the input draws in the terminal's own colour
 			} else {
 				row.Style = screens.RowSelected
-				row.NameStyle = screens.CellStyle{Fg: currentColours.Text, Bold: true}
 			}
 		}
 		rows = append(rows, row)

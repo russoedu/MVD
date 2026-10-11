@@ -12,12 +12,32 @@ const (
 	listBackground = ""
 )
 
+// listEnv is what the layout expressions and conditions of the screen read.
+func listEnv(p ListProps, w, h int) fitEnv {
+	_ = p
+	return fitEnv{W: w, H: h, Inputs: func(name string) float64 {
+		switch name {
+		case "Show keys":
+			if p.ShowKeys {
+				return 1
+			}
+			return 0
+		case "Show confirm":
+			if p.ShowConfirm {
+				return 1
+			}
+			return 0
+		}
+		return 0
+	}}
+}
+
 var listParts = []screenPart[ListProps]{
 	{
 		placed: placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Download list", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p ListProps, v map[string]string) bool {
+		Apply: func(p ListProps, v map[string]string, w, h int) bool {
 			if p.Palette.Accent != "" {
 				v["color"] = p.Palette.Accent
 			}
@@ -29,7 +49,7 @@ var listParts = []screenPart[ListProps]{
 		placed: placed{Kind: "lipgloss.slot", Name: "Links view", X: 0, Y: 1, W: 100, H: 26, Props: map[string]string{"theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "view": "Paste or type playlist / video URLs, one per line"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cells((float64(w) * 100.0 / 100.0)), cells(((float64(h) * 100.0 / 100.0) - 4.0))
 		}},
-		Apply: func(p ListProps, v map[string]string) bool {
+		Apply: func(p ListProps, v map[string]string, w, h int) bool {
 			v["view"] = p.LinksView
 			return true
 		},
@@ -39,7 +59,7 @@ var listParts = []screenPart[ListProps]{
 			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Event: "Hint",
-		Apply: func(p ListProps, v map[string]string) bool {
+		Apply: func(p ListProps, v map[string]string, w, h int) bool {
 			if p.Palette.Highlight != "" {
 				v["keyColor"] = p.Palette.Highlight
 			}
@@ -60,7 +80,7 @@ var listParts = []screenPart[ListProps]{
 		placed: placed{Kind: "lipgloss.label", Name: "Confirm", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#ff4d4d", "text": " Discard the list and quit? y/n", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p ListProps, v map[string]string) bool {
+		Apply: func(p ListProps, v map[string]string, w, h int) bool {
 			if p.Palette.Error != "" {
 				v["color"] = p.Palette.Error
 			}
@@ -72,7 +92,7 @@ var listParts = []screenPart[ListProps]{
 
 // List draws the screen in an area of w by h cells for the values in p.
 func List(p ListProps, w, h int) Frame {
-	return drawScreen(listParts, p, p.Theme, w, h, listBackground)
+	return drawScreen(listParts, p, p.Theme, w, h, listBackground, listEnv)
 }
 
 // ListSize is the size of area the screen was designed for.
@@ -82,7 +102,7 @@ func ListSize() (w, h int) { return listWidth, listHeight }
 // visible components, so a program can size a model of its own before it is
 // drawn into one of them.
 func ListLayout(p ListProps, w, h int) Frame {
-	return layoutScreen(listParts, p, p.Theme, w, h)
+	return layoutScreen(listParts, p, p.Theme, w, h, listEnv)
 }
 
 // ListHandle turns a click or a key into the screen's event. ok is false when

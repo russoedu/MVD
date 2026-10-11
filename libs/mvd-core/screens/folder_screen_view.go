@@ -12,12 +12,32 @@ const (
 	folderBackground = ""
 )
 
+// folderEnv is what the layout expressions and conditions of the screen read.
+func folderEnv(p FolderProps, w, h int) fitEnv {
+	_ = p
+	return fitEnv{W: w, H: h, Inputs: func(name string) float64 {
+		switch name {
+		case "Has problem":
+			if p.HasProblem {
+				return 1
+			}
+			return 0
+		case "No problem":
+			if p.NoProblem {
+				return 1
+			}
+			return 0
+		}
+		return 0
+	}}
+}
+
 var folderParts = []screenPart[FolderProps]{
 	{
 		placed: placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Choose folder", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p FolderProps, v map[string]string) bool {
+		Apply: func(p FolderProps, v map[string]string, w, h int) bool {
 			if p.Palette.Accent != "" {
 				v["color"] = p.Palette.Accent
 			}
@@ -28,7 +48,7 @@ var folderParts = []screenPart[FolderProps]{
 		placed: placed{Kind: "lipgloss.label", Name: "Path", X: 0, Y: 1, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#00f0ff", "text": "C:\\\\Users\\\\me", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p FolderProps, v map[string]string) bool {
+		Apply: func(p FolderProps, v map[string]string, w, h int) bool {
 			if p.Palette.Focus != "" {
 				v["color"] = p.Palette.Focus
 			}
@@ -40,7 +60,7 @@ var folderParts = []screenPart[FolderProps]{
 		placed: placed{Kind: "lipgloss.label", Name: "Problem", X: 0, Y: 2, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#ff4d4d", "text": "could not read the folder", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 2, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p FolderProps, v map[string]string) bool {
+		Apply: func(p FolderProps, v map[string]string, w, h int) bool {
 			if p.Palette.Error != "" {
 				v["color"] = p.Palette.Error
 			}
@@ -49,11 +69,11 @@ var folderParts = []screenPart[FolderProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Folders", X: 0, Y: 3, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Folders", X: 0, Y: 3, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry:selbg=@Selected:selfg=@Text:selbold:fit", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 3, cells((float64(w) * 100.0 / 100.0)), cells(((float64(h) * 100.0 / 100.0) - 5.0))
 		}},
 		Event: "Pick",
-		Apply: func(p FolderProps, v map[string]string) bool {
+		Apply: func(p FolderProps, v map[string]string, w, h int) bool {
 			v["theme.palette"] = paletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
@@ -75,11 +95,11 @@ var folderParts = []screenPart[FolderProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Folders after problem", X: 0, Y: 4, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Folders after problem", X: 0, Y: 4, W: 100, H: 25, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Entry:selbg=@Selected:selfg=@Text:selbold:fit", "rows": "  90s/;  Dance/;  Rock/", "styles": "normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 4, cells((float64(w) * 100.0 / 100.0)), cells(((float64(h) * 100.0 / 100.0) - 5.0))
 		}},
 		Event: "Pick",
-		Apply: func(p FolderProps, v map[string]string) bool {
+		Apply: func(p FolderProps, v map[string]string, w, h int) bool {
 			v["theme.palette"] = paletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
@@ -105,7 +125,7 @@ var folderParts = []screenPart[FolderProps]{
 			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Event: "Hint",
-		Apply: func(p FolderProps, v map[string]string) bool {
+		Apply: func(p FolderProps, v map[string]string, w, h int) bool {
 			if p.Palette.Highlight != "" {
 				v["keyColor"] = p.Palette.Highlight
 			}
@@ -126,7 +146,7 @@ var folderParts = []screenPart[FolderProps]{
 
 // Folder draws the screen in an area of w by h cells for the values in p.
 func Folder(p FolderProps, w, h int) Frame {
-	return drawScreen(folderParts, p, p.Theme, w, h, folderBackground)
+	return drawScreen(folderParts, p, p.Theme, w, h, folderBackground, folderEnv)
 }
 
 // FolderSize is the size of area the screen was designed for.
@@ -136,7 +156,7 @@ func FolderSize() (w, h int) { return folderWidth, folderHeight }
 // visible components, so a program can size a model of its own before it is
 // drawn into one of them.
 func FolderLayout(p FolderProps, w, h int) Frame {
-	return layoutScreen(folderParts, p, p.Theme, w, h)
+	return layoutScreen(folderParts, p, p.Theme, w, h, folderEnv)
 }
 
 // FolderHandle turns a click or a key into the screen's event. ok is false when

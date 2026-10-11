@@ -12,12 +12,37 @@ const (
 	preferencesBackground = ""
 )
 
+// preferencesEnv is what the layout expressions and conditions of the screen read.
+func preferencesEnv(p PreferencesProps, w, h int) fitEnv {
+	_ = p
+	return fitEnv{W: w, H: h, Inputs: func(name string) float64 {
+		switch name {
+		case "Show template hint":
+			if p.ShowTemplateHint {
+				return 1
+			}
+			return 0
+		case "Show keys":
+			if p.ShowKeys {
+				return 1
+			}
+			return 0
+		case "Show status":
+			if p.ShowStatus {
+				return 1
+			}
+			return 0
+		}
+		return 0
+	}}
+}
+
 var preferencesParts = []screenPart[PreferencesProps]{
 	{
 		placed: placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Preferences", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p PreferencesProps, v map[string]string) bool {
+		Apply: func(p PreferencesProps, v map[string]string, w, h int) bool {
 			if p.Palette.Accent != "" {
 				v["color"] = p.Palette.Accent
 			}
@@ -25,11 +50,11 @@ var preferencesParts = []screenPart[PreferencesProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 11, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:39:selbg=@Selected,Gap:2,Value:ellipsis:fg=@Focus", "rows": "▸ ,Output Folder,,value;  ,Video Quality,,value;  ,Audio Quality,,value;  ,Merge Format,,value;  ,Output Template,,value;  ,Max Concurrent Downloads,,value;  ,Download Official Music Video,,value;  ,Cookies from Browser,,value;  ,Create Log File,,value;  ,Log File Location,,value;  ,Save Songs Without Official Video (CSV),,value", "styles": "selected,normal,normal,normal,normal,normal,normal,normal,normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 11, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:39:selbg=@Selected:selfg=@Text:selbold,Gap:2,Value:ellipsis:fg=@Focus", "rows": "▸ ,Output Folder,,value;  ,Video Quality,,value;  ,Audio Quality,,value;  ,Merge Format,,value;  ,Output Template,,value;  ,Max Concurrent Downloads,,value;  ,Download Official Music Video,,value;  ,Cookies from Browser,,value;  ,Create Log File,,value;  ,Log File Location,,value;  ,Save Songs Without Official Video (CSV),,value", "styles": "selected,normal,normal,normal,normal,normal,normal,normal,normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cells(((float64(w) * 100.0 / 100.0) - 2.0)), 11
 		}},
 		Event: "Pick",
-		Apply: func(p PreferencesProps, v map[string]string) bool {
+		Apply: func(p PreferencesProps, v map[string]string, w, h int) bool {
 			v["theme.palette"] = paletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
@@ -54,7 +79,7 @@ var preferencesParts = []screenPart[PreferencesProps]{
 		placed: placed{Kind: "lipgloss.label", Name: "Template hint", X: 0, Y: 13, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "Template uses yt-dlp fields, e.g. %(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 13, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p PreferencesProps, v map[string]string) bool {
+		Apply: func(p PreferencesProps, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
 				v["color"] = p.Palette.Dim
 			}
@@ -66,7 +91,7 @@ var preferencesParts = []screenPart[PreferencesProps]{
 			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Event: "Hint",
-		Apply: func(p PreferencesProps, v map[string]string) bool {
+		Apply: func(p PreferencesProps, v map[string]string, w, h int) bool {
 			if p.Palette.Highlight != "" {
 				v["keyColor"] = p.Palette.Highlight
 			}
@@ -87,7 +112,7 @@ var preferencesParts = []screenPart[PreferencesProps]{
 		placed: placed{Kind: "lipgloss.label", Name: "Status", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#ff007f", "text": " saved", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
 		}},
-		Apply: func(p PreferencesProps, v map[string]string) bool {
+		Apply: func(p PreferencesProps, v map[string]string, w, h int) bool {
 			if p.Palette.Accent != "" {
 				v["color"] = p.Palette.Accent
 			}
@@ -99,7 +124,7 @@ var preferencesParts = []screenPart[PreferencesProps]{
 
 // Preferences draws the screen in an area of w by h cells for the values in p.
 func Preferences(p PreferencesProps, w, h int) Frame {
-	return drawScreen(preferencesParts, p, p.Theme, w, h, preferencesBackground)
+	return drawScreen(preferencesParts, p, p.Theme, w, h, preferencesBackground, preferencesEnv)
 }
 
 // PreferencesSize is the size of area the screen was designed for.
@@ -109,7 +134,7 @@ func PreferencesSize() (w, h int) { return preferencesWidth, preferencesHeight }
 // visible components, so a program can size a model of its own before it is
 // drawn into one of them.
 func PreferencesLayout(p PreferencesProps, w, h int) Frame {
-	return layoutScreen(preferencesParts, p, p.Theme, w, h)
+	return layoutScreen(preferencesParts, p, p.Theme, w, h, preferencesEnv)
 }
 
 // PreferencesHandle turns a click or a key into the screen's event. ok is false when

@@ -85,13 +85,15 @@ type screenPart[P any] struct {
 	// Event is raised by a click on the component.
 	Event string
 	// Apply puts the program's values into the properties and reports whether
-	// the component is shown.
-	Apply func(p P, v map[string]string) bool
+	// the component is shown, for a window of w by h cells.
+	Apply func(p P, v map[string]string, w, h int) bool
 }
 
 // drawScreen draws the parts for the values p in an area of w by h cells.
-func drawScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, background string) Frame {
+func drawScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, background string, env func(P, int, int) fitEnv) Frame {
 	w, h = max(w, 1), max(h, 1)
+	e := env(p, w, h)
+	e.rects = map[string][4]int{}
 	if th.Background != "" {
 		background = th.Background
 	}
@@ -111,13 +113,18 @@ func drawScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, backgroun
 		if th.Muted != "" {
 			c.Props[mutedKey] = th.Muted
 		}
-		if part.Apply != nil && !part.Apply(p, c.Props) {
+		if part.Apply != nil && !part.Apply(p, c.Props, w, h) {
 			continue
 		}
-		if c.Fit != nil {
+		switch {
+		case c.FitEnv != nil:
+			x, y, cw, ch := c.FitEnv(e)
+			c.X, c.Y, c.W, c.H = x, y, max(cw, c.MinW, 1), max(ch, c.MinH, 1)
+		case c.Fit != nil:
 			x, y, cw, ch := c.Fit(w, h)
 			c.X, c.Y, c.W, c.H = x, y, max(cw, c.MinW, 1), max(ch, c.MinH, 1)
 		}
+		e.rects[c.Name] = [4]int{c.X, c.Y, c.W, c.H}
 		layers = append(layers, lipgloss.NewLayer(build(c).view()).X(c.X).Y(c.Y).Z(i+1))
 		regions = append(regions, Region{Name: c.Name, Event: part.Event, X: c.X, Y: c.Y, W: c.W, H: c.H})
 	}
@@ -126,8 +133,10 @@ func drawScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, backgroun
 
 // layoutScreen is drawScreen without the drawing: the regions of the visible
 // components for the values p in an area of w by h cells.
-func layoutScreen[P any](parts []screenPart[P], p P, th Theme, w, h int) Frame {
+func layoutScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, env func(P, int, int) fitEnv) Frame {
 	w, h = max(w, 1), max(h, 1)
+	e := env(p, w, h)
+	e.rects = map[string][4]int{}
 	var regions []Region
 	for _, part := range parts {
 		c := part.placed
@@ -135,13 +144,18 @@ func layoutScreen[P any](parts []screenPart[P], p P, th Theme, w, h int) Frame {
 		for k, v := range part.Props {
 			c.Props[k] = v
 		}
-		if part.Apply != nil && !part.Apply(p, c.Props) {
+		if part.Apply != nil && !part.Apply(p, c.Props, w, h) {
 			continue
 		}
-		if c.Fit != nil {
+		switch {
+		case c.FitEnv != nil:
+			x, y, cw, ch := c.FitEnv(e)
+			c.X, c.Y, c.W, c.H = x, y, max(cw, c.MinW, 1), max(ch, c.MinH, 1)
+		case c.Fit != nil:
 			x, y, cw, ch := c.Fit(w, h)
 			c.X, c.Y, c.W, c.H = x, y, max(cw, c.MinW, 1), max(ch, c.MinH, 1)
 		}
+		e.rects[c.Name] = [4]int{c.X, c.Y, c.W, c.H}
 		regions = append(regions, Region{Name: c.Name, Event: part.Event, X: c.X, Y: c.Y, W: c.W, H: c.H})
 	}
 	return Frame{Regions: regions}
@@ -150,8 +164,10 @@ func layoutScreen[P any](parts []screenPart[P], p P, th Theme, w, h int) Frame {
 // CellStyle restyles one cell of a row: a colour is #rrggbb or a palette
 // number; the zero value keeps the column's style.
 type CellStyle struct {
-	Fg, Bg            string
+	Fg, Bg             string
 	Bold, Dim, Reverse bool
+	// Plain keeps the column's colours off this cell: the terminal's own.
+	Plain bool
 }
 
 // cellStyleCode is the style as the Rows component reads it.
@@ -168,6 +184,9 @@ func cellStyleCode(s CellStyle) string {
 	}
 	if s.Reverse {
 		flags += "r"
+	}
+	if s.Plain {
+		flags += "p"
 	}
 	return s.Fg + "|" + s.Bg + "|" + flags
 }

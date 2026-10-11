@@ -20,6 +20,9 @@ func init() {
 	extra["lipgloss.rows"] = widgetPart(drawRows)
 	extra["lipgloss.keybar"] = widgetPart(drawKeybar)
 	extra["lipgloss.slot"] = slotPart
+	extra["lipgloss.progressline"] = widgetPart(drawProgressLine)
+	extra["lipgloss.keybar"] = widgetPart(drawKeybar)
+	extra["lipgloss.slot"] = slotPart
 	extra["community.dropdown"] = widgetPart(drawDropdown)
 	extra["community.promptinput"] = widgetPart(drawPromptInput)
 	extra["community.promptselect"] = widgetPart(drawPromptSelect)
@@ -464,6 +467,15 @@ func drawChart3D(g *sketchGrid, p props) {
 	}
 }
 
+
+func (p props) float(key string, fallback float64) float64 {
+	f, err := strconv.ParseFloat(strings.TrimSpace(p[key]), 64)
+	if err != nil {
+		return fallback
+	}
+	return f
+}
+
 // sgrRun is text with the style the escape sequences before it gave it.
 type sgrRun struct {
 	text  string
@@ -501,7 +513,7 @@ func parseSGR(text string, base sketchStyle) []sgrRun {
 			if j < len(rs) {
 				if rs[j] == 'm' {
 					flush()
-					cur = applySGR(cur, base, string(rs[i+2:j]))
+					cur = applySGR(cur, string(rs[i+2:j]))
 				}
 				i = j
 				continue
@@ -524,11 +536,12 @@ func parseSGR(text string, base sketchStyle) []sgrRun {
 	return runs
 }
 
-// applySGR changes style by the parameters of one SGR sequence; a reset goes
-// back to base.
-func applySGR(style, base sketchStyle, params string) sketchStyle {
+// applySGR changes style by the parameters of one SGR sequence. A reset (0, 39
+// or 49) means the terminal's default colours, not the style the text started
+// from: text that carries its own sequences is in charge of its colours.
+func applySGR(style sketchStyle, params string) sketchStyle {
 	if params == "" {
-		return base
+		return sketchStyle{}
 	}
 	parts := strings.Split(params, ";")
 	num := func(i int) (int, bool) {
@@ -559,7 +572,7 @@ func applySGR(style, base sketchStyle, params string) sketchStyle {
 		}
 		switch {
 		case n == 0:
-			style = base
+			style = sketchStyle{}
 		case n == 1:
 			style.Bold = true
 		case n == 2:
@@ -579,9 +592,9 @@ func applySGR(style, base sketchStyle, params string) sketchStyle {
 		case n >= 100 && n <= 107:
 			style.Bg = strconv.Itoa(n - 100 + 8)
 		case n == 39:
-			style.Fg = base.Fg
+			style.Fg = ""
 		case n == 49:
-			style.Bg = base.Bg
+			style.Bg = ""
 		case n == 38 || n == 48:
 			c, used := colour(i)
 			if c != "" {
@@ -656,15 +669,19 @@ type rowsColumn struct {
 	colour, glyph bool
 	// ellipsis cuts a cell that is too long with "…".
 	ellipsis bool
-	// fg and bg are the colour of the column's text and its background; selBg
-	// is the background the column takes on a selected row. They are colours or
-	// @Name of the palette.
-	fg, bg, selBg string
+	// fg and bg are the colour of the column's text and its background; selBg,
+	// selFg and selBold are what the column takes on a selected row. They are
+	// colours or @Name of the palette.
+	fg, bg, selBg, selFg string
+	selBold              bool
+	// fit limits the selected background to the cells the text uses, not the
+	// column's whole width.
+	fit bool
 }
 
 // rowsColumns reads "Name[:width][:token]..." items separated by commas. A
-// token is colour, glyph, ellipsis, fg=<colour>, bg=<colour> or
-// selbg=<colour>. A column without a width takes twelve cells, except the
+// token is colour, glyph, ellipsis, fg=<colour>, bg=<colour>,
+// selbg=<colour>, selfg=<colour>, selbold or fit. A column without a width takes twelve cells, except the
 // last, which takes what is left of the row.
 func rowsColumns(spec string) []rowsColumn {
 	var out []rowsColumn
@@ -685,6 +702,12 @@ func rowsColumns(spec string) []rowsColumn {
 				col.glyph = true
 			case lower == "ellipsis":
 				col.ellipsis = true
+			case lower == "fit":
+				col.fit = true
+			case lower == "selbold":
+				col.selBold = true
+			case strings.HasPrefix(lower, "selfg="):
+				col.selFg = strings.TrimSpace(extra[6:])
 			case strings.HasPrefix(lower, "fg="):
 				col.fg = strings.TrimSpace(extra[3:])
 			case strings.HasPrefix(lower, "bg="):
@@ -767,6 +790,10 @@ func cellStyleOf(p props, code string, base sketchStyle) sketchStyle {
 		return base
 	}
 	parts := strings.Split(code, "|")
+	if len(parts) > 2 && strings.Contains(parts[2], "p") {
+		// Plain: the terminal's own colours, whatever the column says.
+		base.Fg, base.Bg = "", ""
+	}
 	if len(parts) > 0 && parts[0] != "" {
 		base.Fg = paletteColour(p, parts[0])
 	}
@@ -795,7 +822,7 @@ func drawRows(g *sketchGrid, p props) {
 	cellStyles := rowsCells(p.str("cellstyles"))
 	anySelBg := false
 	for _, c := range columns {
-		anySelBg = anySelBg || c.selBg != ""
+		anySelBg = anySelBg || c.selBg != "" || c.selFg != "" || c.selBold
 	}
 	for y, row := range rowsCells(p.str("rows")) {
 		if y >= g.H {
@@ -838,6 +865,12 @@ func drawRows(g *sketchGrid, p props) {
 			if isSelected && col.selBg != "" {
 				style.Bg = paletteColour(p, col.selBg)
 			}
+			if isSelected && col.selFg != "" {
+				style.Fg = paletteColour(p, col.selFg)
+			}
+			if isSelected && col.selBold {
+				style.Bold = true
+			}
 			if y < len(cellStyles) && i < len(cellStyles[y]) {
 				style = cellStyleOf(p, cellStyles[y][i], style)
 			}
@@ -850,7 +883,7 @@ func drawRows(g *sketchGrid, p props) {
 			case col.colour || col.glyph:
 				g.Text(x, y, "·", sketchDim, w)
 			default:
-				if style.Bg != "" {
+				if style.Bg != "" && (!isSelected || !col.fit || col.selBg == "") {
 					g.Fill(sketchRect{X: x, Y: y, W: w, H: 1}, ' ', sketchStyle{Bg: style.Bg})
 				}
 				at := x
@@ -903,6 +936,53 @@ func drawKeybar(g *sketchGrid, p props) {
 	}
 }
 
+
+// orColour is the colour when it is set, else the fallback.
+func orColour(c, fallback string) string {
+	if strings.TrimSpace(c) == "" {
+		return fallback
+	}
+	return c
+}
+
+// drawProgressLine draws a progress bar followed by a text: barWidth cells of
+// the full rune for the share done (rounded down) and of the empty rune for
+// the rest, the gap, then the suffix. A barWidth of 0 takes what the suffix
+// leaves of the width.
+func drawProgressLine(g *sketchGrid, p props) {
+	suffix := p.str("suffix")
+	gap := min(max(p.integer("gap", 3), 0), 16)
+	barWidth := p.integer("barWidth", 32)
+	if barWidth <= 0 {
+		barWidth = g.W - gap - len([]rune(suffix))
+	}
+	barWidth = min(max(barWidth, 0), g.W)
+	value := p.float("value", 0)
+	value = min(max(value, 0), 100)
+	done := int(value / 100 * float64(barWidth))
+	full := firstRune(p.str("full"), '█')
+	empty := firstRune(p.str("empty"), '░')
+	fullStyle := sketchStyle{Fg: p.str("fullColor")}
+	emptyStyle := sketchStyle{Fg: p.str("emptyColor")}
+	for i := 0; i < barWidth; i++ {
+		if i < done {
+			g.Set(i, 0, sketchCell{Ch: full, Style: fullStyle})
+		} else {
+			g.Set(i, 0, sketchCell{Ch: empty, Style: emptyStyle})
+		}
+	}
+	x := barWidth + gap
+	if x < g.W {
+		g.Text(x, 0, suffix, sketchStyle{Fg: p.str("suffixColor")}, g.W-x)
+	}
+}
+
+func firstRune(s string, fallback rune) rune {
+	if r := []rune(s); len(r) > 0 {
+		return r[0]
+	}
+	return fallback
+}
 
 // slotPart is the view a program drew itself, cut to the rectangle of the
 // design; the escape sequences of its colours pass through.

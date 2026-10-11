@@ -39,13 +39,57 @@ type placed struct {
 	Props map[string]string
 	// Fit and MinW, MinH are set on a component that follows the window: Fit
 	// gives its rectangle for a window of w by h cells.
-	Fit        func(w, h int) (x, y, cw, ch int)
+	Fit func(w, h int) (x, y, cw, ch int)
+	// FitEnv is Fit for a component of a screen whose place also depends on the
+	// screen's inputs or on the components before it.
+	FitEnv     func(e fitEnv) (x, y, cw, ch int)
 	MinW, MinH int
 	// Drag lets the person move the component, Resize lets them resize it by
 	// its bottom-right corner. Dx, Dy, Dw and Dh are how far they moved it from
 	// where Fit puts it, so a window resize keeps their change.
 	Drag, Resize   bool
 	Dx, Dy, Dw, Dh int
+}
+
+// fitEnv is what a layout expression of a screen reads besides the window: its
+// number and yes/no inputs ($Count) and the places of the components before it
+// (below("Name")).
+type fitEnv struct {
+	W, H int
+	// Inputs gives an input by name; a yes/no input is 1 or 0.
+	Inputs func(name string) float64
+	rects  map[string][4]int
+}
+
+// In is the input called name, 0 when there is none.
+func (e fitEnv) In(name string) float64 {
+	if e.Inputs == nil {
+		return 0
+	}
+	return e.Inputs(name)
+}
+
+// Rect is one edge of the component called name: x, y, w, h, right or bottom.
+func (e fitEnv) Rect(name, field string) float64 {
+	r, ok := e.rects[name]
+	if !ok {
+		return 0
+	}
+	switch field {
+	case "x":
+		return float64(r[0])
+	case "y":
+		return float64(r[1])
+	case "w":
+		return float64(r[2])
+	case "h":
+		return float64(r[3])
+	case "right":
+		return float64(r[0] + r[2])
+	case "bottom":
+		return float64(r[1] + r[3])
+	}
+	return 0
 }
 
 // cells rounds a calculated size down to whole cells.
@@ -160,7 +204,7 @@ func buildPart(c placed) *part {
 	p := props(c.Props)
 	switch c.Kind {
 	case "lipgloss.box":
-		return staticPart(box(c.W, c.H, p.str("border"), p.str("color"), p.str("title"), p.str("gradient")))
+		return staticPart(boxOf(c.W, c.H, p))
 	case "lipgloss.label":
 		return staticPart(label(c.W, p))
 	case "lipgloss.list":
@@ -251,6 +295,77 @@ func box(w, h int, border, color, title, gradient string) string {
 		top = style.Render(top)
 	}
 	lines := []string{top}
+	for i := 1; i < h-1; i++ {
+		lines = append(lines, style.Render(b.Left)+strings.Repeat(" ", w-2)+style.Render(b.Right))
+	}
+	lines = append(lines, style.Render(b.BottomLeft+strings.Repeat(b.Bottom, w-2)+b.BottomRight))
+	return strings.Join(lines, "\n")
+}
+
+// boxOf is a box with its title in the top edge and, optionally, a right label
+// before the last border cell: ╭─ Title ───── right ─╮. A title that would
+// leave the label no room is cut with an ellipsis.
+func boxOf(w, h int, p props) string {
+	if w < 2 || h < 2 || p.str("gradient") != "" && p.str("color") != "" {
+		return box(w, h, p.str("border"), p.str("color"), p.str("title"), p.str("gradient"))
+	}
+	b := borderOf(p.str("border"))
+	style := fg(p.str("color"))
+	titleStyle := fg(orDefault(p.str("titleColor"), p.str("color"))).Bold(p.flag("titleBold"))
+	rightStyle := fg(orDefault(p.str("rightColor"), "240"))
+	title, right := p.str("title"), p.str("right")
+
+	// top is the top edge cell by cell, with a style class for each: 0 the
+	// border, 1 the title, 2 the right label.
+	top := make([]rune, w)
+	class := make([]int, w)
+	for i := range top {
+		top[i] = []rune(b.Top)[0]
+	}
+	top[0], top[w-1] = []rune(b.TopLeft)[0], []rune(b.TopRight)[0]
+	put := func(at int, text string, c int) {
+		for i, r := range []rune(text) {
+			if at+i > 0 && at+i < w-1 {
+				top[at+i], class[at+i] = r, c
+			}
+		}
+	}
+	if w > 4 {
+		maxBlock, rightBlock := w-4, ""
+		if right != "" {
+			if room := w - len([]rune(right)) - 7; room >= 4 {
+				maxBlock, rightBlock = room, " "+right+" "
+			}
+		}
+		if title != "" && maxBlock >= 4 {
+			block := []rune(" " + title + " ")
+			if len(block) > maxBlock {
+				block = append([]rune(" "), []rune(title)[:maxBlock-3]...)
+				block = append(block, '…', ' ')
+			}
+			put(2, string(block), 1)
+		}
+		if rightBlock != "" {
+			put(w-2-len([]rune(rightBlock)), rightBlock, 2)
+		}
+	}
+	var line strings.Builder
+	for i := 0; i < w; {
+		j := i
+		for j < w && class[j] == class[i] {
+			j++
+		}
+		st := style
+		switch class[i] {
+		case 1:
+			st = titleStyle
+		case 2:
+			st = rightStyle
+		}
+		line.WriteString(st.Render(string(top[i:j])))
+		i = j
+	}
+	lines := []string{line.String()}
 	for i := 1; i < h-1; i++ {
 		lines = append(lines, style.Render(b.Left)+strings.Repeat(" ", w-2)+style.Render(b.Right))
 	}

@@ -174,7 +174,6 @@ func (m advancedModel) view(width, height int) string {
 			row.Mark = "▸ "
 			if m.mode == editNone {
 				row.Style = screens.RowSelected
-				row.NameStyle = screens.CellStyle{Fg: currentColours.Text, Bold: true}
 			} else {
 				row.Value = truncate(m.input.View(), max(10, width-labelW-6))
 			}

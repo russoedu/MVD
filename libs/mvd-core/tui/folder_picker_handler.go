@@ -159,14 +159,14 @@ func (m folderModel) view(width, height int) string {
 
 	var rows []screens.FolderFoldersRow
 	for i, name := range m.entries {
-		entry := "  " + name + "/"
+		row := screens.FolderFoldersRow{Entry: "  " + name + "/"}
 		if i == m.cursor {
-			entry = stySelected.Render("▸ " + name + "/")
+			row.Entry, row.Style = "▸ "+name+"/", screens.RowSelected
 		}
-		rows = append(rows, screens.FolderFoldersRow{Entry: entry})
+		rows = append(rows, row)
 	}
 	if len(rows) == 0 {
-		rows = []screens.FolderFoldersRow{{Entry: styDim.Render("(no sub-folders)")}}
+		rows = []screens.FolderFoldersRow{{Entry: "(no sub-folders)", EntryStyle: screens.CellStyle{Fg: currentColours.Dim}}}
 	}
 	visible := max(1, height-5)
 	if len(rows) > visible {

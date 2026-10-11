@@ -491,7 +491,6 @@ func (m configModel) view(width, height int) string {
 				row.Value = truncate(m.editorView(), max(10, width-labelW-6))
 			} else {
 				row.Style = screens.RowSelected
-				row.NameStyle = screens.CellStyle{Fg: currentColours.Text, Bold: true}
 			}
 		}
 		rows = append(rows, row)

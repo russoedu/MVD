@@ -175,10 +175,7 @@ func legacyCases() []legacyCase {
 // knownGaps are screens that do not yet draw exactly what they drew, each waiting for
 // Cuppa: name -> what is missing. They are reported, not failed; a gap that is fixed
 // must be removed from here, or the test says so.
-var knownGaps = map[string]string{
-	"colours-editing": "a cell's own text cannot ask for the terminal's default colour (GAP default-fg)",
-	"colours-error":   "a cell's own text cannot ask for the terminal's default colour (GAP default-fg)",
-}
+var knownGaps = map[string]string{}
 
 // TestLegacyScreensKeepTheirLook compares what the screens draw with the reference
 // drawings in testdata/legacy, cell by cell (character, colours, bold and so on).
