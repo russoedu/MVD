@@ -4,6 +4,7 @@ package list
 
 import (
 	tea "charm.land/bubbletea/v2"
+	master "youtube-downloader/libs/mvd-core/internal/components/master"
 	_ "youtube-downloader/libs/mvd-core/internal/components/widgets"
 	cuppa "youtube-downloader/libs/mvd-core/internal/cuppa"
 )
@@ -34,41 +35,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 	}}
 }
 
-var parts = []cuppa.ScreenPart[Props]{
-	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Download list", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Accent != "" {
-				v["color"] = p.Palette.Accent
-			}
-			v["text"] = p.Title
-			return true
-		},
-	},
-	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "ctrl+s:start,ctrl+o:songs,ctrl+e:review,ctrl+p:preferences,ctrl+r:reset,ctrl+q:quit", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Event: "Hint",
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Highlight != "" {
-				v["keyColor"] = p.Palette.Highlight
-			}
-			if p.Palette.Dim != "" {
-				v["labelColor"] = p.Palette.Dim
-			}
-			{
-				items := make([]string, len(p.Hints))
-				for i, h := range p.Hints {
-					items[i] = h.Key + ":" + h.Label
-				}
-				v["hints"] = cuppa.JoinList(items)
-			}
-			return p.ShowKeys
-		},
-	},
+var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 	{
 		Placed: cuppa.Placed{Kind: "lipgloss.slot", Name: "Links view", X: 0, Y: 1, W: 100, H: 26, Props: map[string]string{"theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "view": "Paste or type playlist / video URLs, one per line"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 4.0))
@@ -90,6 +57,11 @@ var parts = []cuppa.ScreenPart[Props]{
 			return p.ShowConfirm
 		},
 	},
+}...)
+
+// listMasterProps is the props of the master's parts, from the screen's.
+func masterProps(p Props) master.Props {
+	return master.Props{Title: p.Title, Hints: p.Hints, ShowKeys: p.ShowKeys, Palette: master.Palette(p.Palette)}
 }
 
 // List draws the screen in an area of w by h cells for the values in p.
@@ -178,17 +150,13 @@ func DefaultPalette() Palette {
 	}
 }
 
-// ListHintsHint is one hint of the key bar Hints.
-type HintsHint struct{ Key, Label string }
+// ListHintsHint is one hint of the key bar Hints, the master's.
+type HintsHint = master.HintsHint
 
 // ListHintsHintAt is the index of the hint of Hints under column x of the bar (X of the
 // click's event), and false between hints.
 func HintsHintAt(p Props, x int) (int, bool) {
-	keys := make([][2]string, len(p.Hints))
-	for i, h := range p.Hints {
-		keys[i] = [2]string{h.Key, h.Label}
-	}
-	return cuppa.HintIndexAt(keys, 2, x)
+	return master.HintsHintAt(masterProps(p), x)
 }
 
 // DefaultListProps is the screen as it was designed: each input holds the value

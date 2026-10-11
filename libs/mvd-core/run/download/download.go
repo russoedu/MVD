@@ -4,6 +4,7 @@ package download
 
 import (
 	"strconv"
+	master "youtube-downloader/libs/mvd-core/internal/components/master"
 	_ "youtube-downloader/libs/mvd-core/internal/components/widgets"
 	cuppa "youtube-downloader/libs/mvd-core/internal/cuppa"
 
@@ -65,29 +66,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 	}}
 }
 
-var parts = []cuppa.ScreenPart[Props]{
-	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,tab:pane,⏎:follow,f:failed,r:retry,l:full log,?:help,q:quit", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Event: "Hint",
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Highlight != "" {
-				v["keyColor"] = p.Palette.Highlight
-			}
-			if p.Palette.Dim != "" {
-				v["labelColor"] = p.Palette.Dim
-			}
-			{
-				items := make([]string, len(p.Hints))
-				for i, h := range p.Hints {
-					items[i] = h.Key + ":" + h.Label
-				}
-				v["hints"] = cuppa.JoinList(items)
-			}
-			return p.ShowKeys
-		},
-	},
+var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Props]{
 	{
 		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Header", X: 0, Y: 0, W: 120, H: 3, Props: map[string]string{"border": "rounded", "color": "#6b7280", "gradient": "", "right": "00:00:00", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "MVD · Music Video Downloader", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 3
@@ -360,6 +339,11 @@ var parts = []cuppa.ScreenPart[Props]{
 			return p.ShowStatus
 		},
 	},
+}...)
+
+// downloadMasterProps is the props of the master's parts, from the screen's.
+func masterProps(p Props) master.Props {
+	return master.Props{Hints: p.Hints, ShowKeys: p.ShowKeys, Palette: master.Palette(p.Palette)}
 }
 
 // Download draws the screen in an area of w by h cells for the values in p.
@@ -594,17 +578,13 @@ type OutputRow struct {
 	Style cuppa.RowStyle
 }
 
-// DownloadHintsHint is one hint of the key bar Hints.
-type HintsHint struct{ Key, Label string }
+// DownloadHintsHint is one hint of the key bar Hints, the master's.
+type HintsHint = master.HintsHint
 
 // DownloadHintsHintAt is the index of the hint of Hints under column x of the bar (X of the
 // click's event), and false between hints.
 func HintsHintAt(p Props, x int) (int, bool) {
-	keys := make([][2]string, len(p.Hints))
-	for i, h := range p.Hints {
-		keys[i] = [2]string{h.Key, h.Label}
-	}
-	return cuppa.HintIndexAt(keys, 2, x)
+	return master.HintsHintAt(masterProps(p), x)
 }
 
 // DefaultDownloadProps is the screen as it was designed: each input holds the value
