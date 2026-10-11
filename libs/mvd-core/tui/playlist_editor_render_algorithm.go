@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -28,35 +29,33 @@ func (m editorModel) render() string {
 		return m.renderPlanning(width)
 	}
 
-	var lines []string
-	lines = append(lines, styTitle.Render(" "+m.title()))
-	lines = append(lines, m.columnHeader(width))
-
-	h := m.listHeight()
-	for i := m.top; i < m.top+h; i++ {
-		if i >= len(m.rows) {
-			lines = append(lines, "")
-			continue
-		}
-		lines = append(lines, m.rowLine(i, width))
+	props := screens.DefaultEditorProps()
+	props.Palette = screens.EditorPalette(palette())
+	props.Title = " " + m.title()
+	props.Header = m.columnHeader(width)
+	props.Songs = nil
+	for i := m.top; i < min(len(m.rows), m.top+m.listHeight()); i++ {
+		props.Songs = append(props.Songs, screens.EditorSongsRow{Line: cellText(m.rowLine(i, width))})
 	}
-	if len(m.rows) == 0 {
-		lines[2] = styDim.Render(" There are no songs here. Open a file with l, or leave and give a playlist.")
-	}
+	props.ShowEmpty = len(m.rows) == 0
 
-	lines = append(lines, styBorder.Render(strings.Repeat("─", width)))
-	lines = append(lines, m.detail(width)...)
-	lines = append(lines, m.bottomLine(width))
-	return strings.Join(lines, "\n")
+	detail := m.detail(width)
+	props.Detail1, props.Detail2, props.Detail3, props.Detail4 = cellText(detail[0]), cellText(detail[1]), cellText(detail[2]), cellText(detail[3])
+
+	line, keys := m.bottomParts(width)
+	props.Hints = hintsOf[screens.EditorHintsHint](m.hints())
+	props.ShowKeys, props.ShowLine = keys, !keys
+	props.Bottom = line
+	return paddedFrame(screens.Editor(props, width, m.height).View, width)
 }
 
 func (m editorModel) renderPlanning(width int) string {
 	t := m.state.Tally()
 	done := t.Planned + t.NotFound + t.Failed
 	body := []string{
-		"",
+		" ",
 		" " + styCyan.Render(spinnerFrames[m.spin]) + " " + styText.Render("Looking up the best version of each song, nothing is downloaded."),
-		"",
+		" ",
 	}
 	if t.Total == 0 {
 		body = append(body, styDim.Render(" Reading the playlists…"))
@@ -69,17 +68,17 @@ func (m editorModel) renderPlanning(width int) string {
 		}
 	}
 
-	var lines []string
-	lines = append(lines, styTitle.Render(" MVD · Review before downloading"))
-	for i := 0; i < max(3, m.height-2); i++ {
-		if i < len(body) {
-			lines = append(lines, fit(body[i], width))
-		} else {
-			lines = append(lines, "")
-		}
+	props := screens.DefaultEditorPlanningProps()
+	props.Palette = screens.EditorPlanningPalette(palette())
+	props.Body = nil
+	for _, l := range body {
+		props.Body = append(props.Body, screens.EditorPlanningBodyRow{Line: l})
 	}
-	lines = append(lines, m.bottomLine(width))
-	return strings.Join(lines, "\n")
+	line, keys := m.bottomParts(width)
+	props.Hints = hintsOf[screens.EditorPlanningHintsHint](m.hints())
+	props.ShowKeys, props.ShowLine = keys, !keys
+	props.Bottom = line
+	return paddedFrame(screens.EditorPlanning(props, width, m.height).View, width)
 }
 
 func (m editorModel) title() string {
@@ -369,7 +368,9 @@ func (m editorModel) hints() []keyHint {
 	}
 }
 
-func (m editorModel) bottomLine(width int) string {
+// bottomParts is what the bottom line says: a question or a message, or (keys true) the
+// keys, which the design draws itself.
+func (m editorModel) bottomParts(width int) (line string, keys bool) {
 	switch m.mode {
 	case editorAskPrevious:
 		pending := 0
@@ -379,19 +380,19 @@ func (m editorModel) bottomLine(width int) string {
 			}
 		}
 		return fit(" "+styYellow.Render(fmt.Sprintf("A review from last time is saved (%d songs, %d not downloaded). Bring it along? ", len(m.saved), pending))+
-			styKey.Render("y")+styDim.Render(" yes  ")+styKey.Render("n")+styDim.Render(" no"), width)
+			styKey.Render("y")+styDim.Render(" yes  ")+styKey.Render("n")+styDim.Render(" no"), width), false
 	case editorAskDownload:
 		return fit(" "+styYellow.Render(fmt.Sprintf("%d songs were not reviewed. ", playlisteditor.Unreviewed(m.rows)))+
 			styKey.Render("y")+styDim.Render(" skip them and download  ")+
 			styKey.Render("a")+styDim.Render(" download them as proposed  ")+
-			styKey.Render("esc")+styDim.Render(" back"), width)
+			styKey.Render("esc")+styDim.Render(" back"), width), false
 	case editorInput:
-		return fit(" "+m.input.View(), width)
+		return fit(" "+m.input.View(), width), false
 	}
 	if m.status != "" && !m.statusUntil.IsZero() && time.Now().Before(m.statusUntil) {
-		return fit(" "+styYellow.Render(m.status), width)
+		return fit(" "+styYellow.Render(m.status), width), false
 	}
-	return keyBar(width, m.hints())
+	return "", true
 }
 
 // mouse handles a click or the wheel: a click on a song selects it, a click on the key
