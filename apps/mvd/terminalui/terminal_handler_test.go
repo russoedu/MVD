@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	ttygo "github.com/meta-tui/treactui/packages/tty-go"
+	ttygo "github.com/meta-ui-labs/treactui/packages/tty-go"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/sourcelist"
