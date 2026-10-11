@@ -480,7 +480,6 @@ func (m configModel) view(width, height int) string {
 	}
 
 	props := preferencespage.Default()
-	props.Title = " MVD · Preferences"
 	props.Palette = preferencespage.Palette(palette())
 	props.Hints = hintsOf[preferencespage.HintsHint](m.hints())
 	rows := make([]preferencespage.ItemsRow, 0, len(cfgLabels))

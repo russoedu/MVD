@@ -36,7 +36,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Preferences", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Download list", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
@@ -48,7 +48,7 @@ var parts = []cuppa.ScreenPart[Props]{
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,enter:edit,a:advanced,c:colours,s:save,esc:cancel", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "ctrl+s:start,ctrl+o:songs,ctrl+e:review,ctrl+p:preferences,ctrl+r:reset,ctrl+q:quit", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Event: "Hint",
@@ -195,8 +195,8 @@ func HintsHintAt(p Props, x int) (int, bool) {
 // it had in the design.
 func Default() Props {
 	return Props{
-		Title:       " MVD · Preferences",
-		Hints:       []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "a", Label: "advanced"}, {Key: "c", Label: "colours"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "cancel"}},
+		Title:       " MVD · Download list",
+		Hints:       []HintsHint{{Key: "ctrl+s", Label: "start"}, {Key: "ctrl+o", Label: "songs"}, {Key: "ctrl+e", Label: "review"}, {Key: "ctrl+p", Label: "preferences"}, {Key: "ctrl+r", Label: "reset"}, {Key: "ctrl+q", Label: "quit"}},
 		ShowKeys:    true,
 		LinksView:   "Paste or type playlist / video URLs, one per line",
 		Confirm:     " Discard the list and quit? y/n",
