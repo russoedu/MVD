@@ -35,3 +35,16 @@ func Text(text string) tea.KeyPressMsg {
 	r := []rune(text)
 	return tea.KeyPressMsg{Code: r[0], Text: text}
 }
+
+// Sequence is the key presses for names, where "backspace" is the backspace key.
+func Sequence(names ...string) []tea.Msg {
+	var out []tea.Msg
+	for _, n := range names {
+		if n == "backspace" {
+			out = append(out, tea.KeyPressMsg{Code: tea.KeyBackspace})
+			continue
+		}
+		out = append(out, Press(n))
+	}
+	return out
+}
