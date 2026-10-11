@@ -183,6 +183,29 @@ type HintEvent struct{ X, Y int }
 
 func (HintEvent) isEvent() {}
 
+// ListInputs is the props by the input names of the design, as the live
+// connection publishes them.
+func Inputs(p Props) map[string]any {
+	return map[string]any{
+		"Title":        p.Title,
+		"Hints":        p.Hints,
+		"Show keys":    p.ShowKeys,
+		"Links view":   p.LinksView,
+		"Confirm":      p.Confirm,
+		"Show confirm": p.ShowConfirm,
+	}
+}
+
+// ListEventNamed is the event the design calls name, with the cell x, y inside
+// the component that raised it; false when the screen has no such event.
+func EventNamed(name string, x, y int) (Event, bool) {
+	switch name {
+	case "Hint":
+		return HintEvent{X: x, Y: y}, true
+	}
+	return nil, false
+}
+
 // ListKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}
 

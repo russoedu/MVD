@@ -42,7 +42,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "List", X: 0, Y: 1, W: 120, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S1:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Review:9:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Artist:fit=6..30%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S4:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Song:fit=8..50%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S5:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Video:fill:ellipsis:min=4:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S6:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Replaced:fit=0..25%:floor=8:hide-empty:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S7:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Address:31:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold", "gap": "0", "rows": ",,,,Review,,Artist,,Song,,Video,,,,Address", "styles": "dim", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "List", X: 0, Y: 1, W: 120, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S1:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Review:9:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Artist:fit=6..30%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S4:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Song:fit=8..50%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S5:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Video:fill:ellipsis:min=4:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S6:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Replaced:fit=0..25%:floor=8:hide-empty:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S7:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Address:31:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold", "focused": "true", "gap": "0", "rows": ",,,,Review,,Artist,,Song,,Video,,,,Address", "styles": "dim", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(max(4.0, ((float64(h) * 100.0 / 100.0) - 7.0)))
 		}},
 		Event: "Pick",
@@ -404,6 +404,36 @@ func (HintEvent) isEvent() {}
 type PickEvent struct{ X, Y int }
 
 func (PickEvent) isEvent() {}
+
+// EditorInputs is the props by the input names of the design, as the live
+// connection publishes them.
+func Inputs(p Props) map[string]any {
+	return map[string]any{
+		"Title":      p.Title,
+		"Hints":      p.Hints,
+		"Show keys":  p.ShowKeys,
+		"Songs":      p.Songs,
+		"Show empty": p.ShowEmpty,
+		"Detail 1":   p.Detail1,
+		"Detail 2":   p.Detail2,
+		"Detail 3":   p.Detail3,
+		"Detail 4":   p.Detail4,
+		"Bottom":     p.Bottom,
+		"Show line":  p.ShowLine,
+	}
+}
+
+// EditorEventNamed is the event the design calls name, with the cell x, y inside
+// the component that raised it; false when the screen has no such event.
+func EventNamed(name string, x, y int) (Event, bool) {
+	switch name {
+	case "Hint":
+		return HintEvent{X: x, Y: y}, true
+	case "Pick":
+		return PickEvent{X: x, Y: y}, true
+	}
+	return nil, false
+}
 
 // EditorKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}

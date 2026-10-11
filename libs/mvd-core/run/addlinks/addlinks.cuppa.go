@@ -26,7 +26,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Box", X: 8, Y: 12, W: 104, H: 12, Props: map[string]string{"border": "rounded", "color": "#00f0ff", "gradient": "", "right": "", "rightColor": "240", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Add links", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Box", X: 8, Y: 12, W: 104, H: 12, Props: map[string]string{"blurColor": "240", "border": "rounded", "color": "#00f0ff", "focused": "true", "gradient": "", "right": "", "rightColor": "240", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Add links", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
 			return cuppa.Cells(cuppa.Div(((float64(w) * 100.0 / 100.0) - max(24.0, min(104.0, ((float64(w)*100.0/100.0)-4.0)))), 2.0)), cuppa.Cells(cuppa.Div(((float64(h) * 100.0 / 100.0) - 12.0), 2.0)), cuppa.Cells(max(24.0, min(104.0, ((float64(w)*100.0/100.0)-4.0)))), cuppa.Cells(12.0)
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
@@ -170,6 +170,23 @@ func Default() Props {
 // AddLinksEvent is what a click on a component or a key raises. The concrete types
 // are the AddLinks... structs below.
 type Event interface{ isEvent() }
+
+// AddLinksInputs is the props by the input names of the design, as the live
+// connection publishes them.
+func Inputs(p Props) map[string]any {
+	return map[string]any{
+		"LinksView": p.LinksView,
+		"Hints":     p.Hints,
+	}
+}
+
+// AddLinksEventNamed is the event the design calls name, with the cell x, y inside
+// the component that raised it; false when the screen has no such event.
+func EventNamed(name string, x, y int) (Event, bool) {
+	switch name {
+	}
+	return nil, false
+}
 
 // AddLinksKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}
