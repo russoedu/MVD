@@ -39,8 +39,8 @@ func TestSongsScreenAddsAListFileToTheDownloadList(t *testing.T) {
 	m, _ = m.Update(key("ctrl+s"))
 	setup := m.(setupModel)
 	want := filepath.Join(dir, "songs", "Road trip.txt")
-	if setup.screen != screenList || setup.list.urls()[len(setup.list.urls())-1] != want {
-		t.Fatalf("the list should end with %s, got screen %d and %v", want, setup.screen, setup.list.urls())
+	if setup.screen != screenList || setup.list.URLs()[len(setup.list.URLs())-1] != want {
+		t.Fatalf("the list should end with %s, got screen %d and %v", want, setup.screen, setup.list.URLs())
 	}
 	if _, err := os.Stat(want); err != nil {
 		t.Errorf("the list file should exist: %v", err)
@@ -64,8 +64,8 @@ func TestSongsScreenRefusesATextWithoutSongsAndCancels(t *testing.T) {
 	}
 
 	m, _ = m.Update(key("esc"))
-	if setup := m.(setupModel); setup.screen != screenList || len(setup.list.urls()) != 1 {
-		t.Errorf("esc goes back to the unchanged list, got screen %d and %v", setup.screen, setup.list.urls())
+	if setup := m.(setupModel); setup.screen != screenList || len(setup.list.URLs()) != 1 {
+		t.Errorf("esc goes back to the unchanged list, got screen %d and %v", setup.screen, setup.list.URLs())
 	}
 }
 
@@ -78,12 +78,5 @@ func TestSongsScreenIsClickableAndDescribed(t *testing.T) {
 	out := m.(outliner).Outline()
 	if out.Title != "MVD · Add songs" || !out.HasText || len(out.Keys) != 2 {
 		t.Errorf("unexpected outline %+v", out)
-	}
-}
-
-func TestListWithURLDoesNotRepeatALine(t *testing.T) {
-	m := newListModel([]string{"https://a"}).withURL("x.txt").withURL("x.txt")
-	if got := m.urls(); len(got) != 2 || got[1] != "x.txt" {
-		t.Errorf("got %v", got)
 	}
 }

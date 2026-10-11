@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"charm.land/bubbles/v2/textarea"
 	"path/filepath"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
+	listpage "youtube-downloader/libs/mvd-core/setup/list"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	tea "charm.land/bubbletea/v2"
@@ -13,6 +15,9 @@ import (
 )
 
 // SetupAction is what the user chose on the setup screens.
+// textareaBlink drives the textarea cursor.
+var textareaBlink = textarea.Blink
+
 type SetupAction int
 
 const (
@@ -77,7 +82,7 @@ type setupModel struct {
 	cfg           config.Config
 	cfgPath       string
 	listPath      string
-	list          listModel
+	list          listpage.Model
 	config        configModel
 	advanced      advancedpage.Model
 	colours       colourspage.Model
@@ -107,7 +112,7 @@ func newSetupModel(in SetupInput) setupModel {
 		cfg:       in.Cfg,
 		cfgPath:   in.CfgPath,
 		listPath:  in.ListPath,
-		list:      newListModel(in.URLs),
+		list:      listpage.New(in.URLs),
 		songs:     songspage.New(""),
 		config:    newConfigModel(in.Cfg).withFolderPicker(in.PickFolder).withUninstaller(in.Uninstall).withMover(in.Move),
 		pick:      in.PickFolder,
@@ -127,7 +132,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.list = m.list.setSize(msg.Width, msg.Height)
+		m.list = m.list.SetSize(msg.Width, msg.Height)
 		m.config = m.config.setSize(msg.Width, msg.Height)
 		m.advanced = m.advanced.SetSize(msg.Width, msg.Height)
 		m.colours = m.colours.SetSize(msg.Width, msg.Height)
@@ -139,32 +144,32 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch m.screen {
 	case screenList:
-		next, cmd, out := m.list.update(msg)
+		next, cmd, out := m.list.Update(msg)
 		m.list = next
 		switch out {
-		case listStart:
+		case listpage.Start:
 			m.saveList()
-			m.result = SetupResult{Action: ActionStart, Cfg: m.cfg, URLs: m.list.urls()}
+			m.result = SetupResult{Action: ActionStart, Cfg: m.cfg, URLs: m.list.URLs()}
 			return m, m.finish()
-		case listReview:
+		case listpage.Review:
 			m.saveList()
-			m.result = SetupResult{Action: ActionReview, Cfg: m.cfg, URLs: m.list.urls()}
+			m.result = SetupResult{Action: ActionReview, Cfg: m.cfg, URLs: m.list.URLs()}
 			return m, m.finish()
-		case listPrefs:
+		case listpage.Prefs:
 			m.saveList()
 			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).withUninstaller(m.uninstall).withMover(m.move).setSize(m.width, m.height)
 			m.screen = screenConfig
 			return m, nil
-		case listSongs:
+		case listpage.Songs:
 			if m.listPath == "" {
 				return m, nil
 			}
 			m.songs = songspage.New(filepath.Join(filepath.Dir(m.listPath), "songs")).SetSize(m.width, m.height)
 			m.screen = screenSongs
 			return m, textareaBlink
-		case listQuit:
+		case listpage.Quit:
 			m.saveList()
-			m.result = SetupResult{Action: ActionQuit, Cfg: m.cfg, URLs: m.list.urls()}
+			m.result = SetupResult{Action: ActionQuit, Cfg: m.cfg, URLs: m.list.URLs()}
 			return m, m.finish()
 		}
 		return m, cmd
@@ -209,7 +214,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.songs = next
 		switch out {
 		case songspage.Added:
-			m.list = m.list.withURL(m.songs.Saved())
+			m.list = m.list.WithURL(m.songs.Saved())
 			m.saveList()
 			m.screen = screenList
 			return m, nil
@@ -247,13 +252,13 @@ func (m setupModel) render() string {
 	case screenSongs:
 		return m.songs.View(m.width, m.height)
 	default:
-		return m.list.view(m.width, m.height)
+		return m.list.View(m.width, m.height)
 	}
 }
 
 func (m setupModel) saveList() {
 	if m.listPath != "" {
-		_ = sourcelist.Save(m.listPath, m.list.urls())
+		_ = sourcelist.Save(m.listPath, m.list.URLs())
 	}
 }
 
