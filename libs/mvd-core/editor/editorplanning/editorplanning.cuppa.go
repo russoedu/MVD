@@ -37,7 +37,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Body", X: 0, Y: 1, W: 120, H: 28, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "focused": "true", "gap": "0", "rows": "text", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Body", X: 0, Y: 1, W: 120, H: 28, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Line", "focused": "true", "gap": "0", "rows": "text", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(max(3.0, ((float64(h) * 100.0 / 100.0) - 2.0)))
 		}},
 		Late: func(p Props, v map[string]string, w, h int) {

@@ -46,7 +46,7 @@ var parts = []cuppa.ScreenPart[Props]{
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Lines", X: 41, Y: 9, W: 38, H: 18, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "focused": "true", "gap": "0", "rows": "help", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Lines", X: 41, Y: 9, W: 38, H: 18, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Line", "focused": "true", "gap": "0", "rows": "help", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Box", "x") + 1.0)), cuppa.Cells((e.Rect("Box", "y") + 1.0)), cuppa.Cells((e.Rect("Box", "w") - 2.0)), cuppa.Cells((e.Rect("Box", "h") - 2.0))
