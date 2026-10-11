@@ -5,7 +5,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/look"
 	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
+	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -160,20 +163,20 @@ func (m folderModel) view(width, height int) string {
 		rows = append(rows, row)
 	}
 	if len(rows) == 0 {
-		rows = []folderpage.FoldersRow{{Entry: "(no sub-folders)", EntryStyle: folderpage.CellStyle{Fg: currentColours.Dim}}}
+		rows = []folderpage.FoldersRow{{Entry: "(no sub-folders)", EntryStyle: folderpage.CellStyle{Fg: look.Colours.Dim}}}
 	}
 	visible := max(1, height-5)
 	if len(rows) > visible {
-		start := windowStart(len(rows), m.cursor, visible)
+		start := viewport.Start(len(rows), m.cursor, visible)
 		rows = rows[start : start+visible]
 	}
 
 	props := folderpage.Default()
-	props.Palette = folderpage.Palette(palette())
+	props.Palette = folderpage.Palette(look.CurrentPalette())
 	props.Hints = hintsOf[folderpage.HintsHint](m.hints())
-	props.Path = truncate(m.dir, width-2)
+	props.Path = cells.Truncate(m.dir, width-2)
 	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
-	props.Problem = truncate(m.err, width-2)
+	props.Problem = cells.Truncate(m.err, width-2)
 	props.Folders = rows
 	props.FolderRows, props.ProblemRows = len(rows), 0
 	if m.err != "" {

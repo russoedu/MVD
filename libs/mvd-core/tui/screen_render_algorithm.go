@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/look"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	helppage "youtube-downloader/libs/mvd-core/run/help"
 
@@ -16,7 +18,7 @@ func (m model) render() string {
 		return "starting..."
 	}
 	if m.width < 60 || m.height < 16 {
-		return styDim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
+		return look.Dim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
 	view := paddedFrame(downloadpage.View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
@@ -47,10 +49,10 @@ func (m model) outputTitle() string {
 	}
 	pl := m.state.Playlists[m.selPlaylist]
 	if m.focus == paneLists || m.selectedEntry() == nil {
-		return display(pl.Title)
+		return cells.Display(pl.Title)
 	}
 	en := m.selectedEntry()
-	return fmt.Sprintf("%s › %02d %s", display(pl.Title), en.Index, entryTitle(en))
+	return fmt.Sprintf("%s › %02d %s", cells.Display(pl.Title), en.Index, entryTitle(en))
 }
 
 // hints lists the keys the download screen offers now. The key bar and the
@@ -78,35 +80,35 @@ func (m model) renderHelp() string {
 	}
 	var lines []string
 	for _, l := range []string{
-		styKey.Render("↑ ↓ j k") + "     move selection, scroll output",
-		styKey.Render("pgup pgdn") + "   move ten rows",
-		styKey.Render("tab") + "         cycle panes: playlists, entries, output",
-		styKey.Render("enter") + "       toggle follow mode (jump to the active download)",
-		styKey.Render("f") + "           show only failed entries",
-		styKey.Render("r") + "           retry the selected failed entry, or all failed in the playlist",
-		styKey.Render("l") + "           toggle full screen output",
-		styKey.Render("a") + "           add more links to this run",
-		styKey.Render("q") + "           quit (asks for confirmation while running)",
-		styKey.Render("ctrl+c") + "      quit immediately",
-		styKey.Render("ctrl+l") + "      redraw the screen",
+		look.Key.Render("↑ ↓ j k") + "     move selection, scroll output",
+		look.Key.Render("pgup pgdn") + "   move ten rows",
+		look.Key.Render("tab") + "         cycle panes: playlists, entries, output",
+		look.Key.Render("enter") + "       toggle follow mode (jump to the active download)",
+		look.Key.Render("f") + "           show only failed entries",
+		look.Key.Render("r") + "           retry the selected failed entry, or all failed in the playlist",
+		look.Key.Render("l") + "           toggle full screen output",
+		look.Key.Render("a") + "           add more links to this run",
+		look.Key.Render("q") + "           quit (asks for confirmation while running)",
+		look.Key.Render("ctrl+c") + "      quit immediately",
+		look.Key.Render("ctrl+l") + "      redraw the screen",
 		"",
-		styDim.Render("glyphs: · queued  ⟲ resolving  ⠋ downloading  ⚙ merging  ✓ done  ≡ duplicate  ✗ failed  ⇄ official video"),
+		look.Dim.Render("glyphs: · queued  ⟲ resolving  ⠋ downloading  ⚙ merging  ✓ done  ≡ duplicate  ✗ failed  ⇄ official video"),
 		"",
-		styDim.Render("full output is written to " + m.ctrl.LogPath()),
+		look.Dim.Render("full output is written to " + m.ctrl.LogPath()),
 		"",
-		styDim.Render("press any key to close"),
+		look.Dim.Render("press any key to close"),
 	} {
 		if ansi.StringWidth(l) <= maxW {
 			lines = append(lines, l)
 			continue
 		}
-		lines = append(lines, wrap(l, maxW)...)
+		lines = append(lines, cells.Wrap(l, maxW)...)
 	}
 	if len(lines) > m.height-2 {
 		lines = lines[:m.height-2]
 	}
 	props := helppage.Default()
-	props.Palette = helppage.Palette(palette())
+	props.Palette = helppage.Palette(look.CurrentPalette())
 	width := 0
 	for _, l := range lines {
 		width = max(width, ansi.StringWidth(l))
@@ -114,7 +116,7 @@ func (m model) renderHelp() string {
 	props.HelpWidth, props.HelpHeight = width+4, len(lines)+2
 	props.Lines = nil
 	for _, l := range lines {
-		props.Lines = append(props.Lines, helppage.LinesRow{Line: cellText(l)})
+		props.Lines = append(props.Lines, helppage.LinesRow{Line: cells.CellText(l)})
 	}
 	return paddedFrame(helppage.View(props, m.width, m.height).View, m.width)
 }
@@ -135,7 +137,7 @@ func counted(n int, word string) string {
 
 // playlistGlyph is the mark at the end of a playlist row and its colour.
 func (m model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
-	c := currentColours
+	c := look.Colours
 	if pl.Err != "" {
 		return "✗", c.Error
 	}
@@ -156,7 +158,7 @@ func (m model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 
 // entryGlyph is the mark at the start of an entry row and its colour.
 func (m model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
-	c := currentColours
+	c := look.Colours
 	switch en.State {
 	case engine.StateQueued:
 		return "·", c.Dim
@@ -180,7 +182,7 @@ func (m model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 
 // entryTag is what is said at the end of an entry row and its colour.
 func (m model) entryTag(en *runstate.Entry) (tag, colour string) {
-	c := currentColours
+	c := look.Colours
 	switch en.State {
 	case engine.StateResolving:
 		return "res.", c.Focus

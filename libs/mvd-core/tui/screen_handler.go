@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -277,17 +278,17 @@ func (m *model) move(delta int) {
 	switch m.focus {
 	case paneLists:
 		m.follow = false
-		m.selPlaylist = clamp(m.selPlaylist+delta, 0, len(m.state.Playlists)-1)
+		m.selPlaylist = viewport.Clamp(m.selPlaylist+delta, 0, len(m.state.Playlists)-1)
 		m.selEntry = 0
 		m.outScroll = 0
 	case paneEntries:
 		m.follow = false
 		n := len(m.visibleEntries())
-		m.selEntry = clamp(m.selEntry+delta, 0, n-1)
+		m.selEntry = viewport.Clamp(m.selEntry+delta, 0, n-1)
 		m.outScroll = 0
 	case paneOutput:
 		lines := len(m.outputLines())
-		m.outScroll = clamp(m.outScroll-delta, 0, max(0, lines-1))
+		m.outScroll = viewport.Clamp(m.outScroll-delta, 0, max(0, lines-1))
 	}
 }
 
@@ -336,7 +337,7 @@ func (m *model) selectedEntry() *runstate.Entry {
 	if len(ids) == 0 {
 		return nil
 	}
-	i := clamp(m.selEntry, 0, len(ids)-1)
+	i := viewport.Clamp(m.selEntry, 0, len(ids)-1)
 	return m.state.Entries[ids[i]]
 }
 

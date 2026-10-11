@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"time"
+	"youtube-downloader/libs/mvd-core/look"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	"charm.land/bubbles/v2/textarea"
@@ -69,7 +70,7 @@ func (m songsModel) update(msg tea.Msg) (songsModel, tea.Cmd, songsOutcome) {
 
 func (m songsModel) view(width, height int) string {
 	props := songspage.Default()
-	props.Palette = songspage.Palette(palette())
+	props.Palette = songspage.Palette(look.CurrentPalette())
 	props.Hints = hintsOf[songspage.HintsHint](m.hints())
 	props.SongsView = m.ta.View()
 	if m.err != "" {

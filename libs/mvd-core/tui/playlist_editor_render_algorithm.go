@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/cells"
 	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	editorplanningpage "youtube-downloader/libs/mvd-core/editor/editorplanning"
+	"youtube-downloader/libs/mvd-core/look"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -31,13 +33,13 @@ func (m editorModel) render() string {
 	}
 
 	props := editorpage.Default()
-	props.Palette = editorpage.Palette(palette())
+	props.Palette = editorpage.Palette(look.CurrentPalette())
 	props.Title = " " + m.title()
 	props.Songs = m.songRows(width)
 	props.ShowEmpty = len(m.rows) == 0
 
 	detail := m.detail(width)
-	props.Detail1, props.Detail2, props.Detail3, props.Detail4 = cellText(detail[0]), cellText(detail[1]), cellText(detail[2]), cellText(detail[3])
+	props.Detail1, props.Detail2, props.Detail3, props.Detail4 = cells.CellText(detail[0]), cells.CellText(detail[1]), cells.CellText(detail[2]), cells.CellText(detail[3])
 
 	line, keys := m.bottomParts(width)
 	props.Hints = hintsOf[editorpage.HintsHint](m.hints())
@@ -51,22 +53,22 @@ func (m editorModel) renderPlanning(width int) string {
 	done := t.Planned + t.NotFound + t.Failed
 	body := []string{
 		" ",
-		" " + styCyan.Render(spinnerFrames[m.spin]) + " " + styText.Render("Looking up the best version of each song, nothing is downloaded."),
+		" " + look.Cyan.Render(spinnerFrames[m.spin]) + " " + look.Text.Render("Looking up the best version of each song, nothing is downloaded."),
 		" ",
 	}
 	if t.Total == 0 {
-		body = append(body, styDim.Render(" Reading the playlists…"))
+		body = append(body, look.Dim.Render(" Reading the playlists…"))
 	} else {
-		body = append(body, styDim.Render(fmt.Sprintf(" %d of %d songs looked up", done, t.Total)))
+		body = append(body, look.Dim.Render(fmt.Sprintf(" %d of %d songs looked up", done, t.Total)))
 	}
 	for _, pl := range m.state.Playlists {
 		if pl.Err != "" {
-			body = append(body, " "+styRed.Render(display(pl.Title)+": "+pl.Err))
+			body = append(body, " "+look.Red.Render(cells.Display(pl.Title)+": "+pl.Err))
 		}
 	}
 
 	props := editorplanningpage.Default()
-	props.Palette = editorplanningpage.Palette(palette())
+	props.Palette = editorplanningpage.Palette(look.CurrentPalette())
 	props.Body = nil
 	for _, l := range body {
 		props.Body = append(props.Body, editorplanningpage.BodyRow{Line: l})
@@ -104,9 +106,9 @@ func (m editorModel) title() string {
 // rowName is what a song is called on its line: the artist and the title a music database
 // gave it, else the upload's own title.
 func rowName(r playlistfile.Entry) string {
-	name := display(r.Upload.Title)
+	name := cells.Display(r.Upload.Title)
 	if r.Artist != "" && r.Title != "" {
-		name = display(r.Artist + " - " + r.Title)
+		name = cells.Display(r.Artist + " - " + r.Title)
 	}
 	if name == "" {
 		name = "(" + r.Upload.ID + ")"
@@ -164,7 +166,7 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 		header.Address = "Address"
 		header.S7 = "  "
 	}
-	dim := editorpage.CellStyle{Fg: currentColours.Dim}
+	dim := editorpage.CellStyle{Fg: look.Colours.Dim}
 	header.ReviewStyle, header.ArtistStyle, header.SongStyle, header.VideoStyle = dim, dim, dim, dim
 	header.ReplacedStyle, header.AddressStyle = dim, dim
 	rows := []editorpage.SongsRow{header}
@@ -185,10 +187,10 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 		}
 		row := editorpage.SongsRow{
 			Mark: mark, Glyph: decisionGlyph(r), Review: kind,
-			Artist: display(col.Artist), Song: display(col.Song), Video: display(col.Video),
+			Artist: cells.Display(col.Artist), Song: cells.Display(col.Song), Video: cells.Display(col.Video),
 		}
 		if anyReplaced {
-			row.S6, row.Replaced = "  ", display(col.Replaced)
+			row.S6, row.Replaced = "  ", cells.Display(col.Replaced)
 		}
 		if target, _, has := playlisteditor.Target(r); has && showAddress {
 			row.S7, row.Address = "  ", "youtube.com/watch?v="+target
@@ -198,18 +200,18 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 			row.Style = editorpage.RowSelected
 		} else {
 			dimmed := r.Downloaded || r.Decision == playlistfile.DecisionSkipped
-			row.MarkStyle = editorpage.CellStyle{Fg: currentColours.Dim}
+			row.MarkStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
 			row.GlyphStyle = editorpage.CellStyle{Fg: m.glyphColour(r)}
 			row.ReviewStyle = editorpage.CellStyle{Fg: kindColour(r, dimmed)}
-			row.ArtistStyle = editorpage.CellStyle{Fg: currentColours.Focus}
-			row.SongStyle = editorpage.CellStyle{Fg: currentColours.Text}
+			row.ArtistStyle = editorpage.CellStyle{Fg: look.Colours.Focus}
+			row.SongStyle = editorpage.CellStyle{Fg: look.Colours.Text}
 			if dimmed {
-				row.ArtistStyle = editorpage.CellStyle{Fg: currentColours.Dim}
-				row.SongStyle = editorpage.CellStyle{Fg: currentColours.Dim}
+				row.ArtistStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
+				row.SongStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
 			}
-			row.VideoStyle = editorpage.CellStyle{Fg: currentColours.Dim}
-			row.ReplacedStyle = editorpage.CellStyle{Fg: currentColours.Focus}
-			row.AddressStyle = editorpage.CellStyle{Fg: currentColours.Dim}
+			row.VideoStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
+			row.ReplacedStyle = editorpage.CellStyle{Fg: look.Colours.Focus}
+			row.AddressStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
 		}
 		rows = append(rows, row)
 	}
@@ -221,27 +223,27 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 func (m editorModel) glyphColour(r playlistfile.Entry) string {
 	switch {
 	case r.Downloaded, r.Decision == playlistfile.DecisionConfirmed:
-		return currentColours.Success
+		return look.Colours.Success
 	case r.Decision == playlistfile.DecisionReplaced || r.Decision == playlistfile.DecisionOriginal:
-		return currentColours.Focus
+		return look.Colours.Focus
 	}
-	return currentColours.Dim
+	return look.Colours.Dim
 }
 
 // kindColour is the colour of what is proposed for a song.
 func kindColour(r playlistfile.Entry, dimmed bool) string {
 	if dimmed {
-		return currentColours.Dim
+		return look.Colours.Dim
 	}
 	switch engine.PlanKind(r.Kind) {
 	case engine.KindOfficial, engine.KindOwnOfficial:
-		return currentColours.Success
+		return look.Colours.Success
 	case engine.KindBetter:
-		return currentColours.Highlight
+		return look.Colours.Highlight
 	case engine.KindNone:
-		return currentColours.Error
+		return look.Colours.Error
 	}
-	return currentColours.Text
+	return look.Colours.Text
 }
 
 // link makes an address clickable in terminals that support it, and plain text elsewhere.
@@ -256,57 +258,57 @@ func (m editorModel) detail(width int) []string {
 	}
 	lines := make([]string, 0, editorDetailLines)
 
-	pl := display(r.Playlist)
+	pl := cells.Display(r.Playlist)
 	if pl == "" {
-		pl = display(r.PlaylistURL)
+		pl = cells.Display(r.PlaylistURL)
 	}
-	lines = append(lines, fit(" "+styDim.Render("Playlist  ")+styText.Render(pl)+styDim.Render(fmt.Sprintf("  ·  %d of %d", m.sel+1, len(m.rows))), width))
+	lines = append(lines, cells.Fit(" "+look.Dim.Render("Playlist  ")+look.Text.Render(pl)+look.Dim.Render(fmt.Sprintf("  ·  %d of %d", m.sel+1, len(m.rows))), width))
 
-	in := " " + styDim.Render("In list   ") + styText.Render(display(r.Upload.Title))
+	in := " " + look.Dim.Render("In list   ") + look.Text.Render(cells.Display(r.Upload.Title))
 	if r.Upload.Channel != "" {
-		in += styDim.Render("  ·  " + display(r.Upload.Channel))
+		in += look.Dim.Render("  ·  " + cells.Display(r.Upload.Channel))
 	}
 	if r.Upload.ID != "" {
-		in += "  " + styDim.Render(link(playlisteditor.VideoAddress(r.Upload.ID)))
+		in += "  " + look.Dim.Render(link(playlisteditor.VideoAddress(r.Upload.ID)))
 	}
-	lines = append(lines, fit(in, width))
+	lines = append(lines, cells.Fit(in, width))
 
-	prop := " " + styDim.Render("Proposed ") + " "
+	prop := " " + look.Dim.Render("Proposed ") + " "
 	if engine.PlanKind(r.Kind) == engine.KindNone {
-		prop += styRed.Render("nothing found")
+		prop += look.Red.Render("nothing found")
 	} else {
-		prop += styCyan.Render(kindLabel(r))
+		prop += look.Cyan.Render(kindLabel(r))
 		if r.TargetID != "" {
-			prop += "  " + styDim.Render(link(playlisteditor.VideoAddress(r.TargetID)))
+			prop += "  " + look.Dim.Render(link(playlisteditor.VideoAddress(r.TargetID)))
 		}
 	}
 	if r.Reason != "" {
-		prop += styDim.Render("  ·  " + r.Reason)
+		prop += look.Dim.Render("  ·  " + r.Reason)
 	}
-	lines = append(lines, fit(prop, width))
+	lines = append(lines, cells.Fit(prop, width))
 
-	lines = append(lines, fit(" "+styDim.Render("Your pick ")+m.decisionText(r), width))
+	lines = append(lines, cells.Fit(" "+look.Dim.Render("Your pick ")+m.decisionText(r), width))
 	return lines
 }
 
 func (m editorModel) decisionText(r playlistfile.Entry) string {
 	switch {
 	case r.Downloaded:
-		return styGreen.Render("downloaded: it is skipped from now on")
+		return look.Green.Render("downloaded: it is skipped from now on")
 	case r.Decision == playlistfile.DecisionConfirmed:
-		return styGreen.Render("confirmed")
+		return look.Green.Render("confirmed")
 	case r.Decision == playlistfile.DecisionReplaced:
-		text := "another video  " + styDim.Render(link(playlisteditor.VideoAddress(r.ChosenID)))
+		text := "another video  " + look.Dim.Render(link(playlisteditor.VideoAddress(r.ChosenID)))
 		if r.ChosenTitle != "" {
-			text = display(r.ChosenTitle) + "  " + styDim.Render(link(playlisteditor.VideoAddress(r.ChosenID)))
+			text = cells.Display(r.ChosenTitle) + "  " + look.Dim.Render(link(playlisteditor.VideoAddress(r.ChosenID)))
 		}
-		return styCyan.Render("replaced by ") + text
+		return look.Cyan.Render("replaced by ") + text
 	case r.Decision == playlistfile.DecisionOriginal:
-		return styCyan.Render("the upload that is in the list")
+		return look.Cyan.Render("the upload that is in the list")
 	case r.Decision == playlistfile.DecisionSkipped:
-		return styDim.Render("skipped")
+		return look.Dim.Render("skipped")
 	}
-	return styYellow.Render("not reviewed yet")
+	return look.Yellow.Render("not reviewed yet")
 }
 
 func (m editorModel) hints() []keyHint {
@@ -330,18 +332,18 @@ func (m editorModel) bottomParts(width int) (line string, keys bool) {
 				pending++
 			}
 		}
-		return fit(" "+styYellow.Render(fmt.Sprintf("A review from last time is saved (%d songs, %d not downloaded). Bring it along? ", len(m.saved), pending))+
-			styKey.Render("y")+styDim.Render(" yes  ")+styKey.Render("n")+styDim.Render(" no"), width), false
+		return cells.Fit(" "+look.Yellow.Render(fmt.Sprintf("A review from last time is saved (%d songs, %d not downloaded). Bring it along? ", len(m.saved), pending))+
+			look.Key.Render("y")+look.Dim.Render(" yes  ")+look.Key.Render("n")+look.Dim.Render(" no"), width), false
 	case editorAskDownload:
-		return fit(" "+styYellow.Render(fmt.Sprintf("%d songs were not reviewed. ", playlisteditor.Unreviewed(m.rows)))+
-			styKey.Render("y")+styDim.Render(" skip them and download  ")+
-			styKey.Render("a")+styDim.Render(" download them as proposed  ")+
-			styKey.Render("esc")+styDim.Render(" back"), width), false
+		return cells.Fit(" "+look.Yellow.Render(fmt.Sprintf("%d songs were not reviewed. ", playlisteditor.Unreviewed(m.rows)))+
+			look.Key.Render("y")+look.Dim.Render(" skip them and download  ")+
+			look.Key.Render("a")+look.Dim.Render(" download them as proposed  ")+
+			look.Key.Render("esc")+look.Dim.Render(" back"), width), false
 	case editorInput:
-		return fit(" "+m.input.View(), width), false
+		return cells.Fit(" "+m.input.View(), width), false
 	}
 	if m.status != "" && !m.statusUntil.IsZero() && time.Now().Before(m.statusUntil) {
-		return fit(" "+styYellow.Render(m.status), width), false
+		return cells.Fit(" "+look.Yellow.Render(m.status), width), false
 	}
 	return "", true
 }

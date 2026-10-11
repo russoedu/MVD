@@ -3,6 +3,8 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/look"
 	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 
 	"charm.land/bubbles/v2/textinput"
@@ -480,15 +482,15 @@ func (m configModel) view(width, height int) string {
 	}
 
 	props := preferencespage.Default()
-	props.Palette = preferencespage.Palette(palette())
+	props.Palette = preferencespage.Palette(look.CurrentPalette())
 	props.Hints = hintsOf[preferencespage.HintsHint](m.hints())
 	rows := make([]preferencespage.ItemsRow, 0, len(cfgLabels))
 	for i, label := range cfgLabels {
-		row := preferencespage.ItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
+		row := preferencespage.ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
 			row.Mark = "▸ "
 			if m.mode != editNone {
-				row.Value = truncate(m.editorView(), max(10, width-labelW-6))
+				row.Value = cells.Truncate(m.editorView(), max(10, width-labelW-6))
 			} else {
 				row.Style = preferencespage.RowSelected
 			}
@@ -525,14 +527,14 @@ func (m configModel) editorView() string {
 		var parts []string
 		for i, opt := range m.radioOpts {
 			if i == m.radioIdx {
-				parts = append(parts, styYellow.Render("("+opt+")"))
+				parts = append(parts, look.Yellow.Render("("+opt+")"))
 			} else {
-				parts = append(parts, styDim.Render(opt))
+				parts = append(parts, look.Dim.Render(opt))
 			}
 		}
 		return strings.Join(parts, " ")
 	case editPicking:
-		return styDim.Render("choose a folder in the window that opened...")
+		return look.Dim.Render("choose a folder in the window that opened...")
 	default:
 		return m.input.View()
 	}

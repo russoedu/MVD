@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	"youtube-downloader/libs/mvd-core/look"
 
 	"charm.land/lipgloss/v2"
 
@@ -15,10 +16,7 @@ func TestApplyThemeSetsTheColours(t *testing.T) {
 	c.Accent = "#112233"
 	ApplyTheme(c)
 
-	if colMagenta != lipgloss.Color("#112233") {
-		t.Errorf("accent = %q, want #112233", colMagenta)
-	}
-	if got := styTitle.GetForeground(); got != colMagenta {
-		t.Errorf("title style = %v, want the accent colour", got)
+	if got := look.Title.GetForeground(); got != lipgloss.Color("#112233") {
+		t.Errorf("title style = %v, want the accent colour #112233", got)
 	}
 }

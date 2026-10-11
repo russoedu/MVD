@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
+	"youtube-downloader/libs/mvd-core/viewport"
 )
 
 // rect is a region of the screen, in cells.
@@ -106,7 +107,7 @@ func (m model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, te
 
 func (m *model) clickPlaylist(inner rect, y int) {
 	n := len(m.state.Playlists)
-	i := windowStart(n, m.selPlaylist, inner.h) + (y - inner.y)
+	i := viewport.Start(n, m.selPlaylist, inner.h) + (y - inner.y)
 	m.focus = paneLists
 	if i < 0 || i >= n {
 		return
@@ -124,8 +125,8 @@ func (m *model) clickEntry(inner rect, y int) {
 		return
 	}
 	n := len(m.visibleEntries())
-	sel := clamp(m.selEntry, 0, max(0, n-1))
-	i := windowStart(n, sel, inner.h) + (y - inner.y)
+	sel := viewport.Clamp(m.selEntry, 0, max(0, n-1))
+	i := viewport.Start(n, sel, inner.h) + (y - inner.y)
 	if i < 0 || i >= n {
 		return
 	}

@@ -3,6 +3,8 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/look"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 
 	"charm.land/bubbles/v2/textinput"
@@ -160,7 +162,7 @@ func (m advancedModel) hints() []keyHint {
 
 func (m advancedModel) view(width, height int) string {
 	props := advancedpage.Default()
-	props.Palette = advancedpage.Palette(palette())
+	props.Palette = advancedpage.Palette(look.CurrentPalette())
 	props.Hints = hintsOf[advancedpage.HintsHint](m.hints())
 
 	var labelW = 0
@@ -169,13 +171,13 @@ func (m advancedModel) view(width, height int) string {
 	}
 	rows := make([]advancedpage.ItemsRow, 0, len(advLabels))
 	for i, label := range advLabels {
-		row := advancedpage.ItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
+		row := advancedpage.ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
 			row.Mark = "▸ "
 			if m.mode == editNone {
 				row.Style = advancedpage.RowSelected
 			} else {
-				row.Value = truncate(m.input.View(), max(10, width-labelW-6))
+				row.Value = cells.Truncate(m.input.View(), max(10, width-labelW-6))
 			}
 		}
 		rows = append(rows, row)
