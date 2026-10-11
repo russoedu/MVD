@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/viewport"
 
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
@@ -43,7 +45,7 @@ func (m model) Outline() ScreenOutline {
 		title = fmt.Sprintf("MVD · Downloads finished: %d done, %d failed", t.Done+t.Duplicate, t.Failed)
 	}
 	if m.selPlaylist < len(m.state.Playlists) {
-		title += " · " + display(m.state.Playlists[m.selPlaylist].Title)
+		title += " · " + cells.Display(m.state.Playlists[m.selPlaylist].Title)
 	}
 
 	out := ScreenOutline{Title: title, ItemsLabel: "Downloads", Keys: outlineKeys(m.hints())}
@@ -55,7 +57,7 @@ func (m model) Outline() ScreenOutline {
 	if len(ids) == 0 {
 		return out
 	}
-	sel := clamp(m.selEntry, 0, len(ids)-1)
+	sel := viewport.Clamp(m.selEntry, 0, len(ids)-1)
 	from := max(0, sel-outlineEntryWindow)
 	to := min(len(ids), sel+outlineEntryWindow+1)
 	for i := from; i < to; i++ {

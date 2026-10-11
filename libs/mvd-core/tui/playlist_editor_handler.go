@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -343,7 +344,7 @@ func (m *editorModel) move(delta int) {
 	if len(m.rows) == 0 {
 		return
 	}
-	m.sel = clamp(m.sel+delta, 0, len(m.rows)-1)
+	m.sel = viewport.Clamp(m.sel+delta, 0, len(m.rows)-1)
 	m.keepSelectionVisible()
 }
 
@@ -355,7 +356,7 @@ func (m *editorModel) keepSelectionVisible() {
 	if m.sel >= m.top+h {
 		m.top = m.sel - h + 1
 	}
-	m.top = clamp(m.top, 0, max(0, len(m.rows)-h))
+	m.top = viewport.Clamp(m.top, 0, max(0, len(m.rows)-h))
 }
 
 // open shows a video in the browser: the one that would be downloaded, or with original

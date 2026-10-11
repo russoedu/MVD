@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/viewport"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -214,13 +215,13 @@ func TestRenderBoxAndWindow(t *testing.T) {
 	}
 
 	rows := []string{"a", "b", "c", "d", "e", "f"}
-	if got := window(rows, 5, 3); strings.Join(got, "") != "def" {
+	if got := viewport.Rows(rows, 5, 3); strings.Join(got, "") != "def" {
 		t.Errorf("window at end wrong: %v", got)
 	}
-	if got := window(rows, 0, 3); strings.Join(got, "") != "abc" {
+	if got := viewport.Rows(rows, 0, 3); strings.Join(got, "") != "abc" {
 		t.Errorf("window at start wrong: %v", got)
 	}
-	if got := window(rows, 3, 3); strings.Join(got, "") != "cde" {
+	if got := viewport.Rows(rows, 3, 3); strings.Join(got, "") != "cde" {
 		t.Errorf("window in middle wrong: %v", got)
 	}
 }

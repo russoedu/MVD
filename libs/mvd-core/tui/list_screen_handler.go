@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/look"
 	listpage "youtube-downloader/libs/mvd-core/setup/list"
 
 	"charm.land/bubbles/v2/textarea"
@@ -123,12 +124,12 @@ func (m listModel) view(width, height int) string {
 	}
 
 	props := listpage.Default()
-	props.Palette = listpage.Palette(palette())
+	props.Palette = listpage.Palette(look.CurrentPalette())
 	props.Title = title
 	props.LinksView = m.ta.View()
 	props.ShowConfirm, props.ShowKeys = m.confirmQuit, !m.confirmQuit
 	props.Hints = hintsOf[listpage.HintsHint](m.hints())
-	props.Confirm = " " + styRed.Render("Discard the list and quit? ") + styKey.Render("y") + styDim.Render("/") + styKey.Render("n")
+	props.Confirm = " " + look.Red.Render("Discard the list and quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
 	return listpage.View(props, width, height).View
 }
 

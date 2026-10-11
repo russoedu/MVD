@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"youtube-downloader/libs/mvd-core/cells"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -20,7 +21,7 @@ func screenView(content string) tea.View {
 func paddedFrame(view string, w int) string {
 	lines := strings.Split(view, "\n")
 	for i, l := range lines {
-		lines[i] = padRight(l, w)
+		lines[i] = cells.PadRight(l, w)
 	}
 	return strings.Join(lines, "\n")
 }

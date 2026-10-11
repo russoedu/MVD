@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/look"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -197,7 +199,7 @@ func (m appModel) render() string {
 		return view
 	}
 	lines := strings.Split(view, "\n")
-	lines[len(lines)-1] = fit(" "+styRed.Render(m.notice), m.width)
+	lines[len(lines)-1] = cells.Fit(" "+look.Red.Render(m.notice), m.width)
 	return strings.Join(lines, "\n")
 }
 

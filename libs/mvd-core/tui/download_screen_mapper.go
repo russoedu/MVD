@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/viewport"
 
 	"github.com/charmbracelet/x/ansi"
 
 	"youtube-downloader/libs/mvd-core/engine"
-	"youtube-downloader/libs/mvd-core/runstate"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
+	"youtube-downloader/libs/mvd-core/runstate"
 )
 
 // downloadProps fills the properties of the Download screen, drawn from its design, for
@@ -17,7 +20,7 @@ import (
 // the screen shows. The rows are windowed to the room the design gives them.
 func (m model) downloadProps(w, h int) downloadpage.Props {
 	p := downloadpage.Default()
-	p.Palette = downloadpage.Palette(palette())
+	p.Palette = downloadpage.Palette(look.CurrentPalette())
 	// A design shows its optional parts by default; only what applies is shown.
 	p.ShowProgress, p.ShowNote, p.ConfirmQuit, p.ShowStatus, p.ShowKeys = false, false, false, false, false
 
@@ -31,7 +34,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	p.PlaylistCount = len(m.state.Playlists)
 
 	p.Counters, p.HeaderRight = m.headerTexts()
-	p.Counters = truncate(p.Counters, w-2)
+	p.Counters = cells.Truncate(p.Counters, w-2)
 
 	// The design previews with a footer; the app has one only when there is something for it.
 	p.FooterLines = 0
@@ -52,14 +55,14 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 
 	// Playlists.
 	pl := region("Playlists rows")
-	p.Playlists = windowRows(m.playlistRows(), m.selPlaylist, pl.H)
+	p.Playlists = viewport.Rows(m.playlistRows(), m.selPlaylist, pl.H)
 	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
 	p.PlaylistsBorder = m.borderColour(m.focus == paneLists)
 
 	// Entries.
 	en := region("Entries rows")
 	title, right, entries, notes, sel := m.entryRows(en.W)
-	p.Entries = windowRows(entries, sel, en.H)
+	p.Entries = viewport.Rows(entries, sel, en.H)
 	p.Notes, p.HasNotes = notes, 0
 	if len(notes) > 0 {
 		p.HasNotes = 1
@@ -71,7 +74,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	out := region("Output rows")
 	p.Output = nil
 	for _, line := range m.outputWindow(out.H) {
-		p.Output = append(p.Output, downloadpage.OutputRow{Line: cellText(line)})
+		p.Output = append(p.Output, downloadpage.OutputRow{Line: cells.CellText(line)})
 	}
 	p.OutputTitle = m.outputTitle()
 	p.OutputRight = ""
@@ -94,7 +97,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 			p.ProgressText = footer.bar.info
 		default:
 			p.ShowNote = true
-			p.Note = truncate(footer.lines[len(footer.lines)-1], inner)
+			p.Note = cells.Truncate(footer.lines[len(footer.lines)-1], inner)
 		}
 	}
 
@@ -103,7 +106,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	switch {
 	case m.confirmQuit:
 		p.ConfirmQuit = true
-		p.Confirm = styRed.Render(" Downloads are still running. Quit? ") + styKey.Render("y") + styDim.Render("/") + styKey.Render("n")
+		p.Confirm = look.Red.Render(" Downloads are still running. Quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
 	case m.status != "" && time.Now().Before(m.statusUntil):
 		p.ShowStatus = true
 		p.Status = " " + m.status
@@ -115,9 +118,9 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 
 func (m model) borderColour(focused bool) string {
 	if focused {
-		return currentColours.Focus
+		return look.Colours.Focus
 	}
-	return currentColours.Dim
+	return look.Colours.Dim
 }
 
 // headerTexts are the counters inside the header box and the label on its top edge.
@@ -133,22 +136,22 @@ func (m model) headerTexts() (counters, right string) {
 	}
 
 	parts := []string{
-		styText.Render(fmt.Sprintf("Queue %d", t.Queued)),
-		styYellow.Render(fmt.Sprintf("%s Running %d", spinnerFrames[m.spin], t.Running)),
-		styGreen.Render(fmt.Sprintf("✓ Done %d", t.Done)),
-		styCyan.Render(fmt.Sprintf("⇄ Official %d", t.Official)),
-		styCyan.Render(fmt.Sprintf("↑ Better %d", t.Better)),
-		styDim.Render(fmt.Sprintf("≡ Dup %d", t.Duplicate)),
-		styRed.Render(fmt.Sprintf("✗ Failed %d", t.Failed)),
+		look.Text.Render(fmt.Sprintf("Queue %d", t.Queued)),
+		look.Yellow.Render(fmt.Sprintf("%s Running %d", spinnerFrames[m.spin], t.Running)),
+		look.Green.Render(fmt.Sprintf("✓ Done %d", t.Done)),
+		look.Cyan.Render(fmt.Sprintf("⇄ Official %d", t.Official)),
+		look.Cyan.Render(fmt.Sprintf("↑ Better %d", t.Better)),
+		look.Dim.Render(fmt.Sprintf("≡ Dup %d", t.Duplicate)),
+		look.Red.Render(fmt.Sprintf("✗ Failed %d", t.Failed)),
 	}
 	if t.NotFound > 0 {
-		parts = append(parts, styDim.Render(fmt.Sprintf("∅ Not found %d", t.NotFound)))
+		parts = append(parts, look.Dim.Render(fmt.Sprintf("∅ Not found %d", t.NotFound)))
 	}
 	if t.Retried > 0 {
-		parts = append(parts, styCyan.Render(fmt.Sprintf("↻ Retried %d", t.Retried)))
+		parts = append(parts, look.Cyan.Render(fmt.Sprintf("↻ Retried %d", t.Retried)))
 	}
 	if m.state.Idle {
-		parts[1] = styDim.Render(fmt.Sprintf("  Running %d", t.Running))
+		parts[1] = look.Dim.Render(fmt.Sprintf("  Running %d", t.Running))
 	}
 	return strings.Join(parts, "   "), right
 }
@@ -167,7 +170,7 @@ func (m model) playlistRows() []downloadpage.PlaylistsRow {
 		}
 		glyph, colour := m.playlistGlyph(pl)
 		row := downloadpage.PlaylistsRow{
-			Mark: " ", Title: cellText(display(pl.Title)), Count: count, Glyph: glyph,
+			Mark: " ", Title: cells.CellText(cells.Display(pl.Title)), Count: count, Glyph: glyph,
 			GlyphStyle: downloadpage.CellStyle{Fg: colour},
 		}
 		if i == m.selPlaylist {
@@ -182,14 +185,14 @@ func (m model) playlistRows() []downloadpage.PlaylistsRow {
 // and the label of the pane and the row that is selected.
 func (m model) entryRows(innerW int) (title, right string, rows []downloadpage.EntriesRow, notes []downloadpage.NotesRow, sel int) {
 	ids := m.visibleEntries()
-	sel = clamp(m.selEntry, 0, max(0, len(ids)-1))
+	sel = viewport.Clamp(m.selEntry, 0, max(0, len(ids)-1))
 
 	for i, id := range ids {
 		en := m.state.Entries[id]
 		glyph, glyphColour := m.entryGlyph(en)
 		tag, tagColour := m.entryTag(en)
 		row := downloadpage.EntriesRow{
-			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cellText(entryTitle(en)), Tag: tag,
+			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cells.CellText(entryTitle(en)), Tag: tag,
 			GlyphStyle: downloadpage.CellStyle{Fg: glyphColour}, TagStyle: downloadpage.CellStyle{Fg: tagColour},
 		}
 		switch {
@@ -197,7 +200,7 @@ func (m model) entryRows(innerW int) (title, right string, rows []downloadpage.E
 			row.Style = downloadpage.RowSelected
 		case i == sel:
 			// A selected row in a pane that does not have the focus is only coloured.
-			accent := downloadpage.CellStyle{Fg: currentColours.Accent}
+			accent := downloadpage.CellStyle{Fg: look.Colours.Accent}
 			row.SpStyle, row.IdxStyle, row.Sp2Style, row.TitleStyle, row.Sp3Style = accent, accent, accent, accent, accent
 		}
 		rows = append(rows, row)
@@ -212,13 +215,13 @@ func (m model) entryRows(innerW int) (title, right string, rows []downloadpage.E
 		right = fmt.Sprintf("%d", len(ids))
 		switch {
 		case pl.Err != "":
-			for _, l := range wrap("✗ "+display(pl.Err), innerW) {
-				notes = append(notes, downloadpage.NotesRow{Line: cellText(l), LineStyle: downloadpage.CellStyle{Fg: currentColours.Error}})
+			for _, l := range cells.Wrap("✗ "+cells.Display(pl.Err), innerW) {
+				notes = append(notes, downloadpage.NotesRow{Line: cells.CellText(l), LineStyle: downloadpage.CellStyle{Fg: look.Colours.Error}})
 			}
 		case !pl.Listed:
-			notes = []downloadpage.NotesRow{{Line: "listing playlist...", LineStyle: downloadpage.CellStyle{Fg: currentColours.Dim}}}
+			notes = []downloadpage.NotesRow{{Line: "listing playlist...", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
 		case len(ids) == 0 && m.filterFailed:
-			notes = []downloadpage.NotesRow{{Line: "no failed entries", LineStyle: downloadpage.CellStyle{Fg: currentColours.Dim}}}
+			notes = []downloadpage.NotesRow{{Line: "no failed entries", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
 		}
 	}
 	return title, right, rows, notes, sel
@@ -252,9 +255,9 @@ func (m model) outputFooter() outputFooter {
 			percent = 100
 		}
 		f.bar = &barInfo{info: info, percent: percent}
-		f.lines = []string{"", styYellow.Render(info)}
+		f.lines = []string{"", look.Yellow.Render(info)}
 	case engine.StateFailed:
-		f.lines = []string{"", styRed.Render("✗ " + display(en.Err))}
+		f.lines = []string{"", look.Red.Render("✗ " + cells.Display(en.Err))}
 	case engine.StateDone:
 		what := "original " + en.TargetID
 		if en.Official {
@@ -262,7 +265,7 @@ func (m model) outputFooter() outputFooter {
 		} else if en.Better {
 			what = "better quality video " + en.TargetID
 		}
-		f.lines = []string{"", styGreen.Render("✓ downloaded " + what)}
+		f.lines = []string{"", look.Green.Render("✓ downloaded " + what)}
 	}
 	return f
 }
@@ -274,7 +277,7 @@ func (m model) outputWindow(h int) []string {
 	start := max(0, end-max(h, 1))
 	out := make([]string, 0, h)
 	for _, l := range lines[start:end] {
-		out = append(out, display(l))
+		out = append(out, cells.Display(l))
 	}
 	return out
 }
@@ -290,13 +293,4 @@ func (m model) leftWidth(w int) int {
 		return w
 	}
 	return max(36, w*38/100)
-}
-
-// windowRows is the part of rows that keeps the row sel in view in h rows.
-func windowRows[T any](rows []T, sel, h int) []T {
-	if h <= 0 || len(rows) <= h {
-		return rows
-	}
-	start := windowStart(len(rows), sel, h)
-	return rows[start : start+h]
 }

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"youtube-downloader/libs/mvd-core/look"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 
 	"charm.land/bubbles/v2/textinput"
@@ -127,7 +128,7 @@ func (m coloursModel) display(i int) string {
 
 func (m coloursModel) view(width, height int) string {
 	props := colourspage.Default()
-	props.Palette = colourspage.Palette(palette())
+	props.Palette = colourspage.Palette(look.CurrentPalette())
 	props.Hints = hintsOf[colourspage.HintsHint](m.hints())
 
 	rows := make([]colourspage.SlotsRow, 0, len(colourLabels))

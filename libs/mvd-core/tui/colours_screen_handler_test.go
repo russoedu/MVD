@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	"youtube-downloader/libs/mvd-core/look"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -31,7 +32,7 @@ func TestColoursModelEditsAndValidates(t *testing.T) {
 	// A valid one is accepted and applied to the interface.
 	m.input.SetValue("#123456")
 	m, _, _, _ = m.update(key("enter"))
-	if m.editing || m.cfg.Colors.Accent != "#123456" || colMagenta != lipgloss.Color("#123456") {
+	if m.editing || m.cfg.Colors.Accent != "#123456" || look.Title.GetForeground() != lipgloss.Color("#123456") {
 		t.Errorf("a valid colour should be accepted and applied: %+v", m.cfg.Colors)
 	}
 

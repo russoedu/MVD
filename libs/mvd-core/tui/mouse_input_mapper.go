@@ -85,19 +85,3 @@ func hintKeyMsg(key string) (tea.KeyPressMsg, bool) {
 	}
 	return tea.KeyPressMsg{}, false
 }
-
-// windowStart is the index of the first row window shows: the same arithmetic,
-// so a click can be matched to the row that was drawn there.
-func windowStart(n, sel, h int) int {
-	if h <= 0 || n <= h {
-		return 0
-	}
-	start := sel - h/2
-	if start < 0 {
-		start = 0
-	}
-	if start+h > n {
-		start = n - h
-	}
-	return start
-}
