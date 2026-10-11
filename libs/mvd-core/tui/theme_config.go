@@ -16,8 +16,7 @@ var (
 	colMagenta, colCyan, colYellow, colGreen, colRed, colDim, colText color.Color
 
 	styTitle, styBorder, styBorderOn, styDim, styText, styCyan, styYellow lipgloss.Style
-	styGreen, styRed, styMagenta, stySelected, styKey, styBarFill         lipgloss.Style
-	styBarEmpty                                                           lipgloss.Style
+	styGreen, styRed, styMagenta, stySelected, styKey                     lipgloss.Style
 )
 
 func init() { ApplyTheme(config.DefaultThemeColors()) }
@@ -46,8 +45,6 @@ func ApplyTheme(c config.ThemeColors) {
 	styMagenta = lipgloss.NewStyle().Foreground(colMagenta)
 	stySelected = lipgloss.NewStyle().Background(lipgloss.Color(c.Selected)).Foreground(colText).Bold(true)
 	styKey = lipgloss.NewStyle().Foreground(colYellow).Bold(true)
-	styBarFill = lipgloss.NewStyle().Foreground(colYellow)
-	styBarEmpty = lipgloss.NewStyle().Foreground(colDim)
 }
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}

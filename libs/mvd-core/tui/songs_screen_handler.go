@@ -84,14 +84,6 @@ func (m songsModel) view(width, height int) string {
 
 func (m songsModel) title() string { return "MVD · Add songs" }
 
-// summary is the line under the text area.
-func (m songsModel) summary() string {
-	if m.err != "" {
-		return " " + styRed.Render(m.err)
-	}
-	return " " + styDim.Render(m.summaryText())
-}
-
 // summaryText tells how the text reads: how many songs, and how many lines no
 // song could be read from. An error from the last save replaces it.
 func (m songsModel) summaryText() string {

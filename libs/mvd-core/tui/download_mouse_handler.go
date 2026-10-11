@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/screens"
 )
 
 // rect is a region of the screen, in cells.
@@ -18,35 +19,30 @@ type downloadLayout struct {
 	hasLists, hasOutput        bool
 }
 
-// layout mirrors View and renderLeft, so a mouse position can be matched to
-// the pane that was drawn there. ok is false while the screen shows no panes.
+// layout is where the screen's design puts each pane, so a mouse position can be matched
+// to the pane that was drawn there. ok is false while the screen shows no panes.
 func (m model) layout() (l downloadLayout, ok bool) {
 	if m.width < 60 || m.height < 16 || m.showHelp {
 		return l, false
 	}
-	bodyH := max(6, m.height-headerHeight-keyBarHeight)
-	body := rect{0, headerHeight, m.width, bodyH}
+	p := screens.DefaultDownloadProps()
+	p.LeftWidth, p.ShowOutput = m.leftWidth(m.width), m.fullLog || m.width >= minWideWidth
+	p.ShowLists = p.LeftWidth > 0
+	p.PlaylistCount = len(m.state.Playlists)
+	frame := screens.DownloadLayout(p, m.width, m.height)
 
-	switch {
-	case m.fullLog:
-		l.output, l.hasOutput = body, true
-	case m.width < minWideWidth:
-		l.playlists, l.entries = m.leftPanes(body)
-		l.hasLists = true
-	default:
-		leftW := max(36, m.width*38/100)
-		l.playlists, l.entries = m.leftPanes(rect{0, headerHeight, leftW, bodyH})
-		l.hasLists = true
-		l.output, l.hasOutput = rect{leftW, headerHeight, m.width - leftW, bodyH}, true
+	box := func(name string) rect {
+		r, _ := frame.RegionNamed(name)
+		return rect{r.X, r.Y, r.W, r.H}
+	}
+	l.hasLists, l.hasOutput = p.ShowLists, p.ShowOutput
+	if l.hasLists {
+		l.playlists, l.entries = box("Playlists box"), box("Entries box")
+	}
+	if l.hasOutput {
+		l.output = box("Output box")
 	}
 	return l, true
-}
-
-func (m model) leftPanes(left rect) (playlists, entries rect) {
-	plH := len(m.state.Playlists) + 2
-	plH = min(plH, max(5, left.h/3))
-	plH = min(plH, left.h-5)
-	return rect{left.x, left.y, left.w, plH}, rect{left.x, left.y + plH, left.w, left.h - plH}
 }
 
 // mouse handles a click or a wheel notch on the download screen.
