@@ -996,6 +996,7 @@ func drawRows(g *sketchGrid, p cuppa.Props) {
 	}
 	// A pane without focus shows its selected row as accent text, not inverted.
 	blurred := p.Str("focused") == "false"
+	blurAccent := orColour(p.Str("blurColor"), accent)
 	for y, row := range allRows {
 		if y >= g.H {
 			break
@@ -1007,7 +1008,7 @@ func drawRows(g *sketchGrid, p cuppa.Props) {
 			case "selected":
 				isSelected = true
 				if blurred {
-					base = sketchStyle{Fg: accent}
+					base = sketchStyle{Fg: blurAccent}
 				} else if !anySelBg {
 					base = sketchSelected(accent)
 					g.Fill(sketchRect{X: 0, Y: y, W: g.W, H: 1}, ' ', base)
@@ -1037,7 +1038,7 @@ func drawRows(g *sketchGrid, p cuppa.Props) {
 				style.Bg = paletteColour(p, col.bg)
 			}
 			if isSelected && blurred {
-				style.Fg = accent
+				style.Fg = blurAccent
 			} else {
 				if isSelected && col.selBg != "" {
 					style.Bg = paletteColour(p, col.selBg)

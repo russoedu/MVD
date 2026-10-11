@@ -138,7 +138,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Playlists rows", X: 1, Y: 4, W: 43, H: 6, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Count:auto:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1,End:1", "focused": "true", "gap": "0", "rows": "▸, ,90s UK Dance Hits, ,3/6, ,⠋,", "styles": "selected", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Playlists rows", X: 1, Y: 4, W: 43, H: 6, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Count:auto:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1,End:1", "focused": "true", "gap": "0", "rows": "▸, ,90s UK Dance Hits, ,3/6, ,⠋,", "styles": "selected", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Playlists box", "x") + 1.0)), cuppa.Cells((e.Rect("Playlists box", "y") + 1.0)), cuppa.Cells((e.Rect("Playlists box", "w") - 2.0)), cuppa.Cells((e.Rect("Playlists box", "h") - 2.0))
@@ -211,7 +211,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entries rows", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#ff007f", "columns": "Glyph:1,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Idx:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Tag:auto", "focused": "true", "gap": "0", "rows": "✓, ,01, ,You Don't Know Me, ,⇄", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entries rows", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"blurColor": "#ff007f", "cellstyles": "", "color": "#3b0f2a", "columns": "Glyph:1,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Idx:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Tag:auto", "focused": "true", "gap": "0", "rows": "✓, ,01, ,You Don't Know Me, ,⇄", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0))
@@ -238,7 +238,10 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Accent != "" {
-				v["color"] = p.Palette.Accent
+				v["blurColor"] = p.Palette.Accent
+			}
+			if p.Palette.Selected != "" {
+				v["color"] = p.Palette.Selected
 			}
 			v["focused"] = strconv.FormatBool(p.EntriesFocus)
 			if p.EntriesRows == nil {
@@ -259,7 +262,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entry notes", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "focused": "true", "gap": "0", "rows": "note", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entry notes", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "focused": "true", "gap": "0", "rows": "note", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0))
@@ -331,7 +334,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Output rows", X: 46, Y: 4, W: 73, H: 30, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "focused": "true", "gap": "0", "rows": "line", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Output rows", X: 46, Y: 4, W: 73, H: 30, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Line:fill:ellipsis:fg=@Text", "focused": "true", "gap": "0", "rows": "line", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Output box", "x") + 1.0)), cuppa.Cells((e.Rect("Output box", "y") + 1.0)), cuppa.Cells((e.Rect("Output box", "w") - 2.0)), cuppa.Cells(((e.Rect("Output box", "h") - 2.0) - e.In("FooterLines")))
