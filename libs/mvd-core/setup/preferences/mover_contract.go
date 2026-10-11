@@ -1,4 +1,4 @@
-package tui
+package preferences
 
 // MoveOutcome is how asking to move the app to its own folder went.
 type MoveOutcome int

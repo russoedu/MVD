@@ -51,17 +51,17 @@ func TestSetupScreensKeyBarSettingsAndWheel(t *testing.T) {
 
 	// Clicking a setting selects it; the title is row 0, so the third setting is row 3.
 	m, _ = m.Update(click(10, 3))
-	if got := m.(setupModel).config.cursor; got != 2 {
+	if got := m.(setupModel).config.Cursor(); got != 2 {
 		t.Errorf("want the third setting selected, got %d", got)
 	}
 
 	// The wheel moves like the arrow keys.
 	m, _ = m.Update(wheel(10, 5, tea.MouseWheelDown))
-	if got := m.(setupModel).config.cursor; got != 5 {
+	if got := m.(setupModel).config.Cursor(); got != 5 {
 		t.Errorf("a notch down moves three settings, got cursor %d", got)
 	}
 	m, _ = m.Update(wheel(10, 5, tea.MouseWheelUp))
-	if got := m.(setupModel).config.cursor; got != 2 {
+	if got := m.(setupModel).config.Cursor(); got != 2 {
 		t.Errorf("a notch up moves three back, got cursor %d", got)
 	}
 
@@ -88,9 +88,9 @@ func TestSetupScreensIgnoreClicksOnSettingsWhileOneIsBeingEdited(t *testing.T) {
 	m, _ = m.Update(key("down"))
 	m, _ = m.Update(key("enter")) // opens an editor on the second setting
 
-	before := m.(setupModel).config.cursor
+	before := m.(setupModel).config.Cursor()
 	m, _ = m.Update(click(10, 6))
-	if got := m.(setupModel).config.cursor; got != before {
+	if got := m.(setupModel).config.Cursor(); got != before {
 		t.Errorf("a click while editing moved the selection from %d to %d", before, got)
 	}
 }

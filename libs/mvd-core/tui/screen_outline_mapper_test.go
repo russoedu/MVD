@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -27,7 +28,7 @@ func TestOutlineFollowsTheConfigScreenSelection(t *testing.T) {
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	out := m.(outliner).Outline()
 
-	if out.Title != "MVD · Preferences" || len(out.Items) != cfgItemCount {
+	if out.Title != "MVD · Preferences" || len(out.Items) != preferencespage.ItemCount {
 		t.Fatalf("unexpected outline %+v", out)
 	}
 	if !out.Items[1].Selected || out.Items[1].Label != "Video Quality" || out.Items[1].Value != "best" {
