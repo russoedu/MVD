@@ -4,10 +4,10 @@ package screens
 
 // AdvancedProps is everything the Advanced screen takes from the program that owns it.
 type AdvancedProps struct {
-	// KeyBar is the Text of "Key bar".
-	KeyBar string
 	// Items is the Sample rows (; between rows, , between cells) of "Items".
 	Items []AdvancedItemsRow
+	// Hints is the Hints (key:label, comma separated) of "Key bar".
+	Hints []AdvancedHintsHint
 	// Palette is the design's named colours; set one and every component that
 	// uses it follows. An empty one keeps the design's colour.
 	Palette AdvancedPalette
@@ -55,18 +55,31 @@ type AdvancedItemsRow struct {
 	Mark string
 	// Name is a cell.
 	Name string
+	// Gap is a cell.
+	Gap string
 	// Value is a cell.
 	Value string
+	// MarkStyle restyles the Mark cell of this row; the zero value keeps the column's style.
+	MarkStyle CellStyle
+	// NameStyle restyles the Name cell of this row; the zero value keeps the column's style.
+	NameStyle CellStyle
+	// GapStyle restyles the Gap cell of this row; the zero value keeps the column's style.
+	GapStyle CellStyle
+	// ValueStyle restyles the Value cell of this row; the zero value keeps the column's style.
+	ValueStyle CellStyle
 	// Style is how the row is drawn: RowNormal, RowSelected, RowDim or RowAccent.
 	Style RowStyle
 }
+
+// AdvancedHintsHint is one hint of the key bar Hints.
+type AdvancedHintsHint struct{ Key, Label string }
 
 // DefaultAdvancedProps is the screen as it was designed: each input holds the value
 // it had in the design.
 func DefaultAdvancedProps() AdvancedProps {
 	return AdvancedProps{
-		KeyBar:  " ",
-		Items:   []AdvancedItemsRow{{Mark: "▸ ", Name: "Extra yt-dlp args", Value: "(none)", Style: RowSelected}, {Mark: "  ", Name: "Parallel fragments per video", Value: "4", Style: RowNormal}, {Mark: "  ", Name: "Auto Retry", Value: "yes", Style: RowNormal}},
+		Items:   []AdvancedItemsRow{{Mark: "▸ ", Name: "Extra yt-dlp args", Gap: "", Value: "(none)", Style: RowSelected}, {Mark: "  ", Name: "Parallel fragments per video", Gap: "", Value: "4", Style: RowNormal}, {Mark: "  ", Name: "Auto Retry", Gap: "", Value: "yes", Style: RowNormal}},
+		Hints:   []AdvancedHintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "back"}},
 		Palette: DefaultAdvancedPalette(),
 	}
 }
@@ -80,6 +93,12 @@ type AdvancedEvent interface{ isAdvancedEvent() }
 type AdvancedPick struct{ X, Y int }
 
 func (AdvancedPick) isAdvancedEvent() {}
+
+// AdvancedHint is raised by a click on "Key bar". X and Y are the cell inside the component that was
+// clicked, and 0 for a key.
+type AdvancedHint struct{ X, Y int }
+
+func (AdvancedHint) isAdvancedEvent() {}
 
 // AdvancedKeys are the keys of the screen, for a key bar.
 var AdvancedKeys = []KeyHint{}

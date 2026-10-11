@@ -18,6 +18,8 @@ import (
 
 func init() {
 	extra["lipgloss.rows"] = widgetPart(drawRows)
+	extra["lipgloss.keybar"] = widgetPart(drawKeybar)
+	extra["lipgloss.slot"] = slotPart
 	extra["community.dropdown"] = widgetPart(drawDropdown)
 	extra["community.promptinput"] = widgetPart(drawPromptInput)
 	extra["community.promptselect"] = widgetPart(drawPromptSelect)
@@ -52,8 +54,10 @@ func sketchLines(s string) []string {
 }
 
 type sketchStyle struct {
-	Fg, Bg string
-	Bold   bool
+	Fg, Bg  string
+	Bold    bool
+	Dim     bool
+	Reverse bool
 }
 
 type sketchCell struct {
@@ -139,7 +143,7 @@ func (g *sketchGrid) String() string {
 			}
 			text := run.String()
 			if cur != (sketchStyle{}) {
-				st := lipgloss.NewStyle().Bold(cur.Bold)
+				st := lipgloss.NewStyle().Bold(cur.Bold).Faint(cur.Dim).Reverse(cur.Reverse)
 				if cur.Fg != "" {
 					st = st.Foreground(lipgloss.Color(cur.Fg))
 				}
@@ -460,28 +464,233 @@ func drawChart3D(g *sketchGrid, p props) {
 	}
 }
 
-// rowsColumn is one column of the Rows component: its name, its width (0 for
-// the rest of the row) and whether its cells are colours.
-type rowsColumn struct {
-	name   string
-	width  int
-	colour bool
+// sgrRun is text with the style the escape sequences before it gave it.
+type sgrRun struct {
+	text  string
+	style sketchStyle
 }
 
-// rowsColumns reads "Name[:width][:colour]" items separated by commas. A
-// column without a width takes twelve cells, except the last, which takes what
-// is left of the row.
+// parseSGR splits text that may carry SGR escape sequences (colours, bold,
+// dim, reverse) into runs of one style, starting from base. Other escape
+// sequences are dropped. Text with no escape is one run.
+func parseSGR(text string, base sketchStyle) []sgrRun {
+	if !strings.ContainsRune(text, 0x1b) {
+		return []sgrRun{{text, base}}
+	}
+	var runs []sgrRun
+	cur := base
+	var b strings.Builder
+	flush := func() {
+		if b.Len() > 0 {
+			runs = append(runs, sgrRun{b.String(), cur})
+			b.Reset()
+		}
+	}
+	rs := []rune(text)
+	for i := 0; i < len(rs); i++ {
+		if rs[i] != 0x1b {
+			b.WriteRune(rs[i])
+			continue
+		}
+		// ESC [ params final: only the final byte m changes the style.
+		if i+1 < len(rs) && rs[i+1] == '[' {
+			j := i + 2
+			for j < len(rs) && (rs[j] < 0x40 || rs[j] > 0x7e) {
+				j++
+			}
+			if j < len(rs) {
+				if rs[j] == 'm' {
+					flush()
+					cur = applySGR(cur, base, string(rs[i+2:j]))
+				}
+				i = j
+				continue
+			}
+		}
+		// ESC ] ... (OSC, such as a link) up to BEL or ESC \ is dropped.
+		if i+1 < len(rs) && rs[i+1] == ']' {
+			j := i + 2
+			for j < len(rs) && rs[j] != 0x07 && (rs[j] != 0x1b || j+1 >= len(rs) || rs[j+1] != '\\') {
+				j++
+			}
+			if j < len(rs) && rs[j] == 0x1b {
+				j++
+			}
+			i = j
+			continue
+		}
+	}
+	flush()
+	return runs
+}
+
+// applySGR changes style by the parameters of one SGR sequence; a reset goes
+// back to base.
+func applySGR(style, base sketchStyle, params string) sketchStyle {
+	if params == "" {
+		return base
+	}
+	parts := strings.Split(params, ";")
+	num := func(i int) (int, bool) {
+		if i >= len(parts) {
+			return 0, false
+		}
+		n, err := strconv.Atoi(parts[i])
+		return n, err == nil
+	}
+	colour := func(i int) (string, int) { // the colour after 38 or 48 and how many parameters it took
+		mode, _ := num(i + 1)
+		switch mode {
+		case 5:
+			n, _ := num(i + 2)
+			return strconv.Itoa(n), 3
+		case 2:
+			r, _ := num(i + 2)
+			g, _ := num(i + 3)
+			bl, _ := num(i + 4)
+			return "#" + hex2(r) + hex2(g) + hex2(bl), 5
+		}
+		return "", 1
+	}
+	for i := 0; i < len(parts); i++ {
+		n, ok := num(i)
+		if !ok {
+			continue
+		}
+		switch {
+		case n == 0:
+			style = base
+		case n == 1:
+			style.Bold = true
+		case n == 2:
+			style.Dim = true
+		case n == 22:
+			style.Bold, style.Dim = false, false
+		case n == 7:
+			style.Reverse = true
+		case n == 27:
+			style.Reverse = false
+		case n >= 30 && n <= 37:
+			style.Fg = strconv.Itoa(n - 30)
+		case n >= 90 && n <= 97:
+			style.Fg = strconv.Itoa(n - 90 + 8)
+		case n >= 40 && n <= 47:
+			style.Bg = strconv.Itoa(n - 40)
+		case n >= 100 && n <= 107:
+			style.Bg = strconv.Itoa(n - 100 + 8)
+		case n == 39:
+			style.Fg = base.Fg
+		case n == 49:
+			style.Bg = base.Bg
+		case n == 38 || n == 48:
+			c, used := colour(i)
+			if c != "" {
+				if n == 38 {
+					style.Fg = c
+				} else {
+					style.Bg = c
+				}
+			}
+			i += used - 1
+		}
+	}
+	return style
+}
+
+func hex2(n int) string {
+	const digits = "0123456789abcdef"
+	n = min(max(n, 0), 255)
+	return string([]byte{digits[n>>4], digits[n&15]})
+}
+
+// runesWidth is the number of cells of the text of the runs.
+func runesWidth(runs []sgrRun) int {
+	n := 0
+	for _, r := range runs {
+		n += len([]rune(r.text))
+	}
+	return n
+}
+
+// cutRuns keeps the first w cells of the runs; with ellipsis a cut ends in
+// "…" in the style of the last run kept.
+func cutRuns(runs []sgrRun, w int, ellipsis bool) []sgrRun {
+	if w <= 0 {
+		return nil
+	}
+	total := runesWidth(runs)
+	if total <= w {
+		return runs
+	}
+	keep := w
+	if ellipsis {
+		keep = w - 1
+	}
+	var out []sgrRun
+	var last sketchStyle
+	for _, r := range runs {
+		if keep <= 0 {
+			break
+		}
+		rs := []rune(r.text)
+		if len(rs) > keep {
+			rs = rs[:keep]
+		}
+		out = append(out, sgrRun{string(rs), r.style})
+		last = r.style
+		keep -= len(rs)
+	}
+	if ellipsis {
+		out = append(out, sgrRun{"…", last})
+	}
+	return out
+}
+
+// rowsColumn is one column of the Rows component: its name, its width (0 for
+// the rest of the row) and how its cells are drawn.
+type rowsColumn struct {
+	name  string
+	width int
+	// colour makes the cell a block of that colour (a background); glyph makes
+	// it full blocks drawn in that colour.
+	colour, glyph bool
+	// ellipsis cuts a cell that is too long with "…".
+	ellipsis bool
+	// fg and bg are the colour of the column's text and its background; selBg
+	// is the background the column takes on a selected row. They are colours or
+	// @Name of the palette.
+	fg, bg, selBg string
+}
+
+// rowsColumns reads "Name[:width][:token]..." items separated by commas. A
+// token is colour, glyph, ellipsis, fg=<colour>, bg=<colour> or
+// selbg=<colour>. A column without a width takes twelve cells, except the
+// last, which takes what is left of the row.
 func rowsColumns(spec string) []rowsColumn {
 	var out []rowsColumn
 	for _, item := range rowsSplit(spec, ",", true) {
 		parts := strings.Split(strings.TrimSpace(item), ":")
 		col := rowsColumn{name: strings.TrimSpace(parts[0])}
 		for _, extra := range parts[1:] {
-			extra = strings.ToLower(strings.TrimSpace(extra))
+			extra = strings.TrimSpace(extra)
+			lower := strings.ToLower(extra)
 			if n, err := strconv.Atoi(extra); err == nil {
 				col.width = max(n, 0)
-			} else if extra == "colour" || extra == "color" {
+				continue
+			}
+			switch {
+			case lower == "colour" || lower == "color":
 				col.colour = true
+			case lower == "glyph":
+				col.glyph = true
+			case lower == "ellipsis":
+				col.ellipsis = true
+			case strings.HasPrefix(lower, "fg="):
+				col.fg = strings.TrimSpace(extra[3:])
+			case strings.HasPrefix(lower, "bg="):
+				col.bg = strings.TrimSpace(extra[3:])
+			case strings.HasPrefix(lower, "selbg="):
+				col.selBg = strings.TrimSpace(extra[6:])
 			}
 		}
 		out = append(out, col)
@@ -534,28 +743,78 @@ func rowsCells(s string) [][]string {
 	return rows
 }
 
+// paletteColour resolves a colour of a column or a cell: a name of the
+// design's palette (@Name) through the palette the screen hands its parts, any
+// other text as it is.
+func paletteColour(p props, c string) string {
+	c = strings.TrimSpace(c)
+	name, isName := strings.CutPrefix(c, "@")
+	if !isName {
+		return c
+	}
+	for _, entry := range strings.Split(p.str("theme.palette"), ";") {
+		if key, value, ok := strings.Cut(entry, "="); ok && key == name {
+			return value
+		}
+	}
+	return ""
+}
+
+// cellStyleOf reads the style a program gave one cell: "fg|bg|flags" with the
+// flags b (bold), d (dim) and r (reverse).
+func cellStyleOf(p props, code string, base sketchStyle) sketchStyle {
+	if code == "" || code == "-" {
+		return base
+	}
+	parts := strings.Split(code, "|")
+	if len(parts) > 0 && parts[0] != "" {
+		base.Fg = paletteColour(p, parts[0])
+	}
+	if len(parts) > 1 && parts[1] != "" {
+		base.Bg = paletteColour(p, parts[1])
+	}
+	if len(parts) > 2 {
+		base.Bold = base.Bold || strings.Contains(parts[2], "b")
+		base.Dim = base.Dim || strings.Contains(parts[2], "d")
+		base.Reverse = base.Reverse || strings.Contains(parts[2], "r")
+	}
+	return base
+}
+
 // drawRows draws the Rows component: one line per row, the cells laid out in
 // the columns the design names, and each row in the style it was given:
-// "selected" inverts the row in the accent colour, "dim" mutes it and "accent"
-// colours its text.
+// "selected" inverts the row in the accent colour (or, when a column has a
+// selbg, only gives those columns their background), "dim" mutes it and
+// "accent" colours its text. A column can set its own colours, cut with an
+// ellipsis, or draw a colour as a block or as glyphs; a program can restyle a
+// cell, and the text of a cell may carry SGR colours.
 func drawRows(g *sketchGrid, p props) {
 	accent := p.str("color")
 	columns := rowsColumns(p.str("columns"))
 	styles := split(p.str("styles"), ",")
+	cellStyles := rowsCells(p.str("cellstyles"))
+	anySelBg := false
+	for _, c := range columns {
+		anySelBg = anySelBg || c.selBg != ""
+	}
 	for y, row := range rowsCells(p.str("rows")) {
 		if y >= g.H {
 			break
 		}
-		style := sketchStyle{}
+		base := sketchStyle{}
+		isSelected := false
 		if y < len(styles) {
 			switch styles[y] {
 			case "selected":
-				style = sketchSelected(accent)
-				g.Fill(sketchRect{X: 0, Y: y, W: g.W, H: 1}, ' ', style)
+				isSelected = true
+				if !anySelBg {
+					base = sketchSelected(accent)
+					g.Fill(sketchRect{X: 0, Y: y, W: g.W, H: 1}, ' ', base)
+				}
 			case "dim":
-				style = sketchDim
+				base = sketchDim
 			case "accent":
-				style = sketchStyle{Fg: accent}
+				base = sketchStyle{Fg: accent}
 			}
 		}
 		x := 0
@@ -569,16 +828,88 @@ func drawRows(g *sketchGrid, p props) {
 			if i < len(row) {
 				cell = row[i]
 			}
+			style := base
+			if col.fg != "" {
+				style.Fg = paletteColour(p, col.fg)
+			}
+			if col.bg != "" {
+				style.Bg = paletteColour(p, col.bg)
+			}
+			if isSelected && col.selBg != "" {
+				style.Bg = paletteColour(p, col.selBg)
+			}
+			if y < len(cellStyles) && i < len(cellStyles[y]) {
+				style = cellStyleOf(p, cellStyles[y][i], style)
+			}
 			switch {
 			case w <= 0:
 			case col.colour && cell != "":
 				g.Fill(sketchRect{X: x, Y: y, W: w, H: 1}, ' ', sketchStyle{Bg: cell})
-			case col.colour:
+			case col.glyph && cell != "":
+				g.Text(x, y, strings.Repeat("█", w), sketchStyle{Fg: cell}, w)
+			case col.colour || col.glyph:
 				g.Text(x, y, "·", sketchDim, w)
 			default:
-				g.Text(x, y, cell, style, w)
+				if style.Bg != "" {
+					g.Fill(sketchRect{X: x, Y: y, W: w, H: 1}, ' ', sketchStyle{Bg: style.Bg})
+				}
+				at := x
+				for _, run := range cutRuns(parseSGR(cell, style), w, col.ellipsis) {
+					at += g.Text(at, y, run.text, run.style, 0)
+				}
 			}
 			x += w
 		}
 	}
+}
+
+// keybarHints reads the hints property: "key:label" items separated by commas;
+// the key ends at the first colon.
+func keybarHints(spec string) [][2]string {
+	var out [][2]string
+	for _, item := range rowsSplit(spec, ",", true) {
+		key, label, ok := strings.Cut(item, ":")
+		if !ok {
+			key, label = item, ""
+		}
+		if strings.TrimSpace(key) == "" && strings.TrimSpace(label) == "" {
+			continue
+		}
+		out = append(out, [2]string{key, label})
+	}
+	return out
+}
+
+// drawKeybar draws the key bar: a space, then for each hint the key in bold
+// in the key colour, a space and the label in the label colour, the hints
+// separated by gap spaces, cut at the width.
+func drawKeybar(g *sketchGrid, p props) {
+	keyStyle := sketchStyle{Fg: p.str("keyColor"), Bold: true}
+	labelStyle := sketchStyle{Fg: p.str("labelColor")}
+	gap := min(max(p.integer("gap", 2), 0), 8)
+	x := 1
+	for i, h := range keybarHints(p.str("hints")) {
+		if i > 0 {
+			x += gap
+		}
+		if x >= g.W {
+			break
+		}
+		x += g.Text(x, 0, h[0], keyStyle, g.W-x)
+		if h[1] != "" && x < g.W {
+			x += g.Text(x, 0, " ", sketchStyle{}, g.W-x)
+			x += g.Text(x, 0, h[1], labelStyle, g.W-x)
+		}
+	}
+}
+
+
+// slotPart is the view a program drew itself, cut to the rectangle of the
+// design; the escape sequences of its colours pass through.
+func slotPart(c placed, p props) *part {
+	view := p.str("view")
+	if view == "" {
+		return staticPart("")
+	}
+	return staticPart(lipgloss.NewStyle().MaxWidth(c.W).MaxHeight(c.H).Render(view))
 }

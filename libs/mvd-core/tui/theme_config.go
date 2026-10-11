@@ -25,6 +25,7 @@ func init() { ApplyTheme(config.DefaultThemeColors()) }
 // ApplyTheme sets the interface colours. Call it before the first screen is
 // built; it is not safe to call while a program is rendering.
 func ApplyTheme(c config.ThemeColors) {
+	currentColours = c
 	colMagenta = lipgloss.Color(c.Accent)
 	colCyan = lipgloss.Color(c.Focus)
 	colYellow = lipgloss.Color(c.Highlight)

@@ -14,7 +14,7 @@ const (
 
 var songsParts = []screenPart[SongsProps]{
 	{
-		placed: placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Add songs", "theme.muted": ""}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Add songs", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p SongsProps, v map[string]string) bool {
@@ -25,38 +25,57 @@ var songsParts = []screenPart[SongsProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.label", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": " ", "theme.muted": ""}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
+		placed: placed{Kind: "lipgloss.slot", Name: "Songs view", X: 0, Y: 1, W: 100, H: 25, Props: map[string]string{"theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "view": "Songs, one Artist - Title per line"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, 1, cells((float64(w) * 100.0 / 100.0)), cells(((float64(h) * 100.0 / 100.0) - 5.0))
 		}},
 		Apply: func(p SongsProps, v map[string]string) bool {
-			if p.Palette.Dim != "" {
-				v["color"] = p.Palette.Dim
-			}
-			v["text"] = p.KeyBar
+			v["view"] = p.SongsView
 			return true
 		},
 	},
 	{
-		placed: placed{Kind: "bubbles.textarea", Name: "Songs", X: 0, Y: 1, W: 100, H: 26, Props: map[string]string{"color": "#00f0ff", "line_numbers": "true", "placeholder": "Songs, one Artist - Title per line", "theme.muted": "", "value": ""}, MinW: 12, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 1, cells((float64(w) * 100.0 / 100.0)), cells(((float64(h) * 100.0 / 100.0) - 4.0))
-		}},
-		Apply: func(p SongsProps, v map[string]string) bool {
-			if p.Palette.Focus != "" {
-				v["color"] = p.Palette.Focus
-			}
-			v["value"] = p.Text
-			return true
-		},
-	},
-	{
-		placed: placed{Kind: "lipgloss.label", Name: "Summary", X: 1, Y: 27, W: 99, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "0 songs", "theme.muted": ""}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 1, cells(((float64(h) * 100.0 / 100.0) - 3.0)), cells(((float64(w) * 100.0 / 100.0) - 1.0)), 1
+		placed: placed{Kind: "lipgloss.label", Name: "Summary", X: 0, Y: 26, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": " 0 songs", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, cells(((float64(h) * 100.0 / 100.0) - 4.0)), cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p SongsProps, v map[string]string) bool {
 			if p.Palette.Dim != "" {
 				v["color"] = p.Palette.Dim
 			}
 			v["text"] = p.Summary
+			return p.ShowSummary
+		},
+	},
+	{
+		placed: placed{Kind: "lipgloss.label", Name: "Problem", X: 0, Y: 26, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#ff4d4d", "text": " could not save", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, cells(((float64(h) * 100.0 / 100.0) - 4.0)), cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Apply: func(p SongsProps, v map[string]string) bool {
+			if p.Palette.Error != "" {
+				v["color"] = p.Palette.Error
+			}
+			v["text"] = p.Problem
+			return p.ShowProblem
+		},
+	},
+	{
+		placed: placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "ctrl+s:add to the list,esc:cancel", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, cells(((float64(h) * 100.0 / 100.0) - 1.0)), cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Event: "Hint",
+		Apply: func(p SongsProps, v map[string]string) bool {
+			if p.Palette.Highlight != "" {
+				v["keyColor"] = p.Palette.Highlight
+			}
+			if p.Palette.Dim != "" {
+				v["labelColor"] = p.Palette.Dim
+			}
+			{
+				items := make([]string, len(p.Hints))
+				for i, h := range p.Hints {
+					items[i] = h.Key + ":" + h.Label
+				}
+				v["hints"] = joinList(items)
+			}
 			return true
 		},
 	},
@@ -70,9 +89,25 @@ func Songs(p SongsProps, w, h int) Frame {
 // SongsSize is the size of area the screen was designed for.
 func SongsSize() (w, h int) { return songsWidth, songsHeight }
 
+// SongsLayout is the screen without its drawing: the frame has the regions of the
+// visible components, so a program can size a model of its own before it is
+// drawn into one of them.
+func SongsLayout(p SongsProps, w, h int) Frame {
+	return layoutScreen(songsParts, p, p.Theme, w, h)
+}
+
 // SongsHandle turns a click or a key into the screen's event. ok is false when
 // the message raises none. f is the frame the screen last returned.
 func SongsHandle(f Frame, msg tea.Msg) (SongsEvent, bool) {
-	_, _ = f, msg
+	switch m := msg.(type) {
+	case tea.MouseClickMsg:
+		if r, ok := f.eventAt(m.X, m.Y); ok {
+			switch r.Event {
+			case "Hint":
+				return SongsHint{X: m.X - r.X, Y: m.Y - r.Y}, true
+			}
+		}
+	}
+	_ = f
 	return nil, false
 }

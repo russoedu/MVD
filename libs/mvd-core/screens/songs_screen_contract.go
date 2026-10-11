@@ -4,12 +4,18 @@ package screens
 
 // SongsProps is everything the Songs screen takes from the program that owns it.
 type SongsProps struct {
-	// KeyBar is the Text of "Key bar".
-	KeyBar string
-	// Text is the Value (| = new line) of "Songs".
-	Text string
+	// SongsView is the Sample view (| starts a line) of "Songs view".
+	SongsView string
 	// Summary is the Text of "Summary".
 	Summary string
+	// ShowSummary is the whether "Summary" is shown.
+	ShowSummary bool
+	// Problem is the Text of "Problem".
+	Problem string
+	// ShowProblem is the whether "Problem" is shown.
+	ShowProblem bool
+	// Hints is the Hints (key:label, comma separated) of "Key bar".
+	Hints []SongsHintsHint
 	// Palette is the design's named colours; set one and every component that
 	// uses it follows. An empty one keeps the design's colour.
 	Palette SongsPalette
@@ -51,20 +57,32 @@ func DefaultSongsPalette() SongsPalette {
 	}
 }
 
+// SongsHintsHint is one hint of the key bar Hints.
+type SongsHintsHint struct{ Key, Label string }
+
 // DefaultSongsProps is the screen as it was designed: each input holds the value
 // it had in the design.
 func DefaultSongsProps() SongsProps {
 	return SongsProps{
-		KeyBar:  " ",
-		Text:    "",
-		Summary: "0 songs",
-		Palette: DefaultSongsPalette(),
+		SongsView:   "Songs, one Artist - Title per line",
+		Summary:     " 0 songs",
+		ShowSummary: true,
+		Problem:     " could not save",
+		ShowProblem: true,
+		Hints:       []SongsHintsHint{{Key: "ctrl+s", Label: "add to the list"}, {Key: "esc", Label: "cancel"}},
+		Palette:     DefaultSongsPalette(),
 	}
 }
 
 // SongsEvent is what a click on a component or a key raises. The concrete types
 // are the Songs... structs below.
 type SongsEvent interface{ isSongsEvent() }
+
+// SongsHint is raised by a click on "Key bar". X and Y are the cell inside the component that was
+// clicked, and 0 for a key.
+type SongsHint struct{ X, Y int }
+
+func (SongsHint) isSongsEvent() {}
 
 // SongsKeys are the keys of the screen, for a key bar.
 var SongsKeys = []KeyHint{}

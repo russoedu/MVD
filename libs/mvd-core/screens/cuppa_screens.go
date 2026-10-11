@@ -124,6 +124,69 @@ func drawScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, backgroun
 	return Frame{View: lipgloss.NewCompositor(layers...).Render(), Regions: regions}
 }
 
+// layoutScreen is drawScreen without the drawing: the regions of the visible
+// components for the values p in an area of w by h cells.
+func layoutScreen[P any](parts []screenPart[P], p P, th Theme, w, h int) Frame {
+	w, h = max(w, 1), max(h, 1)
+	var regions []Region
+	for _, part := range parts {
+		c := part.placed
+		c.Props = make(map[string]string, len(part.Props)+1)
+		for k, v := range part.Props {
+			c.Props[k] = v
+		}
+		if part.Apply != nil && !part.Apply(p, c.Props) {
+			continue
+		}
+		if c.Fit != nil {
+			x, y, cw, ch := c.Fit(w, h)
+			c.X, c.Y, c.W, c.H = x, y, max(cw, c.MinW, 1), max(ch, c.MinH, 1)
+		}
+		regions = append(regions, Region{Name: c.Name, Event: part.Event, X: c.X, Y: c.Y, W: c.W, H: c.H})
+	}
+	return Frame{Regions: regions}
+}
+
+// CellStyle restyles one cell of a row: a colour is #rrggbb or a palette
+// number; the zero value keeps the column's style.
+type CellStyle struct {
+	Fg, Bg            string
+	Bold, Dim, Reverse bool
+}
+
+// cellStyleCode is the style as the Rows component reads it.
+func cellStyleCode(s CellStyle) string {
+	if s == (CellStyle{}) {
+		return "-"
+	}
+	flags := ""
+	if s.Bold {
+		flags += "b"
+	}
+	if s.Dim {
+		flags += "d"
+	}
+	if s.Reverse {
+		flags += "r"
+	}
+	return s.Fg + "|" + s.Bg + "|" + flags
+}
+
+// paletteCode is the named colours the screen is drawn with, for the
+// components that read a colour by its name: name, value and the design's own
+// colour for each, in turn.
+func paletteCode(parts ...string) string {
+	var entries []string
+	for i := 0; i+2 < len(parts); i += 3 {
+		value := parts[i+1]
+		if value == "" {
+			value = parts[i+2]
+		}
+		entries = append(entries, parts[i]+"="+value)
+	}
+	return strings.Join(entries, ";")
+}
+
 // backdrop is the area itself: its size and background colour.
 func backdrop(w, h int, background string) string {
 	line := strings.Repeat(" ", w)

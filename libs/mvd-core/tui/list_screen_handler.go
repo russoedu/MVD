@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -116,18 +117,19 @@ func (m listModel) update(msg tea.Msg) (listModel, tea.Cmd, listOutcome) {
 
 func (m listModel) view(width, height int) string {
 	n := len(m.urls())
-	title := "MVD · Download list"
+	title := " MVD · Download list"
 	if n > 0 {
 		title += "  (" + strconv.Itoa(n) + " item" + plural(n) + ")"
 	}
 
-	var bar string
-	if m.confirmQuit {
-		bar = fit(" "+styRed.Render("Discard the list and quit? ")+styKey.Render("y")+styDim.Render("/")+styKey.Render("n"), width)
-	} else {
-		bar = keyBar(width, m.hints())
-	}
-	return screenFrame(width, height, title, m.ta.View(), bar)
+	props := screens.DefaultListProps()
+	props.Palette = screens.ListPalette(palette())
+	props.Title = title
+	props.LinksView = m.ta.View()
+	props.ShowConfirm, props.ShowKeys = m.confirmQuit, !m.confirmQuit
+	props.Hints = hintsOf[screens.ListHintsHint](m.hints())
+	props.Confirm = " " + styRed.Render("Discard the list and quit? ") + styKey.Render("y") + styDim.Render("/") + styKey.Render("n")
+	return screens.List(props, width, height).View
 }
 
 func (m listModel) hints() []keyHint {

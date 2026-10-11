@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -474,38 +474,33 @@ func (m configModel) view(width, height int) string {
 	if m.mode == editFolder {
 		return m.folder.view(width, height)
 	}
-	var rows []string
 	labelW := 0
 	for _, l := range cfgLabels {
-		if len(l) > labelW {
-			labelW = len(l)
-		}
+		labelW = max(labelW, len(l))
 	}
+
+	props := screens.DefaultPreferencesProps()
+	props.Palette = screens.PreferencesPalette(palette())
+	props.Hints = hintsOf[screens.PreferencesHintsHint](m.hints())
+	rows := make([]screens.PreferencesItemsRow, 0, len(cfgLabels))
 	for i, label := range cfgLabels {
-		cursor := "  "
+		row := screens.PreferencesItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
-			cursor = styMagenta.Render("▸ ")
+			row.Mark = "▸ "
+			if m.mode != editNone {
+				row.Value = truncate(m.editorView(), max(10, width-labelW-6))
+			} else {
+				row.Style = screens.RowSelected
+				row.NameStyle = screens.CellStyle{Fg: currentColours.Text, Bold: true}
+			}
 		}
-		name := padRight(label, labelW)
-		val := m.display(i)
-		if i == m.cursor && m.mode != editNone {
-			val = m.editorView()
-		} else if i == m.cursor {
-			name = stySelected.Render(name)
-		}
-		rows = append(rows, fmt.Sprintf("%s%s  %s", cursor, name, styCyan.Render(truncate(val, max(10, width-labelW-6)))))
+		rows = append(rows, row)
 	}
-
-	body := strings.Join(rows, "\n")
-	if m.cursor == 4 {
-		body += "\n\n" + styDim.Render("Template uses yt-dlp fields, e.g. %(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s")
-	}
-
-	bar := keyBar(width, m.hints())
-	if m.status != "" {
-		bar = fit(" "+styMagenta.Render(m.status), width)
-	}
-	return screenFrame(width, height, "MVD · Preferences", body, bar)
+	props.Items = rows
+	props.ShowTemplateHint = m.cursor == 4
+	props.ShowStatus, props.ShowKeys = m.status != "", m.status == ""
+	props.Status = " " + m.status
+	return screens.Preferences(props, width, height).View
 }
 
 func (m configModel) hints() []keyHint {

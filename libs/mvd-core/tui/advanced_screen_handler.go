@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -158,30 +159,28 @@ func (m advancedModel) hints() []keyHint {
 }
 
 func (m advancedModel) view(width, height int) string {
-	labelW := 0
-	for _, l := range advLabels {
-		if len(l) > labelW {
-			labelW = len(l)
-		}
-	}
-	var rows []string
-	for i, label := range advLabels {
-		cursor := "  "
-		if i == m.cursor {
-			cursor = styMagenta.Render("▸ ")
-		}
-		name := padRight(label, labelW)
-		if i == m.cursor && m.mode == editNone {
-			name = stySelected.Render(name)
-		}
-		val := m.display(i)
-		if i == m.cursor && m.mode != editNone {
-			val = m.input.View()
-		}
-		rows = append(rows, cursor+name+"  "+styCyan.Render(truncate(val, max(10, width-labelW-6))))
-	}
-	body := strings.Join(rows, "\n") + "\n\n" +
-		styDim.Render("These are passed straight to yt-dlp. Parallel fragments and the cookie\nflags are already handled; only add things you understand.")
+	props := screens.DefaultAdvancedProps()
+	props.Palette = screens.AdvancedPalette(palette())
+	props.Hints = hintsOf[screens.AdvancedHintsHint](m.hints())
 
-	return screenFrame(width, height, "MVD · Advanced", body, keyBar(width, m.hints()))
+	var labelW = 0
+	for _, l := range advLabels {
+		labelW = max(labelW, len(l))
+	}
+	rows := make([]screens.AdvancedItemsRow, 0, len(advLabels))
+	for i, label := range advLabels {
+		row := screens.AdvancedItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
+		if i == m.cursor {
+			row.Mark = "▸ "
+			if m.mode == editNone {
+				row.Style = screens.RowSelected
+				row.NameStyle = screens.CellStyle{Fg: currentColours.Text, Bold: true}
+			} else {
+				row.Value = truncate(m.input.View(), max(10, width-labelW-6))
+			}
+		}
+		rows = append(rows, row)
+	}
+	props.Items = rows
+	return screens.Advanced(props, width, height).View
 }

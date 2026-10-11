@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"time"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -67,8 +68,18 @@ func (m songsModel) update(msg tea.Msg) (songsModel, tea.Cmd, songsOutcome) {
 }
 
 func (m songsModel) view(width, height int) string {
-	body := m.ta.View() + "\n" + m.summary()
-	return screenFrame(width, height, m.title(), body, keyBar(width, m.hints()))
+	props := screens.DefaultSongsProps()
+	props.Palette = screens.SongsPalette(palette())
+	props.Hints = hintsOf[screens.SongsHintsHint](m.hints())
+	props.SongsView = m.ta.View()
+	if m.err != "" {
+		props.ShowSummary, props.ShowProblem = false, true
+		props.Problem = " " + m.err
+	} else {
+		props.ShowSummary, props.ShowProblem = true, false
+		props.Summary = " " + m.summaryText()
+	}
+	return screens.Songs(props, width, height).View
 }
 
 func (m songsModel) title() string { return "MVD · Add songs" }

@@ -2,10 +2,10 @@ package tui
 
 import (
 	"strings"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
@@ -126,33 +126,27 @@ func (m coloursModel) display(i int) string {
 }
 
 func (m coloursModel) view(width, height int) string {
-	labelW := 0
-	for _, l := range colourLabels {
-		labelW = max(labelW, len(l))
-	}
-	var rows []string
-	for i, label := range colourLabels {
-		cursor := "  "
-		if i == m.cursor {
-			cursor = styMagenta.Render("▸ ")
-		}
-		name := padRight(label, labelW)
-		if i == m.cursor && !m.editing {
-			name = stySelected.Render(name)
-		}
-		val := m.display(i)
-		shown := styCyan.Render(val)
-		if i == m.cursor && m.editing {
-			shown = m.input.View()
-		}
-		swatch := lipgloss.NewStyle().Foreground(lipgloss.Color(val)).Render("██")
-		rows = append(rows, cursor+name+"  "+swatch+" "+shown)
-	}
-	body := strings.Join(rows, "\n") + "\n\n" +
-		styDim.Render("Colours are #rgb or #rrggbb and apply as soon as you accept them.\nSave on the preferences screen to keep them.")
-	if m.status != "" {
-		body += "\n" + styRed.Render(m.status)
-	}
+	props := screens.DefaultColoursProps()
+	props.Palette = screens.ColoursPalette(palette())
+	props.Hints = hintsOf[screens.ColoursHintsHint](m.hints())
 
-	return screenFrame(width, height, "MVD · Colours", body, keyBar(width, m.hints()))
+	rows := make([]screens.ColoursSlotsRow, 0, len(colourLabels))
+	for i, label := range colourLabels {
+		val := m.display(i)
+		row := screens.ColoursSlotsRow{Mark: "  ", Name: label, Swatch: val, Value: val}
+		if i == m.cursor {
+			row.Mark = "▸ "
+			if m.editing {
+				row.Value = "[39m" + m.input.View() // the input draws in the terminal's own colour
+			} else {
+				row.Style = screens.RowSelected
+				row.NameStyle = screens.CellStyle{Fg: currentColours.Text, Bold: true}
+			}
+		}
+		rows = append(rows, row)
+	}
+	props.Slots = rows
+	props.Status = m.status
+	props.ShowStatus = m.status != ""
+	return screens.Colours(props, width, height).View
 }

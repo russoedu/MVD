@@ -4,14 +4,14 @@ package screens
 
 // ColoursProps is everything the Colours screen takes from the program that owns it.
 type ColoursProps struct {
-	// KeyBar is the Text of "Key bar".
-	KeyBar string
 	// Slots is the Sample rows (; between rows, , between cells) of "Slots".
 	Slots []ColoursSlotsRow
 	// Status is the Text of "Status".
 	Status string
 	// ShowStatus is the whether "Status" is shown.
 	ShowStatus bool
+	// Hints is the Hints (key:label, comma separated) of "Key bar".
+	Hints []ColoursHintsHint
 	// Palette is the design's named colours; set one and every component that
 	// uses it follows. An empty one keeps the design's colour.
 	Palette ColoursPalette
@@ -59,22 +59,41 @@ type ColoursSlotsRow struct {
 	Mark string
 	// Name is a cell.
 	Name string
+	// Gap is a cell.
+	Gap string
 	// Swatch is a colour.
 	Swatch string
+	// Space is a cell.
+	Space string
 	// Value is a cell.
 	Value string
+	// MarkStyle restyles the Mark cell of this row; the zero value keeps the column's style.
+	MarkStyle CellStyle
+	// NameStyle restyles the Name cell of this row; the zero value keeps the column's style.
+	NameStyle CellStyle
+	// GapStyle restyles the Gap cell of this row; the zero value keeps the column's style.
+	GapStyle CellStyle
+	// SwatchStyle restyles the Swatch cell of this row; the zero value keeps the column's style.
+	SwatchStyle CellStyle
+	// SpaceStyle restyles the Space cell of this row; the zero value keeps the column's style.
+	SpaceStyle CellStyle
+	// ValueStyle restyles the Value cell of this row; the zero value keeps the column's style.
+	ValueStyle CellStyle
 	// Style is how the row is drawn: RowNormal, RowSelected, RowDim or RowAccent.
 	Style RowStyle
 }
+
+// ColoursHintsHint is one hint of the key bar Hints.
+type ColoursHintsHint struct{ Key, Label string }
 
 // DefaultColoursProps is the screen as it was designed: each input holds the value
 // it had in the design.
 func DefaultColoursProps() ColoursProps {
 	return ColoursProps{
-		KeyBar:     " ",
-		Slots:      []ColoursSlotsRow{{Mark: "▸ ", Name: "Accent (title)", Swatch: "#ff007f", Value: "#ff007f", Style: RowSelected}, {Mark: "  ", Name: "Focus (active border)", Swatch: "#00f0ff", Value: "#00f0ff", Style: RowNormal}, {Mark: "  ", Name: "Highlight (keys, bars)", Swatch: "#ffe600", Value: "#ffe600", Style: RowNormal}, {Mark: "  ", Name: "Success", Swatch: "#3ddc84", Value: "#3ddc84", Style: RowNormal}, {Mark: "  ", Name: "Error", Swatch: "#ff4d4d", Value: "#ff4d4d", Style: RowNormal}, {Mark: "  ", Name: "Dim (borders, hints)", Swatch: "#6b7280", Value: "#6b7280", Style: RowNormal}, {Mark: "  ", Name: "Text", Swatch: "#e5e7eb", Value: "#e5e7eb", Style: RowNormal}, {Mark: "  ", Name: "Selected row (background)", Swatch: "#3b0f2a", Value: "#3b0f2a", Style: RowNormal}},
+		Slots:      []ColoursSlotsRow{{Mark: "▸ ", Name: "Accent (title)", Gap: "", Swatch: "#ff007f", Space: "", Value: "#ff007f", Style: RowSelected}, {Mark: "  ", Name: "Focus (active border)", Gap: "", Swatch: "#00f0ff", Space: "", Value: "#00f0ff", Style: RowNormal}, {Mark: "  ", Name: "Highlight (keys, bars)", Gap: "", Swatch: "#ffe600", Space: "", Value: "#ffe600", Style: RowNormal}, {Mark: "  ", Name: "Success", Gap: "", Swatch: "#3ddc84", Space: "", Value: "#3ddc84", Style: RowNormal}, {Mark: "  ", Name: "Error", Gap: "", Swatch: "#ff4d4d", Space: "", Value: "#ff4d4d", Style: RowNormal}, {Mark: "  ", Name: "Dim (borders, hints)", Gap: "", Swatch: "#6b7280", Space: "", Value: "#6b7280", Style: RowNormal}, {Mark: "  ", Name: "Text", Gap: "", Swatch: "#e5e7eb", Space: "", Value: "#e5e7eb", Style: RowNormal}, {Mark: "  ", Name: "Selected row (background)", Gap: "", Swatch: "#3b0f2a", Space: "", Value: "#3b0f2a", Style: RowNormal}},
 		Status:     "Use a colour like #ff007f or #f07.",
 		ShowStatus: true,
+		Hints:      []ColoursHintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "back"}},
 		Palette:    DefaultColoursPalette(),
 	}
 }
@@ -88,6 +107,12 @@ type ColoursEvent interface{ isColoursEvent() }
 type ColoursPick struct{ X, Y int }
 
 func (ColoursPick) isColoursEvent() {}
+
+// ColoursHint is raised by a click on "Key bar". X and Y are the cell inside the component that was
+// clicked, and 0 for a key.
+type ColoursHint struct{ X, Y int }
+
+func (ColoursHint) isColoursEvent() {}
 
 // ColoursKeys are the keys of the screen, for a key bar.
 var ColoursKeys = []KeyHint{}

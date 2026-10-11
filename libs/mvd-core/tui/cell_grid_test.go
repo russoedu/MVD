@@ -167,8 +167,23 @@ func applySGR(params string, fg, bg *string, attrs map[byte]bool) {
 	}
 }
 
-// sameCells compares two renders cell by cell and returns what differs, at most limit
-// differences, as readable lines ("row 3 col 12: want ... got ...").
+// visible drops what cannot be seen of a cell: the foreground colour and the weight of
+// a blank cell. Its background, reverse video, underline and strike stay, since they show.
+func (c cell) visible() cell {
+	if c.Text == " " || c.Text == "" {
+		c.FG = ""
+		c.Attrs = strings.Map(func(r rune) rune {
+			if r == 'b' || r == 'd' || r == 'i' {
+				return -1
+			}
+			return r
+		}, c.Attrs)
+	}
+	return c
+}
+
+// sameCells compares two renders cell by cell, as they look, and returns what differs,
+// at most limit differences, as readable lines ("row 3 col 12: want ... got ...").
 func sameCells(want, got string, w int, limit int) []string {
 	a, b := gridOf(want, w), gridOf(got, w)
 	var diffs []string
@@ -186,7 +201,7 @@ func sameCells(want, got string, w int, limit int) []string {
 			continue
 		}
 		for x := range a[y] {
-			if a[y][x] != b[y][x] {
+			if a[y][x].visible() != b[y][x].visible() {
 				add("row %d col %d: want %s, got %s", y, x, a[y][x], b[y][x])
 			}
 		}
