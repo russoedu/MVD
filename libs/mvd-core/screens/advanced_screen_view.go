@@ -35,7 +35,7 @@ var advancedParts = []screenPart[AdvancedProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 3, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:28:selbg=@Selected:selfg=@Text:selbold,Gap:2,Value:ellipsis:fg=@Focus", "rows": "▸ ,Extra yt-dlp args,,(none);  ,Parallel fragments per video,,4;  ,Auto Retry,,yes", "styles": "selected,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		placed: placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 3, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:28:selbg=@Selected:selfg=@Text:selbold,Gap:2,Value:ellipsis:fg=@Focus", "gap": "0", "rows": "▸ ,Extra yt-dlp args,,(none);  ,Parallel fragments per video,,4;  ,Auto Retry,,yes", "styles": "selected,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cells(((float64(w) * 100.0 / 100.0) - 2.0)), 3
 		}},
 		Event: "Pick",

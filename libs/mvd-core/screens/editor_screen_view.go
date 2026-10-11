@@ -51,20 +51,8 @@ var editorParts = []screenPart[EditorProps]{
 		},
 	},
 	{
-		placed: placed{Kind: "lipgloss.label", Name: "Header", X: 0, Y: 1, W: 120, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "    Review    Artist   Song   Video   Address", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 1, cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Apply: func(p EditorProps, v map[string]string, w, h int) bool {
-			if p.Palette.Dim != "" {
-				v["color"] = p.Palette.Dim
-			}
-			v["text"] = p.Header
-			return true
-		},
-	},
-	{
-		placed: placed{Kind: "lipgloss.rows", Name: "List", X: 0, Y: 2, W: 120, H: 22, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Line", "rows": "song", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 2, cells((float64(w) * 100.0 / 100.0)), cells(max(3.0, ((float64(h) * 100.0 / 100.0) - 8.0)))
+		placed: placed{Kind: "lipgloss.rows", Name: "List", X: 0, Y: 1, W: 120, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S1:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Review:9:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Artist:fit=6..30%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S4:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Song:fit=8..50%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S5:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Video:fill:ellipsis:min=4:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S6:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Replaced:fit=0..25%:floor=8:hide-empty:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S7:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Address:31:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold", "gap": "0", "rows": ",,,,Review,,Artist,,Song,,Video,,,,Address", "styles": "dim", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, 1, cells((float64(w) * 100.0 / 100.0)), cells(max(4.0, ((float64(h) * 100.0 / 100.0) - 7.0)))
 		}},
 		Event: "Pick",
 		Apply: func(p EditorProps, v map[string]string, w, h int) bool {
@@ -77,8 +65,8 @@ var editorParts = []screenPart[EditorProps]{
 				cellStyles := make([][]string, len(p.Songs))
 				styles := make([]string, len(p.Songs))
 				for i, r := range p.Songs {
-					rows[i] = []string{r.Line}
-					cellStyles[i] = []string{cellStyleCode(r.LineStyle)}
+					rows[i] = []string{r.Mark, r.S1, r.Glyph, r.S2, r.Review, r.S3, r.Artist, r.S4, r.Song, r.S5, r.Video, r.S6, r.Replaced, r.S7, r.Address}
+					cellStyles[i] = []string{cellStyleCode(r.MarkStyle), cellStyleCode(r.S1Style), cellStyleCode(r.GlyphStyle), cellStyleCode(r.S2Style), cellStyleCode(r.ReviewStyle), cellStyleCode(r.S3Style), cellStyleCode(r.ArtistStyle), cellStyleCode(r.S4Style), cellStyleCode(r.SongStyle), cellStyleCode(r.S5Style), cellStyleCode(r.VideoStyle), cellStyleCode(r.S6Style), cellStyleCode(r.ReplacedStyle), cellStyleCode(r.S7Style), cellStyleCode(r.AddressStyle)}
 					styles[i] = rowStyleName(r.Style)
 				}
 				v["rows"] = joinRows(rows)

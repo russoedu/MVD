@@ -32,11 +32,7 @@ func (m editorModel) render() string {
 	props := screens.DefaultEditorProps()
 	props.Palette = screens.EditorPalette(palette())
 	props.Title = " " + m.title()
-	props.Header = m.columnHeader(width)
-	props.Songs = nil
-	for i := m.top; i < min(len(m.rows), m.top+m.listHeight()); i++ {
-		props.Songs = append(props.Songs, screens.EditorSongsRow{Line: cellText(m.rowLine(i, width))})
-	}
+	props.Songs = m.songRows(width)
 	props.ShowEmpty = len(m.rows) == 0
 
 	detail := m.detail(width)
@@ -148,149 +144,103 @@ func decisionGlyph(r playlistfile.Entry) string {
 	return "·"
 }
 
-// editorColumns are the widths of the list's columns for a window width.
-type editorColumns struct {
-	artist, song, video, replaced int
-	address                       string // "" when the window is too narrow to show it
-}
-
-// columnGap is the space between two columns.
-const columnGap = 2
-
-// rowPrefix is what comes before the columns: the cursor, the mark and the review option.
-const rowPrefix = 14
-
-// columns shares the width among artist, song, video title and, when a song has been
-// replaced, the replaced video's title. A column takes what its longest text needs, up
-// to its share.
-func (m editorModel) columns(width int) editorColumns {
-	var c editorColumns
-	rest := width - rowPrefix
-	if width >= 90 {
-		c.address = "youtube.com/watch?v=" + strings.Repeat("x", 11)
-		rest -= len(c.address) + columnGap
-	}
-
-	var longestArtist, longestSong, longestReplaced int
+// songRows are the rows of the list: the header, and the songs from the top of the
+// window. The design owns the columns, their widths and the look of the selected row; what
+// is here is the text of each cell and the colour it takes from the state of its song.
+func (m editorModel) songRows(width int) []screens.EditorSongsRow {
+	anyReplaced := false
 	for _, r := range m.rows {
+		anyReplaced = anyReplaced || r.Decision == playlistfile.DecisionReplaced
+	}
+	showAddress := width >= 90
+
+	header := screens.EditorSongsRow{Review: "Review", Artist: "Artist", Song: "Song", Video: "Video", Style: screens.RowDim}
+	if anyReplaced {
+		header.Replaced = "Replaced by"
+		header.S6, header.S7 = "  ", ""
+	}
+	if showAddress {
+		header.Address = "Address"
+		header.S7 = "  "
+	}
+	dim := screens.CellStyle{Fg: currentColours.Dim}
+	header.ReviewStyle, header.ArtistStyle, header.SongStyle, header.VideoStyle = dim, dim, dim, dim
+	header.ReplacedStyle, header.AddressStyle = dim, dim
+	rows := []screens.EditorSongsRow{header}
+
+	for i := m.top; i < min(len(m.rows), m.top+m.listHeight()); i++ {
+		r := m.rows[i]
 		col := playlisteditor.ColumnsOf(r)
-		longestArtist = max(longestArtist, ansi.StringWidth(display(col.Artist)))
-		longestSong = max(longestSong, ansi.StringWidth(display(col.Song)))
-		longestReplaced = max(longestReplaced, ansi.StringWidth(display(col.Replaced)))
-	}
+		kind := kindLabel(r)
+		switch r.Decision {
+		case playlistfile.DecisionReplaced:
+			kind = "chosen"
+		case playlistfile.DecisionOriginal:
+			kind = "original"
+		}
+		mark := " "
+		if i == m.sel {
+			mark = "▸"
+		}
+		row := screens.EditorSongsRow{
+			Mark: mark, Glyph: decisionGlyph(r), Review: kind,
+			Artist: display(col.Artist), Song: display(col.Song), Video: display(col.Video),
+		}
+		if anyReplaced {
+			row.S6, row.Replaced = "  ", display(col.Replaced)
+		}
+		if target, _, has := playlisteditor.Target(r); has && showAddress {
+			row.S7, row.Address = "  ", "youtube.com/watch?v="+target
+		}
 
-	gaps := 2 * columnGap
-	if longestReplaced > 0 {
-		gaps += columnGap
+		if i == m.sel {
+			row.Style = screens.RowSelected
+		} else {
+			dimmed := r.Downloaded || r.Decision == playlistfile.DecisionSkipped
+			row.MarkStyle = screens.CellStyle{Fg: currentColours.Dim}
+			row.GlyphStyle = screens.CellStyle{Fg: m.glyphColour(r)}
+			row.ReviewStyle = screens.CellStyle{Fg: kindColour(r, dimmed)}
+			row.ArtistStyle = screens.CellStyle{Fg: currentColours.Focus}
+			row.SongStyle = screens.CellStyle{Fg: currentColours.Text}
+			if dimmed {
+				row.ArtistStyle = screens.CellStyle{Fg: currentColours.Dim}
+				row.SongStyle = screens.CellStyle{Fg: currentColours.Dim}
+			}
+			row.VideoStyle = screens.CellStyle{Fg: currentColours.Dim}
+			row.ReplacedStyle = screens.CellStyle{Fg: currentColours.Focus}
+			row.AddressStyle = screens.CellStyle{Fg: currentColours.Dim}
+		}
+		rows = append(rows, row)
 	}
-	rest = max(rest-gaps, 12)
-	if longestReplaced > 0 {
-		c.replaced = min(longestReplaced, max(8, rest/4))
-		rest -= c.replaced
-	}
-	c.artist = min(max(longestArtist, 6), max(6, rest*3/10))
-	rest -= c.artist
-	c.song = min(max(longestSong, 8), max(8, rest/2))
-	c.video = max(rest-c.song, 4)
-	return c
+	return rows
 }
 
-// columnHeader names the columns.
-func (m editorModel) columnHeader(width int) string {
-	c := m.columns(width)
-	gap := strings.Repeat(" ", columnGap)
-	line := "    " + padRight("Review", rowPrefix-4) +
-		padRight("Artist", c.artist) + gap + padRight("Song", c.song) + gap + padRight("Video", c.video)
-	if c.replaced > 0 {
-		line += gap + padRight("Replaced by", c.replaced)
-	}
-	if c.address != "" {
-		line = padRight(truncate(line, width-len(c.address)-columnGap), width-len(c.address)) + "Address"
-	}
-	return styDim.Render(fit(line, width))
-}
-
-func (m editorModel) rowLine(i, width int) string {
-	r := m.rows[i]
-	cursor := " "
-	if i == m.sel {
-		cursor = "▸"
-	}
-	target, _, has := playlisteditor.Target(r)
-	c := m.columns(width)
-	short := ""
-	if has && c.address != "" {
-		short = "youtube.com/watch?v=" + target
-	}
-	kind := kindLabel(r)
-	if r.Decision == playlistfile.DecisionReplaced {
-		kind = "chosen"
-	}
-	if r.Decision == playlistfile.DecisionOriginal {
-		kind = "original"
-	}
-
-	col := playlisteditor.ColumnsOf(r)
-	cell := func(text string, w int) string { return padRight(truncate(display(text), w), w) }
-	artist, song, video := cell(col.Artist, c.artist), cell(col.Song, c.song), cell(col.Video, c.video)
-	replaced := ""
-	if c.replaced > 0 {
-		replaced = cell(col.Replaced, c.replaced)
-	}
-	gap := strings.Repeat(" ", columnGap)
-
-	// The address stays at the right edge, whatever the columns before it took.
-	tail := func(styled func(string) string) string {
-		if c.address == "" {
-			return ""
-		}
-		used := rowPrefix + c.artist + c.song + c.video + 2*columnGap
-		if c.replaced > 0 {
-			used += c.replaced + columnGap
-		}
-		return strings.Repeat(" ", max(columnGap, width-used-len(c.address))) + styled(padRight(short, len(c.address)))
-	}
-
-	if i == m.sel {
-		plain := fmt.Sprintf("%s %s %-9s ", cursor, decisionGlyph(r), kind) + artist + gap + song + gap + video
-		if c.replaced > 0 {
-			plain += gap + replaced
-		}
-		plain += tail(func(s string) string { return s })
-		return stySelected.Render(fit(plain, width))
-	}
-
-	glyph := decisionGlyph(r)
+// glyphColour is the colour of the mark of a song: green once decided, cyan when it was
+// changed, dim otherwise.
+func (m editorModel) glyphColour(r playlistfile.Entry) string {
 	switch {
-	case r.Downloaded:
-		glyph = styGreen.Render(glyph)
-	case r.Decision == playlistfile.DecisionConfirmed:
-		glyph = styGreen.Render(glyph)
+	case r.Downloaded, r.Decision == playlistfile.DecisionConfirmed:
+		return currentColours.Success
 	case r.Decision == playlistfile.DecisionReplaced || r.Decision == playlistfile.DecisionOriginal:
-		glyph = styCyan.Render(glyph)
-	default:
-		glyph = styDim.Render(glyph)
+		return currentColours.Focus
 	}
-	kindStyle := styText
+	return currentColours.Dim
+}
+
+// kindColour is the colour of what is proposed for a song.
+func kindColour(r playlistfile.Entry, dimmed bool) string {
+	if dimmed {
+		return currentColours.Dim
+	}
 	switch engine.PlanKind(r.Kind) {
 	case engine.KindOfficial, engine.KindOwnOfficial:
-		kindStyle = styGreen
+		return currentColours.Success
 	case engine.KindBetter:
-		kindStyle = styYellow
+		return currentColours.Highlight
 	case engine.KindNone:
-		kindStyle = styRed
+		return currentColours.Error
 	}
-	artistStyle, songStyle, videoStyle := styCyan, styText, styDim
-	if r.Downloaded || r.Decision == playlistfile.DecisionSkipped {
-		kindStyle, artistStyle, songStyle = styDim, styDim, styDim
-	}
-	line := styDim.Render(cursor) + " " + glyph + " " + kindStyle.Render(fmt.Sprintf("%-9s", kind)) + " " +
-		artistStyle.Render(artist) + gap + songStyle.Render(song) + gap + videoStyle.Render(video)
-	if c.replaced > 0 {
-		line += gap + styCyan.Render(replaced)
-	}
-	line += tail(func(s string) string { return styDim.Render(s) })
-	return fit(line, width)
+	return currentColours.Text
 }
 
 // link makes an address clickable in terminals that support it, and plain text elsewhere.

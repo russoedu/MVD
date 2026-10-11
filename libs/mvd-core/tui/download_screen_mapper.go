@@ -23,15 +23,18 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 
 	// The sizes the design cannot know: how wide the left column is.
 	p.LeftWidth = m.leftWidth(w)
-	p.ShowLists = p.LeftWidth > 0
-	p.ShowOutput = m.fullLog || w >= minWideWidth
+	p.FullLog = 0
+	if m.fullLog {
+		p.FullLog = 1
+	}
+	showOutput := m.fullLog || w >= minWideWidth
 	p.PlaylistCount = len(m.state.Playlists)
 
 	p.Counters, p.HeaderRight = m.headerTexts()
 	p.Counters = truncate(p.Counters, w-2)
 
 	footer := m.outputFooter()
-	if !p.ShowOutput {
+	if !showOutput {
 		footer = outputFooter{}
 	}
 	if len(footer.lines) > 0 {
@@ -47,19 +50,17 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 
 	// Playlists.
 	pl := region("Playlists rows")
-	p.Playlists = nil
-	for _, row := range window(m.playlistLines(pl.W), m.selPlaylist, pl.H) {
-		p.Playlists = append(p.Playlists, screens.DownloadPlaylistsRow{Line: row})
-	}
+	p.Playlists = windowRows(m.playlistRows(), m.selPlaylist, pl.H)
 	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
 	p.PlaylistsBorder = m.borderColour(m.focus == paneLists)
 
 	// Entries.
 	en := region("Entries rows")
-	p.Entries = nil
-	title, right, lines, sel := m.entryLines(en.W)
-	for _, row := range window(lines, sel, en.H) {
-		p.Entries = append(p.Entries, screens.DownloadEntriesRow{Line: row})
+	title, right, entries, notes, sel := m.entryRows(en.W)
+	p.Entries = windowRows(entries, sel, en.H)
+	p.Notes, p.HasNotes = notes, 0
+	if len(notes) > 0 {
+		p.HasNotes = 1
 	}
 	p.EntriesTitle, p.EntriesRight = title, right
 	p.EntriesBorder = m.borderColour(m.focus == paneEntries)
@@ -67,7 +68,7 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 	// Output.
 	out := region("Output rows")
 	p.Output = nil
-	for _, line := range m.outputWindow(out.W, out.H) {
+	for _, line := range m.outputWindow(out.H) {
 		p.Output = append(p.Output, screens.DownloadOutputRow{Line: cellText(line)})
 	}
 	p.OutputTitle = m.outputTitle()
@@ -150,9 +151,10 @@ func (m model) headerTexts() (counters, right string) {
 	return strings.Join(parts, "   "), right
 }
 
-// playlistLines are the rows of the playlists pane, innerW cells wide each.
-func (m model) playlistLines(innerW int) []string {
-	rows := make([]string, 0, len(m.state.Playlists))
+// playlistRows are the rows of the playlists pane: the design places the cursor, the
+// title, the count and the glyph; the app says what each says and the colour of the glyph.
+func (m model) playlistRows() []screens.DownloadPlaylistsRow {
+	rows := make([]screens.DownloadPlaylistsRow, 0, len(m.state.Playlists))
 	for i, pl := range m.state.Playlists {
 		finished, _, _ := m.state.PlaylistTally(pl)
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
@@ -161,45 +163,44 @@ func (m model) playlistLines(innerW int) []string {
 		} else if !pl.Listed {
 			count = "listing"
 		}
-		cursor := " "
-		if i == m.selPlaylist {
-			cursor = "▸"
+		glyph, colour := m.playlistGlyph(pl)
+		row := screens.DownloadPlaylistsRow{
+			Mark: " ", Title: cellText(display(pl.Title)), Count: count, Glyph: glyph,
+			GlyphStyle: screens.CellStyle{Fg: colour},
 		}
-		titleW := innerW - 2 - 1 - len(count) - 1 - 2
-		title := padRight(truncate(display(pl.Title), titleW), titleW)
-		row := fmt.Sprintf("%s %s %s ", cursor, title, count)
 		if i == m.selPlaylist {
-			row = stySelected.Render(row)
-		} else {
-			row = styText.Render(row)
+			row.Mark, row.Style = "▸", screens.RowSelected
 		}
-		rows = append(rows, row+m.playlistGlyph(pl))
+		rows = append(rows, row)
 	}
 	return rows
 }
 
-// entryLines are the rows of the entries pane for the selected playlist, with the
-// title and the label of the pane and the row that is selected.
-func (m model) entryLines(innerW int) (title, right string, rows []string, sel int) {
+// entryRows are the rows of the entries pane for the selected playlist, with the title
+// and the label of the pane and the row that is selected.
+func (m model) entryRows(innerW int) (title, right string, rows []screens.DownloadEntriesRow, notes []screens.DownloadNotesRow, sel int) {
 	ids := m.visibleEntries()
 	sel = clamp(m.selEntry, 0, max(0, len(ids)-1))
 
-	rows = make([]string, 0, len(ids))
 	for i, id := range ids {
 		en := m.state.Entries[id]
-		tag, tagW := m.entryTag(en)
-		// glyph(1) space(1) idx(2) space(1) title space(1) tag
-		titleW := innerW - 1 - 1 - 2 - 1 - 1 - tagW
-		text := fmt.Sprintf(" %02d %s ", en.Index, padRight(truncate(entryTitle(en), titleW), titleW))
+		glyph, glyphColour := m.entryGlyph(en)
+		tag, tagColour := m.entryTag(en)
+		// The title is cut here, by cells, so that a wide character never pushes the tag away.
+		titleW := innerW - 6 - ansi.StringWidth(tag)
+		row := screens.DownloadEntriesRow{
+			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cellText(truncate(entryTitle(en), titleW)), Tag: tag,
+			GlyphStyle: screens.CellStyle{Fg: glyphColour}, TagStyle: screens.CellStyle{Fg: tagColour},
+		}
 		switch {
 		case i == sel && m.focus == paneEntries:
-			text = stySelected.Render(text)
+			row.Style = screens.RowSelected
 		case i == sel:
-			text = styMagenta.Render(text)
-		default:
-			text = styText.Render(text)
+			// A selected row in a pane that does not have the focus is only coloured.
+			accent := screens.CellStyle{Fg: currentColours.Accent}
+			row.SpStyle, row.IdxStyle, row.Sp2Style, row.TitleStyle, row.Sp3Style = accent, accent, accent, accent, accent
 		}
-		rows = append(rows, m.entryGlyph(en)+text+tag)
+		rows = append(rows, row)
 	}
 
 	title = "Entries"
@@ -208,20 +209,19 @@ func (m model) entryLines(innerW int) (title, right string, rows []string, sel i
 	}
 	if m.selPlaylist < len(m.state.Playlists) {
 		pl := m.state.Playlists[m.selPlaylist]
+		right = fmt.Sprintf("%d", len(ids))
 		switch {
 		case pl.Err != "":
-			rows = nil
 			for _, l := range wrap("✗ "+display(pl.Err), innerW) {
-				rows = append(rows, styRed.Render(l))
+				notes = append(notes, screens.DownloadNotesRow{Line: cellText(l), LineStyle: screens.CellStyle{Fg: currentColours.Error}})
 			}
 		case !pl.Listed:
-			rows = []string{styDim.Render("listing playlist...")}
+			notes = []screens.DownloadNotesRow{{Line: "listing playlist...", LineStyle: screens.CellStyle{Fg: currentColours.Dim}}}
 		case len(ids) == 0 && m.filterFailed:
-			rows = []string{styDim.Render("no failed entries")}
+			notes = []screens.DownloadNotesRow{{Line: "no failed entries", LineStyle: screens.CellStyle{Fg: currentColours.Dim}}}
 		}
-		right = fmt.Sprintf("%d", len(ids))
 	}
-	return title, right, rows, sel
+	return title, right, rows, notes, sel
 }
 
 // footer is what the output pane keeps for the selected entry under its lines.
@@ -268,13 +268,13 @@ func (m model) outputFooter() outputFooter {
 }
 
 // outputWindow are the lines of the output pane, the last h of them above the scroll.
-func (m model) outputWindow(innerW, h int) []string {
+func (m model) outputWindow(h int) []string {
 	lines := m.outputLines()
 	end := max(0, len(lines)-m.outScroll)
 	start := max(0, end-max(h, 1))
 	out := make([]string, 0, h)
 	for _, l := range lines[start:end] {
-		out = append(out, styText.Render(truncate(display(l), innerW)))
+		out = append(out, display(l))
 	}
 	return out
 }
@@ -290,4 +290,13 @@ func (m model) leftWidth(w int) int {
 		return w
 	}
 	return max(36, w*38/100)
+}
+
+// windowRows is the part of rows that keeps the row sel in view in h rows.
+func windowRows[T any](rows []T, sel, h int) []T {
+	if h <= 0 || len(rows) <= h {
+		return rows
+	}
+	start := windowStart(len(rows), sel, h)
+	return rows[start : start+h]
 }

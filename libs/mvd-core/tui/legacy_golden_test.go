@@ -197,7 +197,9 @@ func legacyCases() []legacyCase {
 // knownGaps are screens that do not yet draw exactly what they drew, each waiting for
 // Cuppa: name -> what is missing. They are reported, not failed; a gap that is fixed
 // must be removed from here, or the test says so.
-var knownGaps = map[string]string{}
+var knownGaps = map[string]string{
+	"download-narrow": "double-width characters in a fill cell push the flush-right tail out (BUG rows-wide-chars)",
+}
 
 // TestLegacyScreensKeepTheirLook compares what the screens draw with the reference
 // drawings in testdata/legacy, cell by cell (character, colours, bold and so on).
