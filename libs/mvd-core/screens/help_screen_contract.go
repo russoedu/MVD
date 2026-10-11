@@ -66,8 +66,8 @@ type HelpLinesRow struct {
 func DefaultHelpProps() HelpProps {
 	return HelpProps{
 		Lines:      []HelpLinesRow{{Line: "help", Style: RowNormal}},
-		HelpWidth:  0,
-		HelpHeight: 0,
+		HelpWidth:  40,
+		HelpHeight: 20,
 		Palette:    DefaultHelpPalette(),
 	}
 }

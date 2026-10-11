@@ -124,6 +124,7 @@ func drawScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, backgroun
 			x, y, cw, ch := c.Fit(w, h)
 			c.X, c.Y, c.W, c.H = x, y, max(cw, c.MinW, 1), max(ch, c.MinH, 1)
 		}
+		c.Y += containerDY(c.Props)
 		e.rects[c.Name] = [4]int{c.X, c.Y, c.W, c.H}
 		layers = append(layers, lipgloss.NewLayer(build(c).view()).X(c.X).Y(c.Y).Z(i+1))
 		regions = append(regions, Region{Name: c.Name, Event: part.Event, X: c.X, Y: c.Y, W: c.W, H: c.H})
@@ -155,6 +156,7 @@ func layoutScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, env fun
 			x, y, cw, ch := c.Fit(w, h)
 			c.X, c.Y, c.W, c.H = x, y, max(cw, c.MinW, 1), max(ch, c.MinH, 1)
 		}
+		c.Y += containerDY(c.Props)
 		e.rects[c.Name] = [4]int{c.X, c.Y, c.W, c.H}
 		regions = append(regions, Region{Name: c.Name, Event: part.Event, X: c.X, Y: c.Y, W: c.W, H: c.H})
 	}
