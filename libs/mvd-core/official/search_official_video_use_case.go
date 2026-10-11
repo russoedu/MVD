@@ -3,6 +3,7 @@ package official
 import (
 	"fmt"
 	"youtube-downloader/libs/mvd-core/official/titlematch"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
@@ -13,7 +14,7 @@ import (
 // did not know and the upload is a plain video, whose title and channel say little
 // about the song.
 func (r *Resolver) songOfUpload(videoID, title, channel string, durationSec int, artTrack bool, logf func(format string, a ...interface{})) (song trackpick.Song, named bool) {
-	song = trackpick.Song{Title: title, Artists: artistNames(titlematch.ArtistFromChannel(channel)), DurationSec: durationSec, OwnID: videoID, OwnIsStill: artTrack}
+	song = trackpick.Song{Title: title, Artists: trackfind.ArtistNames(titlematch.ArtistFromChannel(channel)), DurationSec: durationSec, OwnID: videoID, OwnIsStill: artTrack}
 	// The Music card of the watch page names the song exactly, whatever the upload's own
 	// title puts around it ("As 7 Melhores Volume 1- Bill Power - I Swear"): when it is
 	// there no other source is asked.
@@ -21,7 +22,7 @@ func (r *Resolver) songOfUpload(videoID, title, channel string, durationSec int,
 		if page, err := r.get(r.WatchBase + videoID); err == nil {
 			if artist, name, ok := SongFromWatchPage(page); ok {
 				logf("[official] %s: the music card of the video names it %q by %q", videoID, name, artist)
-				song.Title, song.Artists = name, artistNames(artist)
+				song.Title, song.Artists = name, trackfind.ArtistNames(artist)
 				return song, true
 			}
 		}
@@ -29,7 +30,7 @@ func (r *Resolver) songOfUpload(videoID, title, channel string, durationSec int,
 	if r.Sources.Identify != nil && title != "" {
 		if artist, name, ok := r.Sources.Identify(title, channel); ok {
 			logf("[official] %s: a music database names it %q by %q", videoID, name, artist)
-			song.Title, song.Artists = name, artistNames(artist)
+			song.Title, song.Artists = name, trackfind.ArtistNames(artist)
 			return song, true
 		}
 	}
@@ -44,7 +45,7 @@ func (r *Resolver) fromSearch(song trackpick.Song, logf func(format string, a ..
 		return "", "", nil
 	}
 
-	pick, ok, results, err := FindBestVideo(r.Searcher, r.Sources, song, func(format string, a ...interface{}) {
+	pick, ok, results, err := trackfind.FindBestVideo(r.Searcher, r.Sources, song, func(format string, a ...interface{}) {
 		logf("[official] %s: "+format, append([]interface{}{song.OwnID}, a...)...)
 	})
 	if err != nil {

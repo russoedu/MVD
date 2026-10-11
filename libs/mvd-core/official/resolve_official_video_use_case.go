@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
@@ -41,9 +42,9 @@ type Resolver struct {
 	// OfficialOnly leaves out the choice of the best quality upload when there is no
 	// official video: the caller only wants official videos.
 	OfficialOnly bool
-	// Sources are the other places the video of a song is looked for (Wikidata, YouTube
+	// trackfind.Sources are the other places the video of a song is looked for (Wikidata, YouTube
 	// Music's video search) and the cache of earlier runs; each is optional.
-	Sources Sources
+	Sources trackfind.Sources
 }
 
 // NewResolver returns a resolver pointed at the real YouTube endpoints.

@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 
 	"youtube-downloader/libs/mvd-core/official"
@@ -59,7 +60,7 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 	music := official.NewYouTubeMusicClient()
 	resolver.Searcher = searcher
 	resolver.TrackInfos = music.Describe
-	resolver.Sources = official.Sources{
+	resolver.Sources = trackfind.Sources{
 		Known: resolver.KnownCandidates(official.NewWikidataClient()),
 		Music: music.SearchVideos,
 		// A music database names the song of an upload.
@@ -91,7 +92,7 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 		}).IsStatic
 	}
 	if in.CacheFile != "" {
-		resolver.Sources.Cache = official.NewResolutionCache(in.CacheFile, 90*24*time.Hour)
+		resolver.Sources.Cache = trackfind.NewResolutionCache(in.CacheFile, 90*24*time.Hour)
 	}
 
 	return resolver, searcher

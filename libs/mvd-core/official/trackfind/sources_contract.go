@@ -1,4 +1,7 @@
-package official
+// Package trackfind finds the video of a song: it searches, asks the other sources it was
+// given (a music database, YouTube Music), picks the best candidate with package trackpick
+// and remembers the answer.
+package trackfind
 
 import (
 	"youtube-downloader/libs/mvd-core/official/trackpick"

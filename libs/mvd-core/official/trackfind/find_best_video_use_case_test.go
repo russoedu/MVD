@@ -1,4 +1,4 @@
-package official
+package trackfind
 
 import (
 	"errors"
@@ -48,6 +48,8 @@ func TestSearchQueries(t *testing.T) {
 		t.Errorf("without an artist the queries are still clean: %q", queries)
 	}
 }
+
+func quietLog(string, ...interface{}) {}
 
 func TestFindBestVideoStopsAtAConfidentMusicVideo(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{

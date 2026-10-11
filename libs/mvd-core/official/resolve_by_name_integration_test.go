@@ -4,12 +4,13 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 // resolverWith returns a resolver whose YouTube pages say nothing (so only the search
 // can find a video), with the given search and sources.
-func resolverWith(t *testing.T, search *scriptedSearch, sources Sources) *Resolver {
+func resolverWith(t *testing.T, search *scriptedSearch, sources trackfind.Sources) *Resolver {
 	t.Helper()
 	f := &fakeYouTube{}
 	_, res := f.server(t)
@@ -22,7 +23,7 @@ func TestTheOfficialVideoIsSearchedForUnderTheNameADatabaseGives(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"Le Click": {{ID: "official1", Title: "Le Click - Tonight Is The Night (Official Video)", Channel: "Le Click", Views: 3_000_000}},
 	}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(title, channel string) (string, string, bool) { return "Le Click", "Tonight Is The Night", true },
 	})
 
@@ -39,7 +40,7 @@ func TestTheOfficialVideoIsSearchedForUnderTheNameADatabaseGives(t *testing.T) {
 
 func TestAPlainVideoIsLeftAloneUnlessADatabaseNamesIt(t *testing.T) {
 	search := &scriptedSearch{}
-	res := resolverWith(t, search, Sources{})
+	res := resolverWith(t, search, trackfind.Sources{})
 	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC"}, nil }
 
 	if got, _ := res.ResolveLog("up1", "ICE MC - Cinema (Radio Edit) (1990)", "Some Channel", 0, nil); got != "" {
@@ -70,7 +71,7 @@ func TestWithoutAnOfficialVideoTheBestQualityUploadIsTaken(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": fanUploads()}}
 	asked := map[string]bool{}
 	qualities := map[string]trackpick.Quality{"up1": {AudioKbps: 128}, "fanA": {Height: 360, AudioKbps: 96}, "fanB": {Height: 1080, AudioKbps: 160}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality: func(id string) (trackpick.Quality, error) {
 			asked[id] = true
@@ -93,7 +94,7 @@ func TestWithoutAnOfficialVideoTheBestQualityUploadIsTaken(t *testing.T) {
 func TestThePlaylistsOwnUploadStaysWhenNothingIsBetter(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": fanUploads()}}
 	qualities := map[string]trackpick.Quality{"up1": {Height: 1080, AudioKbps: 160}, "fanA": {Height: 360, AudioKbps: 96}, "fanB": {Height: 1080, AudioKbps: 160}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 	})
@@ -107,7 +108,7 @@ func TestThePlaylistsOwnUploadStaysWhenNothingIsBetter(t *testing.T) {
 func TestAnArtTracksStillPictureDoesNotCountAsAPicture(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": fanUploads()}}
 	qualities := map[string]trackpick.Quality{"up1": {Height: 1080, AudioKbps: 130}, "fanA": {Height: 480, AudioKbps: 130}, "fanB": {Height: 1080, AudioKbps: 131}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 	})
@@ -119,7 +120,7 @@ func TestAnArtTracksStillPictureDoesNotCountAsAPicture(t *testing.T) {
 
 func TestWhenQualityCannotBeLookedUpTheOriginalStays(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": fanUploads()}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(string) (trackpick.Quality, error) { return trackpick.Quality{}, errors.New("blocked") },
 	})
@@ -148,7 +149,7 @@ func TestAnArtTrackUnderTheArtistsOwnNameIsNotAnUploadToTake(t *testing.T) {
 	}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": uploads}}
 	qualities := map[string]trackpick.Quality{"up1": {AudioKbps: 130}, "artTrack": {Height: 1080, AudioKbps: 140}, "fanB": {Height: 720, AudioKbps: 131}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 		Type: func(id string) (string, error) {
@@ -173,7 +174,7 @@ func TestTelevisionAppearancesAndFanEditsAreNotTheSongsVideo(t *testing.T) {
 	}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": uploads}}
 	qualities := map[string]trackpick.Quality{"up1": {AudioKbps: 130}, "tv": {Height: 1080, AudioKbps: 140}, "edit": {Height: 1080, AudioKbps: 140}, "totp": {Height: 1080, AudioKbps: 140}, "fanB": {Height: 720, AudioKbps: 131}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 	})
@@ -191,7 +192,7 @@ func TestLyricAndAudioUploadsAreNotTheSongsVideo(t *testing.T) {
 	}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": uploads}}
 	qualities := map[string]trackpick.Quality{"up1": {AudioKbps: 130}, "lyrics": {Height: 1080, AudioKbps: 140}, "audio": {Height: 1080, AudioKbps: 140}, "fanB": {Height: 720, AudioKbps: 131}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 	})
@@ -208,7 +209,7 @@ func TestAnUploadThatDoesNotMoveIsLeftOut(t *testing.T) {
 	}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": uploads}}
 	qualities := map[string]trackpick.Quality{"up1": {AudioKbps: 130}, "cover": {Height: 1080, AudioKbps: 160}, "fanB": {Height: 720, AudioKbps: 131}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 		Static:   func(id string) (bool, error) { return id == "cover", nil },
@@ -223,7 +224,7 @@ func TestThePlaylistsOwnStillPictureCountsForNoPicture(t *testing.T) {
 	uploads := []trackpick.SearchResult{{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2000", Views: 90_000}}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": uploads}}
 	qualities := map[string]trackpick.Quality{"up1": {Height: 1080, AudioKbps: 130}, "fanB": {Height: 480, AudioKbps: 131}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 		Static:   func(id string) (bool, error) { return id == "up1", nil },
@@ -240,7 +241,7 @@ func TestWhenStillnessCannotBeToldNothingIsLeftOut(t *testing.T) {
 	uploads := []trackpick.SearchResult{{ID: "fanB", Title: "Rage - Run To You (HD)", Channel: "gigantis2000", Views: 90_000}}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": uploads}}
 	qualities := map[string]trackpick.Quality{"up1": {AudioKbps: 130}, "fanB": {Height: 720, AudioKbps: 131}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 		Static:   func(string) (bool, error) { return false, errors.New("image server down") },
@@ -253,7 +254,7 @@ func TestWhenStillnessCannotBeToldNothingIsLeftOut(t *testing.T) {
 
 func TestAVideoYouTubeMusicSaysTheArtistUploadedIsTheOfficialOne(t *testing.T) {
 	search := &scriptedSearch{}
-	res := resolverWith(t, search, Sources{})
+	res := resolverWith(t, search, trackfind.Sources{})
 	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "OMV"}, nil }
 
 	got := res.ResolveVersion("up1", "Rage - Run to You", "Rage", 0, nil)
@@ -269,7 +270,7 @@ func TestAFanUploadTaggedOfficialThatDoesNotMoveIsNotTheOfficialVideo(t *testing
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"Double You": {{ID: "real", Title: "Double You - Part Time Lover (Official Video)", Channel: "Double You", Views: 2_000_000}},
 	}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Double You", "Part Time Lover", true },
 		Static:   func(id string) (bool, error) { return id == "up1", nil },
 	})
@@ -287,7 +288,7 @@ func TestAFanUploadTaggedOfficialThatDoesNotMoveIsNotTheOfficialVideo(t *testing
 }
 
 func TestAnOfficialTaggedUploadThatDoesNotMoveIsNotTheOfficialVideoEvenFromTheBand(t *testing.T) {
-	res := resolverWith(t, &scriptedSearch{}, Sources{
+	res := resolverWith(t, &scriptedSearch{}, trackfind.Sources{
 		Static: func(string) (bool, error) { return true, nil },
 	})
 	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "OMV", Artist: "Rage"}, nil }
@@ -309,7 +310,7 @@ func TestAnOfficialVideoThatDoesNotMoveGivesWayToAMovingBetterUpload(t *testing.
 		},
 	}}
 	qualities := map[string]trackpick.Quality{"up1": {AudioKbps: 130}, "still": {Height: 1080, AudioKbps: 130}, "moving": {Height: 1080, AudioKbps: 129}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Le Click", "Tonight Is The Night", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 		Static:   func(id string) (bool, error) { return id == "still" || id == "up1", nil },
@@ -325,7 +326,7 @@ func TestAnOfficialVideoThatDoesNotMoveIsKeptWhenNothingMovesBetter(t *testing.T
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"Le Click": {{ID: "still", Title: "Le Click - Tonight Is The Night (Official Video)", Channel: "Le Click", Views: 900_000}},
 	}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Le Click", "Tonight Is The Night", true },
 		Quality:  func(string) (trackpick.Quality, error) { return trackpick.Quality{Height: 1080, AudioKbps: 130}, nil },
 		Static:   func(string) (bool, error) { return true, nil },
@@ -347,7 +348,7 @@ func TestAnUploadThatAdvertisesItsQualityIsLookedAtEvenWithFewViews(t *testing.T
 	uploads = append(uploads, trackpick.SearchResult{ID: "hd", Title: "Rage - Run To You (HD, 1080p, 16:9)", Channel: "90s music in high quality", Views: 10_000})
 	qualities["hd"] = trackpick.Quality{Height: 1080, AudioKbps: 129}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": uploads}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality:  func(id string) (trackpick.Quality, error) { return qualities[id], nil },
 	})
@@ -360,7 +361,7 @@ func TestAnUploadThatAdvertisesItsQualityIsLookedAtEvenWithFewViews(t *testing.T
 func TestWhenOnlyOfficialVideosAreWantedTheBestQualityUploadIsNotLookedFor(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"Rage": fanUploads()}}
 	var probed int
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Rage", "Run To You", true },
 		Quality: func(string) (trackpick.Quality, error) {
 			probed++
@@ -384,7 +385,7 @@ func TestAVideoFoundWantingIsLeftOutWhenTheSongIsSearchedAgain(t *testing.T) {
 			{ID: "second", Title: "Le Click - Tonight Is The Night (Official Music Video)", Channel: "Le Click", Views: 3_000_000},
 		},
 	}}
-	res := resolverWith(t, search, Sources{
+	res := resolverWith(t, search, trackfind.Sources{
 		Identify: func(string, string) (string, string, bool) { return "Le Click", "Tonight Is The Night", true },
 	})
 	identified := res.Identify("up1", "Tonight Is The Night (Le Click - Dance Mix )", "La Bouche", 0, nil)
@@ -407,7 +408,7 @@ func TestAPlainVideoIsNamedByTheMusicCardOfItsPageBeforeAnyDatabase(t *testing.T
 	res.Searcher = search.search
 	res.TrackInfos = func(string) (TrackInfo, error) { return TrackInfo{Type: "UGC", Artist: "Trance Mundi"}, nil }
 	// A database that would name it wrongly is never asked.
-	res.Sources = Sources{Identify: func(string, string) (string, string, bool) { t.Error("a database was asked"); return "", "", false }}
+	res.Sources = trackfind.Sources{Identify: func(string, string) (string, string, bool) { t.Error("a database was asked"); return "", "", false }}
 
 	got, why := res.ResolveLog("up1", "As 7 Melhores Volume 1- Bill Power - I Swear", "Trance Mundi", 0, nil)
 	if got != "official1" {
@@ -418,4 +419,21 @@ func TestAPlainVideoIsNamedByTheMusicCardOfItsPageBeforeAnyDatabase(t *testing.T
 			t.Errorf("searched for %q", query)
 		}
 	}
+}
+
+// scriptedSearch answers each query with the results listed for it (matched by
+// a substring of the query) and remembers what was asked.
+type scriptedSearch struct {
+	answers map[string][]trackpick.SearchResult
+	asked   []string
+}
+
+func (s *scriptedSearch) search(query string) ([]trackpick.SearchResult, error) {
+	s.asked = append(s.asked, query)
+	for part, results := range s.answers {
+		if strings.Contains(query, part) {
+			return results, nil
+		}
+	}
+	return nil, nil
 }

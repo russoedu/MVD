@@ -7,20 +7,30 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
+
+func pickID(t *testing.T, results []trackpick.SearchResult, song trackpick.Song) (string, trackpick.Kind) {
+	t.Helper()
+	pick, ok := trackpick.PickBestVideo(results, song)
+	if !ok {
+		return "", trackpick.KindVideo
+	}
+	return pick.ID, pick.Kind
+}
 
 func TestFindBestVideoStopsAtAKnownVideoWithoutSearching(t *testing.T) {
 	search := &scriptedSearch{}
 	var music int
-	sources := Sources{
+	sources := trackfind.Sources{
 		Known: func(trackpick.Song, func(string, ...interface{})) []trackpick.SearchResult {
 			return []trackpick.SearchResult{{ID: "known", Title: "Billy Joel - Uptown Girl (Official Video)", Channel: "billyjoelVEVO", MusicType: "OMV", Source: "Wikidata"}}
 		},
 		Music: func(string) ([]trackpick.SearchResult, error) { music++; return nil, nil },
 	}
 
-	pick, ok, _, err := FindBestVideo(search.search, sources, trackpick.Song{Title: "Uptown Girl", Artists: []string{"Billy Joel"}}, quietLog)
+	pick, ok, _, err := trackfind.FindBestVideo(search.search, sources, trackpick.Song{Title: "Uptown Girl", Artists: []string{"Billy Joel"}}, quietLog)
 	if err != nil || !ok || pick.ID != "known" || !strings.Contains(pick.Why, "listed by Wikidata") {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
@@ -44,7 +54,7 @@ func TestAKnownVideoIsTrustedWithoutTheWordOfficialOrTheArtistsChannel(t *testin
 func TestFindBestVideoUsesYouTubeMusicWhenNothingIsKnown(t *testing.T) {
 	search := &scriptedSearch{}
 	var asked string
-	sources := Sources{
+	sources := trackfind.Sources{
 		Known: func(trackpick.Song, func(string, ...interface{})) []trackpick.SearchResult { return nil },
 		Music: func(query string) ([]trackpick.SearchResult, error) {
 			asked = query
@@ -55,7 +65,7 @@ func TestFindBestVideoUsesYouTubeMusicWhenNothingIsKnown(t *testing.T) {
 		},
 	}
 
-	pick, ok, _, err := FindBestVideo(search.search, sources, trackpick.Song{Title: "MMMBop", Artists: []string{"Hanson"}}, quietLog)
+	pick, ok, _, err := trackfind.FindBestVideo(search.search, sources, trackpick.Song{Title: "MMMBop", Artists: []string{"Hanson"}}, quietLog)
 	if err != nil || !ok || pick.ID != "own" {
 		t.Fatalf("got %+v, %v, %v", pick, ok, err)
 	}
@@ -70,14 +80,14 @@ func TestFindBestVideoDoesNotStopAtAnArtistUploadThatSaysNothing(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"official video": {{ID: "official", Title: "Dr.Alban - It's My Life (Official 4K Video)", Channel: "Dr. Alban", Verified: true, Views: 93000000, Duration: 230}},
 	}}
-	sources := Sources{
+	sources := trackfind.Sources{
 		Music: func(string) ([]trackpick.SearchResult, error) {
 			return []trackpick.SearchResult{{ID: "totp", Title: "Dr. Alban - It's My Life (Top Of The Pops, 1st October, 1992)", Channel: "Dr. Alban", MusicType: "OMV", Views: 4000000, Duration: 189}}, nil
 		},
 	}
 	song := trackpick.Song{Title: "It's My Life", Artists: []string{"Dr. Alban"}, DurationSec: 235}
 
-	pick, ok, _, err := FindBestVideo(search.search, sources, song, quietLog)
+	pick, ok, _, err := trackfind.FindBestVideo(search.search, sources, song, quietLog)
 	if err != nil || !ok || pick.ID != "official" {
 		t.Fatalf("got %+v, %v, %v; want the official video, not the performance", pick, ok, err)
 	}
@@ -96,7 +106,7 @@ func TestFindBestVideoSkipsAnArtTrackThatLooksLikeTheArtistsVideo(t *testing.T) 
 		},
 	}}
 	var asked []string
-	sources := Sources{
+	sources := trackfind.Sources{
 		Type: func(id string) (string, error) {
 			asked = append(asked, id)
 			if id == "arttrack1" {
@@ -107,13 +117,13 @@ func TestFindBestVideoSkipsAnArtTrackThatLooksLikeTheArtistsVideo(t *testing.T) 
 	}
 	song := trackpick.Song{Title: "It's My Life", Artists: []string{"Dr. Alban"}, DurationSec: 235}
 
-	pick, ok, _, err := FindBestVideo(search.search, sources, song, quietLog)
+	pick, ok, _, err := trackfind.FindBestVideo(search.search, sources, song, quietLog)
 	if err != nil || !ok || pick.ID != "official1" {
 		t.Fatalf("got %+v, %v, %v; want the official video", pick, ok, err)
 	}
 
 	// Without a way to ask, the best candidate is taken as it is.
-	pick, ok, _, _ = FindBestVideo(search.search, Sources{}, song, quietLog)
+	pick, ok, _, _ = trackfind.FindBestVideo(search.search, trackfind.Sources{}, song, quietLog)
 	if !ok || pick.ID == "" {
 		t.Errorf("got %+v, %v; want a pick even when nobody can be asked", pick, ok)
 	}
@@ -126,13 +136,13 @@ func TestFindBestVideoAsksOnlyAboutTheBestCandidates(t *testing.T) {
 	}
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{"official video": results}}
 	asked := 0
-	sources := Sources{Type: func(string) (string, error) { asked++; return "ATV", nil }}
+	sources := trackfind.Sources{Type: func(string) (string, error) { asked++; return "ATV", nil }}
 
-	if _, ok, _, _ := FindBestVideo(search.search, sources, trackpick.Song{Title: "Song", Artists: []string{"Band"}}, quietLog); ok {
+	if _, ok, _, _ := trackfind.FindBestVideo(search.search, sources, trackpick.Song{Title: "Song", Artists: []string{"Band"}}, quietLog); ok {
 		t.Error("every candidate is an art track, so there is no pick")
 	}
-	if asked != maxChecked {
-		t.Errorf("YouTube Music was asked %d times, want %d at most", asked, maxChecked)
+	if asked != trackfind.MaxChecked {
+		t.Errorf("YouTube Music was asked %d times, want %d at most", asked, trackfind.MaxChecked)
 	}
 }
 
@@ -140,31 +150,31 @@ func TestFindBestVideoGoesOnWhenASourceFails(t *testing.T) {
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"official video": {{ID: "official", Title: "Seal - Killer (Official Video)", Channel: "Seal", Verified: true, Views: 1400000}},
 	}}
-	sources := Sources{
+	sources := trackfind.Sources{
 		Music: func(string) ([]trackpick.SearchResult, error) { return nil, http.ErrHandlerTimeout },
 	}
-	pick, ok, _, err := FindBestVideo(search.search, sources, trackpick.Song{Title: "Killer", Artists: []string{"Seal"}}, quietLog)
+	pick, ok, _, err := trackfind.FindBestVideo(search.search, sources, trackpick.Song{Title: "Killer", Artists: []string{"Seal"}}, quietLog)
 	if err != nil || !ok || pick.ID != "official" {
 		t.Errorf("a failing YouTube Music must not stop the search: got %+v, %v, %v", pick, ok, err)
 	}
 }
 
 func TestFindBestVideoRemembersAndAsksNobodyTheSecondTime(t *testing.T) {
-	cache := NewResolutionCache(filepath.Join(t.TempDir(), "official.json"), time.Hour)
+	cache := trackfind.NewResolutionCache(filepath.Join(t.TempDir(), "official.json"), time.Hour)
 	search := &scriptedSearch{answers: map[string][]trackpick.SearchResult{
 		"official video": {{ID: "official", Title: "Seal - Killer (Official Video)", Channel: "Seal", Verified: true, Views: 1400000}},
 	}}
 	song := trackpick.Song{Title: "Killer", Artists: []string{"Seal"}}
-	sources := Sources{Cache: cache}
+	sources := trackfind.Sources{Cache: cache}
 
-	first, ok, _, err := FindBestVideo(search.search, sources, song, quietLog)
+	first, ok, _, err := trackfind.FindBestVideo(search.search, sources, song, quietLog)
 	if err != nil || !ok || first.ID != "official" {
 		t.Fatalf("got %+v, %v, %v", first, ok, err)
 	}
 	asked := len(search.asked)
 
-	second, ok, _, err := FindBestVideo(search.search, sources, song, quietLog)
-	if err != nil || !ok || second.ID != "official" || second.Kind != KindVideo {
+	second, ok, _, err := trackfind.FindBestVideo(search.search, sources, song, quietLog)
+	if err != nil || !ok || second.ID != "official" || second.Kind != trackpick.KindVideo {
 		t.Fatalf("got %+v, %v, %v", second, ok, err)
 	}
 	if len(search.asked) != asked {

@@ -2,11 +2,11 @@ package runner
 
 import (
 	"context"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 
 	"youtube-downloader/libs/mvd-core/applemusic"
 	"youtube-downloader/libs/mvd-core/engine"
-	"youtube-downloader/libs/mvd-core/official"
 	"youtube-downloader/libs/mvd-core/songfile"
 	"youtube-downloader/libs/mvd-core/spotify"
 )
@@ -24,10 +24,10 @@ type playlistProvider interface {
 type playlistTrackSource struct {
 	providers []playlistProvider
 	search    trackpick.Searcher
-	sources   official.Sources
+	sources   trackfind.Sources
 }
 
-func newPlaylistTrackSource(search trackpick.Searcher, sources official.Sources) playlistTrackSource {
+func newPlaylistTrackSource(search trackpick.Searcher, sources trackfind.Sources) playlistTrackSource {
 	return playlistTrackSource{
 		providers: []playlistProvider{
 			spotifyProvider{client: spotify.NewClient()},
@@ -53,7 +53,7 @@ func (s playlistTrackSource) Tracks(ctx context.Context, link string) (string, [
 }
 
 func (s playlistTrackSource) Find(_ context.Context, track engine.Track, logf func(format string, a ...interface{})) (string, bool, error) {
-	found, err := official.FindTrack(s.search, s.sources, track.Title, track.Artist, track.DurationMs/1000, logf)
+	found, err := trackfind.FindTrack(s.search, s.sources, track.Title, track.Artist, track.DurationMs/1000, logf)
 	return found.VideoID, found.Official, err
 }
 

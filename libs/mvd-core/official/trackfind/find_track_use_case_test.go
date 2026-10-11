@@ -1,4 +1,4 @@
-package official
+package trackfind
 
 import (
 	"errors"
@@ -112,7 +112,7 @@ func TestArtistNames(t *testing.T) {
 		"":                          nil,
 	}
 	for in, want := range cases {
-		got := artistNames(in)
+		got := ArtistNames(in)
 		if len(got) != len(want) {
 			t.Errorf("artistNames(%q) = %q, want %q", in, got, want)
 			continue

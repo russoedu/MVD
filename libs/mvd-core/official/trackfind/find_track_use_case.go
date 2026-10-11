@@ -1,4 +1,4 @@
-package official
+package trackfind
 
 import (
 	"regexp"
@@ -20,7 +20,7 @@ type FoundTrack struct {
 // non-official upload. durationSec is the length of the song, or 0 when
 // unknown. It returns an empty VideoID when nothing matches.
 func FindTrack(search trackpick.Searcher, sources Sources, title, artists string, durationSec int, logf func(format string, a ...interface{})) (FoundTrack, error) {
-	names := artistNames(artists)
+	names := ArtistNames(artists)
 	song := trackpick.Song{Title: title, Artists: names, DurationSec: durationSec}
 
 	pick, ok, results, err := FindBestVideo(search, sources, song, logf)
@@ -44,13 +44,13 @@ func FindTrack(search trackpick.Searcher, sources Sources, title, artists string
 // artistJoiners join the names of artists in one credit.
 var artistJoiners = regexp.MustCompile(`(?i)\s+(?:&|and|feat\.?|featuring|ft\.?|with|x|\+)\s+`)
 
-// artistNames lists the artists a service names for a song, the first being
+// ArtistNames lists the artists a service names for a song, the first being
 // the one to search for. "A, B" gives A and B. "A & B" gives "A & B" as
 // written, since it may be one act ("Simon & Garfunkel"), then A and B, so a
 // video that names only one of them still matches; the same goes for "and",
 // "feat.", "with" and the like, so "Prince and the Revolution" also gives
 // Prince, whose channel has the video.
-func artistNames(artists string) []string {
+func ArtistNames(artists string) []string {
 	var names []string
 	for _, name := range strings.Split(artists, ",") {
 		if name = strings.TrimSpace(name); name != "" {

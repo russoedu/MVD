@@ -1,4 +1,4 @@
-package official
+package trackfind
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ import (
 // matching title.
 const confidentScore = 8.5
 
-// maxChecked is how many of the best candidates are checked for being art tracks.
-const maxChecked = 5
+// MaxChecked is how many of the best candidates are checked for being art tracks.
+const MaxChecked = 5
 
 // searchQueries are what is searched for on YouTube, the most precise first.
 func searchQueries(song trackpick.Song) []string {
@@ -74,7 +74,7 @@ func FindBestVideo(search trackpick.Searcher, sources Sources, song trackpick.So
 	// video of it in a search result.
 	best := func() (trackpick.Pick, bool) {
 		for i, pick := range trackpick.RankCandidates(results, song) {
-			if i == maxChecked {
+			if i == MaxChecked {
 				break
 			}
 			kind := pick.MusicType
