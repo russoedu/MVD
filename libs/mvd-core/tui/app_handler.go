@@ -2,7 +2,6 @@ package tui
 
 import (
 	"path/filepath"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -258,17 +257,5 @@ func (m setupModel) saveList() {
 // --- key bar shared by setup screens ----------------------------------------
 
 type keyHint struct{ key, desc string }
-
-func keyBar(width int, hints []keyHint) string {
-	var b strings.Builder
-	b.WriteString(" ")
-	for i, h := range hints {
-		if i > 0 {
-			b.WriteString("  ")
-		}
-		b.WriteString(styKey.Render(h.key) + " " + styDim.Render(h.desc))
-	}
-	return fit(b.String(), width)
-}
 
 func (m setupModel) View() tea.View { return screenView(m.render()) }
