@@ -14,8 +14,16 @@ type FolderProps struct {
 	Folders []FolderFoldersRow
 	// NoProblem is the whether "Folders" is shown.
 	NoProblem bool
+	// NewFolderView is the Sample view (| starts a line) of "New folder view".
+	NewFolderView string
+	// Creating is the whether "New folder view" is shown.
+	Creating bool
 	// Hints is the Hints (key:label, comma separated) of "Key bar".
 	Hints []FolderHintsHint
+	// FolderRows is the read by a layout expression or a condition.
+	FolderRows int
+	// ProblemRows is the read by a layout expression or a condition.
+	ProblemRows int
 	// Palette is the design's named colours; set one and every component that
 	// uses it follows. An empty one keeps the design's colour.
 	Palette FolderPalette
@@ -74,13 +82,17 @@ type FolderHintsHint struct{ Key, Label string }
 // it had in the design.
 func DefaultFolderProps() FolderProps {
 	return FolderProps{
-		Path:       "C:\\\\Users\\\\me",
-		Problem:    "could not read the folder",
-		HasProblem: true,
-		Folders:    []FolderFoldersRow{{Entry: "  90s/", Style: RowNormal}, {Entry: "  Dance/", Style: RowNormal}, {Entry: "  Rock/", Style: RowNormal}},
-		NoProblem:  true,
-		Hints:      []FolderHintsHint{{Key: "↑↓", Label: "move"}, {Key: "→", Label: "open"}, {Key: "←", Label: "up"}, {Key: "n", Label: "new folder"}, {Key: "enter", Label: "choose this folder"}, {Key: "esc", Label: "cancel"}},
-		Palette:    DefaultFolderPalette(),
+		Path:          "C:\\\\Users\\\\me",
+		Problem:       "could not read the folder",
+		HasProblem:    true,
+		Folders:       []FolderFoldersRow{{Entry: "  90s/", Style: RowNormal}, {Entry: "  Dance/", Style: RowNormal}, {Entry: "  Rock/", Style: RowNormal}},
+		NoProblem:     true,
+		NewFolderView: "new folder: ",
+		Creating:      true,
+		Hints:         []FolderHintsHint{{Key: "↑↓", Label: "move"}, {Key: "→", Label: "open"}, {Key: "←", Label: "up"}, {Key: "n", Label: "new folder"}, {Key: "enter", Label: "choose this folder"}, {Key: "esc", Label: "cancel"}},
+		FolderRows:    0,
+		ProblemRows:   0,
+		Palette:       DefaultFolderPalette(),
 	}
 }
 

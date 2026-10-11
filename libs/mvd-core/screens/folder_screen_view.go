@@ -27,6 +27,15 @@ func folderEnv(p FolderProps, w, h int) fitEnv {
 				return 1
 			}
 			return 0
+		case "Creating":
+			if p.Creating {
+				return 1
+			}
+			return 0
+		case "FolderRows":
+			return float64(p.FolderRows)
+		case "ProblemRows":
+			return float64(p.ProblemRows)
 		}
 		return 0
 	}}
@@ -118,6 +127,17 @@ var folderParts = []screenPart[FolderProps]{
 				v["styles"] = joinList(styles)
 			}
 			return p.HasProblem
+		},
+	},
+	{
+		placed: placed{Kind: "lipgloss.slot", Name: "New folder view", X: 0, Y: 8, W: 100, H: 1, Props: map[string]string{"theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "view": "new folder: "}, MinW: 1, MinH: 1, FitEnv: func(e fitEnv) (x, y, cw, ch int) {
+			w, h := e.W, e.H
+			_, _ = w, h
+			return 0, cells(((4.0 + e.In("FolderRows")) + e.In("ProblemRows"))), cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Apply: func(p FolderProps, v map[string]string, w, h int) bool {
+			v["view"] = p.NewFolderView
+			return p.Creating
 		},
 	},
 	{

@@ -151,12 +151,6 @@ func (m folderModel) hints() []keyHint {
 }
 
 func (m folderModel) view(width, height int) string {
-	// The input for a new folder sits under the folders that are shown, which a design
-	// cannot say yet (it waits for layout from inputs in Cuppa).
-	if m.creating {
-		return m.legacyView(width, height)
-	}
-
 	var rows []screens.FolderFoldersRow
 	for i, name := range m.entries {
 		row := screens.FolderFoldersRow{Entry: "  " + name + "/"}
@@ -181,31 +175,11 @@ func (m folderModel) view(width, height int) string {
 	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
 	props.Problem = truncate(m.err, width-2)
 	props.Folders = rows
-	return screens.Folder(props, width, height).View
-}
-
-func (m folderModel) legacyView(width, height int) string {
-	var rows []string
-	for i, name := range m.entries {
-		line := "  " + name + "/"
-		if i == m.cursor {
-			line = stySelected.Render("▸ " + name + "/")
-		}
-		rows = append(rows, line)
-	}
-	if len(rows) == 0 {
-		rows = []string{styDim.Render("(no sub-folders)")}
-	}
-	rows = window(rows, m.cursor, max(1, height-5))
-
-	head := styCyan.Render(truncate(m.dir, width-2))
+	props.FolderRows, props.ProblemRows = len(rows), 0
 	if m.err != "" {
-		head += "\n" + styRed.Render(truncate(m.err, width-2))
+		props.ProblemRows = 1
 	}
-	body := head + "\n\n" + strings.Join(rows, "\n")
-
-	if m.creating {
-		body += "\n\n" + m.input.View()
-	}
-	return screenFrame(width, height, "MVD · Choose folder", body, keyBar(width, m.hints()))
+	props.Creating = m.creating
+	props.NewFolderView = m.input.View()
+	return screens.Folder(props, width, height).View
 }
