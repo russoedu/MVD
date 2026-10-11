@@ -4,6 +4,7 @@ Every screen of MVD is a [Cuppa](https://github.com/meta-tui/cuppa) design (`*.c
 
 - Open a design with `cuppa-tui designs/advanced.cuppa` (or the desktop or web app), change it, save it.
 - Export every design again: `cuppa screens designs -o libs/mvd-core/screens -p screens`.
+- Check that the generated files are what the designs export (nothing is written; exit 1 when they differ): add `--check` to the same command. It is not in CI: `ci.yml` is generated and `cuppa` is not published as a binary, so run it before committing a design.
 - Check that nothing changed in how a screen looks: `go test ./libs/mvd-core/tui -run LegacyScreens`.
 - Commit the designs and the generated files together, naming the `cuppa-tui` version that wrote them.
 

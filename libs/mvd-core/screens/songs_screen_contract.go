@@ -60,6 +60,16 @@ func DefaultSongsPalette() SongsPalette {
 // SongsHintsHint is one hint of the key bar Hints.
 type SongsHintsHint struct{ Key, Label string }
 
+// SongsHintsHintAt is the index of the hint of Hints under column x of the bar (X of the
+// click's event), and false between hints.
+func SongsHintsHintAt(p SongsProps, x int) (int, bool) {
+	keys := make([][2]string, len(p.Hints))
+	for i, h := range p.Hints {
+		keys[i] = [2]string{h.Key, h.Label}
+	}
+	return hintIndexAt(keys, 2, x)
+}
+
 // DefaultSongsProps is the screen as it was designed: each input holds the value
 // it had in the design.
 func DefaultSongsProps() SongsProps {
