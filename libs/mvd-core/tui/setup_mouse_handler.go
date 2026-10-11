@@ -43,7 +43,7 @@ func (m setupModel) hints() []keybar.Hint {
 	case screenAdvanced:
 		return m.advanced.Hints()
 	case screenColours:
-		return m.colours.hints()
+		return m.colours.Hints()
 	case screenSongs:
 		return m.songs.hints()
 	default:
@@ -79,8 +79,6 @@ func (m *setupModel) selectSetting(y int) {
 	case screenAdvanced:
 		m.advanced = m.advanced.Select(row)
 	case screenColours:
-		if !m.colours.editing && row >= 0 && row < len(colourLabels) {
-			m.colours.cursor = row
-		}
+		m.colours = m.colours.Select(row)
 	}
 }
