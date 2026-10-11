@@ -9,6 +9,7 @@ import (
 	"testing"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
+	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -79,9 +80,8 @@ func legacyCases() []legacyCase {
 	songs := func(text string) func(t *testing.T) string {
 		return func(t *testing.T) string {
 			ApplyTheme(config.DefaultThemeColors())
-			m := newSongsModel("C:\\Music\\songs").setSize(w, h)
-			m.ta.SetValue(text)
-			return m.view(w, h)
+			m := songspage.New("C:\\Music\\songs").SetSize(w, h).WithText(text)
+			return m.View(w, h)
 		}
 	}
 	folder := func(creating bool, err string) func(t *testing.T) string {

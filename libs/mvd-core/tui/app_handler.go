@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
+	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -80,7 +81,7 @@ type setupModel struct {
 	config        configModel
 	advanced      advancedpage.Model
 	colours       colourspage.Model
-	songs         songsModel
+	songs         songspage.Model
 	result        SetupResult
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
 	pick          FolderPicker
@@ -107,7 +108,7 @@ func newSetupModel(in SetupInput) setupModel {
 		cfgPath:   in.CfgPath,
 		listPath:  in.ListPath,
 		list:      newListModel(in.URLs),
-		songs:     newSongsModel(""),
+		songs:     songspage.New(""),
 		config:    newConfigModel(in.Cfg).withFolderPicker(in.PickFolder).withUninstaller(in.Uninstall).withMover(in.Move),
 		pick:      in.PickFolder,
 		uninstall: in.Uninstall,
@@ -130,7 +131,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.config = m.config.setSize(msg.Width, msg.Height)
 		m.advanced = m.advanced.SetSize(msg.Width, msg.Height)
 		m.colours = m.colours.SetSize(msg.Width, msg.Height)
-		m.songs = m.songs.setSize(msg.Width, msg.Height)
+		m.songs = m.songs.SetSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.MouseMsg:
 		return m.mouse(msg)
@@ -158,7 +159,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.listPath == "" {
 				return m, nil
 			}
-			m.songs = newSongsModel(filepath.Join(filepath.Dir(m.listPath), "songs")).setSize(m.width, m.height)
+			m.songs = songspage.New(filepath.Join(filepath.Dir(m.listPath), "songs")).SetSize(m.width, m.height)
 			m.screen = screenSongs
 			return m, textareaBlink
 		case listQuit:
@@ -204,15 +205,15 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	case screenSongs:
-		next, cmd, out := m.songs.update(msg)
+		next, cmd, out := m.songs.Update(msg)
 		m.songs = next
 		switch out {
-		case songsAdded:
-			m.list = m.list.withURL(m.songs.saved)
+		case songspage.Added:
+			m.list = m.list.withURL(m.songs.Saved())
 			m.saveList()
 			m.screen = screenList
 			return m, nil
-		case songsCancel:
+		case songspage.Cancel:
 			m.screen = screenList
 			return m, nil
 		}
@@ -244,7 +245,7 @@ func (m setupModel) render() string {
 	case screenColours:
 		return m.colours.View(m.width, m.height)
 	case screenSongs:
-		return m.songs.view(m.width, m.height)
+		return m.songs.View(m.width, m.height)
 	default:
 		return m.list.view(m.width, m.height)
 	}
