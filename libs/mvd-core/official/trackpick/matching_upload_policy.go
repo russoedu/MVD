@@ -1,0 +1,28 @@
+package trackpick
+
+import (
+	"youtube-downloader/libs/mvd-core/official/titlematch"
+)
+
+// IsUploadOfTheSong says whether a search result is the song itself: not a cover,
+// a live take, a remix or a lyric or audio-only upload of it, the title says the song
+// and the title or the channel says the artist. It does not ask for the word "official" (see scoreCandidate),
+// which is what tells the official video from the other uploads of the song.
+func IsUploadOfTheSong(res SearchResult, song Song) bool {
+	if res.ID == "" || res.ID == song.OwnID || IsTopicChannel(res.Channel) || len(song.Artists) == 0 {
+		return false
+	}
+	title, original := titlematch.Normalize(res.Title), titlematch.Normalize(song.Title)
+	if hasAny(title, original, cutsToReject) || hasAny(title, original, audioMarkers) {
+		return false
+	}
+	if titlematch.TitleSimilarity(song.Title, res.Title, song.Artists) < minTitleSimilarity {
+		return false
+	}
+	for _, artist := range song.Artists {
+		if titlematch.Mentions(res.Title, artist) || titlematch.ChannelIsArtist(res.Channel, artist) {
+			return true
+		}
+	}
+	return false
+}

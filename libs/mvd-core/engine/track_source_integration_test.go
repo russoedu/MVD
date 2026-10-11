@@ -11,7 +11,9 @@ import (
 // fakeTrackSource lists a three song playlist and finds a video for two of them.
 type fakeTrackSource struct{}
 
-func (fakeTrackSource) Handles(link string) bool { return strings.HasPrefix(link, "https://music.test/") }
+func (fakeTrackSource) Handles(link string) bool {
+	return strings.HasPrefix(link, "https://music.test/")
+}
 
 func (fakeTrackSource) Tracks(_ context.Context, link string) (string, []Track, error) {
 	if strings.HasSuffix(link, "/broken") {

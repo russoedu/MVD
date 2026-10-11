@@ -1,8 +1,8 @@
 package engine
 
 import (
-	"encoding/csv"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"

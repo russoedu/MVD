@@ -3,6 +3,9 @@ package runner
 import (
 	"context"
 	"time"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 
 	"youtube-downloader/libs/mvd-core/official"
 	"youtube-downloader/libs/mvd-core/songid"
@@ -28,16 +31,16 @@ type ResolverInput struct {
 
 // BuildResolver wires the official video lookup against the real sites, the way the app
 // uses it, and returns it with the YouTube search it and the songs of other services share.
-func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...interface{})) (*official.Resolver, func(string) ([]official.SearchResult, error)) {
-	searcher := func(query string) ([]official.SearchResult, error) {
+func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...interface{})) (*official.Resolver, func(string) ([]trackpick.SearchResult, error)) {
+	searcher := func(query string) ([]trackpick.SearchResult, error) {
 		entries, err := ytdlp.ListPlaylist(ctx, in.YtDlp, "ytsearch10:"+query, in.ExtraArgs)
-		out := make([]official.SearchResult, 0, len(entries))
+		out := make([]trackpick.SearchResult, 0, len(entries))
 		for _, e := range entries {
 			channel := e.Channel
 			if channel == "" {
 				channel = e.Uploader
 			}
-			out = append(out, official.SearchResult{ID: e.ID, Title: e.Title, Channel: channel, Duration: int(e.Duration), Views: e.ViewCount, Verified: e.ChannelIsVerified})
+			out = append(out, trackpick.SearchResult{ID: e.ID, Title: e.Title, Channel: channel, Duration: int(e.Duration), Views: e.ViewCount, Verified: e.ChannelIsVerified})
 		}
 		return out, err
 	}
@@ -55,11 +58,11 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 		}
 		return out, err
 	}
-	music := official.NewYouTubeMusicClient()
+	music := musicsource.NewYouTubeMusicClient()
 	resolver.Searcher = searcher
 	resolver.TrackInfos = music.Describe
-	resolver.Sources = official.Sources{
-		Known: resolver.KnownCandidates(official.NewWikidataClient()),
+	resolver.Sources = trackfind.Sources{
+		Known: resolver.KnownCandidates(musicsource.NewWikidataClient()),
 		Music: music.SearchVideos,
 		// A music database names the song of an upload.
 		Identify: songid.NewIdentifier().Identify,
@@ -72,9 +75,9 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 		// What yt-dlp says of an upload (the formats and the storyboard) is asked once.
 		probes := newVideoProbes(ctx, in.YtDlp, in.ExtraArgs)
 		// The formats of the uploads of a song tell which has the best picture and sound.
-		resolver.Sources.Quality = func(videoID string) (official.Quality, error) {
+		resolver.Sources.Quality = func(videoID string) (trackpick.Quality, error) {
 			probe, err := probes.of(videoID)
-			return official.Quality{Height: probe.Quality.Height, AudioKbps: probe.Quality.AudioKbps}, err
+			return trackpick.Quality{Height: probe.Quality.Height, AudioKbps: probe.Quality.AudioKbps}, err
 		}
 		// A video that does not really move (a picture with the song over it, a lyric
 		// video over one background) is not a better version of the song. Its motion is
@@ -90,7 +93,7 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 		}).IsStatic
 	}
 	if in.CacheFile != "" {
-		resolver.Sources.Cache = official.NewResolutionCache(in.CacheFile, 90*24*time.Hour)
+		resolver.Sources.Cache = trackfind.NewResolutionCache(in.CacheFile, 90*24*time.Hour)
 	}
 
 	return resolver, searcher

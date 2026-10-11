@@ -5,8 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"youtube-downloader/libs/mvd-core/official"
+	"youtube-downloader/libs/mvd-core/official/trackfind"
 )
 
 func TestSongFileProviderListsTheSongsOfAFile(t *testing.T) {
@@ -15,7 +14,7 @@ func TestSongFileProviderListsTheSongsOfAFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source := newPlaylistTrackSource(nil, official.Sources{})
+	source := newPlaylistTrackSource(nil, trackfind.Sources{})
 	if !source.Handles(path) || source.Handles("https://www.youtube.com/playlist?list=PLx") {
 		t.Fatalf("a song file is ours, a YouTube playlist is not")
 	}

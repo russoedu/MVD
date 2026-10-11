@@ -2,8 +2,8 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,8 +62,8 @@ type Options struct {
 	// checked. The file itself is never changed.
 	CheckDownload func(ctx context.Context, path string) (problem string, err error)
 	Workers       int    // videos in flight across all playlists
-	LogPath             string // "" disables the log file
-	Resolver            OfficialResolver
+	LogPath       string // "" disables the log file
+	Resolver      OfficialResolver
 	// Tracks, when set, lists the playlists of another service and finds the
 	// YouTube video of each track.
 	Tracks TrackSource
@@ -93,10 +93,10 @@ type engineEntry struct {
 	rejected []string
 	// userChose is true when the person picked the video themselves: it is kept as it is.
 	userChose bool
-	track    *Track // set when the entry is a song with no video yet
-	err      string
-	deferred bool // failed with a transient error, eligible for the sweep
-	sweeps   int  // deferred retry passes already spent
+	track     *Track // set when the entry is a song with no video yet
+	err       string
+	deferred  bool // failed with a transient error, eligible for the sweep
+	sweeps    int  // deferred retry passes already spent
 }
 
 // namedSong is a song as a music database named it.

@@ -10,13 +10,16 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"youtube-downloader/libs/mvd-core/official/cookiejar"
+	"youtube-downloader/libs/mvd-core/official/musicsource"
+	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
 
 func TestTopicChannel(t *testing.T) {
-	if !IsTopicChannel("Armand Van Helden - Topic") {
+	if !trackpick.IsTopicChannel("Armand Van Helden - Topic") {
 		t.Error("a Topic channel should be recognised")
 	}
-	if IsTopicChannel("ModjoOfficial") {
+	if trackpick.IsTopicChannel("ModjoOfficial") {
 		t.Error("an artist channel is not a Topic channel")
 	}
 }
@@ -84,7 +87,7 @@ func nextResponse(selfID, musicID, descID, relatedID string) []byte {
 
 func TestCandidatesFromInitialData(t *testing.T) {
 	raw := nextResponse("rnlp_avexYQ", "-bsONE-kZwI", "dEsCrIpTi0n", "rElAtEd0000")
-	got := candidatesFromInitialData(raw, "rnlp_avexYQ")
+	got := musicsource.CandidatesFromInitialData(raw, "rnlp_avexYQ")
 	want := []string{"-bsONE-kZwI", "dEsCrIpTi0n"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("want %v, got %v", want, got)
@@ -92,7 +95,7 @@ func TestCandidatesFromInitialData(t *testing.T) {
 
 	// Music card pointing at the video itself must be ignored.
 	raw = nextResponse("rnlp_avexYQ", "rnlp_avexYQ", "", "rElAtEd0000")
-	if got := candidatesFromInitialData(raw, "rnlp_avexYQ"); len(got) != 0 {
+	if got := musicsource.CandidatesFromInitialData(raw, "rnlp_avexYQ"); len(got) != 0 {
 		t.Fatalf("self link should be ignored, got %v", got)
 	}
 }
@@ -106,23 +109,23 @@ func watchPage(selfID, musicID, descID string) string {
 }
 
 func TestCandidatesFromWatchPage(t *testing.T) {
-	got := candidatesFromWatchPage([]byte(watchPage("rnlp_avexYQ", "-bsONE-kZwI", "dEsCrIpTi0n")), "rnlp_avexYQ")
+	got := musicsource.CandidatesFromWatchPage([]byte(watchPage("rnlp_avexYQ", "-bsONE-kZwI", "dEsCrIpTi0n")), "rnlp_avexYQ")
 	want := []string{"-bsONE-kZwI", "dEsCrIpTi0n"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("want %v, got %v", want, got)
 	}
 
 	stripped := `<script>var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":"nothing here"}};</script>`
-	if got := candidatesFromWatchPage([]byte(stripped), "rnlp_avexYQ"); len(got) != 0 {
+	if got := musicsource.CandidatesFromWatchPage([]byte(stripped), "rnlp_avexYQ"); len(got) != 0 {
 		t.Fatalf("expected no candidates, got %v", got)
 	}
 }
 
 func TestExtractJSONAfter(t *testing.T) {
-	if extractJSONAfter([]byte("no marker"), "var x = ") != nil {
+	if musicsource.ExtractJSONAfter([]byte("no marker"), "var x = ") != nil {
 		t.Error("missing marker must return nil")
 	}
-	got := extractJSONAfter([]byte(`var x = {"a":"};</script>","b":[1,2]};</script>`), "var x = ")
+	got := musicsource.ExtractJSONAfter([]byte(`var x = {"a":"};</script>","b":[1,2]};</script>`), "var x = ")
 	if string(got) != `{"a":"};</script>","b":[1,2]}` {
 		t.Errorf("unexpected value: %s", got)
 	}
@@ -300,7 +303,7 @@ func TestLoadCookieJar(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
-	jar, n, err := LoadCookieJar(path)
+	jar, n, err := cookiejar.LoadCookieJar(path)
 	if err != nil || n != 3 {
 		t.Fatalf("load failed: %v (n=%d)", err, n)
 	}
@@ -317,14 +320,14 @@ func TestLoadCookieJar(t *testing.T) {
 	if n, err := res.UseCookies(path); err != nil || n != 3 || res.Client.Jar == nil {
 		t.Errorf("UseCookies failed: %v %d", err, n)
 	}
-	if _, _, err := LoadCookieJar(t.TempDir() + "/missing.txt"); err == nil {
+	if _, _, err := cookiejar.LoadCookieJar(t.TempDir() + "/missing.txt"); err == nil {
 		t.Error("missing file should fail")
 	}
 	empty := t.TempDir() + "/empty.txt"
 	if err := os.WriteFile(empty, []byte("# nothing\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := LoadCookieJar(empty); err == nil {
+	if _, _, err := cookiejar.LoadCookieJar(empty); err == nil {
 		t.Error("file without cookies should fail")
 	}
 }

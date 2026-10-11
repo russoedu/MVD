@@ -3,8 +3,7 @@ package songid
 import (
 	"regexp"
 	"strings"
-
-	"youtube-downloader/libs/mvd-core/official"
+	"youtube-downloader/libs/mvd-core/official/titlematch"
 )
 
 var (
@@ -19,7 +18,7 @@ func guessesFrom(uploadTitle, channel string) []Identity {
 	var guesses []Identity
 	seen := map[string]bool{}
 	add := func(artist, title string) {
-		artist, title = strings.TrimSpace(artist), official.SearchTitle(title)
+		artist, title = strings.TrimSpace(artist), titlematch.SearchTitle(title)
 		key := strings.ToLower(artist + "|" + title)
 		if artist == "" || title == "" || seen[key] {
 			return
@@ -41,7 +40,7 @@ func guessesFrom(uploadTitle, channel string) []Identity {
 		add(parts[0], parts[1])
 		add(parts[1], parts[0])
 	}
-	add(official.ArtistFromChannel(channel), outside)
+	add(titlematch.ArtistFromChannel(channel), outside)
 
 	return guesses
 }
