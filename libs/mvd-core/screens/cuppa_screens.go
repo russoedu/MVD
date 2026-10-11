@@ -161,6 +161,27 @@ func layoutScreen[P any](parts []screenPart[P], p P, th Theme, w, h int, env fun
 	return Frame{Regions: regions}
 }
 
+// hintIndexAt is the index of the key bar hint under column x of the bar (the
+// x of the click's event), counting the one space before the first hint and
+// gap spaces between hints; ok is false between hints and after the last.
+func hintIndexAt(keys [][2]string, gap, x int) (int, bool) {
+	at := 1
+	for i, k := range keys {
+		if i > 0 {
+			at += gap
+		}
+		w := lipgloss.Width(k[0])
+		if k[1] != "" {
+			w += 1 + lipgloss.Width(k[1])
+		}
+		if x >= at && x < at+w {
+			return i, true
+		}
+		at += w
+	}
+	return 0, false
+}
+
 // CellStyle restyles one cell of a row: a colour is #rrggbb or a palette
 // number; the zero value keeps the column's style.
 type CellStyle struct {

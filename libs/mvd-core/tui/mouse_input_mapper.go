@@ -31,14 +31,18 @@ func wheelDirection(msg tea.MouseMsg) int {
 
 // hintAt returns the key bar entry drawn under column x. The bar is a space,
 // then each entry as its key, a space and its description, two spaces apart,
-// exactly as keyBar and the download screen's key bar draw it.
+// exactly as the key bar of every design draws it (the test against the generated
+// HintAt of each screen keeps the two equal).
 func hintAt(hints []keyHint, x int) (keyHint, bool) {
 	col := 1
 	for i, h := range hints {
 		if i > 0 {
 			col += 2
 		}
-		width := ansi.StringWidth(h.key) + 1 + ansi.StringWidth(h.desc)
+		width := ansi.StringWidth(h.key)
+		if h.desc != "" {
+			width += 1 + ansi.StringWidth(h.desc)
+		}
 		if x >= col && x < col+width {
 			return h, true
 		}

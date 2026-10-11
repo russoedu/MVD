@@ -68,6 +68,16 @@ type EditorPlanningBodyRow struct {
 // EditorPlanningHintsHint is one hint of the key bar Hints.
 type EditorPlanningHintsHint struct{ Key, Label string }
 
+// EditorPlanningHintsHintAt is the index of the hint of Hints under column x of the bar (X of the
+// click's event), and false between hints.
+func EditorPlanningHintsHintAt(p EditorPlanningProps, x int) (int, bool) {
+	keys := make([][2]string, len(p.Hints))
+	for i, h := range p.Hints {
+		keys[i] = [2]string{h.Key, h.Label}
+	}
+	return hintIndexAt(keys, 2, x)
+}
+
 // DefaultEditorPlanningProps is the screen as it was designed: each input holds the value
 // it had in the design.
 func DefaultEditorPlanningProps() EditorPlanningProps {
