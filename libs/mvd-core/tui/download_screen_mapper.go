@@ -186,10 +186,8 @@ func (m model) entryRows(innerW int) (title, right string, rows []screens.Downlo
 		en := m.state.Entries[id]
 		glyph, glyphColour := m.entryGlyph(en)
 		tag, tagColour := m.entryTag(en)
-		// The title is cut here, by cells, so that a wide character never pushes the tag away.
-		titleW := innerW - 6 - ansi.StringWidth(tag)
 		row := screens.DownloadEntriesRow{
-			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cellText(truncate(entryTitle(en), titleW)), Tag: tag,
+			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cellText(entryTitle(en)), Tag: tag,
 			GlyphStyle: screens.CellStyle{Fg: glyphColour}, TagStyle: screens.CellStyle{Fg: tagColour},
 		}
 		switch {
