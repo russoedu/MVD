@@ -7,6 +7,7 @@ import (
 	"youtube-downloader/libs/mvd-core/look"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	helppage "youtube-downloader/libs/mvd-core/run/help"
+	"youtube-downloader/libs/mvd-core/screenview"
 
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
@@ -20,7 +21,7 @@ func (m model) render() string {
 		return look.Dim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
-	view := paddedFrame(downloadpage.View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
+	view := screenview.Padded(downloadpage.View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
 
 	if m.adding {
 		return m.renderAddBox()

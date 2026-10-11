@@ -11,6 +11,7 @@ import (
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/outline"
 	"youtube-downloader/libs/mvd-core/pointer"
+	"youtube-downloader/libs/mvd-core/screenview"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -48,7 +49,7 @@ func (m editorModel) render() string {
 	props.Hints = keybar.Of[editorpage.HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
-	return paddedFrame(editorpage.View(props, width, m.height).View, width)
+	return screenview.Padded(editorpage.View(props, width, m.height).View, width)
 }
 
 func (m editorModel) renderPlanning(width int) string {
@@ -80,7 +81,7 @@ func (m editorModel) renderPlanning(width int) string {
 	props.Hints = keybar.Of[editorplanningpage.HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
-	return paddedFrame(editorplanningpage.View(props, width, m.height).View, width)
+	return screenview.Padded(editorplanningpage.View(props, width, m.height).View, width)
 }
 
 func (m editorModel) title() string {

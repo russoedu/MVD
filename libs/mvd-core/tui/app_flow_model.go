@@ -6,6 +6,7 @@ import (
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/screenview"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -203,7 +204,7 @@ func (m appModel) render() string {
 	return strings.Join(lines, "\n")
 }
 
-func (m appModel) View() tea.View { return screenView(m.render()) }
+func (m appModel) View() tea.View { return screenview.Of(m.render()) }
 
 // planFilesOf returns the lines of the list that are saved plans.
 func planFilesOf(urls []string) []string {

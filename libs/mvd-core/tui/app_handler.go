@@ -3,6 +3,7 @@ package tui
 import (
 	"charm.land/bubbles/v2/textarea"
 	"path/filepath"
+	"youtube-downloader/libs/mvd-core/screenview"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 	listpage "youtube-downloader/libs/mvd-core/setup/list"
@@ -263,4 +264,4 @@ func (m setupModel) saveList() {
 	}
 }
 
-func (m setupModel) View() tea.View { return screenView(m.render()) }
+func (m setupModel) View() tea.View { return screenview.Of(m.render()) }

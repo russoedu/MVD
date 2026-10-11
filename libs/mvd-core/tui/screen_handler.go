@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"youtube-downloader/libs/mvd-core/screenview"
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textarea"
@@ -366,4 +367,4 @@ func (m *model) jumpTo(id int) {
 	m.outScroll = 0
 }
 
-func (m model) View() tea.View { return screenView(m.render()) }
+func (m model) View() tea.View { return screenview.Of(m.render()) }
