@@ -1,4 +1,4 @@
-package tui
+package download
 
 import (
 	"fmt"
@@ -14,29 +14,9 @@ import (
 // selected one, so a list of thousands stays cheap to describe.
 const outlineEntryWindow = 25
 
-// Outline describes the app's current screen: a setup screen, or the download
-// screen.
-func (m appModel) Outline() ScreenOutline {
-	var out ScreenOutline
-	switch {
-	case m.stopping:
-		return ScreenOutline{Title: "MVD · Stopping the downloads"}
-	case m.editing && !m.downloading:
-		return m.editor.Outline()
-	case m.downloading:
-		return m.download.Outline()
-	default:
-		out = m.setup.Outline()
-	}
-	if out.Prompt == "" {
-		out.Prompt = m.notice
-	}
-	return out
-}
-
 // Outline describes the download screen: the totals and playlist in the title,
 // the selected playlist's entries (a window around the selection) as items.
-func (m model) Outline() ScreenOutline {
+func (m Model) Outline() outline.ScreenOutline {
 	if m.adding {
 		return m.addingOutline()
 	}
@@ -49,7 +29,7 @@ func (m model) Outline() ScreenOutline {
 		title += " · " + cells.Display(m.state.Playlists[m.selPlaylist].Title)
 	}
 
-	out := ScreenOutline{Title: title, ItemsLabel: "Downloads", Keys: outline.KeysOf(m.hints())}
+	out := outline.ScreenOutline{Title: title, ItemsLabel: "Downloads", Keys: outline.KeysOf(m.hints())}
 	if m.confirmQuit {
 		out.Prompt = "Downloads are still running. Quit? y/n"
 	}
@@ -63,7 +43,7 @@ func (m model) Outline() ScreenOutline {
 	to := min(len(ids), sel+outlineEntryWindow+1)
 	for i := from; i < to; i++ {
 		en := m.state.Entries[ids[i]]
-		out.Items = append(out.Items, OutlineItem{
+		out.Items = append(out.Items, outline.Item{
 			Label:    fmt.Sprintf("%02d %s", en.Index, entryTitle(en)),
 			Value:    entryOutlineValue(en),
 			Selected: i == sel,

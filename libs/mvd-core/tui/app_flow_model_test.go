@@ -10,12 +10,26 @@ import (
 	"sync"
 	"testing"
 	"time"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/engine"
 )
+
+// fakeController stands in for the engine.
+type fakeController struct {
+	events  chan interface{}
+	sources []engine.PlaylistSource
+	retried []int
+}
+
+func (f *fakeController) Events() <-chan interface{}       { return f.events }
+func (f *fakeController) Sources() []engine.PlaylistSource { return f.sources }
+func (f *fakeController) LogPath() string                  { return "mvd.log" }
+func (f *fakeController) Retry(id int) bool                { f.retried = append(f.retried, id); return true }
+func (f *fakeController) RetryPlaylist(int) int            { return 2 }
 
 type fakeRun struct {
 	fakeController
@@ -58,7 +72,7 @@ func runNow(cmd tea.Cmd) []tea.Msg {
 				out = append(out, runNow(c)...)
 			}
 			return out
-		case setupFinishedMsg, downloadFinishedMsg, runClosedMsg, planClosedMsg, editorPlannedMsg, editorLeaveMsg, editorDownloadMsg, editorDescribedMsg, editorFilePickedMsg:
+		case setupFinishedMsg, downloadpage.FinishedMsg, runClosedMsg, planClosedMsg, editorPlannedMsg, editorLeaveMsg, editorDownloadMsg, editorDescribedMsg, editorFilePickedMsg:
 			return []tea.Msg{msg}
 		}
 	case <-time.After(30 * time.Millisecond):
@@ -100,9 +114,9 @@ func TestAppModelRunsSetupThenDownloadThenSetup(t *testing.T) {
 
 	// Everything finishes, then the user leaves the screen.
 	app := m.(appModel)
-	app.download.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "One"}}})
-	app.download.state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone})
-	app.download.state.Apply(engine.EvIdle{})
+	app.download.State().Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "One"}}})
+	app.download.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone})
+	app.download.State().Apply(engine.EvIdle{})
 	if err := os.WriteFile(filepath.Join(dir, "list.txt"), []byte("https://a\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -129,8 +143,8 @@ func TestAppModelKeepsTheListWhenTheRunIsUnfinished(t *testing.T) {
 	m = drive(t, m, key("ctrl+s"))
 
 	app := m.(appModel)
-	app.download.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "One"}}})
-	app.download.state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading})
+	app.download.State().Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "One"}}})
+	app.download.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading})
 	m = drive(t, app, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 
 	back := m.(appModel)
@@ -175,32 +189,6 @@ func TestAppModelQuitsFromTheSetupScreens(t *testing.T) {
 	_, cmd = m.Update(next)
 	if _, ok := cmd().(tea.QuitMsg); !ok {
 		t.Error("quitting the setup screens quits the app")
-	}
-}
-
-func TestDownloadOutlineWindowsALongList(t *testing.T) {
-	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 4
-	out := m.Outline()
-	if len(out.Items) != 6 || !out.Items[4].Selected {
-		t.Fatalf("items: %+v", out.Items)
-	}
-	if out.Items[4].Value != "downloading 34%" || out.Items[2].Value != "failed: Video unavailable" {
-		t.Errorf("values: %q, %q", out.Items[4].Value, out.Items[2].Value)
-	}
-	if len(out.Keys) == 0 {
-		t.Error("expected the key bar")
-	}
-
-	var entries []engine.EntryInfo
-	for i := 0; i < 500; i++ {
-		entries = append(entries, engine.EntryInfo{ID: 100 + i, Playlist: 0, Index: i + 1, Title: "t"})
-	}
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Big", Entries: entries})
-	m.selEntry = 250
-	if n := len(m.Outline().Items); n != 2*outlineEntryWindow+1 {
-		t.Errorf("want a window of %d, got %d", 2*outlineEntryWindow+1, n)
 	}
 }
 

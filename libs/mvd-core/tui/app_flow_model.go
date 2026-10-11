@@ -6,6 +6,7 @@ import (
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/look"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	"youtube-downloader/libs/mvd-core/screenview"
 
 	tea "charm.land/bubbletea/v2"
@@ -43,7 +44,7 @@ type appModel struct {
 	width, height int
 
 	setup       setupModel
-	download    model
+	download    downloadpage.Model
 	run         Run
 	downloading bool
 	stopping    bool   // the run is winding down; input is ignored until it has
@@ -88,7 +89,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.forward(msg)
 	case setupFinishedMsg:
 		return m.startRun(msg.result)
-	case downloadFinishedMsg:
+	case downloadpage.FinishedMsg:
 		return m.stopRun()
 	case runClosedMsg:
 		return m.backToSetup()
@@ -110,9 +111,10 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if !m.downloading {
-		switch msg.(type) {
-		case tickMsg, evMsg, evClosed: // left over from a run that has ended
+		if downloadpage.IsLeftover(msg) { // left over from a run that has ended
 			return m, nil
+		}
+		switch msg.(type) {
 		case tea.KeyPressMsg:
 			m.notice = ""
 		}
@@ -126,7 +128,7 @@ func (m appModel) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if m.downloading {
 		next, cmd := m.download.Update(msg)
-		m.download = next.(model)
+		m.download = next.(downloadpage.Model)
 		return m, cmd
 	}
 	next, cmd := m.setup.Update(msg)
@@ -155,10 +157,9 @@ func (m appModel) startRun(res SetupResult) (tea.Model, tea.Cmd) {
 		m.notice = "Cannot start the download: " + err.Error()
 		return m, m.setup.Init()
 	}
-	dm := newModel(run)
-	dm.embedded = true
+	dm := downloadpage.NewEmbedded(run)
 	next, _ := dm.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
-	m.run, m.download, m.downloading = run, next.(model), true
+	m.run, m.download, m.downloading = run, next.(downloadpage.Model), true
 	return m, m.download.Init()
 }
 
@@ -179,7 +180,7 @@ func (m appModel) backToSetup() (tea.Model, tea.Cmd) {
 	if m.fromEditor {
 		return m.finishEditorDownload()
 	}
-	if t := m.download.state.Tally(); t.Total > 0 && t.Queued == 0 && t.Running == 0 {
+	if t := m.download.State().Tally(); t.Total > 0 && t.Queued == 0 && t.Running == 0 {
 		_ = sourcelist.Clear(m.in.Setup.ListPath)
 		m.urls = nil
 	}
@@ -193,7 +194,7 @@ func (m appModel) render() string {
 		return m.editor.render()
 	}
 	if m.downloading {
-		return m.download.render()
+		return m.download.Render()
 	}
 	view := m.setup.render()
 	if m.notice == "" || m.width == 0 {
@@ -338,10 +339,9 @@ func (m appModel) startEditorDownload(msg editorDownloadMsg) (tea.Model, tea.Cmd
 		m.editor.flash("Cannot start the download: " + err.Error())
 		return m, nil
 	}
-	dm := newModel(run)
-	dm.embedded = true
+	dm := downloadpage.NewEmbedded(run)
 	next, _ := dm.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
-	m.run, m.download, m.downloading = run, next.(model), true
+	m.run, m.download, m.downloading = run, next.(downloadpage.Model), true
 	m.fromEditor, m.editorKeys = true, msg.keys
 	return m, m.download.Init()
 }
@@ -351,7 +351,7 @@ func (m appModel) startEditorDownload(msg editorDownloadMsg) (tea.Model, tea.Cmd
 func (m appModel) finishEditorDownload() (tea.Model, tea.Cmd) {
 	var done []string
 	for i, key := range m.editorKeys {
-		if en := m.download.state.Entry(i); en != nil && (en.State == engine.StateDone || en.State == engine.StateDuplicate) {
+		if en := m.download.State().Entry(i); en != nil && (en.State == engine.StateDone || en.State == engine.StateDuplicate) {
 			done = append(done, key)
 		}
 	}

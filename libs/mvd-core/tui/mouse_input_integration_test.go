@@ -3,20 +3,16 @@ package tui
 import (
 	"testing"
 	"youtube-downloader/libs/mvd-core/keybar"
-	"youtube-downloader/libs/mvd-core/pointer"
+	"youtube-downloader/libs/mvd-core/testing/mouse"
 
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
 
-func click(x, y int) tea.MouseMsg {
-	return tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft}
-}
+func click(x, y int) tea.MouseMsg { return mouse.Click(x, y) }
 
-func wheel(x, y int, button tea.MouseButton) tea.MouseMsg {
-	return tea.MouseWheelMsg{X: x, Y: y, Button: button}
-}
+func wheel(x, y int, button tea.MouseButton) tea.MouseMsg { return mouse.Wheel(x, y, button) }
 
 func TestHintAtFindsTheEntryDrawnUnderAColumn(t *testing.T) {
 	hints := []keybar.Hint{{Key: "ctrl+s", Desc: "start"}, {Key: "ctrl+p", Desc: "preferences"}}
@@ -92,61 +88,5 @@ func TestSetupScreensIgnoreClicksOnSettingsWhileOneIsBeingEdited(t *testing.T) {
 	m, _ = m.Update(click(10, 6))
 	if got := m.(setupModel).config.Cursor(); got != before {
 		t.Errorf("a click while editing moved the selection from %d to %d", before, got)
-	}
-}
-
-func TestDownloadScreenClicksSelectPanesRowsAndKeyBarEntries(t *testing.T) {
-	m := sampleModel(t)
-	m.width, m.height = 120, 36
-	// Wide layout: the playlists box fills rows 3-7 (its rows 4-6), the entries box starts at row 8
-	// (its rows 9 and below), and the output box starts at column 45.
-
-	next, _ := m.Update(click(5, 5))
-	m = next.(model)
-	if m.selPlaylist != 1 || m.focus != paneLists {
-		t.Errorf("clicking the second playlist: selPlaylist %d, focus %d", m.selPlaylist, m.focus)
-	}
-
-	m.selPlaylist = 0
-	next, _ = m.Update(click(5, 11))
-	m = next.(model)
-	if m.selEntry != 2 || m.focus != paneEntries || m.follow {
-		t.Errorf("clicking the third entry: selEntry %d, focus %d, follow %v", m.selEntry, m.focus, m.follow)
-	}
-
-	m.focus = paneLists
-	next, _ = m.Update(click(11, 35)) // "tab pane" in the key bar
-	m = next.(model)
-	if m.focus != paneEntries {
-		t.Errorf("clicking tab in the key bar should change pane, focus %d", m.focus)
-	}
-}
-
-func TestDownloadScreenWheelScrollsThePaneUnderThePointer(t *testing.T) {
-	m := sampleModel(t)
-	m.width, m.height = 120, 36
-	m.selEntry = 4 // the entry with a long log
-
-	next, _ := m.Update(wheel(80, 10, tea.MouseWheelUp)) // over the output box
-	m = next.(model)
-	if m.focus != paneOutput || m.outScroll != pointer.WheelStep {
-		t.Errorf("wheel up over the output: focus %d, scrolled %d", m.focus, m.outScroll)
-	}
-
-	next, _ = m.Update(wheel(5, 11, tea.MouseWheelDown)) // over the entries
-	m = next.(model)
-	if m.focus != paneEntries || m.selEntry != 5 {
-		t.Errorf("wheel down over the entries: focus %d, selEntry %d", m.focus, m.selEntry)
-	}
-}
-
-func TestDownloadScreenIgnoresTheMouseWhileConfirmingToQuit(t *testing.T) {
-	m := sampleModel(t)
-	m.width, m.height = 120, 36
-	m.confirmQuit = true
-
-	next, _ := m.Update(click(5, 5))
-	if next.(model).selPlaylist != m.selPlaylist {
-		t.Error("a click while confirming should do nothing")
 	}
 }

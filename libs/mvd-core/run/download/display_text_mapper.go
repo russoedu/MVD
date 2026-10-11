@@ -1,4 +1,4 @@
-package tui
+package download
 
 import (
 	"youtube-downloader/libs/mvd-core/cells"

@@ -57,7 +57,7 @@ func (m editorModel) renderPlanning(width int) string {
 	done := t.Planned + t.NotFound + t.Failed
 	body := []string{
 		" ",
-		" " + look.Cyan.Render(spinnerFrames[m.spin]) + " " + look.Text.Render("Looking up the best version of each song, nothing is downloaded."),
+		" " + look.Cyan.Render(look.SpinnerFrames[m.spin]) + " " + look.Text.Render("Looking up the best version of each song, nothing is downloaded."),
 		" ",
 	}
 	if t.Total == 0 {
