@@ -4,6 +4,7 @@ package editor
 
 import (
 	tea "charm.land/bubbletea/v2"
+	master "youtube-downloader/libs/mvd-core/internal/components/master"
 	_ "youtube-downloader/libs/mvd-core/internal/components/widgets"
 	cuppa "youtube-downloader/libs/mvd-core/internal/cuppa"
 )
@@ -39,41 +40,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 	}}
 }
 
-var parts = []cuppa.ScreenPart[Props]{
-	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Review before downloading", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Accent != "" {
-				v["color"] = p.Palette.Accent
-			}
-			v["text"] = p.Title
-			return true
-		},
-	},
-	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "o:open,c:confirm,r:replace,u:original,x:skip,a:confirm all,d:download,s:save,l:open file,esc:back", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Event: "Hint",
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Highlight != "" {
-				v["keyColor"] = p.Palette.Highlight
-			}
-			if p.Palette.Dim != "" {
-				v["labelColor"] = p.Palette.Dim
-			}
-			{
-				items := make([]string, len(p.Hints))
-				for i, h := range p.Hints {
-					items[i] = h.Key + ":" + h.Label
-				}
-				v["hints"] = cuppa.JoinList(items)
-			}
-			return p.ShowKeys
-		},
-	},
+var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 	{
 		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "List", X: 0, Y: 1, W: 120, H: 23, Props: map[string]string{"cellstyles": "", "color": "#3b0f2a", "columns": "Mark:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S1:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Glyph:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Review:9:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Artist:fit=6..30%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S4:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Song:fit=8..50%:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S5:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Video:fill:ellipsis:min=4:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S6:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Replaced:fit=0..25%:floor=8:hide-empty:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,S7:2:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Address:31:hide-empty:fg=@Text:selbg=@Selected:selfg=@Text:selbold", "gap": "0", "rows": ",,,,Review,,Artist,,Song,,Video,,,,Address", "styles": "dim", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 1, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(max(4.0, ((float64(h) * 100.0 / 100.0) - 7.0)))
@@ -182,6 +149,11 @@ var parts = []cuppa.ScreenPart[Props]{
 			return p.ShowLine
 		},
 	},
+}...)
+
+// editorMasterProps is the props of the master's parts, from the screen's.
+func masterProps(p Props) master.Props {
+	return master.Props{Title: p.Title, Hints: p.Hints, ShowKeys: p.ShowKeys, Palette: master.Palette(p.Palette)}
 }
 
 // Editor draws the screen in an area of w by h cells for the values in p.
@@ -348,17 +320,13 @@ type SongsRow struct {
 	Style cuppa.RowStyle
 }
 
-// EditorHintsHint is one hint of the key bar Hints.
-type HintsHint struct{ Key, Label string }
+// EditorHintsHint is one hint of the key bar Hints, the master's.
+type HintsHint = master.HintsHint
 
 // EditorHintsHintAt is the index of the hint of Hints under column x of the bar (X of the
 // click's event), and false between hints.
 func HintsHintAt(p Props, x int) (int, bool) {
-	keys := make([][2]string, len(p.Hints))
-	for i, h := range p.Hints {
-		keys[i] = [2]string{h.Key, h.Label}
-	}
-	return cuppa.HintIndexAt(keys, 2, x)
+	return master.HintsHintAt(masterProps(p), x)
 }
 
 // DefaultEditorProps is the screen as it was designed: each input holds the value
