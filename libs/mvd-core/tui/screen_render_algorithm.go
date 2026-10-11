@@ -7,8 +7,6 @@ import (
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	helppage "youtube-downloader/libs/mvd-core/run/help"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
 )
@@ -74,51 +72,7 @@ func (m model) hints() []keyHint {
 }
 
 func (m model) renderHelp() string {
-	maxW := m.width - 6
-	if maxW < 20 {
-		maxW = 20
-	}
-	var lines []string
-	for _, l := range []string{
-		look.Key.Render("↑ ↓ j k") + "     move selection, scroll output",
-		look.Key.Render("pgup pgdn") + "   move ten rows",
-		look.Key.Render("tab") + "         cycle panes: playlists, entries, output",
-		look.Key.Render("enter") + "       toggle follow mode (jump to the active download)",
-		look.Key.Render("f") + "           show only failed entries",
-		look.Key.Render("r") + "           retry the selected failed entry, or all failed in the playlist",
-		look.Key.Render("l") + "           toggle full screen output",
-		look.Key.Render("a") + "           add more links to this run",
-		look.Key.Render("q") + "           quit (asks for confirmation while running)",
-		look.Key.Render("ctrl+c") + "      quit immediately",
-		look.Key.Render("ctrl+l") + "      redraw the screen",
-		"",
-		look.Dim.Render("glyphs: · queued  ⟲ resolving  ⠋ downloading  ⚙ merging  ✓ done  ≡ duplicate  ✗ failed  ⇄ official video"),
-		"",
-		look.Dim.Render("full output is written to " + m.ctrl.LogPath()),
-		"",
-		look.Dim.Render("press any key to close"),
-	} {
-		if ansi.StringWidth(l) <= maxW {
-			lines = append(lines, l)
-			continue
-		}
-		lines = append(lines, cells.Wrap(l, maxW)...)
-	}
-	if len(lines) > m.height-2 {
-		lines = lines[:m.height-2]
-	}
-	props := helppage.Default()
-	props.Palette = helppage.Palette(look.CurrentPalette())
-	width := 0
-	for _, l := range lines {
-		width = max(width, ansi.StringWidth(l))
-	}
-	props.HelpWidth, props.HelpHeight = width+4, len(lines)+2
-	props.Lines = nil
-	for _, l := range lines {
-		props.Lines = append(props.Lines, helppage.LinesRow{Line: cells.CellText(l)})
-	}
-	return paddedFrame(helppage.View(props, m.width, m.height).View, m.width)
+	return helppage.Screen(m.width, m.height, m.ctrl.LogPath())
 }
 
 // downloadingSummary is the speed of all the downloads together, and how many files and
