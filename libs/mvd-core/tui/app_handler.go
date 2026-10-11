@@ -2,6 +2,7 @@ package tui
 
 import (
 	"path/filepath"
+	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -76,7 +77,7 @@ type setupModel struct {
 	listPath      string
 	list          listModel
 	config        configModel
-	advanced      advancedModel
+	advanced      advancedpage.Model
 	colours       coloursModel
 	songs         songsModel
 	result        SetupResult
@@ -126,7 +127,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.list = m.list.setSize(msg.Width, msg.Height)
 		m.config = m.config.setSize(msg.Width, msg.Height)
-		m.advanced = m.advanced.setSize(msg.Width, msg.Height)
+		m.advanced = m.advanced.SetSize(msg.Width, msg.Height)
 		m.colours = m.colours.setSize(msg.Width, msg.Height)
 		m.songs = m.songs.setSize(msg.Width, msg.Height)
 		return m, nil
@@ -179,7 +180,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.screen = screenList
 			return m, nil
 		case cfgAdvanced:
-			m.advanced = newAdvancedModel(m.config.cfg).setSize(m.width, m.height)
+			m.advanced = advancedpage.New(m.config.cfg).SetSize(m.width, m.height)
 			m.screen = screenAdvanced
 			return m, nil
 		case cfgColours:
@@ -189,14 +190,14 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	case screenAdvanced:
-		next, cmd, out, cfg := m.advanced.update(msg)
+		next, cmd, out, cfg := m.advanced.Update(msg)
 		m.advanced = next
 		switch out {
-		case advSave:
+		case advancedpage.Save:
 			m.config.cfg = cfg
 			m.screen = screenConfig
 			return m, nil
-		case advCancel:
+		case advancedpage.Cancel:
 			m.screen = screenConfig
 			return m, nil
 		}
@@ -238,7 +239,7 @@ func (m setupModel) render() string {
 	case screenConfig:
 		return m.config.view(m.width, m.height)
 	case screenAdvanced:
-		return m.advanced.view(m.width, m.height)
+		return m.advanced.View(m.width, m.height)
 	case screenColours:
 		return m.colours.view(m.width, m.height)
 	case screenSongs:

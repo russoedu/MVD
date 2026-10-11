@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"youtube-downloader/libs/mvd-core/keybar"
+	"youtube-downloader/libs/mvd-core/settings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -35,11 +36,11 @@ func TestTheUninstallKeyAsksAndSaysHowItWent(t *testing.T) {
 		m := preferencesWith(uninstallAnswering(c.outcome, c.err))
 
 		m, cmd, _, _ := m.update(key("u"))
-		if m.mode != editConfirming || cmd == nil {
+		if m.mode != settings.EditConfirming || cmd == nil {
 			t.Fatalf("%s: mode %d, cmd %v: the questions should be open", c.name, m.mode, cmd)
 		}
 		m, _, _, _ = m.update(cmd())
-		if m.mode != editNone || m.status != c.want {
+		if m.mode != settings.EditNone || m.status != c.want {
 			t.Errorf("%s: mode %d, status %q, want %q", c.name, m.mode, m.status, c.want)
 		}
 		if got := m.outline().Prompt; got != c.want {
@@ -56,7 +57,7 @@ func TestWhileTheQuestionsAreOpenKeysAreIgnored(t *testing.T) {
 	m, _, _, _ = m.update(key("u"))
 
 	m, _, out, _ := m.update(key("s"))
-	if m.mode != editConfirming || out != cfgNone {
+	if m.mode != settings.EditConfirming || out != cfgNone {
 		t.Errorf("mode %d, outcome %d: keys should wait for the answers", m.mode, out)
 	}
 	if m.outline().Prompt == "" || len(m.hints()) != 0 {
@@ -79,7 +80,7 @@ func TestWithoutAnUninstallerThereIsNoKeyAndNoHint(t *testing.T) {
 	m := preferencesWith(nil)
 
 	m, cmd, _, _ := m.update(key("u"))
-	if m.mode != editNone || cmd != nil {
+	if m.mode != settings.EditNone || cmd != nil {
 		t.Errorf("mode %d, cmd %v", m.mode, cmd)
 	}
 	for _, h := range m.hints() {
@@ -100,7 +101,7 @@ func TestTheUninstallHintIsClickableOnThePreferences(t *testing.T) {
 	for x := 0; x < 100; x++ {
 		if h, ok := keybar.At(m.(setupModel).hints(), x); ok && h.Key == "u" {
 			m, cmd := m.Update(click(x, 29))
-			if m.(setupModel).config.mode != editConfirming || cmd == nil {
+			if m.(setupModel).config.mode != settings.EditConfirming || cmd == nil {
 				t.Fatal("clicking the entry should ask")
 			}
 			return

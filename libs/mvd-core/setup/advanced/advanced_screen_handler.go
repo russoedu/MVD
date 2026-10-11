@@ -1,4 +1,4 @@
-package tui
+package advanced
 
 import (
 	"strconv"
@@ -6,7 +6,8 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
-	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
+	"youtube-downloader/libs/mvd-core/outline"
+	"youtube-downloader/libs/mvd-core/settings"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -14,72 +15,72 @@ import (
 	"youtube-downloader/libs/mvd-core/config"
 )
 
-type advancedOutcome int
+type Outcome int
 
 const (
-	advNone advancedOutcome = iota
-	advSave
-	advCancel
+	None Outcome = iota
+	Save
+	Cancel
 )
 
 const advItemCount = 3
 
 var advLabels = []string{"Extra yt-dlp args", "Parallel fragments per video", "Auto Retry"}
 
-// advancedModel is the "if you know what you're doing" screen: raw yt-dlp
+// Model is the "if you know what you're doing" screen: raw yt-dlp
 // args, the fragment count and auto-retry.
-type advancedModel struct {
+type Model struct {
 	cfg           config.Config
 	cursor        int
-	mode          int
+	mode          settings.Mode
 	input         textinput.Model
 	width, height int
 }
 
-func newAdvancedModel(cfg config.Config) advancedModel {
+func New(cfg config.Config) Model {
 	ti := textinput.New()
 	ti.Prompt = "> "
-	return advancedModel{cfg: cfg, input: ti}
+	return Model{cfg: cfg, input: ti}
 }
 
-func (m advancedModel) setSize(w, h int) advancedModel {
+func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-8))
 	return m
 }
 
-func (m advancedModel) update(msg tea.Msg) (advancedModel, tea.Cmd, advancedOutcome, config.Config) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome, config.Config) {
 	k, isKey := msg.(tea.KeyPressMsg)
 
-	if m.mode != editNone {
+	if m.mode != settings.EditNone {
 		if isKey {
 			switch k.String() {
 			case "esc":
-				m.mode = editNone
-				return m, nil, advNone, m.cfg
+				m.mode = settings.EditNone
+				return m, nil, None, m.cfg
 			case "enter":
 				m.commit()
-				m.mode = editNone
-				return m, nil, advNone, m.cfg
+				m.mode = settings.EditNone
+				return m, nil, None, m.cfg
 			}
-			if m.mode == editNumber {
+			if m.mode == settings.EditNumber {
 				switch k.String() {
 				case "up":
 					m.input.SetValue(strconv.Itoa(m.numberValue() + 1))
 					m.input.CursorEnd()
-					return m, nil, advNone, m.cfg
+					return m, nil, None, m.cfg
 				case "down":
 					if n := m.numberValue(); n > 0 {
 						m.input.SetValue(strconv.Itoa(n - 1))
 						m.input.CursorEnd()
 					}
-					return m, nil, advNone, m.cfg
+					return m, nil, None, m.cfg
 				}
 			}
 		}
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
-		return m, cmd, advNone, m.cfg
+		return m, cmd, None, m.cfg
 	}
 
 	if isKey {
@@ -93,34 +94,34 @@ func (m advancedModel) update(msg tea.Msg) (advancedModel, tea.Cmd, advancedOutc
 				m.cursor++
 			}
 		case "s", "ctrl+s":
-			return m, nil, advSave, m.cfg
+			return m, nil, Save, m.cfg
 		case "esc":
-			return m, nil, advCancel, m.cfg
+			return m, nil, Cancel, m.cfg
 		case "enter", " ":
 			m.activate()
 		}
 	}
-	return m, nil, advNone, m.cfg
+	return m, nil, None, m.cfg
 }
 
-func (m *advancedModel) activate() {
+func (m *Model) activate() {
 	switch m.cursor {
 	case 0:
 		m.input.SetValue(strings.Join(m.cfg.ExtraArgs, " "))
 		m.input.CursorEnd()
 		m.input.Focus()
-		m.mode = editText
+		m.mode = settings.EditText
 	case 1:
 		m.input.SetValue(strconv.Itoa(m.cfg.ConcurrentFragments))
 		m.input.CursorEnd()
 		m.input.Focus()
-		m.mode = editNumber
+		m.mode = settings.EditNumber
 	case 2:
 		m.cfg.AutoRetry = !m.cfg.AutoRetry
 	}
 }
 
-func (m advancedModel) numberValue() int {
+func (m Model) numberValue() int {
 	n, err := strconv.Atoi(strings.TrimSpace(m.input.Value()))
 	if err != nil || n < 0 {
 		return m.cfg.ConcurrentFragments
@@ -128,7 +129,7 @@ func (m advancedModel) numberValue() int {
 	return n
 }
 
-func (m *advancedModel) commit() {
+func (m *Model) commit() {
 	switch m.cursor {
 	case 0:
 		m.cfg.ExtraArgs = strings.Fields(m.input.Value())
@@ -139,7 +140,7 @@ func (m *advancedModel) commit() {
 	}
 }
 
-func (m advancedModel) display(i int) string {
+func (m Model) display(i int) string {
 	switch i {
 	case 0:
 		if len(m.cfg.ExtraArgs) == 0 {
@@ -149,34 +150,34 @@ func (m advancedModel) display(i int) string {
 	case 1:
 		return strconv.Itoa(m.cfg.ConcurrentFragments)
 	case 2:
-		return yesNo(m.cfg.AutoRetry)
+		return settings.YesNo(m.cfg.AutoRetry)
 	}
 	return ""
 }
 
-func (m advancedModel) hints() []keybar.Hint {
-	if m.mode != editNone {
+func (m Model) Hints() []keybar.Hint {
+	if m.mode != settings.EditNone {
 		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
 	}
 	return []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "s", Desc: "save"}, {Key: "esc", Desc: "back"}}
 }
 
-func (m advancedModel) view(width, height int) string {
-	props := advancedpage.Default()
-	props.Palette = advancedpage.Palette(look.CurrentPalette())
-	props.Hints = keybar.Of[advancedpage.HintsHint](m.hints())
+func (m Model) View(width, height int) string {
+	props := Default()
+	props.Palette = Palette(look.CurrentPalette())
+	props.Hints = keybar.Of[HintsHint](m.Hints())
 
 	var labelW = 0
 	for _, l := range advLabels {
 		labelW = max(labelW, len(l))
 	}
-	rows := make([]advancedpage.ItemsRow, 0, len(advLabels))
+	rows := make([]ItemsRow, 0, len(advLabels))
 	for i, label := range advLabels {
-		row := advancedpage.ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
+		row := ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
 			row.Mark = "▸ "
-			if m.mode == editNone {
-				row.Style = advancedpage.RowSelected
+			if m.mode == settings.EditNone {
+				row.Style = RowSelected
 			} else {
 				row.Value = cells.Truncate(m.input.View(), max(10, width-labelW-6))
 			}
@@ -184,5 +185,26 @@ func (m advancedModel) view(width, height int) string {
 		rows = append(rows, row)
 	}
 	props.Items = rows
-	return advancedpage.View(props, width, height).View
+	return View(props, width, height).View
+}
+
+// Outline describes the screen in plain terms, from the same state and hints the view draws.
+func (m Model) Outline() outline.ScreenOutline {
+	items := make([]outline.Item, len(advLabels))
+	for i, label := range advLabels {
+		items[i] = outline.Item{Label: label, Value: m.display(i), Selected: i == m.cursor}
+	}
+	if m.mode != settings.EditNone {
+		items[m.cursor].Editing = true
+		items[m.cursor].Value = m.input.Value()
+	}
+	return outline.ScreenOutline{Title: "MVD · Advanced", ItemsLabel: "Settings", Items: items, Keys: outline.KeysOf(m.Hints())}
+}
+
+// Select puts the cursor on the setting drawn on row, when none is being edited.
+func (m Model) Select(row int) Model {
+	if m.mode == settings.EditNone && row >= 0 && row < len(advLabels) {
+		m.cursor = row
+	}
+	return m
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/outline"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	"charm.land/bubbles/v2/textarea"
@@ -111,6 +112,6 @@ func (m songsModel) outline() ScreenOutline {
 		HasText:   true,
 		TextLabel: "Songs, one Artist - Title per line",
 		Prompt:    m.summaryText(),
-		Keys:      outlineKeys(m.hints()),
+		Keys:      outline.KeysOf(m.hints()),
 	}
 }

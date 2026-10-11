@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -57,11 +58,11 @@ func legacyCases() []legacyCase {
 			ApplyTheme(config.DefaultThemeColors())
 			c := cfg()
 			c.ExtraArgs = extra
-			m := newAdvancedModel(c).setSize(w, h)
+			m := advancedpage.New(c).SetSize(w, h)
 			for _, msg := range keysOf(keys...) {
-				m, _, _, _ = m.update(msg)
+				m, _, _, _ = m.Update(msg)
 			}
-			return m.view(w, h)
+			return m.View(w, h)
 		}
 	}
 	list := func(urls []string, keys ...string) func(t *testing.T) string {

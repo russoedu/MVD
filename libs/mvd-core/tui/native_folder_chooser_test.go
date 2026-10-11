@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"testing"
+	"youtube-downloader/libs/mvd-core/settings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -25,7 +26,7 @@ func TestAFolderSettingOpensTheHostsChooserAndTakesItsAnswer(t *testing.T) {
 		return "/music", true, nil
 	})
 
-	if m.mode != editPicking || cmd == nil {
+	if m.mode != settings.EditPicking || cmd == nil {
 		t.Fatalf("mode %d, cmd %v: the chooser should be open", m.mode, cmd)
 	}
 	answer := cmd()
@@ -34,7 +35,7 @@ func TestAFolderSettingOpensTheHostsChooserAndTakesItsAnswer(t *testing.T) {
 	}
 
 	m, _, _, _ = m.update(answer)
-	if m.mode != editNone || m.cfg.OutputDir != "/music" {
+	if m.mode != settings.EditNone || m.cfg.OutputDir != "/music" {
 		t.Errorf("mode %d, output dir %q", m.mode, m.cfg.OutputDir)
 	}
 }
@@ -43,7 +44,7 @@ func TestCancellingTheChooserChangesNothing(t *testing.T) {
 	m, cmd := chooseOnFirstSetting(t, func(string) (string, bool, error) { return "", false, nil })
 	m, _, _, _ = m.update(cmd())
 
-	if m.mode != editNone || m.cfg.OutputDir != "/dl" {
+	if m.mode != settings.EditNone || m.cfg.OutputDir != "/dl" {
 		t.Errorf("mode %d, output dir %q", m.mode, m.cfg.OutputDir)
 	}
 }
@@ -52,7 +53,7 @@ func TestWithoutAChooserOnTheMachineTheBuiltInBrowserOpens(t *testing.T) {
 	m, cmd := chooseOnFirstSetting(t, func(string) (string, bool, error) { return "", false, errors.New("no desktop") })
 	m, _, _, _ = m.update(cmd())
 
-	if m.mode != editFolder {
+	if m.mode != settings.EditFolder {
 		t.Errorf("mode %d, want the built-in folder browser", m.mode)
 	}
 }
@@ -60,7 +61,7 @@ func TestWithoutAChooserOnTheMachineTheBuiltInBrowserOpens(t *testing.T) {
 func TestWithoutAHostChooserTheBuiltInBrowserOpensAtOnce(t *testing.T) {
 	m, cmd := chooseOnFirstSetting(t, nil)
 
-	if m.mode != editFolder || cmd != nil {
+	if m.mode != settings.EditFolder || cmd != nil {
 		t.Errorf("mode %d, cmd %v", m.mode, cmd)
 	}
 }
@@ -83,7 +84,7 @@ func TestWhileTheChooserIsOpenKeysAreIgnoredAndTheScreenSaysWhy(t *testing.T) {
 
 	m, _, _, _ = m.update(key("esc"))
 	m, _, out, _ := m.update(key("s"))
-	if m.mode != editPicking || out != cfgNone {
+	if m.mode != settings.EditPicking || out != cfgNone {
 		t.Errorf("mode %d, outcome %d: keys should wait for the chooser", m.mode, out)
 	}
 	if got := m.outline().Prompt; got != "Choose a folder in the window that opened" {
