@@ -588,7 +588,7 @@ func HintsHintAt(p Props, x int) (int, bool) {
 }
 
 // DefaultDownloadProps is the screen as it was designed: each input holds the value
-// it had in the design.
+// it had in the design, unless the design gives the input an app default.
 func Default() Props {
 	return Props{
 		Hints:           []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "tab", Label: "pane"}, {Key: "⏎", Label: "follow"}, {Key: "f", Label: "failed"}, {Key: "r", Label: "retry"}, {Key: "l", Label: "full log"}, {Key: "?", Label: "help"}, {Key: "q", Label: "quit"}},
