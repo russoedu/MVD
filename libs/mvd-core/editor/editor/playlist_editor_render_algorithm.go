@@ -1,11 +1,10 @@
-package tui
+package editor
 
 import (
 	"fmt"
 	"strings"
 	"time"
 	"youtube-downloader/libs/mvd-core/cells"
-	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	editorplanningpage "youtube-downloader/libs/mvd-core/editor/editorplanning"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
@@ -26,18 +25,19 @@ const editorDetailLines = 4
 
 // listHeight is how many songs fit on the screen: the title, the column names, a rule, the panel and the
 // key bar take the rest.
-func (m editorModel) listHeight() int {
+func (m Model) listHeight() int {
 	return max(3, m.height-(editorDetailLines+4))
 }
 
-func (m editorModel) render() string {
+// Render draws the editor.
+func (m Model) Render() string {
 	width := max(m.width, 20)
 	if m.planning {
 		return m.renderPlanning(width)
 	}
 
-	props := editorpage.Default()
-	props.Palette = editorpage.Palette(look.CurrentPalette())
+	props := Default()
+	props.Palette = Palette(look.CurrentPalette())
 	props.Title = " " + m.title()
 	props.Songs = m.songRows(width)
 	props.ShowEmpty = len(m.rows) == 0
@@ -46,13 +46,13 @@ func (m editorModel) render() string {
 	props.Detail1, props.Detail2, props.Detail3, props.Detail4 = cells.CellText(detail[0]), cells.CellText(detail[1]), cells.CellText(detail[2]), cells.CellText(detail[3])
 
 	line, keys := m.bottomParts(width)
-	props.Hints = keybar.Of[editorpage.HintsHint](m.hints())
+	props.Hints = keybar.Of[HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
-	return screenview.Padded(editorpage.View(props, width, m.height).View, width)
+	return screenview.Padded(View(props, width, m.height).View, width)
 }
 
-func (m editorModel) renderPlanning(width int) string {
+func (m Model) renderPlanning(width int) string {
 	t := m.state.Tally()
 	done := t.Planned + t.NotFound + t.Failed
 	body := []string{
@@ -84,7 +84,7 @@ func (m editorModel) renderPlanning(width int) string {
 	return screenview.Padded(editorplanningpage.View(props, width, m.height).View, width)
 }
 
-func (m editorModel) title() string {
+func (m Model) title() string {
 	var downloaded, revised int
 	for _, r := range m.rows {
 		switch {
@@ -154,14 +154,14 @@ func decisionGlyph(r playlistfile.Entry) string {
 // songRows are the rows of the list: the header, and the songs from the top of the
 // window. The design owns the columns, their widths and the look of the selected row; what
 // is here is the text of each cell and the colour it takes from the state of its song.
-func (m editorModel) songRows(width int) []editorpage.SongsRow {
+func (m Model) songRows(width int) []SongsRow {
 	anyReplaced := false
 	for _, r := range m.rows {
 		anyReplaced = anyReplaced || r.Decision == playlistfile.DecisionReplaced
 	}
 	showAddress := width >= 90
 
-	header := editorpage.SongsRow{Review: "Review", Artist: "Artist", Song: "Song", Video: "Video", Style: editorpage.RowDim}
+	header := SongsRow{Review: "Review", Artist: "Artist", Song: "Song", Video: "Video", Style: RowDim}
 	if anyReplaced {
 		header.Replaced = "Replaced by"
 		header.S6, header.S7 = "  ", ""
@@ -170,10 +170,10 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 		header.Address = "Address"
 		header.S7 = "  "
 	}
-	dim := editorpage.CellStyle{Fg: look.Colours.Dim}
+	dim := CellStyle{Fg: look.Colours.Dim}
 	header.ReviewStyle, header.ArtistStyle, header.SongStyle, header.VideoStyle = dim, dim, dim, dim
 	header.ReplacedStyle, header.AddressStyle = dim, dim
-	rows := []editorpage.SongsRow{header}
+	rows := []SongsRow{header}
 
 	for i := m.top; i < min(len(m.rows), m.top+m.listHeight()); i++ {
 		r := m.rows[i]
@@ -189,7 +189,7 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 		if i == m.sel {
 			mark = "▸"
 		}
-		row := editorpage.SongsRow{
+		row := SongsRow{
 			Mark: mark, Glyph: decisionGlyph(r), Review: kind,
 			Artist: cells.Display(col.Artist), Song: cells.Display(col.Song), Video: cells.Display(col.Video),
 		}
@@ -201,21 +201,21 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 		}
 
 		if i == m.sel {
-			row.Style = editorpage.RowSelected
+			row.Style = RowSelected
 		} else {
 			dimmed := r.Downloaded || r.Decision == playlistfile.DecisionSkipped
-			row.MarkStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
-			row.GlyphStyle = editorpage.CellStyle{Fg: m.glyphColour(r)}
-			row.ReviewStyle = editorpage.CellStyle{Fg: kindColour(r, dimmed)}
-			row.ArtistStyle = editorpage.CellStyle{Fg: look.Colours.Focus}
-			row.SongStyle = editorpage.CellStyle{Fg: look.Colours.Text}
+			row.MarkStyle = CellStyle{Fg: look.Colours.Dim}
+			row.GlyphStyle = CellStyle{Fg: m.glyphColour(r)}
+			row.ReviewStyle = CellStyle{Fg: kindColour(r, dimmed)}
+			row.ArtistStyle = CellStyle{Fg: look.Colours.Focus}
+			row.SongStyle = CellStyle{Fg: look.Colours.Text}
 			if dimmed {
-				row.ArtistStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
-				row.SongStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
+				row.ArtistStyle = CellStyle{Fg: look.Colours.Dim}
+				row.SongStyle = CellStyle{Fg: look.Colours.Dim}
 			}
-			row.VideoStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
-			row.ReplacedStyle = editorpage.CellStyle{Fg: look.Colours.Focus}
-			row.AddressStyle = editorpage.CellStyle{Fg: look.Colours.Dim}
+			row.VideoStyle = CellStyle{Fg: look.Colours.Dim}
+			row.ReplacedStyle = CellStyle{Fg: look.Colours.Focus}
+			row.AddressStyle = CellStyle{Fg: look.Colours.Dim}
 		}
 		rows = append(rows, row)
 	}
@@ -224,7 +224,7 @@ func (m editorModel) songRows(width int) []editorpage.SongsRow {
 
 // glyphColour is the colour of the mark of a song: green once decided, cyan when it was
 // changed, dim otherwise.
-func (m editorModel) glyphColour(r playlistfile.Entry) string {
+func (m Model) glyphColour(r playlistfile.Entry) string {
 	switch {
 	case r.Downloaded, r.Decision == playlistfile.DecisionConfirmed:
 		return look.Colours.Success
@@ -255,7 +255,7 @@ func link(url string) string {
 	return ansi.SetHyperlink(url) + url + ansi.ResetHyperlink()
 }
 
-func (m editorModel) detail(width int) []string {
+func (m Model) detail(width int) []string {
 	r, ok := m.current()
 	if !ok {
 		return make([]string, editorDetailLines)
@@ -295,7 +295,7 @@ func (m editorModel) detail(width int) []string {
 	return lines
 }
 
-func (m editorModel) decisionText(r playlistfile.Entry) string {
+func (m Model) decisionText(r playlistfile.Entry) string {
 	switch {
 	case r.Downloaded:
 		return look.Green.Render("downloaded: it is skipped from now on")
@@ -315,7 +315,7 @@ func (m editorModel) decisionText(r playlistfile.Entry) string {
 	return look.Yellow.Render("not reviewed yet")
 }
 
-func (m editorModel) hints() []keybar.Hint {
+func (m Model) hints() []keybar.Hint {
 	if m.planning {
 		return []keybar.Hint{{Key: "esc", Desc: "cancel"}}
 	}
@@ -327,9 +327,9 @@ func (m editorModel) hints() []keybar.Hint {
 
 // bottomParts is what the bottom line says: a question or a message, or (keys true) the
 // keys, which the design draws itself.
-func (m editorModel) bottomParts(width int) (line string, keys bool) {
+func (m Model) bottomParts(width int) (line string, keys bool) {
 	switch m.mode {
-	case editorAskPrevious:
+	case AskPrevious:
 		pending := 0
 		for _, r := range m.saved {
 			if !r.Downloaded {
@@ -338,12 +338,12 @@ func (m editorModel) bottomParts(width int) (line string, keys bool) {
 		}
 		return cells.Fit(" "+look.Yellow.Render(fmt.Sprintf("A review from last time is saved (%d songs, %d not downloaded). Bring it along? ", len(m.saved), pending))+
 			look.Key.Render("y")+look.Dim.Render(" yes  ")+look.Key.Render("n")+look.Dim.Render(" no"), width), false
-	case editorAskDownload:
+	case AskDownload:
 		return cells.Fit(" "+look.Yellow.Render(fmt.Sprintf("%d songs were not reviewed. ", playlisteditor.Unreviewed(m.rows)))+
 			look.Key.Render("y")+look.Dim.Render(" skip them and download  ")+
 			look.Key.Render("a")+look.Dim.Render(" download them as proposed  ")+
 			look.Key.Render("esc")+look.Dim.Render(" back"), width), false
-	case editorInput:
+	case Input:
 		return cells.Fit(" "+m.input.View(), width), false
 	}
 	if m.status != "" && !m.statusUntil.IsZero() && time.Now().Before(m.statusUntil) {
@@ -354,8 +354,8 @@ func (m editorModel) bottomParts(width int) (line string, keys bool) {
 
 // mouse handles a click or the wheel: a click on a song selects it, a click on the key
 // bar does what the key does.
-func (m editorModel) mouse(msg tea.MouseMsg) (editorModel, tea.Cmd) {
-	if m.planning || m.mode != editorBrowsing {
+func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
+	if m.planning || m.mode != Browsing {
 		return m, nil
 	}
 	if dir := pointer.WheelDirection(msg); dir != 0 {
@@ -381,28 +381,28 @@ func (m editorModel) mouse(msg tea.MouseMsg) (editorModel, tea.Cmd) {
 }
 
 // Outline describes the editor in plain terms, for a screen reader.
-func (m editorModel) Outline() ScreenOutline {
+func (m Model) Outline() outline.ScreenOutline {
 	if m.planning {
 		t := m.state.Tally()
-		return ScreenOutline{
+		return outline.ScreenOutline{
 			Title:  "MVD · Review before downloading",
 			Prompt: fmt.Sprintf("Looking up the best version of each song: %d of %d", t.Planned+t.NotFound+t.Failed, t.Total),
 			Keys:   outline.KeysOf(m.hints()),
 		}
 	}
-	out := ScreenOutline{Title: m.title(), ItemsLabel: "Songs", Keys: outline.KeysOf(m.hints())}
+	out := outline.ScreenOutline{Title: m.title(), ItemsLabel: "Songs", Keys: outline.KeysOf(m.hints())}
 	h := m.listHeight()
 	for i := m.top; i < min(len(m.rows), m.top+h); i++ {
 		r := m.rows[i]
 		value := kindLabel(r) + ", " + strings.TrimSpace(strings.ReplaceAll(stripANSI(m.decisionText(r)), "\n", " "))
-		out.Items = append(out.Items, OutlineItem{Label: rowName(r), Value: value, Selected: i == m.sel})
+		out.Items = append(out.Items, outline.Item{Label: rowName(r), Value: value, Selected: i == m.sel})
 	}
 	switch m.mode {
-	case editorAskPrevious:
+	case AskPrevious:
 		out.Prompt = "A review from last time is saved. Bring it along? y or n"
-	case editorAskDownload:
+	case AskDownload:
 		out.Prompt = fmt.Sprintf("%d songs were not reviewed. y to skip them and download, a to download them as proposed, esc to go back", playlisteditor.Unreviewed(m.rows))
-	case editorInput:
+	case Input:
 		out.Prompt = strings.TrimSpace(m.input.Prompt)
 		out.Text, out.HasText, out.TextLabel = m.input.Value(), true, strings.TrimSuffix(strings.TrimSpace(m.input.Prompt), ":")
 	}

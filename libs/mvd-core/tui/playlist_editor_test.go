@@ -1,13 +1,13 @@
 package tui
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	tea "charm.land/bubbletea/v2"
+	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/engine"
@@ -105,7 +105,7 @@ func (f *editorFixture) app() appModel { return f.m.(appModel) }
 // for testing asks.
 func (f *editorFixture) skipNote() {
 	f.t.Helper()
-	if f.app().editor.mode == editorInput {
+	if f.app().editor.Mode() == editorpage.Input {
 		f.m = drive(f.t, f.m, key("enter"))
 	}
 }
@@ -113,7 +113,7 @@ func (f *editorFixture) skipNote() {
 // planDone tells the editor the plan run has dealt with every song.
 func (f *editorFixture) planDone() {
 	f.t.Helper()
-	f.m = drive(f.t, f.m, editorEvMsg{engine.EvIdle{}})
+	f.m = drive(f.t, f.m, editorpage.EvMsg{Ev: engine.EvIdle{}})
 }
 
 func (f *editorFixture) screen() string { return f.app().render() }
@@ -131,8 +131,8 @@ func TestReviewPlansTheListThenDownloadsWhatWasConfirmedOrReplaced(t *testing.T)
 
 	f.press("ctrl+e")
 	app := f.app()
-	if !app.editing || !app.editor.planning || len(f.planned) != 1 || f.planned[0] != "https://a" {
-		t.Fatalf("a review should plan the list, got editing=%v planning=%v planned=%v", app.editing, app.editor.planning, f.planned)
+	if !app.editing || !app.editor.Planning() || len(f.planned) != 1 || f.planned[0] != "https://a" {
+		t.Fatalf("a review should plan the list, got editing=%v planning=%v planned=%v", app.editing, app.editor.Planning(), f.planned)
 	}
 	if !strings.Contains(f.screen(), "Looking up the best version") {
 		t.Errorf("the planning screen:\n%s", f.screen())
@@ -143,8 +143,8 @@ func TestReviewPlansTheListThenDownloadsWhatWasConfirmedOrReplaced(t *testing.T)
 		t.Error("the plan run should be closed once the plan is read")
 	}
 	app = f.app()
-	if app.editor.planning || len(app.editor.rows) != 3 {
-		t.Fatalf("rows %+v", app.editor.rows)
+	if app.editor.Planning() || len(app.editor.Rows()) != 3 {
+		t.Fatalf("rows %+v", app.editor.Rows())
 	}
 	if screen := f.screen(); !strings.Contains(screen, "One (Radio Edit)") || !strings.Contains(screen, "OFFICIAL001") || !strings.Contains(screen, "3 songs") {
 		t.Errorf("the songs and their proposals should be listed:\n%s", screen)
@@ -155,7 +155,7 @@ func TestReviewPlansTheListThenDownloadsWhatWasConfirmedOrReplaced(t *testing.T)
 	f.m = drive(t, f.m, tea.PasteMsg{Content: "https://youtu.be/MINE0000001"})
 	f.m = drive(t, f.m, key("enter"))
 	f.skipNote()
-	rows := f.app().editor.rows
+	rows := f.app().editor.Rows()
 	if rows[0].Decision != playlistfile.DecisionConfirmed || rows[1].Decision != playlistfile.DecisionReplaced || rows[1].ChosenID != "MINE0000001" {
 		t.Fatalf("decisions %+v", rows)
 	}
@@ -165,7 +165,7 @@ func TestReviewPlansTheListThenDownloadsWhatWasConfirmedOrReplaced(t *testing.T)
 
 	// The third was not looked at: the person is asked what to do with it.
 	f.press("d")
-	if f.app().editor.mode != editorAskDownload || !strings.Contains(f.screen(), "1 songs were not reviewed") {
+	if f.app().editor.Mode() != editorpage.AskDownload || !strings.Contains(f.screen(), "1 songs were not reviewed") {
 		t.Fatalf("expected the question about unreviewed songs:\n%s", f.screen())
 	}
 	f.press("y")
@@ -188,8 +188,8 @@ func TestReviewPlansTheListThenDownloadsWhatWasConfirmedOrReplaced(t *testing.T)
 	if back.downloading || !back.editing || !f.download.closed {
 		t.Fatalf("should be back on the editor: downloading=%v editing=%v closed=%v", back.downloading, back.editing, f.download.closed)
 	}
-	if !back.editor.rows[0].Downloaded || !back.editor.rows[1].Downloaded || back.editor.rows[2].Downloaded {
-		t.Errorf("downloaded flags %+v", back.editor.rows)
+	if !back.editor.Rows()[0].Downloaded || !back.editor.Rows()[1].Downloaded || back.editor.Rows()[2].Downloaded {
+		t.Errorf("downloaded flags %+v", back.editor.Rows())
 	}
 	saved, err := playlistfile.Load(filepath.Join(f.dir, "plan.mvd"))
 	if err != nil || len(saved.Entries) != 3 || !saved.Entries[0].Downloaded || saved.Entries[1].ChosenID != "MINE0000001" {
@@ -228,18 +228,18 @@ func TestAReviewFromLastTimeIsOfferedAndBroughtAlong(t *testing.T) {
 	}
 
 	f.press("ctrl+e")
-	if f.app().editor.mode != editorAskPrevious || !strings.Contains(f.screen(), "from last time") {
+	if f.app().editor.Mode() != editorpage.AskPrevious || !strings.Contains(f.screen(), "from last time") {
 		t.Fatalf("the question should be on the screen:\n%s", f.screen())
 	}
 	// The plan can finish while the question waits.
 	f.planDone()
-	if !f.app().editor.planning {
+	if !f.app().editor.Planning() {
 		t.Fatal("the plan should wait for the answer")
 	}
 	f.press("y")
 
-	rows := f.app().editor.rows
-	if f.app().editor.planning || len(rows) != 3 {
+	rows := f.app().editor.Rows()
+	if f.app().editor.Planning() || len(rows) != 3 {
 		t.Fatalf("rows %+v", rows)
 	}
 	if !rows[0].Downloaded || rows[1].Decision != playlistfile.DecisionSkipped || rows[2].Decision != "" {
@@ -255,7 +255,7 @@ func TestAReviewFromLastTimeCanBeLeftBehind(t *testing.T) {
 	}
 	f.press("ctrl+e", "n")
 	f.planDone()
-	for _, r := range f.app().editor.rows {
+	for _, r := range f.app().editor.Rows() {
 		if r.Decision != "" {
 			t.Errorf("nothing should be carried over: %+v", r)
 		}
@@ -274,8 +274,8 @@ func TestASavedPlanInTheListOpensTheEditorWithoutPlanning(t *testing.T) {
 	f := newEditorFixture(t, []string{path}, nil)
 	f.press("ctrl+s")
 	app := f.app()
-	if !app.editing || app.editor.planning || len(app.editor.rows) != 1 || len(f.planned) != 0 {
-		t.Fatalf("editing=%v planning=%v rows=%d planned=%v", app.editing, app.editor.planning, len(app.editor.rows), f.planned)
+	if !app.editing || app.editor.Planning() || len(app.editor.Rows()) != 1 || len(f.planned) != 0 {
+		t.Fatalf("editing=%v planning=%v rows=%d planned=%v", app.editing, app.editor.Planning(), len(app.editor.Rows()), f.planned)
 	}
 	f.press("d")
 	if len(f.handed) != 1 || f.handed[0].TargetID != "OFFICIAL001" {
@@ -318,7 +318,7 @@ func TestSaveAndOpenAPlanFile(t *testing.T) {
 	f.press("s")
 	// The prompt starts with the playlist's name in the saved plans folder: replace it.
 	app := f.app()
-	app.editor.input.SetValue(target)
+	app.editor = app.editor.WithInput(target)
 	f.m = app
 	f.m = drive(t, f.m, key("enter"))
 
@@ -331,10 +331,10 @@ func TestSaveAndOpenAPlanFile(t *testing.T) {
 	f.press("z")
 	f.press("l")
 	app = f.app()
-	app.editor.input.SetValue(target + ".mvd")
+	app.editor = app.editor.WithInput(target + ".mvd")
 	f.m = app
 	f.m = drive(t, f.m, key("enter"))
-	if got := f.app().editor.rows[1].Decision; got != playlistfile.DecisionConfirmed {
+	if got := f.app().editor.Rows()[1].Decision; got != playlistfile.DecisionConfirmed {
 		t.Errorf("the saved decisions should be back, got %q", got)
 	}
 }
@@ -345,11 +345,11 @@ func TestTheFileWindowOfTheSystemOpensTheFileItReturns(t *testing.T) {
 	f.planDone()
 	f.press("c", "c")
 	target := filepath.Join(f.dir, "chunk.mvd")
-	if err := playlistfile.Save(target, playlistfile.File{Entries: f.app().editor.rows}); err != nil {
+	if err := playlistfile.Save(target, playlistfile.File{Entries: f.app().editor.Rows()}); err != nil {
 		t.Fatal(err)
 	}
 	f.press("home", "z")
-	if f.app().editor.rows[0].Decision != "" {
+	if f.app().editor.Rows()[0].Decision != "" {
 		t.Fatal("the decision should be undone before the file is opened")
 	}
 
@@ -359,19 +359,19 @@ func TestTheFileWindowOfTheSystemOpensTheFileItReturns(t *testing.T) {
 	if started != f.dir {
 		t.Errorf("the window should start in the folder of saved plans, started in %q", started)
 	}
-	if f.app().editor.mode != editorBrowsing {
+	if f.app().editor.Mode() != editorpage.Browsing {
 		t.Error("no line should be asked for when the system's window is used")
 	}
-	if got := f.app().editor.rows[0].Decision; got != playlistfile.DecisionConfirmed {
+	if got := f.app().editor.Rows()[0].Decision; got != playlistfile.DecisionConfirmed {
 		t.Errorf("the chosen file should be open, decision %q", got)
 	}
 
 	// Cancelling the window leaves the review as it was.
 	f.press("x")
-	before := append([]playlistfile.Entry(nil), f.app().editor.rows...)
+	before := append([]playlistfile.Entry(nil), f.app().editor.Rows()...)
 	f.pick = func(string) (string, bool, error) { return "", false, nil }
 	f.press("l")
-	after := f.app().editor.rows
+	after := f.app().editor.Rows()
 	for i := range before {
 		if before[i] != after[i] {
 			t.Errorf("a cancelled window should change nothing, row %d went from %+v to %+v", i, before[i], after[i])
@@ -386,7 +386,7 @@ func TestOnlyAVideoAddressIsTakenAsAReplacement(t *testing.T) {
 	f.press("r")
 	f.m = drive(t, f.m, tea.PasteMsg{Content: "https://example.com/not-a-video"})
 	f.m = drive(t, f.m, key("enter"))
-	if f.app().editor.rows[0].Decision != "" || !strings.Contains(f.screen(), "not the address of a YouTube video") {
+	if f.app().editor.Rows()[0].Decision != "" || !strings.Contains(f.screen(), "not the address of a YouTube video") {
 		t.Errorf("the decision should be untouched and the reason shown:\n%s", f.screen())
 	}
 }
@@ -397,12 +397,12 @@ func TestASongNothingWasFoundForCannotBeConfirmed(t *testing.T) {
 	f.press("ctrl+e")
 	f.planDone()
 	f.press("c")
-	if f.app().editor.rows[0].Decision != "" {
+	if f.app().editor.Rows()[0].Decision != "" {
 		t.Error("confirming a song with no proposal should do nothing")
 	}
 	f.press("u")
 	f.skipNote()
-	if f.app().editor.rows[0].Decision != playlistfile.DecisionOriginal {
+	if f.app().editor.Rows()[0].Decision != playlistfile.DecisionOriginal {
 		t.Error("the original of an unfound song can be taken")
 	}
 }
@@ -433,7 +433,7 @@ func TestTheSaveWindowOfTheSystemWritesTheFileItReturns(t *testing.T) {
 	if dir != f.dir || !strings.HasSuffix(name, ".mvd") {
 		t.Errorf("the window should offer the saved plans folder and a .mvd name, got %q and %q", dir, name)
 	}
-	if f.app().editor.mode != editorBrowsing {
+	if f.app().editor.Mode() != editorpage.Browsing {
 		t.Error("no line should be asked for when the system's window is used")
 	}
 	saved, err := playlistfile.Load(target + ".mvd")
@@ -458,31 +458,31 @@ func TestEveryDecisionMovesOnToTheNextSongButUndoingStaysPut(t *testing.T) {
 	f.m = drive(t, f.m, tea.PasteMsg{Content: "https://www.youtube.com/watch?v=CHOSEN00001"})
 	f.m = drive(t, f.m, key("enter"))
 	f.skipNote()
-	if got := f.app().editor.sel; got != 1 {
+	if got := f.app().editor.Selected(); got != 1 {
 		t.Errorf("after replacing the selection is on %d, want 1", got)
 	}
-	if got := f.app().editor.rows[0]; got.Decision != playlistfile.DecisionReplaced || got.ChosenTitle != "Title of CHOSEN00001" {
+	if got := f.app().editor.Rows()[0]; got.Decision != playlistfile.DecisionReplaced || got.ChosenTitle != "Title of CHOSEN00001" {
 		t.Errorf("the first song should be the replaced one, named: %+v", got)
 	}
 
 	f.press("x")
 	f.skipNote()
-	if got := f.app().editor.sel; got != 2 {
+	if got := f.app().editor.Selected(); got != 2 {
 		t.Errorf("after skipping the selection is on %d, want 2", got)
 	}
 
 	// The last song has no next one: the selection stays.
 	f.press("u")
 	f.skipNote()
-	if got := f.app().editor.sel; got != 2 {
+	if got := f.app().editor.Selected(); got != 2 {
 		t.Errorf("on the last song the selection is on %d, want 2", got)
 	}
 
 	f.press("up", "z")
-	if got := f.app().editor.sel; got != 1 {
+	if got := f.app().editor.Selected(); got != 1 {
 		t.Errorf("undoing should stay on the song, selection on %d, want 1", got)
 	}
-	if got := f.app().editor.rows[1].Decision; got != playlistfile.DecisionNone {
+	if got := f.app().editor.Rows()[1].Decision; got != playlistfile.DecisionNone {
 		t.Errorf("the skip should be undone, decision %q", got)
 	}
 }

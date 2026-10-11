@@ -12,6 +12,12 @@ import (
 // Controller is what the download screen needs from the engine.
 type Controller = downloadpage.Controller
 
+// Run is one download run a host started for the app model.
+type Run = downloadpage.Run
+
+// RunStarter starts a download run for the chosen settings and list.
+type RunStarter = downloadpage.RunStarter
+
 // SourceAdder is what a run offers when it can take more links while it works.
 type SourceAdder = downloadpage.SourceAdder
 
@@ -21,7 +27,7 @@ func Enabled(noTUIFlag bool) bool { return downloadpage.Enabled(noTUIFlag) }
 // RunDownload drives the download screen until the user quits and returns the final
 // state for the summary.
 func RunDownload(ctx context.Context, c Controller) (*runstate.State, error) {
-	return downloadpage.Run(ctx, c)
+	return downloadpage.Drive(ctx, c)
 }
 
 // NewDownloadModel returns the download screen as a Bubble Tea model, for a host that

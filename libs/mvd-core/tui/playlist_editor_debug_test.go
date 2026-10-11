@@ -4,13 +4,13 @@ package tui
 
 import (
 	"bufio"
+	tea "charm.land/bubbletea/v2"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	tea "charm.land/bubbletea/v2"
+	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 
 	"youtube-downloader/libs/mvd-core/playlisteditor"
 )
@@ -24,18 +24,18 @@ func TestAChangedDecisionAsksWhyAndTheAnswerIsLogged(t *testing.T) {
 
 	// Skipping goes against the proposal, so it asks.
 	f.press("x")
-	if f.app().editor.mode != editorInput || !strings.Contains(f.screen(), "Why?") {
+	if f.app().editor.Mode() != editorpage.Input || !strings.Contains(f.screen(), "Why?") {
 		t.Fatalf("the reason should be asked for:\n%s", f.screen())
 	}
 	f.m = drive(t, f.m, tea.PasteMsg{Content: "this is a live version"})
 	f.m = drive(t, f.m, key("enter"))
-	if f.app().editor.mode != editorBrowsing {
+	if f.app().editor.Mode() != editorpage.Browsing {
 		t.Fatal("the question should close")
 	}
 
 	// Confirming agrees with the proposal: nothing to ask.
 	f.press("down", "c")
-	if f.app().editor.mode != editorBrowsing {
+	if f.app().editor.Mode() != editorpage.Browsing {
 		t.Error("confirming should not ask why")
 	}
 

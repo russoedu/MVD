@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 
 	tea "charm.land/bubbletea/v2"
@@ -72,7 +73,7 @@ func runNow(cmd tea.Cmd) []tea.Msg {
 				out = append(out, runNow(c)...)
 			}
 			return out
-		case setupFinishedMsg, downloadpage.FinishedMsg, runClosedMsg, planClosedMsg, editorPlannedMsg, editorLeaveMsg, editorDownloadMsg, editorDescribedMsg, editorFilePickedMsg:
+		case setupFinishedMsg, downloadpage.FinishedMsg, runClosedMsg, planClosedMsg, editorpage.PlannedMsg, editorpage.LeaveMsg, editorpage.DownloadMsg, editorpage.DescribedMsg, editorpage.FilePickedMsg:
 			return []tea.Msg{msg}
 		}
 	case <-time.After(30 * time.Millisecond):
