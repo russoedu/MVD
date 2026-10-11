@@ -5,6 +5,7 @@ import (
 	"strings"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/outline"
 	addlinkspage "youtube-downloader/libs/mvd-core/run/addlinks"
 
 	"charm.land/bubbles/v2/textarea"
@@ -113,6 +114,6 @@ func (m model) addingOutline() ScreenOutline {
 		Text:      m.links.Value(),
 		HasText:   true,
 		TextLabel: "Links to add, one per line",
-		Keys:      outlineKeys(addLinksHints()),
+		Keys:      outline.KeysOf(addLinksHints()),
 	}
 }

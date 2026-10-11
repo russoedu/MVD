@@ -2,7 +2,8 @@ package tui
 
 import (
 	"strconv"
-	"youtube-downloader/libs/mvd-core/keybar"
+	"youtube-downloader/libs/mvd-core/outline"
+	"youtube-downloader/libs/mvd-core/settings"
 )
 
 // Outline describes the current screen. It reads the same state and the same
@@ -12,7 +13,7 @@ func (m setupModel) Outline() ScreenOutline {
 	case screenConfig:
 		return m.config.outline()
 	case screenAdvanced:
-		return m.advanced.outline()
+		return m.advanced.Outline()
 	case screenColours:
 		return m.colours.outline()
 	case screenSongs:
@@ -22,21 +23,13 @@ func (m setupModel) Outline() ScreenOutline {
 	}
 }
 
-func outlineKeys(hints []keybar.Hint) []OutlineKey {
-	keys := make([]OutlineKey, len(hints))
-	for i, h := range hints {
-		keys[i] = OutlineKey{Key: h.Key, Description: h.Desc}
-	}
-	return keys
-}
-
 func (m listModel) outline() ScreenOutline {
 	n := len(m.urls())
 	title := "MVD · Download list"
 	if n > 0 {
 		title += " (" + strconv.Itoa(n) + " item" + plural(n) + ")"
 	}
-	out := ScreenOutline{Title: title, Text: m.ta.Value(), HasText: true, Keys: outlineKeys(m.hints())}
+	out := ScreenOutline{Title: title, Text: m.ta.Value(), HasText: true, Keys: outline.KeysOf(m.hints())}
 	if m.confirmQuit {
 		out.Prompt = "Discard the list and quit? y/n"
 	}
@@ -44,42 +37,30 @@ func (m listModel) outline() ScreenOutline {
 }
 
 func (m configModel) outline() ScreenOutline {
-	if m.mode == editFolder {
+	if m.mode == settings.EditFolder {
 		return m.folder.outline()
 	}
 	items := make([]OutlineItem, len(cfgLabels))
 	for i, label := range cfgLabels {
 		items[i] = OutlineItem{Label: label, Value: m.display(i), Selected: i == m.cursor}
 	}
-	if m.mode == editPicking {
-		return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: "Choose a folder in the window that opened", Keys: outlineKeys(m.hints())}
+	if m.mode == settings.EditPicking {
+		return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: "Choose a folder in the window that opened", Keys: outline.KeysOf(m.hints())}
 	}
-	if m.mode == editConfirming {
-		return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outlineKeys(m.hints())}
+	if m.mode == settings.EditConfirming {
+		return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.hints())}
 	}
-	if m.mode != editNone {
+	if m.mode != settings.EditNone {
 		item := &items[m.cursor]
 		item.Editing = true
-		if m.mode == editRadio {
+		if m.mode == settings.EditRadio {
 			item.Choices, item.Chosen = m.radioOpts, m.radioIdx
 			item.Value = m.radioOpts[m.radioIdx]
 		} else {
 			item.Value = m.input.Value()
 		}
 	}
-	return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outlineKeys(m.hints())}
-}
-
-func (m advancedModel) outline() ScreenOutline {
-	items := make([]OutlineItem, len(advLabels))
-	for i, label := range advLabels {
-		items[i] = OutlineItem{Label: label, Value: m.display(i), Selected: i == m.cursor}
-	}
-	if m.mode != editNone {
-		items[m.cursor].Editing = true
-		items[m.cursor].Value = m.input.Value()
-	}
-	return ScreenOutline{Title: "MVD · Advanced", ItemsLabel: "Settings", Items: items, Keys: outlineKeys(m.hints())}
+	return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.hints())}
 }
 
 func (m coloursModel) outline() ScreenOutline {
@@ -91,7 +72,7 @@ func (m coloursModel) outline() ScreenOutline {
 		items[m.cursor].Editing = true
 		items[m.cursor].Value = m.input.Value()
 	}
-	return ScreenOutline{Title: "MVD · Colours", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outlineKeys(m.hints())}
+	return ScreenOutline{Title: "MVD · Colours", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.hints())}
 }
 
 func (m folderModel) outline() ScreenOutline {
@@ -99,7 +80,7 @@ func (m folderModel) outline() ScreenOutline {
 	for i, name := range m.entries {
 		items[i] = OutlineItem{Label: name, Selected: i == m.cursor}
 	}
-	out := ScreenOutline{Title: "MVD · Choose folder", Text: m.dir, HasText: true, ItemsLabel: "Sub-folders", Items: items, Keys: outlineKeys(m.hints())}
+	out := ScreenOutline{Title: "MVD · Choose folder", Text: m.dir, HasText: true, ItemsLabel: "Sub-folders", Items: items, Keys: outline.KeysOf(m.hints())}
 	if m.err != "" {
 		out.Prompt = m.err
 	}

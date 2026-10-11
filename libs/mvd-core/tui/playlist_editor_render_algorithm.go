@@ -9,6 +9,7 @@ import (
 	editorplanningpage "youtube-downloader/libs/mvd-core/editor/editorplanning"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/outline"
 	"youtube-downloader/libs/mvd-core/pointer"
 
 	tea "charm.land/bubbletea/v2"
@@ -385,10 +386,10 @@ func (m editorModel) Outline() ScreenOutline {
 		return ScreenOutline{
 			Title:  "MVD · Review before downloading",
 			Prompt: fmt.Sprintf("Looking up the best version of each song: %d of %d", t.Planned+t.NotFound+t.Failed, t.Total),
-			Keys:   outlineKeys(m.hints()),
+			Keys:   outline.KeysOf(m.hints()),
 		}
 	}
-	out := ScreenOutline{Title: m.title(), ItemsLabel: "Songs", Keys: outlineKeys(m.hints())}
+	out := ScreenOutline{Title: m.title(), ItemsLabel: "Songs", Keys: outline.KeysOf(m.hints())}
 	h := m.listHeight()
 	for i := m.top; i < min(len(m.rows), m.top+h); i++ {
 		r := m.rows[i]

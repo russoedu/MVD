@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"youtube-downloader/libs/mvd-core/cells"
+	"youtube-downloader/libs/mvd-core/outline"
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"youtube-downloader/libs/mvd-core/engine"
@@ -48,7 +49,7 @@ func (m model) Outline() ScreenOutline {
 		title += " · " + cells.Display(m.state.Playlists[m.selPlaylist].Title)
 	}
 
-	out := ScreenOutline{Title: title, ItemsLabel: "Downloads", Keys: outlineKeys(m.hints())}
+	out := ScreenOutline{Title: title, ItemsLabel: "Downloads", Keys: outline.KeysOf(m.hints())}
 	if m.confirmQuit {
 		out.Prompt = "Downloads are still running. Quit? y/n"
 	}

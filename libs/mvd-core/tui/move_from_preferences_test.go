@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"youtube-downloader/libs/mvd-core/keybar"
+	"youtube-downloader/libs/mvd-core/settings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -36,11 +37,11 @@ func TestTheMoveKeyAsksAndSaysHowItWent(t *testing.T) {
 		m := preferencesThatMove(moveAnswering(c.outcome, c.err))
 
 		m, cmd, _, _ := m.update(key("m"))
-		if m.mode != editConfirming || cmd == nil {
+		if m.mode != settings.EditConfirming || cmd == nil {
 			t.Fatalf("%s: mode %d, cmd %v: the questions should be open", c.name, m.mode, cmd)
 		}
 		m, _, _, _ = m.update(cmd())
-		if m.mode != editNone || m.status != c.want {
+		if m.mode != settings.EditNone || m.status != c.want {
 			t.Errorf("%s: mode %d, status %q, want %q", c.name, m.mode, m.status, c.want)
 		}
 		if view := m.view(140, 30); !strings.Contains(view, c.want[:min(len(c.want), 15)]) {
@@ -53,7 +54,7 @@ func TestWithoutAMoverThereIsNoMoveKeyAndNoHint(t *testing.T) {
 	m := newConfigModel(config.Default("/app", "/dl")).setSize(100, 30)
 
 	m, cmd, _, _ := m.update(key("m"))
-	if cmd != nil || m.mode != editNone {
+	if cmd != nil || m.mode != settings.EditNone {
 		t.Errorf("mode %d, cmd %v: nothing should happen", m.mode, cmd)
 	}
 	for _, h := range m.hints() {
@@ -90,7 +91,7 @@ func TestTheMoveHintIsClickableOnThePreferences(t *testing.T) {
 	for x := 0; x < 100; x++ {
 		if h, ok := keybar.At(m.(setupModel).hints(), x); ok && h.Key == "m" {
 			m, cmd := m.Update(click(x, 29))
-			if m.(setupModel).config.mode != editConfirming || cmd == nil {
+			if m.(setupModel).config.mode != settings.EditConfirming || cmd == nil {
 				t.Fatal("clicking the entry should ask")
 			}
 			return

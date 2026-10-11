@@ -6,6 +6,7 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/settings"
 	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 
 	"charm.land/bubbles/v2/textinput"
@@ -24,17 +25,6 @@ const (
 	cfgColours
 )
 
-// editor modes while a config item is being changed.
-const (
-	editNone = iota
-	editText
-	editNumber
-	editRadio
-	editFolder
-	editPicking    // the operating system's folder chooser is open
-	editConfirming // the questions about removing the app are being asked
-)
-
 const cfgItemCount = 11
 
 var mergeOptions = []string{"mp4", "mkv", "webm"}
@@ -45,7 +35,7 @@ var cookieOptions = []string{"all", "off", "firefox", "chrome", "edge", "brave",
 type configModel struct {
 	cfg           config.Config
 	cursor        int
-	mode          int
+	mode          settings.Mode
 	input         textinput.Model
 	radioOpts     []string
 	radioIdx      int
@@ -93,7 +83,7 @@ func (m configModel) setSize(w, h int) configModel {
 func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, config.Config) {
 	k, isKey := msg.(tea.KeyPressMsg)
 
-	if m.mode != editNone {
+	if m.mode != settings.EditNone {
 		cmd := m.updateEditor(msg, k, isKey)
 		return m, cmd, cfgNone, m.cfg
 	}
@@ -138,15 +128,15 @@ func (m *configModel) activate() tea.Cmd {
 		m.cfg.CreateLogFile = !m.cfg.CreateLogFile
 	case 1, 2, 3, 6, 7:
 		m.radioOpts, m.radioIdx = m.radioState()
-		m.mode = editRadio
+		m.mode = settings.EditRadio
 	case 5:
 		m.beginInput(strconv.Itoa(m.cfg.MaxConcurrentDownloads))
-		m.mode = editNumber
+		m.mode = settings.EditNumber
 	case 0, 9:
 		return m.chooseFolder()
 	default: // 4 text
 		m.beginInput(m.textValue())
-		m.mode = editText
+		m.mode = settings.EditText
 	}
 	return nil
 }
@@ -157,7 +147,7 @@ func (m *configModel) askToUninstall() tea.Cmd {
 	if m.uninstall == nil {
 		return nil
 	}
-	m.mode = editConfirming
+	m.mode = settings.EditConfirming
 	m.status = "Answer the questions in the window that opened..."
 	uninstall := m.uninstall
 	return func() tea.Msg {
@@ -172,7 +162,7 @@ func (m *configModel) askToMove() tea.Cmd {
 	if m.move == nil {
 		return nil
 	}
-	m.mode = editConfirming
+	m.mode = settings.EditConfirming
 	m.status = "Answer the questions in the window that opened..."
 	move := m.move
 	return func() tea.Msg {
@@ -183,7 +173,7 @@ func (m *configModel) askToMove() tea.Cmd {
 
 // finishMoving takes the answer of the move: what to tell the person.
 func (m *configModel) finishMoving(answered moveAnsweredMsg) {
-	m.mode = editNone
+	m.mode = settings.EditNone
 	switch {
 	case answered.err != nil:
 		m.status = "MVD could not be moved: " + answered.err.Error()
@@ -200,7 +190,7 @@ func (m *configModel) finishMoving(answered moveAnsweredMsg) {
 
 // finishConfirming takes the answer: what to tell the person.
 func (m *configModel) finishConfirming(answered uninstallAnsweredMsg) {
-	m.mode = editNone
+	m.mode = settings.EditNone
 	switch {
 	case answered.err != nil:
 		m.status = "The removal could not be asked: " + answered.err.Error()
@@ -228,7 +218,7 @@ func (m *configModel) chooseFolder() tea.Cmd {
 		m.browseFolders(start)
 		return nil
 	}
-	m.mode = editPicking
+	m.mode = settings.EditPicking
 	item, pick := m.cursor, m.pick
 	return func() tea.Msg {
 		path, chosen, err := pick(start)
@@ -238,13 +228,13 @@ func (m *configModel) chooseFolder() tea.Cmd {
 
 func (m *configModel) browseFolders(start string) {
 	m.folder = newFolderModel(start).setSize(m.width, m.height)
-	m.mode = editFolder
+	m.mode = settings.EditFolder
 }
 
 // finishPicking takes the chooser's answer. When it could not be shown, the built-in
 // browser is opened instead, so the setting can still be changed.
 func (m *configModel) finishPicking(picked folderPickedMsg) {
-	m.mode = editNone
+	m.mode = settings.EditNone
 	switch {
 	case picked.err != nil:
 		m.browseFolders(m.folderOfItem())
@@ -264,7 +254,7 @@ func (m *configModel) beginInput(val string) {
 }
 
 func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) tea.Cmd {
-	if m.mode == editConfirming {
+	if m.mode == settings.EditConfirming {
 		// Nothing to do but wait: the questions are windows of their own.
 		switch answered := msg.(type) {
 		case uninstallAnsweredMsg:
@@ -274,14 +264,14 @@ func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) t
 		}
 		return nil
 	}
-	if m.mode == editPicking {
+	if m.mode == settings.EditPicking {
 		// Nothing to do but wait: the chooser is a window of its own.
 		if picked, ok := msg.(folderPickedMsg); ok {
 			m.finishPicking(picked)
 		}
 		return nil
 	}
-	if m.mode == editFolder {
+	if m.mode == settings.EditFolder {
 		next, cmd, out := m.folder.update(msg)
 		m.folder = next
 		switch out {
@@ -291,23 +281,23 @@ func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) t
 			} else {
 				m.cfg.LogDir = m.folder.dir
 			}
-			m.mode = editNone
+			m.mode = settings.EditNone
 		case folderCancel:
-			m.mode = editNone
+			m.mode = settings.EditNone
 		}
 		return cmd
 	}
 	if isKey {
 		switch k.String() {
 		case "esc":
-			m.mode = editNone
+			m.mode = settings.EditNone
 			return nil
 		case "enter":
 			m.commit()
-			m.mode = editNone
+			m.mode = settings.EditNone
 			return nil
 		}
-		if m.mode == editRadio {
+		if m.mode == settings.EditRadio {
 			switch k.String() {
 			case "up", "k":
 				if m.radioIdx > 0 {
@@ -320,7 +310,7 @@ func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) t
 			}
 			return nil
 		}
-		if m.mode == editNumber {
+		if m.mode == settings.EditNumber {
 			switch k.String() {
 			case "up":
 				m.input.SetValue(strconv.Itoa(m.numberValue() + 1))
@@ -461,20 +451,20 @@ func (m configModel) display(i int) string {
 	case 7:
 		return cookieLabel(c)
 	case 8:
-		return yesNo(c.CreateLogFile)
+		return settings.YesNo(c.CreateLogFile)
 	case 9:
 		return c.LogDir
 	case 10:
 		if c.OfficialVideo != config.OfficialOnly {
-			return yesNo(c.SaveNotFound) + " (used when Download Official is only)"
+			return settings.YesNo(c.SaveNotFound) + " (used when Download Official is only)"
 		}
-		return yesNo(c.SaveNotFound)
+		return settings.YesNo(c.SaveNotFound)
 	}
 	return ""
 }
 
 func (m configModel) view(width, height int) string {
-	if m.mode == editFolder {
+	if m.mode == settings.EditFolder {
 		return m.folder.view(width, height)
 	}
 	labelW := 0
@@ -490,7 +480,7 @@ func (m configModel) view(width, height int) string {
 		row := preferencespage.ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
 			row.Mark = "▸ "
-			if m.mode != editNone {
+			if m.mode != settings.EditNone {
 				row.Value = cells.Truncate(m.editorView(), max(10, width-labelW-6))
 			} else {
 				row.Style = preferencespage.RowSelected
@@ -506,10 +496,10 @@ func (m configModel) view(width, height int) string {
 }
 
 func (m configModel) hints() []keybar.Hint {
-	if m.mode == editPicking || m.mode == editConfirming {
+	if m.mode == settings.EditPicking || m.mode == settings.EditConfirming {
 		return nil
 	}
-	if m.mode != editNone {
+	if m.mode != settings.EditNone {
 		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
 	}
 	hints := []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "a", Desc: "advanced"}, {Key: "c", Desc: "colours"}, {Key: "s", Desc: "save"}}
@@ -524,7 +514,7 @@ func (m configModel) hints() []keybar.Hint {
 
 func (m configModel) editorView() string {
 	switch m.mode {
-	case editRadio:
+	case settings.EditRadio:
 		var parts []string
 		for i, opt := range m.radioOpts {
 			if i == m.radioIdx {
@@ -534,18 +524,11 @@ func (m configModel) editorView() string {
 			}
 		}
 		return strings.Join(parts, " ")
-	case editPicking:
+	case settings.EditPicking:
 		return look.Dim.Render("choose a folder in the window that opened...")
 	default:
 		return m.input.View()
 	}
-}
-
-func yesNo(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no"
 }
 
 func cookieLabel(cfg config.Config) string {

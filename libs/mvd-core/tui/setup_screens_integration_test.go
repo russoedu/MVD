@@ -2,36 +2,15 @@ package tui
 
 import (
 	"testing"
+	"youtube-downloader/libs/mvd-core/settings"
+	"youtube-downloader/libs/mvd-core/testing/keys"
 
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 )
 
-func key(s string) tea.KeyPressMsg {
-	switch s {
-	case "ctrl+s":
-		return tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
-	case "ctrl+p":
-		return tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl}
-	case "ctrl+o":
-		return tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl}
-	case "ctrl+r":
-		return tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}
-	case "ctrl+q":
-		return tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl}
-	case "esc":
-		return tea.KeyPressMsg{Code: tea.KeyEscape}
-	case "enter":
-		return tea.KeyPressMsg{Code: tea.KeyEnter}
-	case "up":
-		return tea.KeyPressMsg{Code: tea.KeyUp}
-	case "down":
-		return tea.KeyPressMsg{Code: tea.KeyDown}
-	default:
-		return keyText(s)
-	}
-}
+func key(s string) tea.KeyPressMsg { return keys.Press(s) }
 
 func TestListModel(t *testing.T) {
 	m := newListModel([]string{"https://a", "https://b"})
@@ -79,7 +58,7 @@ func TestConfigModelRadioAndSave(t *testing.T) {
 		m, _, _, _ = m.update(key("down"))
 	}
 	m, _, _, _ = m.update(key("enter"))
-	if m.mode != editRadio {
+	if m.mode != settings.EditRadio {
 		t.Fatalf("enter should open the choices, mode %d", m.mode)
 	}
 	m, _, _, _ = m.update(key("down"))
@@ -113,7 +92,7 @@ func TestConfigModelRadio(t *testing.T) {
 	m.cursor = 1 // Video Quality
 
 	m, _, _, _ = m.update(key("enter")) // open radio
-	if m.mode != editRadio {
+	if m.mode != settings.EditRadio {
 		t.Fatalf("enter on a radio item should open the selector")
 	}
 	start := m.radioIdx
@@ -122,7 +101,7 @@ func TestConfigModelRadio(t *testing.T) {
 		t.Errorf("down should move the radio cursor")
 	}
 	m, _, _, _ = m.update(key("enter")) // commit
-	if m.mode != editNone {
+	if m.mode != settings.EditNone {
 		t.Error("enter should close the selector")
 	}
 	if m.cfg.VideoQuality != config.VideoPresets[start+1] {
@@ -136,7 +115,7 @@ func TestConfigModelNumber(t *testing.T) {
 	before := m.cfg.MaxConcurrentDownloads
 
 	m, _, _, _ = m.update(key("enter")) // edit
-	if m.mode != editNumber {
+	if m.mode != settings.EditNumber {
 		t.Fatalf("enter should start number edit")
 	}
 	m, _, _, _ = m.update(key("up")) // increment
@@ -151,7 +130,7 @@ func TestConfigModelTextCommit(t *testing.T) {
 	m.cursor = 4 // Output Template
 
 	m, _, _, _ = m.update(key("enter"))
-	if m.mode != editText {
+	if m.mode != settings.EditText {
 		t.Fatalf("enter should start text edit")
 	}
 	m.input.SetValue("%(title)s.%(ext)s")
@@ -167,12 +146,12 @@ func TestConfigModelFolderPicker(t *testing.T) {
 	m.cursor = 0 // Output Folder -> folder picker
 
 	m, _, _, _ = m.update(key("enter"))
-	if m.mode != editFolder {
+	if m.mode != settings.EditFolder {
 		t.Fatalf("enter on Output Folder should open the folder picker")
 	}
 	// Choosing the current folder commits it.
 	m, _, _, _ = m.update(key("enter"))
-	if m.mode != editNone {
+	if m.mode != settings.EditNone {
 		t.Fatalf("enter should choose and close the picker")
 	}
 	if m.cfg.OutputDir != resolveDir(dir) {
@@ -184,7 +163,7 @@ func TestConfigModelFolderPicker(t *testing.T) {
 	m, _, _, _ = m.update(key("enter"))
 	before := m.cfg.LogDir
 	m, _, _, _ = m.update(key("esc"))
-	if m.mode != editNone || m.cfg.LogDir != before {
+	if m.mode != settings.EditNone || m.cfg.LogDir != before {
 		t.Errorf("esc should cancel the picker without changing the dir")
 	}
 }
@@ -193,37 +172,6 @@ func TestConfigAdvancedTransition(t *testing.T) {
 	m := newConfigModel(config.Default("/app", "/dl"))
 	if _, _, out, _ := m.update(key("a")); out != cfgAdvanced {
 		t.Errorf("'a' should request the advanced screen, got %d", out)
-	}
-}
-
-func TestAdvancedModel(t *testing.T) {
-	m := newAdvancedModel(config.Default("/app", "/dl"))
-
-	// Toggle auto retry (item 2).
-	m.cursor = 2
-	before := m.cfg.AutoRetry
-	m, _, _, _ = m.update(key("enter"))
-	if m.cfg.AutoRetry == before {
-		t.Error("enter should toggle auto retry")
-	}
-
-	// Fragment count (item 1): edit, decrement, commit.
-	m.cursor = 1
-	start := m.cfg.ConcurrentFragments
-	m, _, _, _ = m.update(key("enter"))
-	if m.mode != editNumber {
-		t.Fatalf("enter should edit the fragment count")
-	}
-	m, _, _, _ = m.update(key("down"))
-	m, _, _, _ = m.update(key("enter"))
-	if m.cfg.ConcurrentFragments != start-1 {
-		t.Errorf("fragments should decrement to %d, got %d", start-1, m.cfg.ConcurrentFragments)
-	}
-
-	// Save returns the edited config.
-	_, _, out, cfg := m.update(key("s"))
-	if out != advSave || cfg.AutoRetry == before {
-		t.Errorf("s should save the edited config")
 	}
 }
 
@@ -247,7 +195,4 @@ func TestCookieChoice(t *testing.T) {
 }
 
 // keyText is the key press that types text.
-func keyText(text string) tea.KeyPressMsg {
-	r := []rune(text)
-	return tea.KeyPressMsg{Code: r[0], Text: text}
-}
+func keyText(text string) tea.KeyPressMsg { return keys.Text(text) }
