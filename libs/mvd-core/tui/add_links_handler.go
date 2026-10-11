@@ -7,6 +7,7 @@ import (
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/outline"
 	addlinkspage "youtube-downloader/libs/mvd-core/run/addlinks"
+	"youtube-downloader/libs/mvd-core/wording"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -84,7 +85,7 @@ func (m model) addLinks() (tea.Model, tea.Cmd) {
 	case added < lines:
 		m.flash(fmt.Sprintf("added %d of %d links; the run has ended", added, lines))
 	default:
-		m.flash(fmt.Sprintf("added %d link%s", added, plural(added)))
+		m.flash(fmt.Sprintf("added %d link%s", added, wording.Plural(added)))
 		m.follow = true
 	}
 	return m, nil

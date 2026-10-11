@@ -6,6 +6,7 @@ import (
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	listpage "youtube-downloader/libs/mvd-core/setup/list"
+	"youtube-downloader/libs/mvd-core/wording"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -121,7 +122,7 @@ func (m listModel) view(width, height int) string {
 	n := len(m.urls())
 	title := " MVD · Download list"
 	if n > 0 {
-		title += "  (" + strconv.Itoa(n) + " item" + plural(n) + ")"
+		title += "  (" + strconv.Itoa(n) + " item" + wording.Plural(n) + ")"
 	}
 
 	props := listpage.Default()
@@ -139,11 +140,4 @@ func (m listModel) hints() []keybar.Hint {
 		{Key: "ctrl+s", Desc: "start"}, {Key: "ctrl+o", Desc: "songs"}, {Key: "ctrl+e", Desc: "review"}, {Key: "ctrl+p", Desc: "preferences"},
 		{Key: "ctrl+r", Desc: "reset"}, {Key: "ctrl+q", Desc: "quit"},
 	}
-}
-
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
 }

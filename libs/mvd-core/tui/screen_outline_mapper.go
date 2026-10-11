@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"youtube-downloader/libs/mvd-core/outline"
 	"youtube-downloader/libs/mvd-core/settings"
+	"youtube-downloader/libs/mvd-core/wording"
 )
 
 // Outline describes the current screen. It reads the same state and the same
@@ -17,7 +18,7 @@ func (m setupModel) Outline() ScreenOutline {
 	case screenColours:
 		return m.colours.Outline()
 	case screenSongs:
-		return m.songs.outline()
+		return m.songs.Outline()
 	default:
 		return m.list.outline()
 	}
@@ -27,7 +28,7 @@ func (m listModel) outline() ScreenOutline {
 	n := len(m.urls())
 	title := "MVD · Download list"
 	if n > 0 {
-		title += " (" + strconv.Itoa(n) + " item" + plural(n) + ")"
+		title += " (" + strconv.Itoa(n) + " item" + wording.Plural(n) + ")"
 	}
 	out := ScreenOutline{Title: title, Text: m.ta.Value(), HasText: true, Keys: outline.KeysOf(m.hints())}
 	if m.confirmQuit {
