@@ -19,6 +19,11 @@ func env(p Props, w, h int) cuppa.FitEnv {
 	_ = p
 	return cuppa.FitEnv{W: w, H: h, Inputs: func(name string) float64 {
 		switch name {
+		case "Show keys":
+			if p.ShowKeys {
+				return 1
+			}
+			return 0
 		}
 		return 0
 	}}
@@ -26,7 +31,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Preferences", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Advanced", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
@@ -35,6 +40,28 @@ var parts = []cuppa.ScreenPart[Props]{
 			}
 			v["text"] = p.Title
 			return true
+		},
+	},
+	{
+		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,enter:edit,s:save,esc:back", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Event: "Hint",
+		Apply: func(p Props, v map[string]string, w, h int) bool {
+			if p.Palette.Highlight != "" {
+				v["keyColor"] = p.Palette.Highlight
+			}
+			if p.Palette.Dim != "" {
+				v["labelColor"] = p.Palette.Dim
+			}
+			{
+				items := make([]string, len(p.Hints))
+				for i, h := range p.Hints {
+					items[i] = h.Key + ":" + h.Label
+				}
+				v["hints"] = cuppa.JoinList(items)
+			}
+			return p.ShowKeys
 		},
 	},
 	{
@@ -85,28 +112,6 @@ var parts = []cuppa.ScreenPart[Props]{
 			return true
 		},
 	},
-	{
-		Placed: cuppa.Placed{Kind: "lipgloss.keybar", Name: "Key bar", X: 0, Y: 29, W: 100, H: 1, Props: map[string]string{"gap": "2", "hints": "↑↓:move,enter:edit,s:save,esc:back", "keyColor": "#ffe600", "labelColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 4, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, cuppa.Cells(((float64(h) * 100.0 / 100.0) - 1.0)), cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
-		}},
-		Event: "Hint",
-		Apply: func(p Props, v map[string]string, w, h int) bool {
-			if p.Palette.Highlight != "" {
-				v["keyColor"] = p.Palette.Highlight
-			}
-			if p.Palette.Dim != "" {
-				v["labelColor"] = p.Palette.Dim
-			}
-			{
-				items := make([]string, len(p.Hints))
-				for i, h := range p.Hints {
-					items[i] = h.Key + ":" + h.Label
-				}
-				v["hints"] = cuppa.JoinList(items)
-			}
-			return true
-		},
-	},
 }
 
 // Advanced draws the screen in an area of w by h cells for the values in p.
@@ -131,10 +136,10 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 	case tea.MouseClickMsg:
 		if r, ok := f.EventAt(m.X, m.Y); ok {
 			switch r.Event {
-			case "Pick":
-				return PickEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
 			case "Hint":
 				return HintEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
+			case "Pick":
+				return PickEvent{X: m.X - r.X, Y: m.Y - r.Y}, true
 			}
 		}
 	}
@@ -146,10 +151,12 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 type Props struct {
 	// Title is the Text of "Title".
 	Title string
-	// Items is the Sample rows (; between rows, , between cells) of "Items".
-	Items []ItemsRow
 	// Hints is the Hints (key:label, comma separated) of "Key bar".
 	Hints []HintsHint
+	// ShowKeys is the whether "Key bar" is shown.
+	ShowKeys bool
+	// Items is the Sample rows (; between rows, , between cells) of "Items".
+	Items []ItemsRow
 	// Palette is the design's named colours; set one and every component that
 	// uses it follows. An empty one keeps the design's colour.
 	Palette Palette
@@ -230,10 +237,11 @@ func HintsHintAt(p Props, x int) (int, bool) {
 // it had in the design.
 func Default() Props {
 	return Props{
-		Title:   " MVD · Preferences",
-		Items:   []ItemsRow{{Mark: "▸ ", Name: "Extra yt-dlp args", Gap: "", Value: "(none)", Style: cuppa.RowSelected}, {Mark: "  ", Name: "Parallel fragments per video", Gap: "", Value: "4", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Auto Retry", Gap: "", Value: "yes", Style: cuppa.RowNormal}},
-		Hints:   []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "back"}},
-		Palette: DefaultPalette(),
+		Title:    " MVD · Advanced",
+		Hints:    []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "back"}},
+		ShowKeys: true,
+		Items:    []ItemsRow{{Mark: "▸ ", Name: "Extra yt-dlp args", Gap: "", Value: "(none)", Style: cuppa.RowSelected}, {Mark: "  ", Name: "Parallel fragments per video", Gap: "", Value: "4", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Auto Retry", Gap: "", Value: "yes", Style: cuppa.RowNormal}},
+		Palette:  DefaultPalette(),
 	}
 }
 
@@ -241,17 +249,17 @@ func Default() Props {
 // are the Advanced... structs below.
 type Event interface{ isEvent() }
 
-// AdvancedPick is raised by a click on "Items". X and Y are the cell inside the component that was
-// clicked, and 0 for a key.
-type PickEvent struct{ X, Y int }
-
-func (PickEvent) isEvent() {}
-
 // AdvancedHint is raised by a click on "Key bar". X and Y are the cell inside the component that was
 // clicked, and 0 for a key.
 type HintEvent struct{ X, Y int }
 
 func (HintEvent) isEvent() {}
+
+// AdvancedPick is raised by a click on "Items". X and Y are the cell inside the component that was
+// clicked, and 0 for a key.
+type PickEvent struct{ X, Y int }
+
+func (PickEvent) isEvent() {}
 
 // AdvancedKeys are the keys of the screen, for a key bar.
 var Keys = []cuppa.KeyHint{}

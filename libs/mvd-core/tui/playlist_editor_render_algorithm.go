@@ -66,7 +66,6 @@ func (m editorModel) renderPlanning(width int) string {
 	}
 
 	props := editorplanningpage.Default()
-	props.Title = " MVD · Review before downloading"
 	props.Palette = editorplanningpage.Palette(palette())
 	props.Body = nil
 	for _, l := range body {

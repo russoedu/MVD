@@ -160,7 +160,6 @@ func (m advancedModel) hints() []keyHint {
 
 func (m advancedModel) view(width, height int) string {
 	props := advancedpage.Default()
-	props.Title = " MVD · Advanced"
 	props.Palette = advancedpage.Palette(palette())
 	props.Hints = hintsOf[advancedpage.HintsHint](m.hints())
 
