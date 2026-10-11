@@ -10,4 +10,6 @@ Every screen of MVD is a [Cuppa](https://github.com/meta-tui/cuppa) design (`*.c
 
 Inputs that only a layout expression or a condition reads (`LeftWidth`, `FooterLines`, `HelpWidth`, ...) have a sample value in the design (`samples`, cuppa-tui 0.0.66+; the designer's "Layout inputs" panel), so a preview opens at a realistic size. The app sets every one of them each frame, so the sample is only what the designer shows and the default of `Default<Screen>Props`: a model that reads that default must set the input itself (`FooterLines` is reset in `downloadProps`).
 
+`mvd.cuppa` is the 11 designs as one multi-page design (a page per screen, canvas 120x36), made to try Cuppa's slice layout (issue #180): `cuppa-tui designs/mvd.cuppa`, then the pages bar under the canvas. The 11 single designs stay the source of the screens until the slice export is adopted; it is not exported yet.
+
 Generated files are never edited by hand. See `nerdy-info.md`, section 2.1.
