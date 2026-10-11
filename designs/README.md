@@ -8,4 +8,6 @@ Every screen of MVD is a [Cuppa](https://github.com/meta-tui/cuppa) design (`*.c
 - Check that nothing changed in how a screen looks: `go test ./libs/mvd-core/tui -run LegacyScreens`.
 - Commit the designs and the generated files together, naming the `cuppa-tui` version that wrote them.
 
+Inputs that only a layout expression or a condition reads (`LeftWidth`, `FooterLines`, `HelpWidth`, ...) have a sample value in the design (`samples`, cuppa-tui 0.0.66+; the designer's "Layout inputs" panel), so a preview opens at a realistic size. The app sets every one of them each frame, so the sample is only what the designer shows and the default of `Default<Screen>Props`: a model that reads that default must set the input itself (`FooterLines` is reset in `downloadProps`).
+
 Generated files are never edited by hand. See `nerdy-info.md`, section 2.1.

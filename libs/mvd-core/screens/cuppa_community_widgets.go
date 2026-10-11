@@ -1172,3 +1172,60 @@ func slotPart(c placed, p props) *part {
 	}
 	return staticPart(lipgloss.NewStyle().MaxWidth(c.W).MaxHeight(c.H).Render(view))
 }
+
+// ---- containers: how tabs and panels look --------------------------------------
+//
+// A container shows one page (tabs) or its open sections (panels); the
+// components placed on a page are shown only while it is. Pressing a tab or a
+// header changes which, with no code from the program (model.pressHeader).
+// This is the same arithmetic as the designer's, so a page is where it was
+// designed.
+
+func init() {
+	extra["cuppa.tabs"] = widgetPart(drawTabPages)
+	extra["cuppa.panels"] = widgetPart(drawPanelStack)
+}
+
+// drawTabPages draws the tab bar: each page's name, the shown one in the
+// accent, and a rule under them.
+func drawTabPages(g *sketchGrid, p props) {
+	names := containerPages(p)
+	geo := containerGeometry("cuppa.tabs", p, g.W, g.H)
+	active := containerActive(p)
+	rule := sketchStyle{Fg: p["ruleColor"]}
+	for x := 0; x < g.W; x++ {
+		g.Set(x, 1, sketchCell{Ch: '─', Style: rule})
+	}
+	for i, t := range geo.tabs {
+		style := sketchStyle{Fg: p["mutedColor"]}
+		if i == active {
+			style = sketchStyle{Fg: p["color"], Bold: true}
+		}
+		g.Text(t[1], 0, " "+names[t[0]]+" ", style, t[2]-t[1])
+		if i == active {
+			for x := t[1]; x < t[2]; x++ {
+				g.Set(x, 1, sketchCell{Ch: '━', Style: sketchStyle{Fg: p["color"]}})
+			}
+		}
+		if i < len(geo.tabs)-1 && t[2] < g.W {
+			g.Set(t[2], 0, sketchCell{Ch: '│', Style: rule})
+		}
+	}
+}
+
+// drawPanelStack draws a header for each section: an arrow that says whether
+// it is open, its name and a rule to the right.
+func drawPanelStack(g *sketchGrid, p props) {
+	names := containerPages(p)
+	open := containerOpen(p)
+	for _, h := range containerGeometry("cuppa.panels", p, g.W, g.H).heads {
+		arrow, style := "▸ ", sketchStyle{Fg: p["mutedColor"]}
+		if open[h[0]] {
+			arrow, style = "▾ ", sketchStyle{Fg: p["color"], Bold: true}
+		}
+		used := g.Text(0, h[1], arrow+names[h[0]], style, g.W)
+		if used < g.W {
+			g.Text(used, h[1], " "+strings.Repeat("─", max(g.W-used-1, 0)), sketchStyle{Fg: p["ruleColor"]}, g.W-used)
+		}
+	}
+}

@@ -242,11 +242,11 @@ func DefaultDownloadProps() DownloadProps {
 		ConfirmQuit:     true,
 		Status:          " status",
 		ShowStatus:      true,
-		LeftWidth:       0,
-		PlaylistCount:   0,
+		LeftWidth:       45,
+		PlaylistCount:   6,
 		HasNotes:        0,
 		FullLog:         0,
-		FooterLines:     0,
+		FooterLines:     2,
 		Palette:         DefaultDownloadPalette(),
 	}
 }

@@ -33,6 +33,8 @@ func (m model) downloadProps(w, h int) screens.DownloadProps {
 	p.Counters, p.HeaderRight = m.headerTexts()
 	p.Counters = truncate(p.Counters, w-2)
 
+	// The design previews with a footer; the app has one only when there is something for it.
+	p.FooterLines = 0
 	footer := m.outputFooter()
 	if !showOutput {
 		footer = outputFooter{}

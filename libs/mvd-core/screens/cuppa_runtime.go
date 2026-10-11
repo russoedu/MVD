@@ -49,6 +49,12 @@ type placed struct {
 	// where Fit puts it, so a window resize keeps their change.
 	Drag, Resize   bool
 	Dx, Dy, Dw, Dh int
+	// Member is set on a component placed in a container: Of is the container's
+	// index in the layout and Page the page it belongs to. It is shown only
+	// while that page is.
+	Member bool
+	Of     int
+	Page   int
 }
 
 // fitEnv is what a layout expression of a screen reads besides the window: its
@@ -913,4 +919,195 @@ func swatchBlock(h int, p props) string {
 		lines = append(lines, strings.Repeat(" ", x)+block)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// ---- containers: tab pages and panels --------------------------------------
+//
+// A container shows one page (tabs) or its open sections (panels); the
+// components placed on a page are shown only while it is. Pressing a tab or a
+// header changes which, with no code from the program (model.pressHeader).
+// This is the same arithmetic as the designer's, so a page is where it was
+// designed.
+
+// containerGeo is where the parts of a container are, relative to its top-left
+// corner: tabs are {page, x0, x1}, heads {page, y} and bodies {x, y, w, h}.
+type containerGeo struct {
+	tabs   [][3]int
+	rule   int
+	heads  [][2]int
+	bodies [][4]int
+}
+
+// containerPages are the page names, never empty.
+func containerPages(p props) []string {
+	var out []string
+	for _, name := range strings.Split(p["pages"], ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			out = append(out, name)
+		}
+	}
+	if len(out) == 0 {
+		return []string{"Page 1"}
+	}
+	return out
+}
+
+// containerActive is the tab shown, kept inside the pages.
+func containerActive(p props) int {
+	i, _ := strconv.Atoi(strings.TrimSpace(p["active"]))
+	return min(max(i, 0), len(containerPages(p))-1)
+}
+
+// containerOpen are the open sections of a panel stack.
+func containerOpen(p props) map[int]bool {
+	out := map[int]bool{}
+	count := len(containerPages(p))
+	for _, f := range strings.Split(p["open"], ",") {
+		if i, err := strconv.Atoi(strings.TrimSpace(f)); err == nil && i >= 0 && i < count {
+			out[i] = true
+		}
+	}
+	return out
+}
+
+func containerShown(kind string, p props, page int) bool {
+	if kind == "cuppa.tabs" {
+		return page == containerActive(p)
+	}
+	return containerOpen(p)[page]
+}
+
+// containerGeometry lays a container of w by h cells out: the tab bar and a
+// body under it, or one header row per section with the rows left shared by
+// the open sections (the last open one takes the remainder).
+func containerGeometry(kind string, p props, w, h int) containerGeo {
+	pages := containerPages(p)
+	var g containerGeo
+	if kind == "cuppa.tabs" {
+		x := 0
+		for i, name := range pages {
+			width := len([]rune(name)) + 2
+			g.tabs = append(g.tabs, [3]int{i, x, min(x+width, w)})
+			x += width + 1
+		}
+		g.rule = 1
+		for range pages {
+			g.bodies = append(g.bodies, [4]int{0, 2, w, max(h-2, 0)})
+		}
+		return g
+	}
+	open := containerOpen(p)
+	avail := max(h-len(pages), 0)
+	y, left, opened := 0, avail, 0
+	for i := range pages {
+		g.heads = append(g.heads, [2]int{i, y})
+		y++
+		height := 0
+		if open[i] && len(open) > 0 {
+			opened++
+			height = avail / len(open)
+			if opened == len(open) {
+				height = left
+			}
+			left -= height
+		}
+		g.bodies = append(g.bodies, [4]int{0, y, w, height})
+		y += height
+	}
+	return g
+}
+
+// containerHeaderAt is the page whose tab or header is at (x, y) inside the
+// container.
+func containerHeaderAt(kind string, p props, w, h, x, y int) (int, bool) {
+	g := containerGeometry(kind, p, w, h)
+	if kind == "cuppa.tabs" {
+		if y != 0 {
+			return 0, false
+		}
+		for _, t := range g.tabs {
+			if x >= t[1] && x < t[2] {
+				return t[0], true
+			}
+		}
+		return 0, false
+	}
+	for _, hd := range g.heads {
+		if hd[1] == y && x >= 0 && x < w {
+			return hd[0], true
+		}
+	}
+	return 0, false
+}
+
+// containerPressed is the properties after a press on a page's tab or header.
+func containerPressed(kind string, p props, page int) map[string]string {
+	if kind == "cuppa.tabs" {
+		return map[string]string{"active": strconv.Itoa(page)}
+	}
+	open := containerOpen(p)
+	if open[page] {
+		delete(open, page)
+	} else {
+		if p["exclusive"] == "true" {
+			open = map[int]bool{}
+		}
+		open[page] = true
+	}
+	var parts []string
+	for i := range containerPages(p) {
+		if open[i] {
+			parts = append(parts, strconv.Itoa(i))
+		}
+	}
+	return map[string]string{"open": strings.Join(parts, ",")}
+}
+
+
+// dyKey is the property under which a screen hands a member the rows its place
+// moved by, because its section did.
+const dyKey = "cuppa.dy"
+
+// containerDY is how many rows a screen moved a component down (or up).
+func containerDY(v map[string]string) int {
+	n, _ := strconv.Atoi(v[dyKey])
+	return n
+}
+
+// containerBodyY is the top of a page's body, relative to its container.
+func containerBodyY(kind string, p props, w, h, page int) int {
+	g := containerGeometry(kind, p, w, h)
+	if page < 0 || page >= len(g.bodies) {
+		return 0
+	}
+	return g.bodies[page][1]
+}
+
+// joinInts writes page numbers as a comma separated list.
+func joinInts(v []int) string {
+	parts := make([]string, len(v))
+	for i, n := range v {
+		parts[i] = strconv.Itoa(n)
+	}
+	return strings.Join(parts, ",")
+}
+
+// parseInts reads a comma separated list of page numbers.
+func parseInts(s string) []int {
+	var out []int
+	for _, f := range strings.Split(s, ",") {
+		if n, err := strconv.Atoi(strings.TrimSpace(f)); err == nil {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+func containsInt(v []int, n int) bool {
+	for _, x := range v {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }

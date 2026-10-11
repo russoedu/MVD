@@ -100,7 +100,7 @@ func DefaultFolderProps() FolderProps {
 		NewFolderView: "new folder: ",
 		Creating:      true,
 		Hints:         []FolderHintsHint{{Key: "↑↓", Label: "move"}, {Key: "→", Label: "open"}, {Key: "←", Label: "up"}, {Key: "n", Label: "new folder"}, {Key: "enter", Label: "choose this folder"}, {Key: "esc", Label: "cancel"}},
-		FolderRows:    0,
+		FolderRows:    3,
 		ProblemRows:   0,
 		Palette:       DefaultFolderPalette(),
 	}
