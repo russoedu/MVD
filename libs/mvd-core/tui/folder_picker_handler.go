@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"youtube-downloader/libs/mvd-core/screens"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -150,6 +151,40 @@ func (m folderModel) hints() []keyHint {
 }
 
 func (m folderModel) view(width, height int) string {
+	// The input for a new folder sits under the folders that are shown, which a design
+	// cannot say yet (it waits for layout from inputs in Cuppa).
+	if m.creating {
+		return m.legacyView(width, height)
+	}
+
+	var rows []screens.FolderFoldersRow
+	for i, name := range m.entries {
+		entry := "  " + name + "/"
+		if i == m.cursor {
+			entry = stySelected.Render("▸ " + name + "/")
+		}
+		rows = append(rows, screens.FolderFoldersRow{Entry: entry})
+	}
+	if len(rows) == 0 {
+		rows = []screens.FolderFoldersRow{{Entry: styDim.Render("(no sub-folders)")}}
+	}
+	visible := max(1, height-5)
+	if len(rows) > visible {
+		start := windowStart(len(rows), m.cursor, visible)
+		rows = rows[start : start+visible]
+	}
+
+	props := screens.DefaultFolderProps()
+	props.Palette = screens.FolderPalette(palette())
+	props.Hints = hintsOf[screens.FolderHintsHint](m.hints())
+	props.Path = truncate(m.dir, width-2)
+	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
+	props.Problem = truncate(m.err, width-2)
+	props.Folders = rows
+	return screens.Folder(props, width, height).View
+}
+
+func (m folderModel) legacyView(width, height int) string {
 	var rows []string
 	for i, name := range m.entries {
 		line := "  " + name + "/"
