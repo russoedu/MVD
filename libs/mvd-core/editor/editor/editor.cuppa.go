@@ -46,12 +46,30 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 			return 0, 1, cuppa.Cells((float64(w) * 100.0 / 100.0)), cuppa.Cells(max(4.0, ((float64(h) * 100.0 / 100.0) - 7.0)))
 		}},
 		Event: "Pick",
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.SongsRows != nil {
+				rs, _ := p.SongsRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Mark, r.S1, r.Glyph, r.S2, r.Review, r.S3, r.Artist, r.S4, r.Song, r.S5, r.Video, r.S6, r.Replaced, r.S7, r.Address}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.MarkStyle), cuppa.CellStyleCode(r.S1Style), cuppa.CellStyleCode(r.GlyphStyle), cuppa.CellStyleCode(r.S2Style), cuppa.CellStyleCode(r.ReviewStyle), cuppa.CellStyleCode(r.S3Style), cuppa.CellStyleCode(r.ArtistStyle), cuppa.CellStyleCode(r.S4Style), cuppa.CellStyleCode(r.SongStyle), cuppa.CellStyleCode(r.S5Style), cuppa.CellStyleCode(r.VideoStyle), cuppa.CellStyleCode(r.S6Style), cuppa.CellStyleCode(r.ReplacedStyle), cuppa.CellStyleCode(r.S7Style), cuppa.CellStyleCode(r.AddressStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.SongsRows == nil {
 				rows := make([][]string, len(p.Songs))
 				cellStyles := make([][]string, len(p.Songs))
 				styles := make([]string, len(p.Songs))
@@ -199,6 +217,8 @@ type Props struct {
 	ShowKeys bool
 	// Songs is the Sample rows (; between rows, , between cells) of "List".
 	Songs []SongsRow
+	// SongsRows is the function that gives the rows of "List" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	SongsRows func(w, h int) ([]SongsRow, int)
 	// ShowEmpty is the whether "Empty" is shown.
 	ShowEmpty bool
 	// Detail1 is the Text of "Detail 1".
@@ -329,6 +349,26 @@ func HintsHintAt(p Props, x int) (int, bool) {
 	return master.HintsHintAt(masterProps(p), x)
 }
 
+// EditorSongsAt is the index in Songs of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func SongsAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("List")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Songs, 0
+	if p.SongsRows != nil {
+		rows, first = p.SongsRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
 // DefaultEditorProps is the screen as it was designed: each input holds the value
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
@@ -337,6 +377,7 @@ func Default() Props {
 		Hints:     []HintsHint{{Key: "o", Label: "open"}, {Key: "c", Label: "confirm"}, {Key: "r", Label: "replace"}, {Key: "u", Label: "original"}, {Key: "x", Label: "skip"}, {Key: "a", Label: "confirm all"}, {Key: "d", Label: "download"}, {Key: "s", Label: "save"}, {Key: "l", Label: "open file"}, {Key: "esc", Label: "back"}},
 		ShowKeys:  true,
 		Songs:     []SongsRow{{Mark: "", S1: "", Glyph: "", S2: "", Review: "Review", S3: "", Artist: "Artist", S4: "", Song: "Song", S5: "", Video: "Video", S6: "", Replaced: "", S7: "", Address: "Address", Style: cuppa.RowDim}},
+		SongsRows: nil,
 		ShowEmpty: true,
 		Detail1:   " ",
 		Detail2:   " ",

@@ -1,18 +1,9 @@
-// Package viewport keeps a selected row in view: windowing a list into the room a pane has,
-// and the arithmetic that lets a click be matched to the row that was drawn there.
+// Package viewport has the arithmetic of a list in a pane: where the window of rows starts
+// so the selected row stays in view, and keeping a selection inside the list.
 package viewport
 
-// Rows returns the slice of rows that keeps index sel visible in h rows.
-func Rows[T any](rows []T, sel, h int) []T {
-	if h <= 0 || len(rows) <= h {
-		return rows
-	}
-	start := Start(len(rows), sel, h)
-	return rows[start : start+h]
-}
-
-// Start is the index of the first row Rows shows: the same arithmetic, so a click
-// can be matched to the row that was drawn there.
+// Start is the index of the first of h rows that keeps row sel of n in view, the selected
+// row centred while there is room on both sides.
 func Start(n, sel, h int) int {
 	if h <= 0 || n <= h {
 		return 0

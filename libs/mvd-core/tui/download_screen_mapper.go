@@ -4,25 +4,25 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"youtube-downloader/libs/mvd-core/cells"
-	"youtube-downloader/libs/mvd-core/look"
-	"youtube-downloader/libs/mvd-core/viewport"
 
 	"github.com/charmbracelet/x/ansi"
 
+	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/internal/cuppa"
+	"youtube-downloader/libs/mvd-core/look"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	"youtube-downloader/libs/mvd-core/runstate"
+	"youtube-downloader/libs/mvd-core/viewport"
 )
 
 // downloadProps fills the properties of the Download screen, drawn from its design, for
 // a window of w by h cells. The design owns where everything goes; what is here is what
-// the screen shows. The rows are windowed to the room the design gives them.
+// the screen shows. The rows come as functions of the room the design gives them, so the
+// screen cuts them to fit and a click is matched with the page's own At functions.
 func (m model) downloadProps(w, h int) downloadpage.Props {
 	p := downloadpage.Default()
 	p.Palette = downloadpage.Palette(look.CurrentPalette())
-	// A design shows its optional parts by default; only what applies is shown.
-	p.ShowProgress, p.ShowNote, p.ConfirmQuit, p.ShowStatus, p.ShowKeys = false, false, false, false, false
 
 	// The sizes the design cannot know: how wide the left column is.
 	p.LeftWidth = m.leftWidth(w)
@@ -36,8 +36,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	p.Counters, p.HeaderRight = m.headerTexts()
 	p.Counters = cells.Truncate(p.Counters, w-2)
 
-	// The design previews with a footer; the app has one only when there is something for it.
-	p.FooterLines = 0
+	// The app has a footer under the output only when there is something for it.
 	footer := m.outputFooter()
 	if !showOutput {
 		footer = outputFooter{}
@@ -46,35 +45,34 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 		p.FooterLines = 2
 	}
 
-	// Place the panes first, so the rows can be cut to the room there is.
-	p.Playlists = []downloadpage.PlaylistsRow{{}}
-	p.Entries = []downloadpage.EntriesRow{{}}
-	p.Output = []downloadpage.OutputRow{{}}
-	frame := downloadpage.Layout(p, w, h)
-	region := func(name string) downloadpage.Region { r, _ := frame.RegionNamed(name); return r }
-
 	// Playlists.
-	pl := region("Playlists rows")
-	p.Playlists = viewport.Rows(m.playlistRows(), m.selPlaylist, pl.H)
+	p.PlaylistsRows = func(_, h int) ([]downloadpage.PlaylistsRow, int) {
+		return cuppa.Window(m.playlistRows(), m.selPlaylist, h)
+	}
 	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
 	p.PlaylistsBorder = m.borderColour(m.focus == paneLists)
 
 	// Entries.
-	en := region("Entries rows")
-	title, right, entries, notes, sel := m.entryRows(en.W)
-	p.Entries = viewport.Rows(entries, sel, en.H)
-	p.Notes, p.HasNotes = notes, 0
-	if len(notes) > 0 {
+	p.EntriesTitle, p.EntriesRight = m.entryHeader()
+	p.EntriesRows = func(_, h int) ([]downloadpage.EntriesRow, int) {
+		rows, sel := m.entryRows()
+		return cuppa.Window(rows, sel, h)
+	}
+	p.HasNotes = 0
+	if m.entryNotesShown() {
 		p.HasNotes = 1
 	}
-	p.EntriesTitle, p.EntriesRight = title, right
+	p.NotesRows = func(w, _ int) ([]downloadpage.NotesRow, int) { return m.entryNotes(w), 0 }
 	p.EntriesBorder = m.borderColour(m.focus == paneEntries)
 
 	// Output.
-	out := region("Output rows")
-	p.Output = nil
-	for _, line := range m.outputWindow(out.H) {
-		p.Output = append(p.Output, downloadpage.OutputRow{Line: cells.CellText(line)})
+	p.OutputRows = func(_, h int) ([]downloadpage.OutputRow, int) {
+		lines, first := m.outputWindow(h)
+		rows := make([]downloadpage.OutputRow, 0, len(lines))
+		for _, line := range lines {
+			rows = append(rows, downloadpage.OutputRow{Line: cells.CellText(line)})
+		}
+		return rows, first
 	}
 	p.OutputTitle = m.outputTitle()
 	p.OutputRight = ""
@@ -88,7 +86,8 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 
 	// The footer of the output pane: a progress bar, or a note.
 	if len(footer.lines) > 0 {
-		inner := region("Output box").W - 2
+		outputBox, _ := downloadpage.Layout(p, w, h).RegionNamed("Output box")
+		inner := outputBox.W - 2
 		switch {
 		case footer.bar != nil && inner-ansi.StringWidth(footer.bar.info)-2 >= 10:
 			p.ShowProgress = true
@@ -181,9 +180,9 @@ func (m model) playlistRows() []downloadpage.PlaylistsRow {
 	return rows
 }
 
-// entryRows are the rows of the entries pane for the selected playlist, with the title
-// and the label of the pane and the row that is selected.
-func (m model) entryRows(innerW int) (title, right string, rows []downloadpage.EntriesRow, notes []downloadpage.NotesRow, sel int) {
+// entryRows are the rows of the entries pane for the selected playlist and the row that
+// is selected.
+func (m model) entryRows() (rows []downloadpage.EntriesRow, sel int) {
 	ids := m.visibleEntries()
 	sel = viewport.Clamp(m.selEntry, 0, max(0, len(ids)-1))
 
@@ -205,26 +204,49 @@ func (m model) entryRows(innerW int) (title, right string, rows []downloadpage.E
 		}
 		rows = append(rows, row)
 	}
+	return rows, sel
+}
 
+// entryHeader are the title and the label of the entries pane.
+func (m model) entryHeader() (title, right string) {
 	title = "Entries"
 	if m.filterFailed {
 		title = "Entries (failed only)"
 	}
 	if m.selPlaylist < len(m.state.Playlists) {
-		pl := m.state.Playlists[m.selPlaylist]
-		right = fmt.Sprintf("%d", len(ids))
-		switch {
-		case pl.Err != "":
-			for _, l := range cells.Wrap("✗ "+cells.Display(pl.Err), innerW) {
-				notes = append(notes, downloadpage.NotesRow{Line: cells.CellText(l), LineStyle: downloadpage.CellStyle{Fg: look.Colours.Error}})
-			}
-		case !pl.Listed:
-			notes = []downloadpage.NotesRow{{Line: "listing playlist...", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
-		case len(ids) == 0 && m.filterFailed:
-			notes = []downloadpage.NotesRow{{Line: "no failed entries", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
-		}
+		right = fmt.Sprintf("%d", len(m.visibleEntries()))
 	}
-	return title, right, rows, notes, sel
+	return title, right
+}
+
+// entryNotesShown is whether the entries pane has a note to show instead of rows: the
+// playlist has an error, is still being listed, or has no failed entries to show.
+func (m model) entryNotesShown() bool {
+	if m.selPlaylist >= len(m.state.Playlists) {
+		return false
+	}
+	pl := m.state.Playlists[m.selPlaylist]
+	return pl.Err != "" || !pl.Listed || (m.filterFailed && len(m.visibleEntries()) == 0)
+}
+
+// entryNotes are the lines of that note, wrapped to innerW cells.
+func (m model) entryNotes(innerW int) []downloadpage.NotesRow {
+	if m.selPlaylist >= len(m.state.Playlists) {
+		return nil
+	}
+	pl := m.state.Playlists[m.selPlaylist]
+	var notes []downloadpage.NotesRow
+	switch {
+	case pl.Err != "":
+		for _, l := range cells.Wrap("✗ "+cells.Display(pl.Err), innerW) {
+			notes = append(notes, downloadpage.NotesRow{Line: cells.CellText(l), LineStyle: downloadpage.CellStyle{Fg: look.Colours.Error}})
+		}
+	case !pl.Listed:
+		notes = []downloadpage.NotesRow{{Line: "listing playlist...", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
+	case len(m.visibleEntries()) == 0 && m.filterFailed:
+		notes = []downloadpage.NotesRow{{Line: "no failed entries", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
+	}
+	return notes
 }
 
 // footer is what the output pane keeps for the selected entry under its lines.
@@ -270,8 +292,9 @@ func (m model) outputFooter() outputFooter {
 	return f
 }
 
-// outputWindow are the lines of the output pane, the last h of them above the scroll.
-func (m model) outputWindow(h int) []string {
+// outputWindow are the lines of the output pane, the last h of them above the scroll, and
+// the index of the first of them among all the lines.
+func (m model) outputWindow(h int) ([]string, int) {
 	lines := m.outputLines()
 	end := max(0, len(lines)-m.outScroll)
 	start := max(0, end-max(h, 1))
@@ -279,7 +302,7 @@ func (m model) outputWindow(h int) []string {
 	for _, l := range lines[start:end] {
 		out = append(out, cells.Display(l))
 	}
-	return out
+	return out, start
 }
 
 // leftWidth is how wide the column of lists is in a window w cells wide: all of it when

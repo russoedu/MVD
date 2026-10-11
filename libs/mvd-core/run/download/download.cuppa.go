@@ -126,12 +126,30 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			return cuppa.Cells((e.Rect("Playlists box", "x") + 1.0)), cuppa.Cells((e.Rect("Playlists box", "y") + 1.0)), cuppa.Cells((e.Rect("Playlists box", "w") - 2.0)), cuppa.Cells((e.Rect("Playlists box", "h") - 2.0))
 		}},
 		Event: "PickPlaylist",
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.PlaylistsRows != nil {
+				rs, _ := p.PlaylistsRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Mark, r.Sp, r.Title, r.Sp2, r.Count, r.Sp3, r.Glyph, r.End}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.MarkStyle), cuppa.CellStyleCode(r.SpStyle), cuppa.CellStyleCode(r.TitleStyle), cuppa.CellStyleCode(r.Sp2Style), cuppa.CellStyleCode(r.CountStyle), cuppa.CellStyleCode(r.Sp3Style), cuppa.CellStyleCode(r.GlyphStyle), cuppa.CellStyleCode(r.EndStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.PlaylistsRows == nil {
 				rows := make([][]string, len(p.Playlists))
 				cellStyles := make([][]string, len(p.Playlists))
 				styles := make([]string, len(p.Playlists))
@@ -178,12 +196,30 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0))
 		}},
 		Event: "PickEntry",
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.EntriesRows != nil {
+				rs, _ := p.EntriesRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Glyph, r.Sp, r.Idx, r.Sp2, r.Title, r.Sp3, r.Tag}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.GlyphStyle), cuppa.CellStyleCode(r.SpStyle), cuppa.CellStyleCode(r.IdxStyle), cuppa.CellStyleCode(r.Sp2Style), cuppa.CellStyleCode(r.TitleStyle), cuppa.CellStyleCode(r.Sp3Style), cuppa.CellStyleCode(r.TagStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.EntriesRows == nil {
 				rows := make([][]string, len(p.Entries))
 				cellStyles := make([][]string, len(p.Entries))
 				styles := make([]string, len(p.Entries))
@@ -206,12 +242,30 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0))
 		}},
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.NotesRows != nil {
+				rs, _ := p.NotesRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Line}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.LineStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.NotesRows == nil {
 				rows := make([][]string, len(p.Notes))
 				cellStyles := make([][]string, len(p.Notes))
 				styles := make([]string, len(p.Notes))
@@ -257,12 +311,30 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Output box", "x") + 1.0)), cuppa.Cells((e.Rect("Output box", "y") + 1.0)), cuppa.Cells((e.Rect("Output box", "w") - 2.0)), cuppa.Cells(((e.Rect("Output box", "h") - 2.0) - e.In("FooterLines")))
 		}},
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.OutputRows != nil {
+				rs, _ := p.OutputRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Line}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.LineStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.OutputRows == nil {
 				rows := make([][]string, len(p.Output))
 				cellStyles := make([][]string, len(p.Output))
 				styles := make([]string, len(p.Output))
@@ -397,6 +469,8 @@ type Props struct {
 	PlaylistsRight string
 	// Playlists is the Sample rows (; between rows, , between cells) of "Playlists rows".
 	Playlists []PlaylistsRow
+	// PlaylistsRows is the function that gives the rows of "Playlists rows" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	PlaylistsRows func(w, h int) ([]PlaylistsRow, int)
 	// EntriesBorder is the Border color of "Entries box".
 	EntriesBorder string
 	// EntriesRight is the Right label (in the top edge) of "Entries box".
@@ -405,8 +479,12 @@ type Props struct {
 	EntriesTitle string
 	// Entries is the Sample rows (; between rows, , between cells) of "Entries rows".
 	Entries []EntriesRow
+	// EntriesRows is the function that gives the rows of "Entries rows" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	EntriesRows func(w, h int) ([]EntriesRow, int)
 	// Notes is the Sample rows (; between rows, , between cells) of "Entry notes".
 	Notes []NotesRow
+	// NotesRows is the function that gives the rows of "Entry notes" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	NotesRows func(w, h int) ([]NotesRow, int)
 	// OutputBorder is the Border color of "Output box".
 	OutputBorder string
 	// OutputRight is the Right label (in the top edge) of "Output box".
@@ -415,6 +493,8 @@ type Props struct {
 	OutputTitle string
 	// Output is the Sample rows (; between rows, , between cells) of "Output rows".
 	Output []OutputRow
+	// OutputRows is the function that gives the rows of "Output rows" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	OutputRows func(w, h int) ([]OutputRow, int)
 	// BarWidth is the Bar width (0: what the text leaves) of "Progress".
 	BarWidth int
 	// ProgressText is the Text after the bar of "Progress".
@@ -587,41 +667,125 @@ func HintsHintAt(p Props, x int) (int, bool) {
 	return master.HintsHintAt(masterProps(p), x)
 }
 
+// DownloadPlaylistsAt is the index in Playlists of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func PlaylistsAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Playlists rows")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Playlists, 0
+	if p.PlaylistsRows != nil {
+		rows, first = p.PlaylistsRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
+// DownloadEntriesAt is the index in Entries of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func EntriesAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Entries rows")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Entries, 0
+	if p.EntriesRows != nil {
+		rows, first = p.EntriesRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
+// DownloadNotesAt is the index in Notes of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func NotesAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Entry notes")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Notes, 0
+	if p.NotesRows != nil {
+		rows, first = p.NotesRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
+// DownloadOutputAt is the index in Output of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func OutputAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Output rows")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Output, 0
+	if p.OutputRows != nil {
+		rows, first = p.OutputRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
 // DefaultDownloadProps is the screen as it was designed: each input holds the value
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
 	return Props{
 		Hints:           []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "tab", Label: "pane"}, {Key: "⏎", Label: "follow"}, {Key: "f", Label: "failed"}, {Key: "r", Label: "retry"}, {Key: "l", Label: "full log"}, {Key: "?", Label: "help"}, {Key: "q", Label: "quit"}},
-		ShowKeys:        true,
+		ShowKeys:        false,
 		HeaderRight:     "00:00:00",
 		Counters:        "Queue 0   Running 0   Done 0",
 		PlaylistsBorder: "#6b7280",
 		PlaylistsRight:  "0",
 		Playlists:       []PlaylistsRow{{Mark: "▸", Sp: " ", Title: "90s UK Dance Hits", Sp2: " ", Count: "3/6", Sp3: " ", Glyph: "⠋", End: "", Style: cuppa.RowSelected}},
+		PlaylistsRows:   nil,
 		EntriesBorder:   "#6b7280",
 		EntriesRight:    "0",
 		EntriesTitle:    "Entries",
 		Entries:         []EntriesRow{{Glyph: "✓", Sp: " ", Idx: "01", Sp2: " ", Title: "You Don't Know Me", Sp3: " ", Tag: "⇄", Style: cuppa.RowNormal}},
+		EntriesRows:     nil,
 		Notes:           []NotesRow{{Line: "note", Style: cuppa.RowNormal}},
+		NotesRows:       nil,
 		OutputBorder:    "#6b7280",
 		OutputRight:     "follow",
 		OutputTitle:     "Output",
 		Output:          []OutputRow{{Line: "line", Style: cuppa.RowNormal}},
+		OutputRows:      nil,
 		BarWidth:        32,
 		ProgressText:    "34.2% of 112.4MiB at 8.1MiB/s ETA 0:09",
 		Percent:         34.2,
-		ShowProgress:    true,
+		ShowProgress:    false,
 		Note:            "✓ downloaded",
-		ShowNote:        true,
+		ShowNote:        false,
 		Confirm:         " Downloads are still running. Quit? y/n",
-		ConfirmQuit:     true,
+		ConfirmQuit:     false,
 		Status:          " status",
-		ShowStatus:      true,
+		ShowStatus:      false,
 		LeftWidth:       45,
 		PlaylistCount:   6,
 		HasNotes:        0,
 		FullLog:         0,
-		FooterLines:     2,
+		FooterLines:     0,
 		Palette:         DefaultPalette(),
 	}
 }

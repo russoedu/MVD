@@ -51,12 +51,30 @@ var parts = []cuppa.ScreenPart[Props]{
 			_, _ = w, h
 			return cuppa.Cells((e.Rect("Box", "x") + 1.0)), cuppa.Cells((e.Rect("Box", "y") + 1.0)), cuppa.Cells((e.Rect("Box", "w") - 2.0)), cuppa.Cells((e.Rect("Box", "h") - 2.0))
 		}},
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.LinesRows != nil {
+				rs, _ := p.LinesRows(w, h)
+				{
+					rows := make([][]string, len(rs))
+					cellStyles := make([][]string, len(rs))
+					styles := make([]string, len(rs))
+					for i, r := range rs {
+						rows[i] = []string{r.Line}
+						cellStyles[i] = []string{cuppa.CellStyleCode(r.LineStyle)}
+						styles[i] = cuppa.RowStyleName(r.Style)
+					}
+					v["rows"] = cuppa.JoinRows(rows)
+					v["cellstyles"] = cuppa.JoinRows(cellStyles)
+					v["styles"] = cuppa.JoinList(styles)
+				}
+			}
+		},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
 			if p.Palette.Selected != "" {
 				v["color"] = p.Palette.Selected
 			}
-			{
+			if p.LinesRows == nil {
 				rows := make([][]string, len(p.Lines))
 				cellStyles := make([][]string, len(p.Lines))
 				styles := make([]string, len(p.Lines))
@@ -100,6 +118,8 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 type Props struct {
 	// Lines is the Sample rows (; between rows, , between cells) of "Lines".
 	Lines []LinesRow
+	// LinesRows is the function that gives the rows of "Lines" for the size its place has (w, h cells) and the index of the first one; use Window to keep the selected row in view. It is used when it is not nil.
+	LinesRows func(w, h int) ([]LinesRow, int)
 	// HelpWidth is the read by a layout expression or a condition.
 	HelpWidth int
 	// HelpHeight is the read by a layout expression or a condition.
@@ -155,11 +175,32 @@ type LinesRow struct {
 	Style cuppa.RowStyle
 }
 
+// HelpLinesAt is the index in Lines of the row under screen row y, for a
+// screen of w by h cells, and false where there is none. It reads the rows
+// the way the drawing does, so a click is mapped with no arithmetic of the
+// program's own.
+func LinesAt(p Props, w, h, y int) (int, bool) {
+	r, ok := Layout(p, w, h).RegionNamed("Lines")
+	if !ok || y < r.Y || y >= r.Y+r.H {
+		return 0, false
+	}
+	rows, first := p.Lines, 0
+	if p.LinesRows != nil {
+		rows, first = p.LinesRows(r.W, r.H)
+	}
+	k := y - r.Y
+	if k >= len(rows) {
+		return 0, false
+	}
+	return first + k, true
+}
+
 // DefaultHelpProps is the screen as it was designed: each input holds the value
 // it had in the design, unless the design gives the input an app default.
 func Default() Props {
 	return Props{
 		Lines:      []LinesRow{{Line: "help", Style: cuppa.RowNormal}},
+		LinesRows:  nil,
 		HelpWidth:  40,
 		HelpHeight: 20,
 		Palette:    DefaultPalette(),

@@ -3,7 +3,6 @@ package tui
 import (
 	"strings"
 	"testing"
-	"youtube-downloader/libs/mvd-core/viewport"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -206,22 +205,11 @@ func TestKeyHandling(t *testing.T) {
 	}
 }
 
-func TestRenderBoxAndWindow(t *testing.T) {
+func TestRenderBox(t *testing.T) {
 	box := renderBox("Title", "right", 30, 5, []string{"one", strings.Repeat("y", 40)}, true)
 	checkFrame(t, "box", box, 30, 5)
 	plain := ansi.Strip(box)
 	if !strings.Contains(plain, "╭─ Title ") || !strings.Contains(plain, " right ─╮") || !strings.Contains(plain, "…") {
 		t.Errorf("unexpected box:\n%s", plain)
-	}
-
-	rows := []string{"a", "b", "c", "d", "e", "f"}
-	if got := viewport.Rows(rows, 5, 3); strings.Join(got, "") != "def" {
-		t.Errorf("window at end wrong: %v", got)
-	}
-	if got := viewport.Rows(rows, 0, 3); strings.Join(got, "") != "abc" {
-		t.Errorf("window at start wrong: %v", got)
-	}
-	if got := viewport.Rows(rows, 3, 3); strings.Join(got, "") != "cde" {
-		t.Errorf("window in middle wrong: %v", got)
 	}
 }
