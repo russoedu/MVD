@@ -11,11 +11,3 @@ import (
 // ApplyTheme sets the interface colours. Call it before the first screen is
 // built; it is not safe to call while a program is rendering.
 func ApplyTheme(c config.ThemeColors) { look.Apply(c) }
-
-var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-
-const (
-	minWideWidth = 100
-	headerHeight = 3
-	keyBarHeight = 1
-)

@@ -1,8 +1,9 @@
-package tui
+package download
 
 import (
 	"strings"
 	"testing"
+	"youtube-downloader/libs/mvd-core/testing/keys"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -23,11 +24,11 @@ func (f *fakeController) LogPath() string                  { return "mvd.log" }
 func (f *fakeController) Retry(id int) bool                { f.retried = append(f.retried, id); return true }
 func (f *fakeController) RetryPlaylist(int) int            { return 2 }
 
-// sampleModel builds a model with a few playlists and entries in every state.
-func sampleModel(t *testing.T) model {
+// sampleModel builds a Model with a few playlists and entries in every state.
+func sampleModel(t *testing.T) Model {
 	t.Helper()
 	c := &fakeController{events: make(chan interface{}), sources: []engine.PlaylistSource{{Index: 0, URL: "https://a"}, {Index: 1, URL: "https://b"}, {Index: 2, URL: "https://c"}}}
-	m := newModel(c)
+	m := New(c)
 	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "90s UK Dance Hits", Entries: []engine.EntryInfo{
 		{ID: 0, Playlist: 0, Index: 1, VideoID: "rnlp_avexYQ", Title: "You Don't Know Me (feat. Duane Harden) (Radio Edit)", Channel: "Armand Van Helden - Topic"},
 		{ID: 1, Playlist: 0, Index: 2, VideoID: "LIWrcD4ImwA", Title: "Don't Call Me Baby", Channel: "Madison Avenue - Topic"},
@@ -138,10 +139,10 @@ func TestKeyHandling(t *testing.T) {
 		case "enter":
 			msg = tea.KeyPressMsg{Code: tea.KeyEnter}
 		default:
-			msg = keyText(k)
+			msg = keys.Text(k)
 		}
 		mm, _ = m.Update(msg)
-		m = mm.(model)
+		m = mm.(Model)
 	}
 
 	if m.focus != paneLists {
@@ -193,13 +194,13 @@ func TestKeyHandling(t *testing.T) {
 
 	m.follow = true
 	mm, _ := m.Update(evMsg{engine.EvEntryState{Entry: 6, State: engine.StateDownloading, TargetID: "Jb6gcoR266U"}})
-	m = mm.(model)
+	m = mm.(Model)
 	if m.selPlaylist != 1 || m.selectedEntry().ID != 6 {
 		t.Fatalf("follow should jump to playlist 1 entry 6, got playlist %d entry %d", m.selPlaylist, m.selectedEntry().ID)
 	}
 
 	m.state.Idle = true
-	_, cmd := m.Update(keyText("q"))
+	_, cmd := m.Update(keys.Text("q"))
 	if cmd == nil {
 		t.Fatal("q when idle should quit")
 	}

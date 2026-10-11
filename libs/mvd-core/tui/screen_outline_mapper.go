@@ -18,3 +18,23 @@ func (m setupModel) Outline() ScreenOutline {
 		return m.list.Outline()
 	}
 }
+
+// Outline describes the app's current screen: a setup screen, or the download
+// screen.
+func (m appModel) Outline() ScreenOutline {
+	var out ScreenOutline
+	switch {
+	case m.stopping:
+		return ScreenOutline{Title: "MVD · Stopping the downloads"}
+	case m.editing && !m.downloading:
+		return m.editor.Outline()
+	case m.downloading:
+		return m.download.Outline()
+	default:
+		out = m.setup.Outline()
+	}
+	if out.Prompt == "" {
+		out.Prompt = m.notice
+	}
+	return out
+}

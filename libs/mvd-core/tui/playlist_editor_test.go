@@ -178,10 +178,10 @@ func TestReviewPlansTheListThenDownloadsWhatWasConfirmedOrReplaced(t *testing.T)
 
 	// Both finish; the person leaves the download screen and is back on the editor.
 	app = f.app()
-	app.download.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Mine", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "One"}, {ID: 1, Playlist: 0, Index: 2, Title: "Two"}}})
-	app.download.state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone})
-	app.download.state.Apply(engine.EvEntryState{Entry: 1, State: engine.StateDone})
-	app.download.state.Apply(engine.EvIdle{})
+	app.download.State().Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Mine", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "One"}, {ID: 1, Playlist: 0, Index: 2, Title: "Two"}}})
+	app.download.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone})
+	app.download.State().Apply(engine.EvEntryState{Entry: 1, State: engine.StateDone})
+	app.download.State().Apply(engine.EvIdle{})
 	f.m = drive(t, app, key("q"))
 
 	back := f.app()

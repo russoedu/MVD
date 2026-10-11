@@ -9,5 +9,3 @@ import (
 func key(s string) tea.KeyPressMsg { return keys.Press(s) }
 
 // keyText is the key press that types text.
-
-func keyText(text string) tea.KeyPressMsg { return keys.Text(text) }

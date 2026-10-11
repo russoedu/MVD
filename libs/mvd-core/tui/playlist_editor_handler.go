@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textinput"
@@ -149,7 +150,7 @@ func (m editorModel) Update(msg tea.Msg) (editorModel, tea.Cmd) {
 		if !m.planning {
 			return m, nil
 		}
-		m.spin = (m.spin + 1) % len(spinnerFrames)
+		m.spin = (m.spin + 1) % len(look.SpinnerFrames)
 		return m, editorTick()
 
 	case editorEvMsg:

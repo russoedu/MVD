@@ -1,11 +1,10 @@
-package tui
+package download
 
 import (
 	"fmt"
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
-	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	helppage "youtube-downloader/libs/mvd-core/run/help"
 	"youtube-downloader/libs/mvd-core/screenview"
 
@@ -13,7 +12,7 @@ import (
 	"youtube-downloader/libs/mvd-core/runstate"
 )
 
-func (m model) render() string {
+func (m Model) render() string {
 	if m.width == 0 || m.height == 0 {
 		return "starting..."
 	}
@@ -21,7 +20,7 @@ func (m model) render() string {
 		return look.Dim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
-	view := screenview.Padded(downloadpage.View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
+	view := screenview.Padded(View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
 
 	if m.adding {
 		return m.renderAddBox()
@@ -33,7 +32,7 @@ func (m model) render() string {
 }
 
 // outputLines returns the log lines for the current selection.
-func (m model) outputLines() []string {
+func (m Model) outputLines() []string {
 	if m.focus == paneLists || m.selectedEntry() == nil {
 		if m.selPlaylist < len(m.state.Playlists) {
 			return m.state.Playlists[m.selPlaylist].Log
@@ -43,7 +42,7 @@ func (m model) outputLines() []string {
 	return m.selectedEntry().Log
 }
 
-func (m model) outputTitle() string {
+func (m Model) outputTitle() string {
 	if m.selPlaylist >= len(m.state.Playlists) {
 		return "Output"
 	}
@@ -57,7 +56,7 @@ func (m model) outputTitle() string {
 
 // hints lists the keys the download screen offers now. The key bar and the
 // outline both read it, so they cannot drift apart.
-func (m model) hints() []keybar.Hint {
+func (m Model) hints() []keybar.Hint {
 	var hints []keybar.Hint
 	if m.state.Idle {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry failed"}, {Key: "l", Desc: "full log"}}
@@ -73,7 +72,7 @@ func (m model) hints() []keybar.Hint {
 	return append(hints, keybar.Hint{Key: "q", Desc: "quit"})
 }
 
-func (m model) renderHelp() string {
+func (m Model) renderHelp() string {
 	return helppage.Screen(m.width, m.height, m.ctrl.LogPath())
 }
 
@@ -92,18 +91,18 @@ func counted(n int, word string) string {
 }
 
 // playlistGlyph is the mark at the end of a playlist row and its colour.
-func (m model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
+func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	c := look.Colours
 	if pl.Err != "" {
 		return "✗", c.Error
 	}
 	if !pl.Listed {
-		return spinnerFrames[m.spin], c.Dim
+		return look.SpinnerFrames[m.spin], c.Dim
 	}
 	finished, failed, active := m.state.PlaylistTally(pl)
 	switch {
 	case active > 0:
-		return spinnerFrames[m.spin], c.Highlight
+		return look.SpinnerFrames[m.spin], c.Highlight
 	case finished == len(pl.Entries) && failed > 0:
 		return "✗", c.Error
 	case finished == len(pl.Entries):
@@ -113,7 +112,7 @@ func (m model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 }
 
 // entryGlyph is the mark at the start of an entry row and its colour.
-func (m model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
+func (m Model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 	c := look.Colours
 	switch en.State {
 	case engine.StateQueued:
@@ -121,7 +120,7 @@ func (m model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 	case engine.StateResolving:
 		return "⟲", c.Focus
 	case engine.StateDownloading:
-		return spinnerFrames[m.spin], c.Highlight
+		return look.SpinnerFrames[m.spin], c.Highlight
 	case engine.StateMerging:
 		return "⚙", c.Highlight
 	case engine.StateDone:
@@ -137,7 +136,7 @@ func (m model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 }
 
 // entryTag is what is said at the end of an entry row and its colour.
-func (m model) entryTag(en *runstate.Entry) (tag, colour string) {
+func (m Model) entryTag(en *runstate.Entry) (tag, colour string) {
 	c := look.Colours
 	switch en.State {
 	case engine.StateResolving:

@@ -1,4 +1,4 @@
-package tui
+package download
 
 import (
 	"fmt"
@@ -12,7 +12,6 @@ import (
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/internal/cuppa"
 	"youtube-downloader/libs/mvd-core/look"
-	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	"youtube-downloader/libs/mvd-core/runstate"
 	"youtube-downloader/libs/mvd-core/viewport"
 )
@@ -21,9 +20,9 @@ import (
 // a window of w by h cells. The design owns where everything goes; what is here is what
 // the screen shows. The rows come as functions of the room the design gives them, so the
 // screen cuts them to fit and a click is matched with the page's own At functions.
-func (m model) downloadProps(w, h int) downloadpage.Props {
-	p := downloadpage.Default()
-	p.Palette = downloadpage.Palette(look.CurrentPalette())
+func (m Model) downloadProps(w, h int) Props {
+	p := Default()
+	p.Palette = Palette(look.CurrentPalette())
 
 	// The sizes the design cannot know: how wide the left column is.
 	p.LeftWidth = m.leftWidth(w)
@@ -47,7 +46,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	}
 
 	// Playlists.
-	p.PlaylistsRows = func(_, h int) ([]downloadpage.PlaylistsRow, int) {
+	p.PlaylistsRows = func(_, h int) ([]PlaylistsRow, int) {
 		return cuppa.Window(m.playlistRows(), m.selPlaylist, h)
 	}
 	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
@@ -55,7 +54,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 
 	// Entries.
 	p.EntriesTitle, p.EntriesRight = m.entryHeader()
-	p.EntriesRows = func(_, h int) ([]downloadpage.EntriesRow, int) {
+	p.EntriesRows = func(_, h int) ([]EntriesRow, int) {
 		rows, sel := m.entryRows()
 		return cuppa.Window(rows, sel, h)
 	}
@@ -63,15 +62,15 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	if m.entryNotesShown() {
 		p.HasNotes = 1
 	}
-	p.NotesRows = func(w, _ int) ([]downloadpage.NotesRow, int) { return m.entryNotes(w), 0 }
+	p.NotesRows = func(w, _ int) ([]NotesRow, int) { return m.entryNotes(w), 0 }
 	p.EntriesFocus = m.focus == paneEntries
 
 	// Output.
-	p.OutputRows = func(_, h int) ([]downloadpage.OutputRow, int) {
+	p.OutputRows = func(_, h int) ([]OutputRow, int) {
 		lines, first := m.outputWindow(h)
-		rows := make([]downloadpage.OutputRow, 0, len(lines))
+		rows := make([]OutputRow, 0, len(lines))
 		for _, line := range lines {
-			rows = append(rows, downloadpage.OutputRow{Line: cells.CellText(line)})
+			rows = append(rows, OutputRow{Line: cells.CellText(line)})
 		}
 		return rows, first
 	}
@@ -87,7 +86,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 
 	// The footer of the output pane: a progress bar, or a note.
 	if len(footer.lines) > 0 {
-		outputBox, _ := downloadpage.Layout(p, w, h).RegionNamed("Output box")
+		outputBox, _ := Layout(p, w, h).RegionNamed("Output box")
 		inner := outputBox.W - 2
 		switch {
 		case footer.bar != nil && inner-ansi.StringWidth(footer.bar.info)-2 >= 10:
@@ -102,7 +101,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 	}
 
 	// The bottom line: what was asked, what just happened, or the keys.
-	p.Hints = keybar.Of[downloadpage.HintsHint](m.hints())
+	p.Hints = keybar.Of[HintsHint](m.hints())
 	switch {
 	case m.confirmQuit:
 		p.ConfirmQuit = true
@@ -117,7 +116,7 @@ func (m model) downloadProps(w, h int) downloadpage.Props {
 }
 
 // headerTexts are the counters inside the header box and the label on its top edge.
-func (m model) headerTexts() (counters, right string) {
+func (m Model) headerTexts() (counters, right string) {
 	t := m.state.Tally()
 	elapsed := runstate.HumanDuration(time.Since(m.state.Started))
 
@@ -130,7 +129,7 @@ func (m model) headerTexts() (counters, right string) {
 
 	parts := []string{
 		look.Text.Render(fmt.Sprintf("Queue %d", t.Queued)),
-		look.Yellow.Render(fmt.Sprintf("%s Running %d", spinnerFrames[m.spin], t.Running)),
+		look.Yellow.Render(fmt.Sprintf("%s Running %d", look.SpinnerFrames[m.spin], t.Running)),
 		look.Green.Render(fmt.Sprintf("✓ Done %d", t.Done)),
 		look.Cyan.Render(fmt.Sprintf("⇄ Official %d", t.Official)),
 		look.Cyan.Render(fmt.Sprintf("↑ Better %d", t.Better)),
@@ -151,8 +150,8 @@ func (m model) headerTexts() (counters, right string) {
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the
 // title, the count and the glyph; the app says what each says and the colour of the glyph.
-func (m model) playlistRows() []downloadpage.PlaylistsRow {
-	rows := make([]downloadpage.PlaylistsRow, 0, len(m.state.Playlists))
+func (m Model) playlistRows() []PlaylistsRow {
+	rows := make([]PlaylistsRow, 0, len(m.state.Playlists))
 	for i, pl := range m.state.Playlists {
 		finished, _, _ := m.state.PlaylistTally(pl)
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
@@ -162,12 +161,12 @@ func (m model) playlistRows() []downloadpage.PlaylistsRow {
 			count = "listing"
 		}
 		glyph, colour := m.playlistGlyph(pl)
-		row := downloadpage.PlaylistsRow{
+		row := PlaylistsRow{
 			Mark: " ", Title: cells.CellText(cells.Display(pl.Title)), Count: count, Glyph: glyph,
-			GlyphStyle: downloadpage.CellStyle{Fg: colour},
+			GlyphStyle: CellStyle{Fg: colour},
 		}
 		if i == m.selPlaylist {
-			row.Mark, row.Style = "▸", downloadpage.RowSelected
+			row.Mark, row.Style = "▸", RowSelected
 		}
 		rows = append(rows, row)
 	}
@@ -176,7 +175,7 @@ func (m model) playlistRows() []downloadpage.PlaylistsRow {
 
 // entryRows are the rows of the entries pane for the selected playlist and the row that
 // is selected.
-func (m model) entryRows() (rows []downloadpage.EntriesRow, sel int) {
+func (m Model) entryRows() (rows []EntriesRow, sel int) {
 	ids := m.visibleEntries()
 	sel = viewport.Clamp(m.selEntry, 0, max(0, len(ids)-1))
 
@@ -184,13 +183,13 @@ func (m model) entryRows() (rows []downloadpage.EntriesRow, sel int) {
 		en := m.state.Entries[id]
 		glyph, glyphColour := m.entryGlyph(en)
 		tag, tagColour := m.entryTag(en)
-		row := downloadpage.EntriesRow{
+		row := EntriesRow{
 			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cells.CellText(entryTitle(en)), Tag: tag,
-			GlyphStyle: downloadpage.CellStyle{Fg: glyphColour}, TagStyle: downloadpage.CellStyle{Fg: tagColour},
+			GlyphStyle: CellStyle{Fg: glyphColour}, TagStyle: CellStyle{Fg: tagColour},
 		}
 		if i == sel {
 			// Whether the pane has the focus is the design's: an unfocused pane draws it as text.
-			row.Style = downloadpage.RowSelected
+			row.Style = RowSelected
 		}
 		rows = append(rows, row)
 	}
@@ -198,7 +197,7 @@ func (m model) entryRows() (rows []downloadpage.EntriesRow, sel int) {
 }
 
 // entryHeader are the title and the label of the entries pane.
-func (m model) entryHeader() (title, right string) {
+func (m Model) entryHeader() (title, right string) {
 	title = "Entries"
 	if m.filterFailed {
 		title = "Entries (failed only)"
@@ -211,7 +210,7 @@ func (m model) entryHeader() (title, right string) {
 
 // entryNotesShown is whether the entries pane has a note to show instead of rows: the
 // playlist has an error, is still being listed, or has no failed entries to show.
-func (m model) entryNotesShown() bool {
+func (m Model) entryNotesShown() bool {
 	if m.selPlaylist >= len(m.state.Playlists) {
 		return false
 	}
@@ -220,21 +219,21 @@ func (m model) entryNotesShown() bool {
 }
 
 // entryNotes are the lines of that note, wrapped to innerW cells.
-func (m model) entryNotes(innerW int) []downloadpage.NotesRow {
+func (m Model) entryNotes(innerW int) []NotesRow {
 	if m.selPlaylist >= len(m.state.Playlists) {
 		return nil
 	}
 	pl := m.state.Playlists[m.selPlaylist]
-	var notes []downloadpage.NotesRow
+	var notes []NotesRow
 	switch {
 	case pl.Err != "":
 		for _, l := range cells.Wrap("✗ "+cells.Display(pl.Err), innerW) {
-			notes = append(notes, downloadpage.NotesRow{Line: cells.CellText(l), LineStyle: downloadpage.CellStyle{Fg: look.Colours.Error}})
+			notes = append(notes, NotesRow{Line: cells.CellText(l), LineStyle: CellStyle{Fg: look.Colours.Error}})
 		}
 	case !pl.Listed:
-		notes = []downloadpage.NotesRow{{Line: "listing playlist...", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
+		notes = []NotesRow{{Line: "listing playlist...", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
 	case len(m.visibleEntries()) == 0 && m.filterFailed:
-		notes = []downloadpage.NotesRow{{Line: "no failed entries", LineStyle: downloadpage.CellStyle{Fg: look.Colours.Dim}}}
+		notes = []NotesRow{{Line: "no failed entries", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
 	}
 	return notes
 }
@@ -250,7 +249,7 @@ type barInfo struct {
 	percent float64
 }
 
-func (m model) outputFooter() outputFooter {
+func (m Model) outputFooter() outputFooter {
 	var f outputFooter
 	en := m.selectedEntry()
 	if en == nil || m.focus == paneLists {
@@ -284,7 +283,7 @@ func (m model) outputFooter() outputFooter {
 
 // outputWindow are the lines of the output pane, the last h of them above the scroll, and
 // the index of the first of them among all the lines.
-func (m model) outputWindow(h int) ([]string, int) {
+func (m Model) outputWindow(h int) ([]string, int) {
 	lines := m.outputLines()
 	end := max(0, len(lines)-m.outScroll)
 	start := max(0, end-max(h, 1))
@@ -298,7 +297,7 @@ func (m model) outputWindow(h int) ([]string, int) {
 // leftWidth is how wide the column of lists is in a window w cells wide: all of it when
 // the window is narrow, most of it for the output when it is wide, and none when the
 // output has the whole screen.
-func (m model) leftWidth(w int) int {
+func (m Model) leftWidth(w int) int {
 	switch {
 	case m.fullLog:
 		return 0

@@ -1,10 +1,11 @@
-package tui
+package download
 
 import (
 	"context"
 	"fmt"
 	"os"
 	"time"
+	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/screenview"
 	"youtube-downloader/libs/mvd-core/viewport"
 
@@ -33,29 +34,16 @@ func Enabled(noTUIFlag bool) bool {
 	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
-// RunDownload drives the download screen until the user quits and returns
-// the final state for the summary.
-func RunDownload(ctx context.Context, c Controller) (*runstate.State, error) {
-	p := tea.NewProgram(newModel(c), tea.WithContext(ctx))
+// Run drives the download screen until the user quits and returns the final state for
+// the summary.
+func Run(ctx context.Context, c Controller) (*runstate.State, error) {
+	p := tea.NewProgram(New(c), tea.WithContext(ctx))
 	final, err := p.Run()
-	if fm, ok := final.(model); ok {
+	if fm, ok := final.(Model); ok {
 		return fm.state, err
 	}
 	return nil, err
 }
-
-// RunApp runs the whole interactive app (the setup screens, the playlist editor and the
-// download screen, one after the other) until the person quits the setup screens or ctx
-// ends. It is what NewAppModel is for hosts that run the program themselves.
-func RunApp(ctx context.Context, in AppInput) error {
-	_, err := tea.NewProgram(NewAppModel(in), tea.WithContext(ctx)).Run()
-	return err
-}
-
-// NewDownloadModel returns the download screen as a Bubble Tea model, for a
-// host that runs the program itself. The returned model also has an Outline
-// method (see ScreenOutline). It quits when the user leaves the screen.
-func NewDownloadModel(c Controller) tea.Model { return newModel(c) }
 
 const (
 	paneLists = iota
@@ -63,13 +51,16 @@ const (
 	paneOutput
 )
 
+// minWideWidth is the window width from which the output pane is shown beside the lists.
+const minWideWidth = 100
+
 type (
 	evMsg    struct{ ev interface{} }
 	evClosed struct{}
 	tickMsg  time.Time
 )
 
-type model struct {
+type Model struct {
 	ctrl   Controller
 	events <-chan interface{}
 	state  *runstate.State
@@ -87,25 +78,25 @@ type model struct {
 	spin          int
 	status        string // transient message shown in the key bar
 	statusUntil   time.Time
-	embedded      bool // inside an app model: ends with downloadFinishedMsg instead of quitting
+	embedded      bool // inside an app model: ends with FinishedMsg instead of quitting
 	adding        bool // the box for adding links is open
 	links         textarea.Model
 }
 
-// downloadFinishedMsg tells the app model the user left the download screen.
-type downloadFinishedMsg struct{}
+// FinishedMsg tells the app model the user left the download screen.
+type FinishedMsg struct{}
 
 // quit ends the screen: the program in RunDownload, or the screen alone when
 // the model is part of an app model.
-func (m model) quit() tea.Cmd {
+func (m Model) quit() tea.Cmd {
 	if m.embedded {
-		return func() tea.Msg { return downloadFinishedMsg{} }
+		return func() tea.Msg { return FinishedMsg{} }
 	}
 	return tea.Quit
 }
 
-func newModel(c Controller) model {
-	return model{
+func New(c Controller) Model {
+	return Model{
 		ctrl:   c,
 		events: c.Events(),
 		state:  runstate.New(c.Sources()),
@@ -127,18 +118,18 @@ func tick() tea.Cmd {
 	return tea.Tick(120*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
-func (m model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return tea.Batch(waitEvent(m.events), tick())
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
 
 	case tickMsg:
-		m.spin = (m.spin + 1) % len(spinnerFrames)
+		m.spin = (m.spin + 1) % len(look.SpinnerFrames)
 		return m, tick()
 
 	case evMsg:
@@ -174,7 +165,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	if key == "ctrl+c" {
@@ -266,16 +257,16 @@ func (m model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) flash(s string) {
+func (m *Model) flash(s string) {
 	m.status = s
 	m.statusUntil = time.Now().Add(3 * time.Second)
 }
 
-func (m *model) outputVisible() bool {
+func (m *Model) outputVisible() bool {
 	return m.fullLog || m.width >= minWideWidth
 }
 
-func (m *model) move(delta int) {
+func (m *Model) move(delta int) {
 	switch m.focus {
 	case paneLists:
 		m.follow = false
@@ -293,7 +284,7 @@ func (m *model) move(delta int) {
 	}
 }
 
-func (m *model) retry() {
+func (m *Model) retry() {
 	switch m.focus {
 	case paneEntries:
 		en := m.selectedEntry()
@@ -316,7 +307,7 @@ func (m *model) retry() {
 }
 
 // visibleEntries returns the entry ids shown in the entries pane.
-func (m *model) visibleEntries() []int {
+func (m *Model) visibleEntries() []int {
 	if m.selPlaylist >= len(m.state.Playlists) {
 		return nil
 	}
@@ -333,7 +324,7 @@ func (m *model) visibleEntries() []int {
 	return out
 }
 
-func (m *model) selectedEntry() *runstate.Entry {
+func (m *Model) selectedEntry() *runstate.Entry {
 	ids := m.visibleEntries()
 	if len(ids) == 0 {
 		return nil
@@ -343,7 +334,7 @@ func (m *model) selectedEntry() *runstate.Entry {
 }
 
 // activeEntry returns the id of the first entry currently downloading.
-func (m *model) activeEntry() int {
+func (m *Model) activeEntry() int {
 	for _, en := range m.state.Entries {
 		if en != nil && (en.State == engine.StateDownloading || en.State == engine.StateMerging || en.State == engine.StateResolving) {
 			return en.ID
@@ -352,7 +343,7 @@ func (m *model) activeEntry() int {
 	return -1
 }
 
-func (m *model) jumpTo(id int) {
+func (m *Model) jumpTo(id int) {
 	en := m.state.Entry(id)
 	if en == nil {
 		return
@@ -367,4 +358,28 @@ func (m *model) jumpTo(id int) {
 	m.outScroll = 0
 }
 
-func (m model) View() tea.View { return screenview.Of(m.render()) }
+func (m Model) View() tea.View { return screenview.Of(m.render()) }
+
+// NewEmbedded is the download screen as a part of an app model: it ends with FinishedMsg
+// instead of quitting the program.
+func NewEmbedded(c Controller) Model {
+	m := New(c)
+	m.embedded = true
+	return m
+}
+
+// IsLeftover is whether msg is one of the screen's own messages, left over from a run that
+// has ended and no longer has a screen to take it.
+func IsLeftover(msg tea.Msg) bool {
+	switch msg.(type) {
+	case tickMsg, evMsg, evClosed:
+		return true
+	}
+	return false
+}
+
+// State is what the run has reported so far.
+func (m Model) State() *runstate.State { return m.state }
+
+// Render draws the screen, for an app model that shows it under its own notice.
+func (m Model) Render() string { return m.render() }

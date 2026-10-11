@@ -1,10 +1,9 @@
-package tui
+package download
 
 import (
 	tea "charm.land/bubbletea/v2"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/pointer"
-	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 // rect is a region of the screen, in cells.
@@ -23,12 +22,12 @@ type downloadLayout struct {
 
 // layout is where the screen's design puts each pane, so a mouse position can be matched
 // to the pane that was drawn there. ok is false while the screen shows no panes.
-func (m model) layout() (l downloadLayout, ok bool) {
+func (m Model) layout() (l downloadLayout, ok bool) {
 	if m.width < 60 || m.height < 16 || m.showHelp {
 		return l, false
 	}
 	p := m.downloadProps(m.width, m.height)
-	frame := downloadpage.Layout(p, m.width, m.height)
+	frame := Layout(p, m.width, m.height)
 
 	box := func(name string) rect {
 		r, _ := frame.RegionNamed(name)
@@ -45,7 +44,7 @@ func (m model) layout() (l downloadLayout, ok bool) {
 }
 
 // mouse handles a click or a wheel notch on the download screen.
-func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.showHelp {
 		if pointer.IsLeftClick(msg) {
 			m.showHelp = false
@@ -85,7 +84,7 @@ func (m model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 }
 
 // wheel scrolls the pane under the pointer.
-func (m model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, tea.Cmd) {
+func (m Model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, tea.Cmd) {
 	switch {
 	case l.hasLists && l.playlists.contains(msg.Mouse().X, msg.Mouse().Y):
 		m.focus = paneLists
@@ -100,8 +99,8 @@ func (m model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, te
 	return m, nil
 }
 
-func (m *model) clickPlaylist(y int) {
-	i, ok := downloadpage.PlaylistsAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
+func (m *Model) clickPlaylist(y int) {
+	i, ok := PlaylistsAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
 	m.focus = paneLists
 	if !ok {
 		return
@@ -110,7 +109,7 @@ func (m *model) clickPlaylist(y int) {
 	m.selPlaylist, m.selEntry, m.outScroll = i, 0, 0
 }
 
-func (m *model) clickEntry(y int) {
+func (m *Model) clickEntry(y int) {
 	m.focus = paneEntries
 	if m.selPlaylist >= len(m.state.Playlists) {
 		return
@@ -118,7 +117,7 @@ func (m *model) clickEntry(y int) {
 	if pl := m.state.Playlists[m.selPlaylist]; pl.Err != "" || !pl.Listed {
 		return
 	}
-	i, ok := downloadpage.EntriesAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
+	i, ok := EntriesAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
 	if !ok {
 		return
 	}
