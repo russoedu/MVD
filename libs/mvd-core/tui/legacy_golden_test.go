@@ -7,12 +7,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
-	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
-	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
-	listpage "youtube-downloader/libs/mvd-core/setup/list"
-	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
-	songspage "youtube-downloader/libs/mvd-core/setup/songs"
+	"youtube-downloader/libs/mvd-core/testing/drawing"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -41,90 +36,7 @@ func keysOf(keys ...string) []tea.Msg {
 }
 
 func legacyCases() []legacyCase {
-	const w, h = 100, 30
-	cfg := func() config.Config {
-		dir := "C:\\Music"
-		c := config.Default(dir, "C:\\Music\\logs")
-		return c
-	}
-
-	colours := func(keys ...string) func(t *testing.T) string {
-		return func(t *testing.T) string {
-			ApplyTheme(config.DefaultThemeColors())
-			m := colourspage.New(cfg()).SetSize(w, h)
-			for _, msg := range keysOf(keys...) {
-				m, _, _, _ = m.Update(msg)
-			}
-			return m.View(w, h)
-		}
-	}
-	advanced := func(extra []string, keys ...string) func(t *testing.T) string {
-		return func(t *testing.T) string {
-			ApplyTheme(config.DefaultThemeColors())
-			c := cfg()
-			c.ExtraArgs = extra
-			m := advancedpage.New(c).SetSize(w, h)
-			for _, msg := range keysOf(keys...) {
-				m, _, _, _ = m.Update(msg)
-			}
-			return m.View(w, h)
-		}
-	}
-	list := func(urls []string, keys ...string) func(t *testing.T) string {
-		return func(t *testing.T) string {
-			ApplyTheme(config.DefaultThemeColors())
-			m := listpage.New(urls).SetSize(w, h)
-			for _, msg := range keysOf(keys...) {
-				m, _, _ = m.Update(msg)
-			}
-			return m.View(w, h)
-		}
-	}
-	songs := func(text string) func(t *testing.T) string {
-		return func(t *testing.T) string {
-			ApplyTheme(config.DefaultThemeColors())
-			m := songspage.New("C:\\Music\\songs").SetSize(w, h).WithText(text)
-			return m.View(w, h)
-		}
-	}
-	folder := func(creating bool, err string) func(t *testing.T) string {
-		return func(t *testing.T) string {
-			ApplyTheme(config.DefaultThemeColors())
-			m := folderpage.New(".").Listing("C:\\Users\\me\\Music", []string{"90s", "Dance", "Rock", "Soundtracks"}, 1, err, creating)
-			return m.SetSize(w, h).View(w, h)
-		}
-	}
-	prefs := func(keys ...string) func(t *testing.T) string {
-		return func(t *testing.T) string {
-			ApplyTheme(config.DefaultThemeColors())
-			m := preferencespage.New(cfg()).SetSize(w, h)
-			for _, msg := range keysOf(keys...) {
-				m, _, _, _ = m.Update(msg)
-			}
-			return m.View(w, h)
-		}
-	}
-
-	cases := []legacyCase{
-		{"colours-first", w, h, colours()},
-		{"colours-fourth", w, h, colours("down", "down", "down")},
-		{"colours-editing", w, h, colours("down", "enter")},
-		{"colours-error", w, h, colours("enter", "backspace", "z", "enter")},
-		{"advanced-first", w, h, advanced(nil)},
-		{"advanced-args", w, h, advanced([]string{"--proxy", "http://x"}, "down")},
-		{"advanced-editing", w, h, advanced(nil, "enter")},
-		{"list-empty", w, h, list(nil)},
-		{"list-three", w, h, list([]string{"https://youtube.com/playlist?list=A", "https://youtube.com/playlist?list=B", "C:\\songs.txt"})},
-		{"list-confirm-quit", w, h, list([]string{"https://youtube.com/playlist?list=A"}, "esc")},
-		{"songs-empty", w, h, songs("")},
-		{"songs-two", w, h, songs("Daft Punk - One More Time\nbad line\nAlexia - Uh La La La")},
-		{"folder-browse", w, h, folder(false, "")},
-		{"folder-creating", w, h, folder(true, "")},
-		{"folder-error", w, h, folder(false, "open C:\\Users\\me\\Music: access denied")},
-		{"config-first", w, h, prefs()},
-		{"config-template", w, h, prefs("down", "down", "down", "down")},
-		{"config-editing", w, h, prefs("down", "enter")},
-	}
+	cases := []legacyCase{}
 
 	// The download screen, in the states the screens test walks through.
 	download := func(setup func(m *model)) func(t *testing.T) string {
@@ -227,7 +139,7 @@ func TestLegacyScreensKeepTheirLook(t *testing.T) {
 			t.Errorf("%s: no reference drawing (%v); run with UPDATE_LEGACY=1", c.name, err)
 			continue
 		}
-		diffs := sameCells(string(want), got, c.w, 8)
+		diffs := drawing.SameCells(string(want), got, c.w, 8)
 		if reason, known := knownGaps[c.name]; known {
 			if len(diffs) == 0 {
 				t.Errorf("%s now matches its reference: remove it from knownGaps", c.name)
