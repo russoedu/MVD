@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 	"youtube-downloader/libs/mvd-core/settings"
+	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
 	"youtube-downloader/libs/mvd-core/testing/keys"
 
 	tea "charm.land/bubbletea/v2"
@@ -119,7 +120,7 @@ func TestConfigModelFolderPicker(t *testing.T) {
 	if m.mode != settings.EditNone {
 		t.Fatalf("enter should choose and close the picker")
 	}
-	if m.cfg.OutputDir != resolveDir(dir) {
+	if m.cfg.OutputDir != folderpage.ResolveDir(dir) {
 		t.Errorf("output dir should be the chosen folder, got %q", m.cfg.OutputDir)
 	}
 

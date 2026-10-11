@@ -7,6 +7,7 @@ import (
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/settings"
+	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
 	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 
 	"charm.land/bubbles/v2/textinput"
@@ -39,7 +40,7 @@ type configModel struct {
 	input         textinput.Model
 	radioOpts     []string
 	radioIdx      int
-	folder        folderModel
+	folder        folderpage.Model
 	pick          FolderPicker // nil when the host has no native chooser
 	uninstall     Uninstaller  // nil when the host cannot remove the app
 	move          Mover        // nil when the host cannot move the app
@@ -76,7 +77,7 @@ func (m configModel) init() tea.Cmd { return textinput.Blink }
 func (m configModel) setSize(w, h int) configModel {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-8))
-	m.folder = m.folder.setSize(w, h)
+	m.folder = m.folder.SetSize(w, h)
 	return m
 }
 
@@ -227,7 +228,7 @@ func (m *configModel) chooseFolder() tea.Cmd {
 }
 
 func (m *configModel) browseFolders(start string) {
-	m.folder = newFolderModel(start).setSize(m.width, m.height)
+	m.folder = folderpage.New(start).SetSize(m.width, m.height)
 	m.mode = settings.EditFolder
 }
 
@@ -272,17 +273,17 @@ func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) t
 		return nil
 	}
 	if m.mode == settings.EditFolder {
-		next, cmd, out := m.folder.update(msg)
+		next, cmd, out := m.folder.Update(msg)
 		m.folder = next
 		switch out {
-		case folderChosen:
+		case folderpage.Chosen:
 			if m.cursor == 0 {
-				m.cfg.OutputDir = m.folder.dir
+				m.cfg.OutputDir = m.folder.Dir()
 			} else {
-				m.cfg.LogDir = m.folder.dir
+				m.cfg.LogDir = m.folder.Dir()
 			}
 			m.mode = settings.EditNone
-		case folderCancel:
+		case folderpage.Cancel:
 			m.mode = settings.EditNone
 		}
 		return cmd
@@ -465,7 +466,7 @@ func (m configModel) display(i int) string {
 
 func (m configModel) view(width, height int) string {
 	if m.mode == settings.EditFolder {
-		return m.folder.view(width, height)
+		return m.folder.View(width, height)
 	}
 	labelW := 0
 	for _, l := range cfgLabels {

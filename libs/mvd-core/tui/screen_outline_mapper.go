@@ -24,7 +24,7 @@ func (m setupModel) Outline() ScreenOutline {
 
 func (m configModel) outline() ScreenOutline {
 	if m.mode == settings.EditFolder {
-		return m.folder.outline()
+		return m.folder.Outline()
 	}
 	items := make([]OutlineItem, len(cfgLabels))
 	for i, label := range cfgLabels {
@@ -47,16 +47,4 @@ func (m configModel) outline() ScreenOutline {
 		}
 	}
 	return ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.hints())}
-}
-
-func (m folderModel) outline() ScreenOutline {
-	items := make([]OutlineItem, len(m.entries))
-	for i, name := range m.entries {
-		items[i] = OutlineItem{Label: name, Selected: i == m.cursor}
-	}
-	out := ScreenOutline{Title: "MVD · Choose folder", Text: m.dir, HasText: true, ItemsLabel: "Sub-folders", Items: items, Keys: outline.KeysOf(m.hints())}
-	if m.err != "" {
-		out.Prompt = m.err
-	}
-	return out
 }

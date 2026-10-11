@@ -37,7 +37,7 @@ func (m setupModel) hints() []keybar.Hint {
 	switch m.screen {
 	case screenConfig:
 		if m.config.mode == settings.EditFolder {
-			return m.config.folder.hints()
+			return m.config.folder.Hints()
 		}
 		return m.config.hints()
 	case screenAdvanced:

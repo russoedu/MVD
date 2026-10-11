@@ -1,4 +1,4 @@
-package tui
+package folder
 
 import (
 	"os"
@@ -8,24 +8,24 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
-	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
+	"youtube-downloader/libs/mvd-core/outline"
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
 
-type folderOutcome int
+type Outcome int
 
 const (
-	folderNone folderOutcome = iota
-	folderChosen
-	folderCancel
+	None Outcome = iota
+	Chosen
+	Cancel
 )
 
-// folderModel is a directory navigator: browse into/out of folders, make a
+// Model is a directory navigator: browse into/out of folders, make a
 // new one, and pick the current directory.
-type folderModel struct {
+type Model struct {
 	dir           string
 	entries       []string // sub-directory names
 	cursor        int
@@ -35,15 +35,15 @@ type folderModel struct {
 	width, height int
 }
 
-func newFolderModel(start string) folderModel {
+func New(start string) Model {
 	ti := textinput.New()
 	ti.Prompt = "new folder: "
-	m := folderModel{dir: resolveDir(start), input: ti}
+	m := Model{dir: ResolveDir(start), input: ti}
 	m.load()
 	return m
 }
 
-func resolveDir(start string) string {
+func ResolveDir(start string) string {
 	if start == "" {
 		if wd, err := os.Getwd(); err == nil {
 			return wd
@@ -56,7 +56,7 @@ func resolveDir(start string) string {
 	return start
 }
 
-func (m *folderModel) load() {
+func (m *Model) load() {
 	m.entries = nil
 	m.cursor = 0
 	m.err = ""
@@ -73,21 +73,21 @@ func (m *folderModel) load() {
 	sort.Strings(m.entries)
 }
 
-func (m folderModel) setSize(w, h int) folderModel {
+func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-16))
 	return m
 }
 
-func (m folderModel) update(msg tea.Msg) (folderModel, tea.Cmd, folderOutcome) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		if m.creating {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
-			return m, cmd, folderNone
+			return m, cmd, None
 		}
-		return m, nil, folderNone
+		return m, nil, None
 	}
 
 	if m.creating {
@@ -108,9 +108,9 @@ func (m folderModel) update(msg tea.Msg) (folderModel, tea.Cmd, folderOutcome) {
 		default:
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
-			return m, cmd, folderNone
+			return m, cmd, None
 		}
-		return m, nil, folderNone
+		return m, nil, None
 	}
 
 	switch k.String() {
@@ -137,14 +137,14 @@ func (m folderModel) update(msg tea.Msg) (folderModel, tea.Cmd, folderOutcome) {
 		m.input.SetValue("")
 		m.input.Focus()
 	case "enter":
-		return m, nil, folderChosen
+		return m, nil, Chosen
 	case "esc":
-		return m, nil, folderCancel
+		return m, nil, Cancel
 	}
-	return m, nil, folderNone
+	return m, nil, None
 }
 
-func (m folderModel) hints() []keybar.Hint {
+func (m Model) Hints() []keybar.Hint {
 	if m.creating {
 		return []keybar.Hint{{Key: "enter", Desc: "create"}, {Key: "esc", Desc: "cancel"}}
 	}
@@ -154,17 +154,17 @@ func (m folderModel) hints() []keybar.Hint {
 	}
 }
 
-func (m folderModel) view(width, height int) string {
-	var rows []folderpage.FoldersRow
+func (m Model) View(width, height int) string {
+	var rows []FoldersRow
 	for i, name := range m.entries {
-		row := folderpage.FoldersRow{Entry: "  " + name + "/"}
+		row := FoldersRow{Entry: "  " + name + "/"}
 		if i == m.cursor {
-			row.Entry, row.Style = "▸ "+name+"/", folderpage.RowSelected
+			row.Entry, row.Style = "▸ "+name+"/", RowSelected
 		}
 		rows = append(rows, row)
 	}
 	if len(rows) == 0 {
-		rows = []folderpage.FoldersRow{{Entry: "(no sub-folders)", EntryStyle: folderpage.CellStyle{Fg: look.Colours.Dim}}}
+		rows = []FoldersRow{{Entry: "(no sub-folders)", EntryStyle: CellStyle{Fg: look.Colours.Dim}}}
 	}
 	visible := max(1, height-5)
 	if len(rows) > visible {
@@ -172,9 +172,9 @@ func (m folderModel) view(width, height int) string {
 		rows = rows[start : start+visible]
 	}
 
-	props := folderpage.Default()
-	props.Palette = folderpage.Palette(look.CurrentPalette())
-	props.Hints = keybar.Of[folderpage.HintsHint](m.hints())
+	props := Default()
+	props.Palette = Palette(look.CurrentPalette())
+	props.Hints = keybar.Of[HintsHint](m.Hints())
 	props.Path = cells.Truncate(m.dir, width-2)
 	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
 	props.Problem = cells.Truncate(m.err, width-2)
@@ -185,5 +185,28 @@ func (m folderModel) view(width, height int) string {
 	}
 	props.Creating = m.creating
 	props.NewFolderView = m.input.View()
-	return folderpage.View(props, width, height).View
+	return View(props, width, height).View
+}
+
+// Outline describes the screen in plain terms, from the same state and Hints the view draws.
+func (m Model) Outline() outline.ScreenOutline {
+	items := make([]outline.Item, len(m.entries))
+	for i, name := range m.entries {
+		items[i] = outline.Item{Label: name, Selected: i == m.cursor}
+	}
+	out := outline.ScreenOutline{Title: "MVD · Choose folder", Text: m.dir, HasText: true, ItemsLabel: "Sub-folders", Items: items, Keys: outline.KeysOf(m.Hints())}
+	if m.err != "" {
+		out.Prompt = m.err
+	}
+	return out
+}
+
+// Dir is the folder being browsed.
+func (m Model) Dir() string { return m.dir }
+
+// Listing is a browser showing a listing that was not read from disk: for previews and
+// tests, where the folders must not depend on the machine.
+func (m Model) Listing(dir string, entries []string, cursor int, err string, creating bool) Model {
+	m.dir, m.entries, m.cursor, m.err, m.creating = dir, entries, cursor, err, creating
+	return m
 }
