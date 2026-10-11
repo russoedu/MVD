@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	ttygo "github.com/meta-tui/treactui/packages/tty-go"
+	ttygo "github.com/meta-ui-labs/treactui/packages/tty-go"
 )
 
 // ConfigPath is the settings file, the same one the terminal app uses.
