@@ -169,6 +169,7 @@ func (m folderModel) view(width, height int) string {
 	}
 
 	props := folderpage.Default()
+	props.Title = " MVD · Choose folder"
 	props.Palette = folderpage.Palette(palette())
 	props.Hints = hintsOf[folderpage.HintsHint](m.hints())
 	props.Path = truncate(m.dir, width-2)

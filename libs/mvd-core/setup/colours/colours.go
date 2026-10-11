@@ -31,13 +31,14 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Colours", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Title", X: 0, Y: 0, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "true", "color": "#ff007f", "text": " MVD · Preferences", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Accent != "" {
 				v["color"] = p.Palette.Accent
 			}
+			v["text"] = p.Title
 			return true
 		},
 	},
@@ -160,6 +161,8 @@ func Handle(f cuppa.Frame, msg tea.Msg) (Event, bool) {
 
 // ColoursProps is everything the Colours screen takes from the program that owns it.
 type Props struct {
+	// Title is the Text of "Title".
+	Title string
 	// Slots is the Sample rows (; between rows, , between cells) of "Slots".
 	Slots []SlotsRow
 	// Status is the Text of "Status".
@@ -256,6 +259,7 @@ func HintsHintAt(p Props, x int) (int, bool) {
 // it had in the design.
 func Default() Props {
 	return Props{
+		Title:      " MVD · Preferences",
 		Slots:      []SlotsRow{{Mark: "▸ ", Name: "Accent (title)", Gap: "", Swatch: "#ff007f", Space: "", Value: "#ff007f", Style: cuppa.RowSelected}, {Mark: "  ", Name: "Focus (active border)", Gap: "", Swatch: "#00f0ff", Space: "", Value: "#00f0ff", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Highlight (keys, bars)", Gap: "", Swatch: "#ffe600", Space: "", Value: "#ffe600", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Success", Gap: "", Swatch: "#3ddc84", Space: "", Value: "#3ddc84", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Error", Gap: "", Swatch: "#ff4d4d", Space: "", Value: "#ff4d4d", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Dim (borders, hints)", Gap: "", Swatch: "#6b7280", Space: "", Value: "#6b7280", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Text", Gap: "", Swatch: "#e5e7eb", Space: "", Value: "#e5e7eb", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Selected row (background)", Gap: "", Swatch: "#3b0f2a", Space: "", Value: "#3b0f2a", Style: cuppa.RowNormal}},
 		Status:     "Use a colour like #ff007f or #f07.",
 		ShowStatus: true,
