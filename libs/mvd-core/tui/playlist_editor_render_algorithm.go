@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"youtube-downloader/libs/mvd-core/screens"
+	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
+	editorplanningpage "youtube-downloader/libs/mvd-core/editor/editorplanning"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -29,8 +30,8 @@ func (m editorModel) render() string {
 		return m.renderPlanning(width)
 	}
 
-	props := screens.DefaultEditorProps()
-	props.Palette = screens.EditorPalette(palette())
+	props := editorpage.Default()
+	props.Palette = editorpage.Palette(palette())
 	props.Title = " " + m.title()
 	props.Songs = m.songRows(width)
 	props.ShowEmpty = len(m.rows) == 0
@@ -39,10 +40,10 @@ func (m editorModel) render() string {
 	props.Detail1, props.Detail2, props.Detail3, props.Detail4 = cellText(detail[0]), cellText(detail[1]), cellText(detail[2]), cellText(detail[3])
 
 	line, keys := m.bottomParts(width)
-	props.Hints = hintsOf[screens.EditorHintsHint](m.hints())
+	props.Hints = hintsOf[editorpage.HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
-	return paddedFrame(screens.Editor(props, width, m.height).View, width)
+	return paddedFrame(editorpage.View(props, width, m.height).View, width)
 }
 
 func (m editorModel) renderPlanning(width int) string {
@@ -64,17 +65,17 @@ func (m editorModel) renderPlanning(width int) string {
 		}
 	}
 
-	props := screens.DefaultEditorPlanningProps()
-	props.Palette = screens.EditorPlanningPalette(palette())
+	props := editorplanningpage.Default()
+	props.Palette = editorplanningpage.Palette(palette())
 	props.Body = nil
 	for _, l := range body {
-		props.Body = append(props.Body, screens.EditorPlanningBodyRow{Line: l})
+		props.Body = append(props.Body, editorplanningpage.BodyRow{Line: l})
 	}
 	line, keys := m.bottomParts(width)
-	props.Hints = hintsOf[screens.EditorPlanningHintsHint](m.hints())
+	props.Hints = hintsOf[editorplanningpage.HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
-	return paddedFrame(screens.EditorPlanning(props, width, m.height).View, width)
+	return paddedFrame(editorplanningpage.View(props, width, m.height).View, width)
 }
 
 func (m editorModel) title() string {
@@ -147,14 +148,14 @@ func decisionGlyph(r playlistfile.Entry) string {
 // songRows are the rows of the list: the header, and the songs from the top of the
 // window. The design owns the columns, their widths and the look of the selected row; what
 // is here is the text of each cell and the colour it takes from the state of its song.
-func (m editorModel) songRows(width int) []screens.EditorSongsRow {
+func (m editorModel) songRows(width int) []editorpage.SongsRow {
 	anyReplaced := false
 	for _, r := range m.rows {
 		anyReplaced = anyReplaced || r.Decision == playlistfile.DecisionReplaced
 	}
 	showAddress := width >= 90
 
-	header := screens.EditorSongsRow{Review: "Review", Artist: "Artist", Song: "Song", Video: "Video", Style: screens.RowDim}
+	header := editorpage.SongsRow{Review: "Review", Artist: "Artist", Song: "Song", Video: "Video", Style: editorpage.RowDim}
 	if anyReplaced {
 		header.Replaced = "Replaced by"
 		header.S6, header.S7 = "  ", ""
@@ -163,10 +164,10 @@ func (m editorModel) songRows(width int) []screens.EditorSongsRow {
 		header.Address = "Address"
 		header.S7 = "  "
 	}
-	dim := screens.CellStyle{Fg: currentColours.Dim}
+	dim := editorpage.CellStyle{Fg: currentColours.Dim}
 	header.ReviewStyle, header.ArtistStyle, header.SongStyle, header.VideoStyle = dim, dim, dim, dim
 	header.ReplacedStyle, header.AddressStyle = dim, dim
-	rows := []screens.EditorSongsRow{header}
+	rows := []editorpage.SongsRow{header}
 
 	for i := m.top; i < min(len(m.rows), m.top+m.listHeight()); i++ {
 		r := m.rows[i]
@@ -182,7 +183,7 @@ func (m editorModel) songRows(width int) []screens.EditorSongsRow {
 		if i == m.sel {
 			mark = "▸"
 		}
-		row := screens.EditorSongsRow{
+		row := editorpage.SongsRow{
 			Mark: mark, Glyph: decisionGlyph(r), Review: kind,
 			Artist: display(col.Artist), Song: display(col.Song), Video: display(col.Video),
 		}
@@ -194,21 +195,21 @@ func (m editorModel) songRows(width int) []screens.EditorSongsRow {
 		}
 
 		if i == m.sel {
-			row.Style = screens.RowSelected
+			row.Style = editorpage.RowSelected
 		} else {
 			dimmed := r.Downloaded || r.Decision == playlistfile.DecisionSkipped
-			row.MarkStyle = screens.CellStyle{Fg: currentColours.Dim}
-			row.GlyphStyle = screens.CellStyle{Fg: m.glyphColour(r)}
-			row.ReviewStyle = screens.CellStyle{Fg: kindColour(r, dimmed)}
-			row.ArtistStyle = screens.CellStyle{Fg: currentColours.Focus}
-			row.SongStyle = screens.CellStyle{Fg: currentColours.Text}
+			row.MarkStyle = editorpage.CellStyle{Fg: currentColours.Dim}
+			row.GlyphStyle = editorpage.CellStyle{Fg: m.glyphColour(r)}
+			row.ReviewStyle = editorpage.CellStyle{Fg: kindColour(r, dimmed)}
+			row.ArtistStyle = editorpage.CellStyle{Fg: currentColours.Focus}
+			row.SongStyle = editorpage.CellStyle{Fg: currentColours.Text}
 			if dimmed {
-				row.ArtistStyle = screens.CellStyle{Fg: currentColours.Dim}
-				row.SongStyle = screens.CellStyle{Fg: currentColours.Dim}
+				row.ArtistStyle = editorpage.CellStyle{Fg: currentColours.Dim}
+				row.SongStyle = editorpage.CellStyle{Fg: currentColours.Dim}
 			}
-			row.VideoStyle = screens.CellStyle{Fg: currentColours.Dim}
-			row.ReplacedStyle = screens.CellStyle{Fg: currentColours.Focus}
-			row.AddressStyle = screens.CellStyle{Fg: currentColours.Dim}
+			row.VideoStyle = editorpage.CellStyle{Fg: currentColours.Dim}
+			row.ReplacedStyle = editorpage.CellStyle{Fg: currentColours.Focus}
+			row.AddressStyle = editorpage.CellStyle{Fg: currentColours.Dim}
 		}
 		rows = append(rows, row)
 	}

@@ -3,7 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
-	"youtube-downloader/libs/mvd-core/screens"
+	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -159,21 +159,21 @@ func (m advancedModel) hints() []keyHint {
 }
 
 func (m advancedModel) view(width, height int) string {
-	props := screens.DefaultAdvancedProps()
-	props.Palette = screens.AdvancedPalette(palette())
-	props.Hints = hintsOf[screens.AdvancedHintsHint](m.hints())
+	props := advancedpage.Default()
+	props.Palette = advancedpage.Palette(palette())
+	props.Hints = hintsOf[advancedpage.HintsHint](m.hints())
 
 	var labelW = 0
 	for _, l := range advLabels {
 		labelW = max(labelW, len(l))
 	}
-	rows := make([]screens.AdvancedItemsRow, 0, len(advLabels))
+	rows := make([]advancedpage.ItemsRow, 0, len(advLabels))
 	for i, label := range advLabels {
-		row := screens.AdvancedItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
+		row := advancedpage.ItemsRow{Mark: "  ", Name: label, Value: truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
 			row.Mark = "▸ "
 			if m.mode == editNone {
-				row.Style = screens.RowSelected
+				row.Style = advancedpage.RowSelected
 			} else {
 				row.Value = truncate(m.input.View(), max(10, width-labelW-6))
 			}
@@ -181,5 +181,5 @@ func (m advancedModel) view(width, height int) string {
 		rows = append(rows, row)
 	}
 	props.Items = rows
-	return screens.Advanced(props, width, height).View
+	return advancedpage.View(props, width, height).View
 }

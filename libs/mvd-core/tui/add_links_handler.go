@@ -3,7 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"youtube-downloader/libs/mvd-core/screens"
+	addlinkspage "youtube-downloader/libs/mvd-core/run/addlinks"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -93,11 +93,11 @@ func (m model) addBoxWidth() int {
 
 // renderAddBox draws the box for adding links, centred over the screen by its design.
 func (m model) renderAddBox() string {
-	props := screens.DefaultAddLinksProps()
-	props.Palette = screens.AddLinksPalette(palette())
-	props.Hints = hintsOf[screens.AddLinksHintsHint](addLinksHints())
+	props := addlinkspage.Default()
+	props.Palette = addlinkspage.Palette(palette())
+	props.Hints = hintsOf[addlinkspage.HintsHint](addLinksHints())
 	props.LinksView = m.links.View()
-	return paddedFrame(screens.AddLinks(props, m.width, m.height).View, m.width)
+	return paddedFrame(addlinkspage.View(props, m.width, m.height).View, m.width)
 }
 
 func addLinksHints() []keyHint {

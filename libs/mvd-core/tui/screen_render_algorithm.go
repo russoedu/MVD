@@ -2,7 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"youtube-downloader/libs/mvd-core/screens"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
+	helppage "youtube-downloader/libs/mvd-core/run/help"
 
 	"github.com/charmbracelet/x/ansi"
 
@@ -18,7 +19,7 @@ func (m model) render() string {
 		return styDim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
-	view := paddedFrame(screens.Download(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
+	view := paddedFrame(downloadpage.View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
 
 	if m.adding {
 		return m.renderAddBox()
@@ -104,8 +105,8 @@ func (m model) renderHelp() string {
 	if len(lines) > m.height-2 {
 		lines = lines[:m.height-2]
 	}
-	props := screens.DefaultHelpProps()
-	props.Palette = screens.HelpPalette(palette())
+	props := helppage.Default()
+	props.Palette = helppage.Palette(palette())
 	width := 0
 	for _, l := range lines {
 		width = max(width, ansi.StringWidth(l))
@@ -113,9 +114,9 @@ func (m model) renderHelp() string {
 	props.HelpWidth, props.HelpHeight = width+4, len(lines)+2
 	props.Lines = nil
 	for _, l := range lines {
-		props.Lines = append(props.Lines, screens.HelpLinesRow{Line: cellText(l)})
+		props.Lines = append(props.Lines, helppage.LinesRow{Line: cellText(l)})
 	}
-	return paddedFrame(screens.Help(props, m.width, m.height).View, m.width)
+	return paddedFrame(helppage.View(props, m.width, m.height).View, m.width)
 }
 
 // downloadingSummary is the speed of all the downloads together, and how many files and

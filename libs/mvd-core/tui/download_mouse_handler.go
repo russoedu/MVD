@@ -2,7 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"youtube-downloader/libs/mvd-core/screens"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 // rect is a region of the screen, in cells.
@@ -25,14 +25,14 @@ func (m model) layout() (l downloadLayout, ok bool) {
 	if m.width < 60 || m.height < 16 || m.showHelp {
 		return l, false
 	}
-	p := screens.DefaultDownloadProps()
+	p := downloadpage.Default()
 	p.LeftWidth = m.leftWidth(m.width)
 	p.FullLog = 0
 	if m.fullLog {
 		p.FullLog = 1
 	}
 	p.PlaylistCount = len(m.state.Playlists)
-	frame := screens.DownloadLayout(p, m.width, m.height)
+	frame := downloadpage.Layout(p, m.width, m.height)
 
 	box := func(name string) rect {
 		r, _ := frame.RegionNamed(name)
