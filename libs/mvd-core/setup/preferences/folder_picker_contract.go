@@ -1,4 +1,4 @@
-package tui
+package preferences
 
 // FolderPicker shows the operating system's own folder chooser, starting at start,
 // and waits for the answer: the folder chosen, or chosen false when the person closed

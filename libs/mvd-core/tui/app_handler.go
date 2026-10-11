@@ -6,6 +6,7 @@ import (
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 	listpage "youtube-downloader/libs/mvd-core/setup/list"
+	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	tea "charm.land/bubbletea/v2"
@@ -83,7 +84,7 @@ type setupModel struct {
 	cfgPath       string
 	listPath      string
 	list          listpage.Model
-	config        configModel
+	config        preferencespage.Model
 	advanced      advancedpage.Model
 	colours       colourspage.Model
 	songs         songspage.Model
@@ -114,7 +115,7 @@ func newSetupModel(in SetupInput) setupModel {
 		listPath:  in.ListPath,
 		list:      listpage.New(in.URLs),
 		songs:     songspage.New(""),
-		config:    newConfigModel(in.Cfg).withFolderPicker(in.PickFolder).withUninstaller(in.Uninstall).withMover(in.Move),
+		config:    preferencespage.New(in.Cfg).WithFolderPicker(in.PickFolder).WithUninstaller(in.Uninstall).WithMover(in.Move),
 		pick:      in.PickFolder,
 		uninstall: in.Uninstall,
 		move:      in.Move,
@@ -126,14 +127,14 @@ func newSetupModel(in SetupInput) setupModel {
 	return m
 }
 
-func (m setupModel) Init() tea.Cmd { return tea.Batch(textareaBlink, m.config.init()) }
+func (m setupModel) Init() tea.Cmd { return tea.Batch(textareaBlink, m.config.Init()) }
 
 func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.list = m.list.SetSize(msg.Width, msg.Height)
-		m.config = m.config.setSize(msg.Width, msg.Height)
+		m.config = m.config.SetSize(msg.Width, msg.Height)
 		m.advanced = m.advanced.SetSize(msg.Width, msg.Height)
 		m.colours = m.colours.SetSize(msg.Width, msg.Height)
 		m.songs = m.songs.SetSize(msg.Width, msg.Height)
@@ -157,7 +158,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.finish()
 		case listpage.Prefs:
 			m.saveList()
-			m.config = newConfigModel(m.cfg).withFolderPicker(m.pick).withUninstaller(m.uninstall).withMover(m.move).setSize(m.width, m.height)
+			m.config = preferencespage.New(m.cfg).WithFolderPicker(m.pick).WithUninstaller(m.uninstall).WithMover(m.move).SetSize(m.width, m.height)
 			m.screen = screenConfig
 			return m, nil
 		case listpage.Songs:
@@ -174,24 +175,24 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	case screenConfig:
-		next, cmd, out, cfg := m.config.update(msg)
+		next, cmd, out, cfg := m.config.Update(msg)
 		m.config = next
 		switch out {
-		case cfgSave:
+		case preferencespage.Save:
 			m.cfg = cfg
 			_ = config.Save(m.cfg, m.cfgPath)
 			m.screen = screenList
 			return m, nil
-		case cfgCancel:
+		case preferencespage.Cancel:
 			ApplyTheme(m.cfg.Colors)
 			m.screen = screenList
 			return m, nil
-		case cfgAdvanced:
-			m.advanced = advancedpage.New(m.config.cfg).SetSize(m.width, m.height)
+		case preferencespage.Advanced:
+			m.advanced = advancedpage.New(m.config.Config()).SetSize(m.width, m.height)
 			m.screen = screenAdvanced
 			return m, nil
-		case cfgColours:
-			m.colours = colourspage.New(m.config.cfg).SetSize(m.width, m.height)
+		case preferencespage.Colours:
+			m.colours = colourspage.New(m.config.Config()).SetSize(m.width, m.height)
 			m.screen = screenColours
 			return m, nil
 		}
@@ -201,7 +202,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.advanced = next
 		switch out {
 		case advancedpage.Save:
-			m.config.cfg = cfg
+			m.config = m.config.WithConfig(cfg)
 			m.screen = screenConfig
 			return m, nil
 		case advancedpage.Cancel:
@@ -228,11 +229,11 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.colours = next
 		switch out {
 		case colourspage.Save:
-			m.config.cfg = cfg
+			m.config = m.config.WithConfig(cfg)
 			m.screen = screenConfig
 			return m, nil
 		case colourspage.Cancel:
-			ApplyTheme(m.config.cfg.Colors)
+			ApplyTheme(m.config.Config().Colors)
 			m.screen = screenConfig
 			return m, nil
 		}
@@ -244,7 +245,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m setupModel) render() string {
 	switch m.screen {
 	case screenConfig:
-		return m.config.view(m.width, m.height)
+		return m.config.View(m.width, m.height)
 	case screenAdvanced:
 		return m.advanced.View(m.width, m.height)
 	case screenColours:

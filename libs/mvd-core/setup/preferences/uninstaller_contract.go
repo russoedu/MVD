@@ -1,4 +1,4 @@
-package tui
+package preferences
 
 // RemovalOutcome is how asking to remove the app went.
 type RemovalOutcome int

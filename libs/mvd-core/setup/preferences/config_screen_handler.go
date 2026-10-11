@@ -1,4 +1,4 @@
-package tui
+package preferences
 
 import (
 	"strconv"
@@ -6,9 +6,9 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/outline"
 	"youtube-downloader/libs/mvd-core/settings"
 	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
-	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -16,24 +16,24 @@ import (
 	"youtube-downloader/libs/mvd-core/config"
 )
 
-type configOutcome int
+type Outcome int
 
 const (
-	cfgNone configOutcome = iota
-	cfgSave
-	cfgCancel
-	cfgAdvanced
-	cfgColours
+	None Outcome = iota
+	Save
+	Cancel
+	Advanced
+	Colours
 )
 
-const cfgItemCount = 11
+const ItemCount = 11
 
 var mergeOptions = []string{"mp4", "mkv", "webm"}
 var cookieOptions = []string{"all", "off", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari"}
 
-// configModel is the preferences screen: a selectable list of settings, each
+// Model is the preferences screen: a selectable list of settings, each
 // edited in place by a toggle, number, text field or radio selector.
-type configModel struct {
+type Model struct {
 	cfg           config.Config
 	cursor        int
 	mode          settings.Mode
@@ -48,45 +48,45 @@ type configModel struct {
 	width, height int
 }
 
-func newConfigModel(cfg config.Config) configModel {
+func New(cfg config.Config) Model {
 	ti := textinput.New()
 	ti.Prompt = "> "
-	return configModel{cfg: cfg, input: ti}
+	return Model{cfg: cfg, input: ti}
 }
 
-// withUninstaller offers removing the app on the preferences.
-func (m configModel) withUninstaller(uninstall Uninstaller) configModel {
+// WithUninstaller offers removing the app on the preferences.
+func (m Model) WithUninstaller(uninstall Uninstaller) Model {
 	m.uninstall = uninstall
 	return m
 }
 
-// withMover offers moving the app to its own folder on the preferences.
-func (m configModel) withMover(move Mover) configModel {
+// WithMover offers moving the app to its own folder on the preferences.
+func (m Model) WithMover(move Mover) Model {
 	m.move = move
 	return m
 }
 
-// withFolderPicker makes the folder settings open the host's own chooser.
-func (m configModel) withFolderPicker(pick FolderPicker) configModel {
+// WithFolderPicker makes the folder settings open the host's own chooser.
+func (m Model) WithFolderPicker(pick FolderPicker) Model {
 	m.pick = pick
 	return m
 }
 
-func (m configModel) init() tea.Cmd { return textinput.Blink }
+func (m Model) Init() tea.Cmd { return textinput.Blink }
 
-func (m configModel) setSize(w, h int) configModel {
+func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-8))
 	m.folder = m.folder.SetSize(w, h)
 	return m
 }
 
-func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, config.Config) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome, config.Config) {
 	k, isKey := msg.(tea.KeyPressMsg)
 
 	if m.mode != settings.EditNone {
 		cmd := m.updateEditor(msg, k, isKey)
-		return m, cmd, cfgNone, m.cfg
+		return m, cmd, None, m.cfg
 	}
 
 	if isKey {
@@ -97,31 +97,31 @@ func (m configModel) update(msg tea.Msg) (configModel, tea.Cmd, configOutcome, c
 				m.cursor--
 			}
 		case "down", "j":
-			if m.cursor < cfgItemCount-1 {
+			if m.cursor < ItemCount-1 {
 				m.cursor++
 			}
 		case "s", "ctrl+s":
-			return m, nil, cfgSave, m.cfg
+			return m, nil, Save, m.cfg
 		case "a":
-			return m, nil, cfgAdvanced, m.cfg
+			return m, nil, Advanced, m.cfg
 		case "c":
-			return m, nil, cfgColours, m.cfg
+			return m, nil, Colours, m.cfg
 		case "u":
-			return m, m.askToUninstall(), cfgNone, m.cfg
+			return m, m.askToUninstall(), None, m.cfg
 		case "m":
-			return m, m.askToMove(), cfgNone, m.cfg
+			return m, m.askToMove(), None, m.cfg
 		case "esc":
-			return m, nil, cfgCancel, m.cfg
+			return m, nil, Cancel, m.cfg
 		case "enter", " ":
-			return m, m.activate(), cfgNone, m.cfg
+			return m, m.activate(), None, m.cfg
 		}
 	}
-	return m, nil, cfgNone, m.cfg
+	return m, nil, None, m.cfg
 }
 
 // activate opens the editor for the selected item (or toggles a boolean). A folder
 // setting opens the host's chooser when there is one, which the returned command waits on.
-func (m *configModel) activate() tea.Cmd {
+func (m *Model) activate() tea.Cmd {
 	switch m.cursor {
 	case 10:
 		m.cfg.SaveNotFound = !m.cfg.SaveNotFound
@@ -144,7 +144,7 @@ func (m *configModel) activate() tea.Cmd {
 
 // askToUninstall starts the questions about removing the app, which the returned
 // command waits on; nothing when the host cannot remove the app.
-func (m *configModel) askToUninstall() tea.Cmd {
+func (m *Model) askToUninstall() tea.Cmd {
 	if m.uninstall == nil {
 		return nil
 	}
@@ -159,7 +159,7 @@ func (m *configModel) askToUninstall() tea.Cmd {
 
 // askToMove starts the questions about moving the app to its own folder, which the
 // returned command waits on; nothing when the host cannot move the app.
-func (m *configModel) askToMove() tea.Cmd {
+func (m *Model) askToMove() tea.Cmd {
 	if m.move == nil {
 		return nil
 	}
@@ -173,7 +173,7 @@ func (m *configModel) askToMove() tea.Cmd {
 }
 
 // finishMoving takes the answer of the move: what to tell the person.
-func (m *configModel) finishMoving(answered moveAnsweredMsg) {
+func (m *Model) finishMoving(answered moveAnsweredMsg) {
 	m.mode = settings.EditNone
 	switch {
 	case answered.err != nil:
@@ -190,7 +190,7 @@ func (m *configModel) finishMoving(answered moveAnsweredMsg) {
 }
 
 // finishConfirming takes the answer: what to tell the person.
-func (m *configModel) finishConfirming(answered uninstallAnsweredMsg) {
+func (m *Model) finishConfirming(answered uninstallAnsweredMsg) {
 	m.mode = settings.EditNone
 	switch {
 	case answered.err != nil:
@@ -205,7 +205,7 @@ func (m *configModel) finishConfirming(answered uninstallAnsweredMsg) {
 }
 
 // folderOfItem is the folder the selected setting holds now.
-func (m configModel) folderOfItem() string {
+func (m Model) folderOfItem() string {
 	if m.cursor == 0 {
 		return m.cfg.OutputDir
 	}
@@ -213,7 +213,7 @@ func (m configModel) folderOfItem() string {
 }
 
 // chooseFolder opens the host's chooser, or the built-in folder browser without one.
-func (m *configModel) chooseFolder() tea.Cmd {
+func (m *Model) chooseFolder() tea.Cmd {
 	start := m.folderOfItem()
 	if m.pick == nil {
 		m.browseFolders(start)
@@ -227,14 +227,14 @@ func (m *configModel) chooseFolder() tea.Cmd {
 	}
 }
 
-func (m *configModel) browseFolders(start string) {
+func (m *Model) browseFolders(start string) {
 	m.folder = folderpage.New(start).SetSize(m.width, m.height)
 	m.mode = settings.EditFolder
 }
 
 // finishPicking takes the chooser's answer. When it could not be shown, the built-in
 // browser is opened instead, so the setting can still be changed.
-func (m *configModel) finishPicking(picked folderPickedMsg) {
+func (m *Model) finishPicking(picked folderPickedMsg) {
 	m.mode = settings.EditNone
 	switch {
 	case picked.err != nil:
@@ -248,13 +248,13 @@ func (m *configModel) finishPicking(picked folderPickedMsg) {
 	}
 }
 
-func (m *configModel) beginInput(val string) {
+func (m *Model) beginInput(val string) {
 	m.input.SetValue(val)
 	m.input.CursorEnd()
 	m.input.Focus()
 }
 
-func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) tea.Cmd {
+func (m *Model) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) tea.Cmd {
 	if m.mode == settings.EditConfirming {
 		// Nothing to do but wait: the questions are windows of their own.
 		switch answered := msg.(type) {
@@ -332,7 +332,7 @@ func (m *configModel) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) t
 	return cmd
 }
 
-func (m configModel) numberValue() int {
+func (m Model) numberValue() int {
 	n, err := strconv.Atoi(strings.TrimSpace(m.input.Value()))
 	if err != nil || n < 1 {
 		return m.cfg.MaxConcurrentDownloads
@@ -341,7 +341,7 @@ func (m configModel) numberValue() int {
 }
 
 // commit writes the editor's value back into the config.
-func (m *configModel) commit() {
+func (m *Model) commit() {
 	switch m.cursor {
 	case 0:
 		if v := strings.TrimSpace(m.input.Value()); v != "" {
@@ -383,7 +383,7 @@ func applyCookieChoice(cfg *config.Config, opt string) {
 	}
 }
 
-func (m configModel) textValue() string {
+func (m Model) textValue() string {
 	switch m.cursor {
 	case 0:
 		return m.cfg.OutputDir
@@ -396,7 +396,7 @@ func (m configModel) textValue() string {
 }
 
 // radioState returns the options and the current index for the selected item.
-func (m configModel) radioState() ([]string, int) {
+func (m Model) radioState() ([]string, int) {
 	switch m.cursor {
 	case 1:
 		return config.VideoPresets, indexOf(config.VideoPresets, m.cfg.VideoQuality)
@@ -423,16 +423,16 @@ func currentCookieChoice(cfg config.Config) string {
 	}
 }
 
-// --- view -------------------------------------------------------------------
+// --- View -------------------------------------------------------------------
 
-var cfgLabels = []string{
+var labels = []string{
 	"Output Folder", "Video Quality", "Audio Quality", "Merge Format",
 	"Output Template", "Max Concurrent Downloads", "Download Official Music Video",
 	"Cookies from Browser", "Create Log File", "Log File Location",
 	"Save Songs Without Official Video (CSV)",
 }
 
-func (m configModel) display(i int) string {
+func (m Model) display(i int) string {
 	c := m.cfg
 	switch i {
 	case 0:
@@ -464,27 +464,27 @@ func (m configModel) display(i int) string {
 	return ""
 }
 
-func (m configModel) view(width, height int) string {
+func (m Model) View(width, height int) string {
 	if m.mode == settings.EditFolder {
 		return m.folder.View(width, height)
 	}
 	labelW := 0
-	for _, l := range cfgLabels {
+	for _, l := range labels {
 		labelW = max(labelW, len(l))
 	}
 
-	props := preferencespage.Default()
-	props.Palette = preferencespage.Palette(look.CurrentPalette())
-	props.Hints = keybar.Of[preferencespage.HintsHint](m.hints())
-	rows := make([]preferencespage.ItemsRow, 0, len(cfgLabels))
-	for i, label := range cfgLabels {
-		row := preferencespage.ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
+	props := Default()
+	props.Palette = Palette(look.CurrentPalette())
+	props.Hints = keybar.Of[HintsHint](m.Hints())
+	rows := make([]ItemsRow, 0, len(labels))
+	for i, label := range labels {
+		row := ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
 		if i == m.cursor {
 			row.Mark = "▸ "
 			if m.mode != settings.EditNone {
 				row.Value = cells.Truncate(m.editorView(), max(10, width-labelW-6))
 			} else {
-				row.Style = preferencespage.RowSelected
+				row.Style = RowSelected
 			}
 		}
 		rows = append(rows, row)
@@ -493,27 +493,30 @@ func (m configModel) view(width, height int) string {
 	props.ShowTemplateHint = m.cursor == 4
 	props.ShowStatus, props.ShowKeys = m.status != "", m.status == ""
 	props.Status = " " + m.status
-	return preferencespage.View(props, width, height).View
+	return View(props, width, height).View
 }
 
-func (m configModel) hints() []keybar.Hint {
+func (m Model) Hints() []keybar.Hint {
+	if m.mode == settings.EditFolder {
+		return m.folder.Hints()
+	}
 	if m.mode == settings.EditPicking || m.mode == settings.EditConfirming {
 		return nil
 	}
 	if m.mode != settings.EditNone {
 		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
 	}
-	hints := []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "a", Desc: "advanced"}, {Key: "c", Desc: "colours"}, {Key: "s", Desc: "save"}}
+	bar := []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "a", Desc: "advanced"}, {Key: "c", Desc: "colours"}, {Key: "s", Desc: "save"}}
 	if m.move != nil {
-		hints = append(hints, keybar.Hint{Key: "m", Desc: "move app"})
+		bar = append(bar, keybar.Hint{Key: "m", Desc: "move app"})
 	}
 	if m.uninstall != nil {
-		hints = append(hints, keybar.Hint{Key: "u", Desc: "uninstall"})
+		bar = append(bar, keybar.Hint{Key: "u", Desc: "uninstall"})
 	}
-	return append(hints, keybar.Hint{Key: "esc", Desc: "cancel"})
+	return append(bar, keybar.Hint{Key: "esc", Desc: "cancel"})
 }
 
-func (m configModel) editorView() string {
+func (m Model) editorView() string {
 	switch m.mode {
 	case settings.EditRadio:
 		var parts []string
@@ -551,3 +554,55 @@ func indexOf(opts []string, v string) int {
 	}
 	return 0
 }
+
+// Outline describes the screen in plain terms, from the same state and Hints the view draws.
+func (m Model) Outline() outline.ScreenOutline {
+	if m.mode == settings.EditFolder {
+		return m.folder.Outline()
+	}
+	items := make([]outline.Item, len(labels))
+	for i, label := range labels {
+		items[i] = outline.Item{Label: label, Value: m.display(i), Selected: i == m.cursor}
+	}
+	if m.mode == settings.EditPicking {
+		return outline.ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: "Choose a folder in the window that opened", Keys: outline.KeysOf(m.Hints())}
+	}
+	if m.mode == settings.EditConfirming {
+		return outline.ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.Hints())}
+	}
+	if m.mode != settings.EditNone {
+		item := &items[m.cursor]
+		item.Editing = true
+		if m.mode == settings.EditRadio {
+			item.Choices, item.Chosen = m.radioOpts, m.radioIdx
+			item.Value = m.radioOpts[m.radioIdx]
+		} else {
+			item.Value = m.input.Value()
+		}
+	}
+	return outline.ScreenOutline{Title: "MVD · Preferences", ItemsLabel: "Settings", Items: items, Prompt: m.status, Keys: outline.KeysOf(m.Hints())}
+}
+
+// Config is the configuration as edited so far.
+func (m Model) Config() config.Config { return m.cfg }
+
+// Mode is how a setting is being changed, if one is.
+func (m Model) Mode() settings.Mode { return m.mode }
+
+// Select puts the cursor on the setting drawn on row, when none is being edited.
+func (m Model) Select(row int) Model {
+	if m.mode == settings.EditNone && row >= 0 && row < len(labels) {
+		m.cursor = row
+	}
+	return m
+}
+
+// WithConfig replaces the configuration being edited, as when the advanced or the colours
+// screen hands back the one it edited.
+func (m Model) WithConfig(cfg config.Config) Model {
+	m.cfg = cfg
+	return m
+}
+
+// Cursor is the index of the setting the cursor is on.
+func (m Model) Cursor() int { return m.cursor }

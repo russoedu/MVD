@@ -11,6 +11,7 @@ import (
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
 	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
 	listpage "youtube-downloader/libs/mvd-core/setup/list"
+	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
 	tea "charm.land/bubbletea/v2"
@@ -96,11 +97,11 @@ func legacyCases() []legacyCase {
 	prefs := func(keys ...string) func(t *testing.T) string {
 		return func(t *testing.T) string {
 			ApplyTheme(config.DefaultThemeColors())
-			m := newConfigModel(cfg()).setSize(w, h)
+			m := preferencespage.New(cfg()).SetSize(w, h)
 			for _, msg := range keysOf(keys...) {
-				m, _, _, _ = m.update(msg)
+				m, _, _, _ = m.Update(msg)
 			}
-			return m.view(w, h)
+			return m.View(w, h)
 		}
 	}
 

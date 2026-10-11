@@ -4,7 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/pointer"
-	"youtube-downloader/libs/mvd-core/settings"
 )
 
 // mouse handles a click or a wheel notch on the setup screens: a click on a key
@@ -36,10 +35,7 @@ func (m setupModel) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 func (m setupModel) hints() []keybar.Hint {
 	switch m.screen {
 	case screenConfig:
-		if m.config.mode == settings.EditFolder {
-			return m.config.folder.Hints()
-		}
-		return m.config.hints()
+		return m.config.Hints()
 	case screenAdvanced:
 		return m.advanced.Hints()
 	case screenColours:
@@ -73,9 +69,7 @@ func (m *setupModel) selectSetting(y int) {
 	row := y - 1
 	switch m.screen {
 	case screenConfig:
-		if m.config.mode == settings.EditNone && row >= 0 && row < len(cfgLabels) {
-			m.config.cursor = row
-		}
+		m.config = m.config.Select(row)
 	case screenAdvanced:
 		m.advanced = m.advanced.Select(row)
 	case screenColours:
