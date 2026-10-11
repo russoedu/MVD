@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/audiofix"
@@ -42,7 +43,7 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 	}
 
 	// A config written for an older yt-dlp may have flags in a form it no longer accepts.
-	extraArgs := ytdlp.NormalizeArgs(cfg.ExtraArgs)
+	extraArgs := fetch.NormalizeArgs(cfg.ExtraArgs)
 	probe := ""
 	switch {
 	case len(urls) > 0:

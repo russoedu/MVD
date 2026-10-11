@@ -1,10 +1,11 @@
-package ytdlp
+package fetch
 
 import (
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
 var templateFieldPattern = regexp.MustCompile(`%\(([A-Za-z0-9_,|]+)\)([-+ 0#]*\d*)([sd])`)
@@ -20,7 +21,7 @@ var templateFieldPattern = regexp.MustCompile(`%\(([A-Za-z0-9_,|]+)\)([-+ 0#]*\d
 // and the folder and "07 - " style prefix they leave behind are dropped, so the file
 // is named after the video and sits directly in the output folder. The template must
 // be relative: it is joined to the output folder afterwards.
-func ApplyPlaylistFields(template string, e PlaylistEntry) string {
+func ApplyPlaylistFields(template string, e ytdlp.PlaylistEntry) string {
 	standalone := e.PlaylistTitle == "" && e.Playlist == "" && e.PlaylistID == "" &&
 		e.PlaylistIndex == 0 && e.PlaylistCount == 0
 	dropped := false

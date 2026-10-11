@@ -22,7 +22,7 @@ func VideoTitle(ctx context.Context, bin, videoID string, extraArgs []string) (s
 	out, err := cmd.Output()
 	title := strings.TrimSpace(string(out))
 	if err != nil || title == "" {
-		msg := lastLine(strings.TrimSpace(stderr.String()))
+		msg := LastLine(strings.TrimSpace(stderr.String()))
 		if msg == "" {
 			msg = "no title"
 		}

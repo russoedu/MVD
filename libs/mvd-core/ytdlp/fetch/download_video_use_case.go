@@ -1,4 +1,6 @@
-package ytdlp
+// Package fetch downloads a video with yt-dlp: the arguments and the output template it is
+// started with, and the reading of its progress lines.
+package fetch
 
 import (
 	"bufio"

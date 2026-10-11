@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
@@ -823,8 +824,8 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	target := en.targetID
 	e.mu.Unlock()
 
-	template := ytdlp.ApplyPlaylistFields(e.opts.OutputTemplate, en.raw)
-	options := ytdlp.DownloadOptions{
+	template := fetch.ApplyPlaylistFields(e.opts.OutputTemplate, en.raw)
+	options := fetch.DownloadOptions{
 		Format:              e.opts.Quality,
 		OutputTemplate:      filepath.Join(e.opts.OutputDir, template),
 		MergeOutputFormat:   e.opts.MergeOutputFormat,
@@ -834,7 +835,7 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	if e.opts.PartialDir != "" {
 		options.OutputTemplate, options.HomeDir, options.TempDir = template, e.opts.OutputDir, e.opts.PartialDir
 	}
-	trailing := []string{"--newline", "--progress-template", ytdlp.ProgressTemplate, "--no-playlist"}
+	trailing := []string{"--newline", "--progress-template", fetch.ProgressTemplate, "--no-playlist"}
 	// yt-dlp writes the path of every finished file here, for CheckDownload. Only a
 	// replacement is checked: the playlist's own upload is what there is to fall back to.
 	pathsFile := ""
@@ -846,14 +847,14 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 			trailing = append(trailing, "--print-to-file", "after_move:filepath", pathsFile)
 		}
 	}
-	args := ytdlp.DownloadArgs(options, append(trailing, "https://www.youtube.com/watch?v="+target)...)
+	args := fetch.DownloadArgs(options, append(trailing, "https://www.youtube.com/watch?v="+target)...)
 
-	err := ytdlp.Download(ctx, e.opts.YtDlp, args, func(line string) {
-		if p, ok := ytdlp.ParseProgressLine(line); ok {
+	err := fetch.Download(ctx, e.opts.YtDlp, args, func(line string) {
+		if p, ok := fetch.ParseProgressLine(line); ok {
 			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA, Parts: partsInFlight(p, e.opts.ConcurrentFragments)})
 			return
 		}
-		if ytdlp.IsPostProcessLine(line) {
+		if fetch.IsPostProcessLine(line) {
 			e.mu.Lock()
 			if en.state == StateDownloading {
 				en.state = StateMerging
@@ -1023,7 +1024,7 @@ func sleepCtx(ctx context.Context, d time.Duration) bool {
 
 // partsInFlight is how many parts of a file are being fetched at once: when the part
 // comes in fragments, as many as are allowed at once and are left, else the one part.
-func partsInFlight(p ytdlp.Progress, concurrentFragments int) int {
+func partsInFlight(p fetch.Progress, concurrentFragments int) int {
 	if p.FragmentCount <= 1 || concurrentFragments <= 1 {
 		return 1
 	}

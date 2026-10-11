@@ -26,12 +26,12 @@ func ListPlaylist(ctx context.Context, bin, playlistURL string, extraArgs []stri
 		if msg == "" {
 			msg = err.Error()
 		}
-		return nil, fmt.Errorf("yt-dlp --flat-playlist failed: %s", lastLine(msg))
+		return nil, fmt.Errorf("yt-dlp --flat-playlist failed: %s", LastLine(msg))
 	}
 	return ParsePlaylistEntries(strings.NewReader(string(out)))
 }
 
-func lastLine(s string) string {
+func LastLine(s string) string {
 	s = strings.TrimSpace(s)
 	if i := strings.LastIndex(s, "\n"); i >= 0 {
 		return strings.TrimSpace(s[i+1:])

@@ -37,7 +37,7 @@ func DumpPages(ctx context.Context, bin, url string, extraArgs []string) ([]Page
 		if msg == "" {
 			msg = err.Error()
 		}
-		return nil, fmt.Errorf("yt-dlp --dump-pages failed: %s", lastLine(msg))
+		return nil, fmt.Errorf("yt-dlp --dump-pages failed: %s", LastLine(msg))
 	}
 	return pages, nil
 }

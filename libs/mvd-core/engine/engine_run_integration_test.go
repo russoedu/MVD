@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
@@ -817,15 +818,15 @@ func TestOnlyOfficialVideosKeepsTheOnesThatAreOfficial(t *testing.T) {
 
 func TestPartsInFlightAreTheFragmentsAllowedAtOnceAndLeft(t *testing.T) {
 	cases := []struct {
-		progress ytdlp.Progress
+		progress fetch.Progress
 		allowed  int
 		want     int
 	}{
-		{ytdlp.Progress{}, 4, 1},
-		{ytdlp.Progress{FragmentIndex: 3, FragmentCount: 120}, 4, 4},
-		{ytdlp.Progress{FragmentIndex: 119, FragmentCount: 120}, 4, 2},
-		{ytdlp.Progress{FragmentIndex: 120, FragmentCount: 120}, 4, 1},
-		{ytdlp.Progress{FragmentIndex: 3, FragmentCount: 120}, 0, 1},
+		{fetch.Progress{}, 4, 1},
+		{fetch.Progress{FragmentIndex: 3, FragmentCount: 120}, 4, 4},
+		{fetch.Progress{FragmentIndex: 119, FragmentCount: 120}, 4, 2},
+		{fetch.Progress{FragmentIndex: 120, FragmentCount: 120}, 4, 1},
+		{fetch.Progress{FragmentIndex: 3, FragmentCount: 120}, 0, 1},
 	}
 	for _, c := range cases {
 		if got := partsInFlight(c.progress, c.allowed); got != c.want {
