@@ -1,4 +1,4 @@
-package tui
+package editor
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"youtube-downloader/libs/mvd-core/look"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textinput"
@@ -20,33 +21,34 @@ import (
 // Messages of the editor. They have types of their own, so that the ones a plan run is
 // still sending when the person has moved on never reach another screen.
 type (
-	editorEvMsg    struct{ ev interface{} }
-	editorEvClosed struct{}
-	editorTickMsg  time.Time
+	EvMsg    struct{ Ev interface{} }
+	EvClosed struct{}
+	TickMsg  time.Time
 
-	// editorPlannedMsg says the plan run is over: the app closes it.
-	editorPlannedMsg struct{}
-	// editorLeaveMsg says the person left the editor.
-	editorLeaveMsg struct{}
-	// editorDownloadMsg asks the app to download these songs; keys say which rows they are.
-	editorDownloadMsg struct {
-		plan []engine.PlannedEntry
-		keys []string
+	// PlannedMsg says the plan run is over: the app closes it.
+	PlannedMsg struct{}
+	// LeaveMsg says the person left the editor.
+	LeaveMsg struct{}
+	// DownloadMsg asks the app to download these songs; keys say which rows they are.
+	DownloadMsg struct {
+		Plan []engine.PlannedEntry
+		Keys []string
 	}
-	// editorDescribedMsg carries the title of a video the person picked.
-	editorDescribedMsg struct{ key, title string }
+	// DescribedMsg carries the title of a video the person picked.
+	DescribedMsg struct{ key, title string }
 )
 
-type editorMode int
+// Mode is what the editor is doing with the keys.
+type Mode int
 
 const (
-	editorBrowsing editorMode = iota
-	// editorAskPrevious asks whether to bring the review that was saved last time.
-	editorAskPrevious
-	// editorAskDownload asks what to do with the songs nobody has looked at.
-	editorAskDownload
-	// editorInput is a one-line question: an address, a file, or a reason.
-	editorInput
+	Browsing Mode = iota
+	// AskPrevious asks whether to bring the review that was saved last time.
+	AskPrevious
+	// AskDownload asks what to do with the songs nobody has looked at.
+	AskDownload
+	// Input is a one-line question: an address, a file, or a reason.
+	Input
 )
 
 type editorInputPurpose int
@@ -58,9 +60,9 @@ const (
 	inputNote
 )
 
-// editorModel is the playlist editor: the songs of a plan, what was proposed for each, and
+// Model is the playlist editor: the songs of a plan, what was proposed for each, and
 // what the person decides about them, before anything is downloaded.
-type editorModel struct {
+type Model struct {
 	host EditorHost
 	rows []playlistfile.Entry
 	sel  int
@@ -71,7 +73,7 @@ type editorModel struct {
 	// planning is true while a plan-only run is still working; ctrl, events and state
 	// are that run's.
 	planning bool
-	ctrl     Controller
+	ctrl     downloadpage.Controller
 	events   <-chan interface{}
 	state    *runstate.State
 	spin     int
@@ -82,7 +84,7 @@ type editorModel struct {
 	saved    []playlistfile.Entry
 	previous []playlistfile.Entry
 
-	mode    editorMode
+	mode    Mode
 	input   textinput.Model
 	purpose editorInputPurpose
 	// noteFor is the row a reason is being asked for.
@@ -94,16 +96,16 @@ type editorModel struct {
 	statusUntil time.Time
 }
 
-// newEditorFromRows opens the editor on rows that are already planned.
-func newEditorFromRows(host EditorHost, rows []playlistfile.Entry) editorModel {
-	return editorModel{host: host, rows: rows}
+// NewFromRows opens the editor on rows that are already planned.
+func NewFromRows(host EditorHost, rows []playlistfile.Entry) Model {
+	return Model{host: host, rows: rows}
 }
 
-// newEditorPlanning opens the editor while a plan-only run works. brought is what the
+// NewPlanning opens the editor while a plan-only run works. brought is what the
 // person asked to bring from files; saved is the review of last time, which they are
 // asked about when there is nothing else to bring.
-func newEditorPlanning(host EditorHost, run Run, brought, saved []playlistfile.Entry) editorModel {
-	m := editorModel{
+func NewPlanning(host EditorHost, run downloadpage.Run, brought, saved []playlistfile.Entry) Model {
+	m := Model{
 		host:     host,
 		planning: true,
 		ctrl:     run,
@@ -113,12 +115,12 @@ func newEditorPlanning(host EditorHost, run Run, brought, saved []playlistfile.E
 	}
 	if len(brought) == 0 && len(saved) > 0 {
 		m.saved = saved
-		m.mode = editorAskPrevious
+		m.mode = AskPrevious
 	}
 	return m
 }
 
-func (m editorModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	if !m.planning {
 		return nil
 	}
@@ -129,44 +131,44 @@ func waitEditorEvent(ch <-chan interface{}) tea.Cmd {
 	return func() tea.Msg {
 		ev, ok := <-ch
 		if !ok {
-			return editorEvClosed{}
+			return EvClosed{}
 		}
-		return editorEvMsg{ev}
+		return EvMsg{Ev: ev}
 	}
 }
 
 func editorTick() tea.Cmd {
-	return tea.Tick(120*time.Millisecond, func(t time.Time) tea.Msg { return editorTickMsg(t) })
+	return tea.Tick(120*time.Millisecond, func(t time.Time) tea.Msg { return TickMsg(t) })
 }
 
-func (m editorModel) Update(msg tea.Msg) (editorModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.input.SetWidth(max(10, m.width-24))
 		return m, nil
 
-	case editorTickMsg:
+	case TickMsg:
 		if !m.planning {
 			return m, nil
 		}
 		m.spin = (m.spin + 1) % len(look.SpinnerFrames)
 		return m, editorTick()
 
-	case editorEvMsg:
+	case EvMsg:
 		if !m.planning {
 			return m, nil
 		}
-		m.state.Apply(msg.ev)
-		if _, idle := msg.ev.(engine.EvIdle); idle {
+		m.state.Apply(msg.Ev)
+		if _, idle := msg.Ev.(engine.EvIdle); idle {
 			return m.planFinished()
 		}
 		return m, waitEditorEvent(m.events)
 
-	case editorEvClosed:
+	case EvClosed:
 		return m, nil
 
-	case editorFilePickedMsg:
+	case FilePickedMsg:
 		m.picking = false
 		switch {
 		case msg.err != nil && msg.save:
@@ -181,7 +183,7 @@ func (m editorModel) Update(msg tea.Msg) (editorModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case editorDescribedMsg:
+	case DescribedMsg:
 		for i := range m.rows {
 			if m.rows[i].Key() == msg.key && m.rows[i].Decision == playlistfile.DecisionReplaced {
 				m.rows[i].ChosenTitle = msg.title
@@ -197,7 +199,7 @@ func (m editorModel) Update(msg tea.Msg) (editorModel, tea.Cmd) {
 		return m.mouse(msg)
 	}
 
-	if m.mode == editorInput {
+	if m.mode == Input {
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
 		return m, cmd
@@ -206,9 +208,9 @@ func (m editorModel) Update(msg tea.Msg) (editorModel, tea.Cmd) {
 }
 
 // planFinished takes the plan from the run that made it, once every song is dealt with.
-func (m editorModel) planFinished() (editorModel, tea.Cmd) {
+func (m Model) planFinished() (Model, tea.Cmd) {
 	// A question about last time's review is waiting: the plan is taken when it is answered.
-	if m.mode == editorAskPrevious {
+	if m.mode == AskPrevious {
 		m.planDone = true
 		return m, nil
 	}
@@ -224,20 +226,21 @@ func (m editorModel) planFinished() (editorModel, tea.Cmd) {
 	m.sel, m.top = 0, 0
 	m.autosave()
 	if len(m.rows) == 0 {
-		m.flash("no songs were found in the list")
+		m.Flash("no songs were found in the list")
 	} else {
-		m.flash(fmt.Sprintf("%d songs planned: check them, then download", len(m.rows)))
+		m.Flash(fmt.Sprintf("%d songs planned: check them, then download", len(m.rows)))
 	}
-	return m, func() tea.Msg { return editorPlannedMsg{} }
+	return m, func() tea.Msg { return PlannedMsg{} }
 }
 
-func (m *editorModel) flash(s string) {
+// Flash shows s on the bottom line for a moment.
+func (m *Model) Flash(s string) {
 	m.status = s
 	m.statusUntil = time.Now().Add(4 * time.Second)
 }
 
 // autosave keeps the review where the next session can find it.
-func (m editorModel) autosave() {
+func (m Model) autosave() {
 	if m.host.SessionFile == "" || m.planning {
 		return
 	}
@@ -245,31 +248,33 @@ func (m editorModel) autosave() {
 }
 
 // withDownloaded marks the songs a download finished, and saves.
-func (m editorModel) withDownloaded(keys []string) editorModel {
+// WithDownloaded marks the songs with these keys as downloaded, so the next download
+// skips them.
+func (m Model) WithDownloaded(keys []string) Model {
 	n := playlisteditor.MarkDownloaded(m.rows, keys...)
 	m.autosave()
 	switch n {
 	case 0:
-		m.flash("nothing was downloaded")
+		m.Flash("nothing was downloaded")
 	case 1:
-		m.flash("1 song downloaded; it will be skipped next time")
+		m.Flash("1 song downloaded; it will be skipped next time")
 	default:
-		m.flash(fmt.Sprintf("%d songs downloaded; they will be skipped next time", n))
+		m.Flash(fmt.Sprintf("%d songs downloaded; they will be skipped next time", n))
 	}
 	return m
 }
 
-func (m editorModel) current() (playlistfile.Entry, bool) {
+func (m Model) current() (playlistfile.Entry, bool) {
 	if m.sel < 0 || m.sel >= len(m.rows) {
 		return playlistfile.Entry{}, false
 	}
 	return m.rows[m.sel], true
 }
 
-func (m editorModel) handleKey(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
+func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	key := msg.String()
 	if key == "ctrl+c" {
-		return m, func() tea.Msg { return editorLeaveMsg{} }
+		return m, func() tea.Msg { return LeaveMsg{} }
 	}
 	if key == "ctrl+l" {
 		return m, tea.ClearScreen
@@ -279,24 +284,24 @@ func (m editorModel) handleKey(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
 	}
 
 	switch m.mode {
-	case editorAskPrevious:
+	case AskPrevious:
 		return m.answerPrevious(key)
-	case editorAskDownload:
+	case AskDownload:
 		return m.answerDownload(key)
-	case editorInput:
+	case Input:
 		return m.updateInput(msg)
 	}
 
 	if m.planning {
 		if key == "q" || key == "esc" {
-			return m, func() tea.Msg { return editorLeaveMsg{} }
+			return m, func() tea.Msg { return LeaveMsg{} }
 		}
 		return m, nil
 	}
 
 	switch key {
 	case "q", "esc":
-		return m, func() tea.Msg { return editorLeaveMsg{} }
+		return m, func() tea.Msg { return LeaveMsg{} }
 	case "up", "k":
 		m.move(-1)
 	case "down", "j":
@@ -341,7 +346,7 @@ func (m editorModel) handleKey(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m *editorModel) move(delta int) {
+func (m *Model) move(delta int) {
 	if len(m.rows) == 0 {
 		return
 	}
@@ -349,7 +354,7 @@ func (m *editorModel) move(delta int) {
 	m.keepSelectionVisible()
 }
 
-func (m *editorModel) keepSelectionVisible() {
+func (m *Model) keepSelectionVisible() {
 	h := m.listHeight()
 	if m.sel < m.top {
 		m.top = m.sel
@@ -362,7 +367,7 @@ func (m *editorModel) keepSelectionVisible() {
 
 // open shows a video in the browser: the one that would be downloaded, or with original
 // the upload that is in the playlist.
-func (m editorModel) open(original bool) (editorModel, tea.Cmd) {
+func (m Model) open(original bool) (Model, tea.Cmd) {
 	row, ok := m.current()
 	if !ok {
 		return m, nil
@@ -372,36 +377,36 @@ func (m editorModel) open(original bool) (editorModel, tea.Cmd) {
 		id = row.Upload.ID
 	}
 	if id == "" {
-		m.flash("there is no video to open")
+		m.Flash("there is no video to open")
 		return m, nil
 	}
 	if m.host.Open == nil {
-		m.flash(playlisteditor.VideoAddress(id))
+		m.Flash(playlisteditor.VideoAddress(id))
 		return m, nil
 	}
 	if err := m.host.Open(playlisteditor.VideoAddress(id)); err != nil {
-		m.flash("cannot open the browser: " + err.Error())
+		m.Flash("cannot open the browser: " + err.Error())
 		return m, nil
 	}
-	m.flash("opened " + playlisteditor.VideoAddress(id))
+	m.Flash("opened " + playlisteditor.VideoAddress(id))
 	return m, nil
 }
 
 // confirm accepts what was proposed for the song and moves on to the next one.
-func (m editorModel) confirm() (editorModel, tea.Cmd) {
+func (m Model) confirm() (Model, tea.Cmd) {
 	row, ok := m.current()
 	if !ok {
 		return m, nil
 	}
 	if _, _, has := playlisteditor.Target(playlistfile.Entry{Upload: row.Upload, TargetID: row.TargetID, Kind: row.Kind}); !has {
-		m.flash("nothing was found for this song: replace it, take the original or skip it")
+		m.Flash("nothing was found for this song: replace it, take the original or skip it")
 		return m, nil
 	}
 	return m.decide(playlistfile.DecisionConfirmed, "", "")
 }
 
 // confirmAll accepts what was proposed for every song nobody has decided on.
-func (m editorModel) confirmAll() (editorModel, tea.Cmd) {
+func (m Model) confirmAll() (Model, tea.Cmd) {
 	n := 0
 	for i := range m.rows {
 		row := m.rows[i]
@@ -414,23 +419,23 @@ func (m editorModel) confirmAll() (editorModel, tea.Cmd) {
 		}
 	}
 	m.autosave()
-	m.flash(fmt.Sprintf("confirmed %d songs", n))
+	m.Flash(fmt.Sprintf("confirmed %d songs", n))
 	return m, nil
 }
 
 // decide records what the person chose for the selected song. In a build made for testing
 // a decision that goes against the proposal asks why.
-func (m editorModel) decide(decision, chosenID, chosenTitle string) (editorModel, tea.Cmd) {
+func (m Model) decide(decision, chosenID, chosenTitle string) (Model, tea.Cmd) {
 	row, ok := m.current()
 	if !ok {
 		return m, nil
 	}
 	if row.Downloaded {
-		m.flash("this song has been downloaded already")
+		m.Flash("this song has been downloaded already")
 		return m, nil
 	}
 	if decision == playlistfile.DecisionOriginal && row.Upload.ID == "" {
-		m.flash("this song has no original upload")
+		m.Flash("this song has no original upload")
 		return m, nil
 	}
 	m.rows[m.sel].Decision = decision
@@ -450,7 +455,7 @@ func (m editorModel) decide(decision, chosenID, chosenTitle string) (editorModel
 			if err != nil {
 				return nil
 			}
-			return editorDescribedMsg{key: key, title: title}
+			return DescribedMsg{key: key, title: title}
 		}
 	}
 
@@ -464,7 +469,7 @@ func (m editorModel) decide(decision, chosenID, chosenTitle string) (editorModel
 }
 
 // ask opens the one-line question.
-func (m editorModel) ask(purpose editorInputPurpose, prompt, value string) (editorModel, tea.Cmd) {
+func (m Model) ask(purpose editorInputPurpose, prompt, value string) (Model, tea.Cmd) {
 	in := textinput.New()
 	in.Prompt = prompt
 	in.CharLimit = 0
@@ -472,17 +477,17 @@ func (m editorModel) ask(purpose editorInputPurpose, prompt, value string) (edit
 	in.SetValue(value)
 	in.CursorEnd()
 	focus := in.Focus()
-	m.input, m.purpose, m.mode = in, purpose, editorInput
+	m.input, m.purpose, m.mode = in, purpose, Input
 	return m, focus
 }
 
-func (m editorModel) updateInput(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
+func (m Model) updateInput(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		if m.purpose == inputNote {
 			m.logDecision("")
 		}
-		m.mode = editorBrowsing
+		m.mode = Browsing
 		return m, nil
 	case "enter":
 		return m.submitInput(strings.TrimSpace(m.input.Value()))
@@ -492,13 +497,13 @@ func (m editorModel) updateInput(msg tea.KeyPressMsg) (editorModel, tea.Cmd) {
 	return m, cmd
 }
 
-func (m editorModel) submitInput(text string) (editorModel, tea.Cmd) {
-	m.mode = editorBrowsing
+func (m Model) submitInput(text string) (Model, tea.Cmd) {
+	m.mode = Browsing
 	switch m.purpose {
 	case inputReplace:
 		id, ok := playlisteditor.VideoID(text)
 		if !ok {
-			m.flash("that is not the address of a YouTube video")
+			m.Flash("that is not the address of a YouTube video")
 			return m, nil
 		}
 		return m.decide(playlistfile.DecisionReplaced, id, "")
@@ -522,8 +527,8 @@ func (m editorModel) submitInput(text string) (editorModel, tea.Cmd) {
 	return m, nil
 }
 
-// editorFilePickedMsg is the answer of the system's open-file window.
-type editorFilePickedMsg struct {
+// FilePickedMsg is the answer of the system's open-file window.
+type FilePickedMsg struct {
 	path   string
 	chosen bool
 	err    error
@@ -532,55 +537,55 @@ type editorFilePickedMsg struct {
 }
 
 // pickSaveFile opens the system's save-file window and waits for it in the background.
-func (m editorModel) pickSaveFile() (editorModel, tea.Cmd) {
+func (m Model) pickSaveFile() (Model, tea.Cmd) {
 	m.picking = true
 	pick := m.host.SaveFile
 	dir, name := filepath.Split(m.defaultSavePath())
 	return m, func() tea.Msg {
 		path, chosen, err := pick(filepath.Clean(dir), name)
-		return editorFilePickedMsg{path: path, chosen: chosen, err: err, save: true}
+		return FilePickedMsg{path: path, chosen: chosen, err: err, save: true}
 	}
 }
 
 // saveFile writes the review to a .mvd file.
-func (m editorModel) saveFile(path string) (editorModel, tea.Cmd) {
+func (m Model) saveFile(path string) (Model, tea.Cmd) {
 	if filepath.Ext(path) == "" {
 		path += playlistfile.Extension
 	}
 	if err := playlistfile.Save(path, playlistfile.File{Entries: m.rows}); err != nil {
-		m.flash("cannot save: " + err.Error())
+		m.Flash("cannot save: " + err.Error())
 		return m, nil
 	}
-	m.flash("saved " + path)
+	m.Flash("saved " + path)
 	return m, nil
 }
 
 // pickFile opens the system's open-file window and waits for it in the background.
-func (m editorModel) pickFile() (editorModel, tea.Cmd) {
+func (m Model) pickFile() (Model, tea.Cmd) {
 	m.picking = true
 	pick, start := m.host.PickFile, m.host.SaveDir
 	return m, func() tea.Msg {
 		path, chosen, err := pick(start)
-		return editorFilePickedMsg{path: path, chosen: chosen, err: err}
+		return FilePickedMsg{path: path, chosen: chosen, err: err}
 	}
 }
 
 // loadFile replaces the review with the songs of a saved .mvd file.
-func (m editorModel) loadFile(path string) (editorModel, tea.Cmd) {
+func (m Model) loadFile(path string) (Model, tea.Cmd) {
 	file, err := playlistfile.Load(path)
 	if err != nil {
-		m.flash("cannot open it: " + err.Error())
+		m.Flash("cannot open it: " + err.Error())
 		return m, nil
 	}
 	m.rows = file.Entries
 	m.sel, m.top = 0, 0
 	m.autosave()
-	m.flash(fmt.Sprintf("opened %d songs from %s", len(m.rows), filepath.Base(path)))
+	m.Flash(fmt.Sprintf("opened %d songs from %s", len(m.rows), filepath.Base(path)))
 	return m, nil
 }
 
 // logDecision writes the decision made on the row being asked about, with the reason.
-func (m editorModel) logDecision(note string) {
+func (m Model) logDecision(note string) {
 	if !playlisteditor.DebugBuild || m.host.DecisionLog == "" {
 		return
 	}
@@ -594,7 +599,7 @@ func (m editorModel) logDecision(note string) {
 
 // defaultSavePath is the file offered when saving: the first playlist's name, in the
 // folder for saved plans.
-func (m editorModel) defaultSavePath() string {
+func (m Model) defaultSavePath() string {
 	name := "playlist"
 	if len(m.rows) > 0 && m.rows[0].Playlist != "" {
 		name = m.rows[0].Playlist
@@ -612,29 +617,29 @@ func (m editorModel) defaultSavePath() string {
 }
 
 // download asks for what to do with the songs nobody has looked at, or starts at once.
-func (m editorModel) download() (editorModel, tea.Cmd) {
+func (m Model) download() (Model, tea.Cmd) {
 	if m.host.PlanDownload == nil {
-		m.flash("downloading is not available here")
+		m.Flash("downloading is not available here")
 		return m, nil
 	}
 	if playlisteditor.Unreviewed(m.rows) > 0 {
-		m.mode = editorAskDownload
+		m.mode = AskDownload
 		return m, nil
 	}
 	return m.startDownload(false)
 }
 
-func (m editorModel) startDownload(includeUnreviewed bool) (editorModel, tea.Cmd) {
+func (m Model) startDownload(includeUnreviewed bool) (Model, tea.Cmd) {
 	planned, keys := playlisteditor.Selection(m.rows, includeUnreviewed)
 	if len(planned) == 0 {
-		m.flash("nothing to download: confirm, replace or take the original of some songs first")
+		m.Flash("nothing to download: confirm, replace or take the original of some songs first")
 		return m, nil
 	}
-	return m, func() tea.Msg { return editorDownloadMsg{plan: planned, keys: keys} }
+	return m, func() tea.Msg { return DownloadMsg{Plan: planned, Keys: keys} }
 }
 
-func (m editorModel) answerDownload(key string) (editorModel, tea.Cmd) {
-	m.mode = editorBrowsing
+func (m Model) answerDownload(key string) (Model, tea.Cmd) {
+	m.mode = Browsing
 	switch key {
 	case "y", "Y", "enter":
 		return m.startDownload(false)
@@ -645,7 +650,7 @@ func (m editorModel) answerDownload(key string) (editorModel, tea.Cmd) {
 }
 
 // answerPrevious brings the review of last time along, or leaves it.
-func (m editorModel) answerPrevious(key string) (editorModel, tea.Cmd) {
+func (m Model) answerPrevious(key string) (Model, tea.Cmd) {
 	switch key {
 	case "y", "Y", "enter":
 		m.previous = m.saved
@@ -654,9 +659,37 @@ func (m editorModel) answerPrevious(key string) (editorModel, tea.Cmd) {
 	default:
 		return m, nil
 	}
-	m.mode, m.saved = editorBrowsing, nil
+	m.mode, m.saved = Browsing, nil
 	if m.planDone {
 		return m.planFinished()
 	}
 	return m, nil
+}
+
+// Owns is whether msg is one of the editor's own messages, which an app model forwards to
+// it while it is on the screen.
+func Owns(msg tea.Msg) bool {
+	switch msg.(type) {
+	case EvMsg, EvClosed, TickMsg, DescribedMsg, FilePickedMsg:
+		return true
+	}
+	return false
+}
+
+// Mode is what the editor is doing with the keys.
+func (m Model) Mode() Mode { return m.mode }
+
+// Planning is whether a plan-only run is still working.
+func (m Model) Planning() bool { return m.planning }
+
+// Rows are the songs, with what was proposed and decided for each.
+func (m Model) Rows() []playlistfile.Entry { return m.rows }
+
+// Selected is the index of the song the cursor is on.
+func (m Model) Selected() int { return m.sel }
+
+// WithInput puts text in the one-line question that is open.
+func (m Model) WithInput(text string) Model {
+	m.input.SetValue(text)
+	return m
 }

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
+	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	"youtube-downloader/libs/mvd-core/look"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	"youtube-downloader/libs/mvd-core/screenview"
@@ -52,7 +53,7 @@ type appModel struct {
 
 	// The playlist editor: its screen, the plan-only run that feeds it while it works, and
 	// the songs of the download it started, so the editor can mark them when it ends.
-	editor     editorModel
+	editor     editorpage.Model
 	editing    bool
 	planRun    Run
 	leaving    bool // the editor was left while its plan run was still winding down
@@ -95,13 +96,14 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.backToSetup()
 	case planClosedMsg:
 		return m.planClosed()
-	case editorPlannedMsg:
+	case editorpage.PlannedMsg:
 		return m.closePlanRun(false)
-	case editorLeaveMsg:
+	case editorpage.LeaveMsg:
 		return m.leaveEditor()
-	case editorDownloadMsg:
+	case editorpage.DownloadMsg:
 		return m.startEditorDownload(msg)
-	case editorEvMsg, editorEvClosed, editorTickMsg, editorDescribedMsg, editorFilePickedMsg:
+	}
+	if editorpage.Owns(msg) {
 		if !m.editing {
 			return m, nil
 		}
@@ -191,7 +193,7 @@ func (m appModel) backToSetup() (tea.Model, tea.Cmd) {
 
 func (m appModel) render() string {
 	if m.editing && !m.downloading {
-		return m.editor.render()
+		return m.editor.Render()
 	}
 	if m.downloading {
 		return m.download.Render()
@@ -239,7 +241,7 @@ func (m appModel) startReview() (tea.Model, tea.Cmd) {
 	}
 
 	if len(playlists) == 0 {
-		m.editor = newEditorFromRows(m.in.Editor, brought)
+		m.editor = editorpage.NewFromRows(m.in.Editor, brought)
 		return m.showEditor()
 	}
 	if m.in.Editor.Plan == nil {
@@ -263,7 +265,7 @@ func (m appModel) startReview() (tea.Model, tea.Cmd) {
 		return m.reviewRefused("Cannot look up the playlist: " + err.Error())
 	}
 	m.planRun = run
-	m.editor = newEditorPlanning(m.in.Editor, run, brought, saved)
+	m.editor = editorpage.NewPlanning(m.in.Editor, run, brought, saved)
 	return m.showEditor()
 }
 
@@ -326,23 +328,23 @@ func (m appModel) backToSetupFromEditor() (tea.Model, tea.Cmd) {
 }
 
 // startEditorDownload downloads what the editor chose, on the download screen.
-func (m appModel) startEditorDownload(msg editorDownloadMsg) (tea.Model, tea.Cmd) {
+func (m appModel) startEditorDownload(msg editorpage.DownloadMsg) (tea.Model, tea.Cmd) {
 	if m.in.Editor.PlanDownload == nil {
 		return m, nil
 	}
 	if err := os.MkdirAll(m.cfg.OutputDir, 0o755); err != nil {
-		m.editor.flash("Cannot create the download folder: " + err.Error())
+		m.editor.Flash("Cannot create the download folder: " + err.Error())
 		return m, nil
 	}
-	run, err := m.in.Editor.PlanDownload(m.cfg, msg.plan)
+	run, err := m.in.Editor.PlanDownload(m.cfg, msg.Plan)
 	if err != nil {
-		m.editor.flash("Cannot start the download: " + err.Error())
+		m.editor.Flash("Cannot start the download: " + err.Error())
 		return m, nil
 	}
 	dm := downloadpage.NewEmbedded(run)
 	next, _ := dm.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 	m.run, m.download, m.downloading = run, next.(downloadpage.Model), true
-	m.fromEditor, m.editorKeys = true, msg.keys
+	m.fromEditor, m.editorKeys = true, msg.Keys
 	return m, m.download.Init()
 }
 
@@ -355,7 +357,7 @@ func (m appModel) finishEditorDownload() (tea.Model, tea.Cmd) {
 			done = append(done, key)
 		}
 	}
-	m.editor = m.editor.withDownloaded(done)
+	m.editor = m.editor.WithDownloaded(done)
 	m.run, m.downloading, m.stopping = nil, false, false
 	m.fromEditor, m.editorKeys = false, nil
 	return m, nil

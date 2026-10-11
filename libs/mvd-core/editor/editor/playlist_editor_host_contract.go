@@ -1,12 +1,13 @@
-package tui
+package editor
 
 import (
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/engine"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 // PlanDownloadStarter starts a run that downloads exactly what a plan names.
-type PlanDownloadStarter func(cfg config.Config, plan []engine.PlannedEntry) (Run, error)
+type PlanDownloadStarter func(cfg config.Config, plan []engine.PlannedEntry) (downloadpage.Run, error)
 
 // Planner is what a plan-only run offers once it has dealt with every song.
 type Planner interface {
@@ -19,7 +20,7 @@ type Planner interface {
 type EditorHost struct {
 	// Plan starts a run that lists, names and picks, and downloads nothing. The run must
 	// also be a Planner.
-	Plan RunStarter
+	Plan downloadpage.RunStarter
 	// PlanDownload starts the download of a reviewed plan.
 	PlanDownload PlanDownloadStarter
 	// Open opens an address in the person's browser.

@@ -34,9 +34,9 @@ func Enabled(noTUIFlag bool) bool {
 	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
-// Run drives the download screen until the user quits and returns the final state for
+// Drive runs the download screen until the user quits and returns the final state for
 // the summary.
-func Run(ctx context.Context, c Controller) (*runstate.State, error) {
+func Drive(ctx context.Context, c Controller) (*runstate.State, error) {
 	p := tea.NewProgram(New(c), tea.WithContext(ctx))
 	final, err := p.Run()
 	if fm, ok := final.(Model); ok {
