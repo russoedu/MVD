@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"charm.land/bubbles/v2/textarea"
 	"os"
 	"path/filepath"
 	"sort"
@@ -141,6 +142,27 @@ func legacyCases() []legacyCase {
 		legacyCase{"download-filter-failed", 120, 36, download(func(m *model) { m.filterFailed = true; m.focus = paneEntries })},
 		legacyCase{"download-confirm-quit", 120, 36, download(func(m *model) { m.confirmQuit = true })},
 		legacyCase{"download-help", 120, 36, download(func(m *model) { m.showHelp = true })},
+		legacyCase{"download-add-links", 120, 36, download(func(m *model) {
+			ta := textarea.New()
+			ta.Placeholder = "Paste or type playlist / video URLs, one per line"
+			ta.ShowLineNumbers = false
+			ta.SetWidth(m.addBoxWidth())
+			ta.SetHeight(8)
+			ta.SetValue("https://youtube.com/playlist?list=A\nhttps://youtube.com/watch?v=B")
+			ta.Focus()
+			m.adding, m.links = true, ta
+		})},
+		legacyCase{"download-add-links-narrow", 70, 20, download(func(m *model) {
+			m.width, m.height = 70, 20
+			ta := textarea.New()
+			ta.Placeholder = "Paste or type playlist / video URLs, one per line"
+			ta.ShowLineNumbers = false
+			ta.SetWidth(m.addBoxWidth())
+			ta.SetHeight(8)
+			ta.Focus()
+			m.adding, m.links = true, ta
+		})},
+		legacyCase{"download-help-narrow", 70, 20, download(func(m *model) { m.width, m.height = 70, 20; m.showHelp = true })},
 		legacyCase{"download-narrow", 80, 24, download(func(m *model) { m.width, m.height = 80, 24; m.focus = paneEntries; m.selEntry = 2 })},
 	)
 
