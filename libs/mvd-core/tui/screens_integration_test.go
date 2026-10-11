@@ -204,12 +204,3 @@ func TestKeyHandling(t *testing.T) {
 		t.Fatal("q when idle should quit")
 	}
 }
-
-func TestRenderBox(t *testing.T) {
-	box := renderBox("Title", "right", 30, 5, []string{"one", strings.Repeat("y", 40)}, true)
-	checkFrame(t, "box", box, 30, 5)
-	plain := ansi.Strip(box)
-	if !strings.Contains(plain, "╭─ Title ") || !strings.Contains(plain, " right ─╮") || !strings.Contains(plain, "…") {
-		t.Errorf("unexpected box:\n%s", plain)
-	}
-}

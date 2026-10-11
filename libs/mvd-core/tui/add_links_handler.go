@@ -7,6 +7,7 @@ import (
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/outline"
 	addlinkspage "youtube-downloader/libs/mvd-core/run/addlinks"
+	"youtube-downloader/libs/mvd-core/screenview"
 	"youtube-downloader/libs/mvd-core/wording"
 
 	"charm.land/bubbles/v2/textarea"
@@ -101,7 +102,7 @@ func (m model) renderAddBox() string {
 	props.Palette = addlinkspage.Palette(look.CurrentPalette())
 	props.Hints = keybar.Of[addlinkspage.HintsHint](addLinksHints())
 	props.LinksView = m.links.View()
-	return paddedFrame(addlinkspage.View(props, m.width, m.height).View, m.width)
+	return screenview.Padded(addlinkspage.View(props, m.width, m.height).View, m.width)
 }
 
 func addLinksHints() []keybar.Hint {
