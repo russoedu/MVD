@@ -129,7 +129,7 @@ flowchart TB
 | Screens | `runstate` | The truth the screens draw | Reduces engine events into one state (entries, totals, log tail) |
 | Engine | `engine` | Running the work: stages, pools, states, retries | Four queues and worker pools; one event channel |
 | Engine | `runner` | Putting it together | Resolves cookies, builds the resolver and the engine from `config.conf` |
-| Capability | `official` | The best video for a song | Cache, Wikidata, YouTube Music, YouTube search, scoring; see [section 8](#8-stage-3-pick) |
+| Capability | `official` | The best video for a song | The resolver, in subfeatures: `titlematch` (comparing titles and artists), `trackpick` (scoring and choosing among results), `trackfind` (searching, the cache, the other sources), `musicsource` (YouTube Music, Wikidata, the music card), `cookiejar`; see [section 8](#8-stage-3-pick) |
 | Capability | `songid` | Who sings it and what it is called | iTunes, Deezer, MusicBrainz, each paced; see [section 7](#7-stage-2-name) |
 | Capability | `stillpicture` | Does the video really move | Storyboard frames, changed-area measure; see [section 9](#9-real-video-or-not-the-motion-check) |
 | Capability | `ytdlp` | Everything that runs yt-dlp | Builds arguments, parses listings, progress lines, formats and storyboards |

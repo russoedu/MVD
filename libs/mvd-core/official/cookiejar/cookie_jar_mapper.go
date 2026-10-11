@@ -1,4 +1,6 @@
-package official
+// Package cookiejar reads a browser's exported cookies file (the Netscape format) into an
+// HTTP cookie jar.
+package cookiejar
 
 import (
 	"bufio"

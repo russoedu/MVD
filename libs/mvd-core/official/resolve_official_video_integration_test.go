@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"youtube-downloader/libs/mvd-core/official/cookiejar"
 	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 )
@@ -302,7 +303,7 @@ func TestLoadCookieJar(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
-	jar, n, err := LoadCookieJar(path)
+	jar, n, err := cookiejar.LoadCookieJar(path)
 	if err != nil || n != 3 {
 		t.Fatalf("load failed: %v (n=%d)", err, n)
 	}
@@ -319,14 +320,14 @@ func TestLoadCookieJar(t *testing.T) {
 	if n, err := res.UseCookies(path); err != nil || n != 3 || res.Client.Jar == nil {
 		t.Errorf("UseCookies failed: %v %d", err, n)
 	}
-	if _, _, err := LoadCookieJar(t.TempDir() + "/missing.txt"); err == nil {
+	if _, _, err := cookiejar.LoadCookieJar(t.TempDir() + "/missing.txt"); err == nil {
 		t.Error("missing file should fail")
 	}
 	empty := t.TempDir() + "/empty.txt"
 	if err := os.WriteFile(empty, []byte("# nothing\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := LoadCookieJar(empty); err == nil {
+	if _, _, err := cookiejar.LoadCookieJar(empty); err == nil {
 		t.Error("file without cookies should fail")
 	}
 }
