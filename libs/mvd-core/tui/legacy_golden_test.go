@@ -9,6 +9,7 @@ import (
 	"testing"
 	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
 	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
+	folderpage "youtube-downloader/libs/mvd-core/setup/folder"
 	listpage "youtube-downloader/libs/mvd-core/setup/list"
 	songspage "youtube-downloader/libs/mvd-core/setup/songs"
 
@@ -88,10 +89,8 @@ func legacyCases() []legacyCase {
 	folder := func(creating bool, err string) func(t *testing.T) string {
 		return func(t *testing.T) string {
 			ApplyTheme(config.DefaultThemeColors())
-			m := folderModel{dir: "C:\\Users\\me\\Music", entries: []string{"90s", "Dance", "Rock", "Soundtracks"}, cursor: 1, err: err}
-			m.input = newFolderModel(".").input
-			m.creating = creating
-			return m.setSize(w, h).view(w, h)
+			m := folderpage.New(".").Listing("C:\\Users\\me\\Music", []string{"90s", "Dance", "Rock", "Soundtracks"}, 1, err, creating)
+			return m.SetSize(w, h).View(w, h)
 		}
 	}
 	prefs := func(keys ...string) func(t *testing.T) string {
