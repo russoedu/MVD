@@ -1,6 +1,6 @@
 module youtube-downloader
 
-go 1.27
+go 1.26.0
 
 require (
 	charm.land/bubbles/v2 v2.2.1
@@ -43,7 +43,6 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
-	github.com/meta-ui-labs/cuppa/libs/connector v0.0.0-20261011223636-98e2f7adf5cc // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
