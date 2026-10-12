@@ -10,6 +10,9 @@ import (
 	"github.com/meta-ui-labs/cuppa/libs/connector/serve"
 )
 
+// Pages are the pages of the design that the app publishes.
+var Pages = []string{"Preferences", "Advanced", "Colours", "Songs", "List", "Folder", "Download", "AddLinks", "Help", "Editor", "EditorPlanning"}
+
 // appName is how the designer shows this app.
 const appName = "MVD"
 
@@ -39,13 +42,13 @@ var (
 // FromEnvironment is the process's link: it listens on the address of EnvVar the first
 // time it is called and returns nil when the connection was not asked for or the address
 // cannot be used (a connection is a development aid, never a reason to stop the app).
-func FromEnvironment(pages ...string) *Link {
+func FromEnvironment() *Link {
 	once.Do(func() {
 		addr, ok := AddressFrom(os.Getenv(EnvVar))
 		if !ok {
 			return
 		}
-		if l, err := Listen(addr, pages...); err == nil {
+		if l, err := Listen(addr, Pages...); err == nil {
 			process = l
 		}
 	})

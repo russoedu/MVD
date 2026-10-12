@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"youtube-downloader/libs/mvd-core/connect"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +28,7 @@ import (
 // setup screens. The returned model also has an Outline method (see
 // ScreenOutline).
 func NewAppModel(in AppInput) tea.Model {
-	m := appModel{in: in, cfg: in.Setup.Cfg, urls: in.Setup.URLs}
+	m := appModel{in: in, cfg: in.Setup.Cfg, urls: in.Setup.URLs, link: connect.FromEnvironment()}
 	m.setup = m.newSetup(in.Setup.OpenConfig)
 	return m
 }
@@ -59,6 +60,8 @@ type appModel struct {
 	leaving    bool // the editor was left while its plan run was still winding down
 	fromEditor bool
 	editorKeys []string
+
+	link *connect.Link // the live connection to the designer; nil unless asked for
 }
 
 func (m appModel) newSetup(openConfig bool) setupModel {
@@ -78,13 +81,28 @@ func (m appModel) newSetup(openConfig bool) setupModel {
 func (m appModel) Init() tea.Cmd {
 	if m.in.ReviewOnStart && len(m.urls) > 0 {
 		res := SetupResult{Action: ActionReview, Cfg: m.cfg, URLs: m.urls}
-		return tea.Batch(m.setup.Init(), func() tea.Msg { return setupFinishedMsg{result: res} })
+		return tea.Batch(m.setup.Init(), func() tea.Msg { return setupFinishedMsg{result: res} }, waitDesigner(m.link))
 	}
-	return m.setup.Init()
+	return tea.Batch(m.setup.Init(), waitDesigner(m.link))
 }
 
+// Update handles a message and then tells the designer, when it is connected, what the app
+// shows now.
 func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	if nm, ok := next.(appModel); ok {
+		nm.publish()
+	}
+	return next, cmd
+}
+
+func (m appModel) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case designerMsg:
+		return m.designerEvent(connect.Event(msg))
+	case designerClosed:
+		m.link = nil
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		return m.forward(msg)
