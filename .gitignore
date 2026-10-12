@@ -89,3 +89,6 @@ test-output
 
 # Playwright MCP scratch output
 /.playwright-mcp/
+
+# Cuppa: machine-specific run block for the live preview (cuppa-tui run)
+designs/*.cuppa.run.json
