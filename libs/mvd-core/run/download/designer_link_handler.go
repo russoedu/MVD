@@ -2,9 +2,10 @@ package download
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"youtube-downloader/libs/mvd-core/connect"
+	addlinkspage "youtube-downloader/libs/mvd-core/run/addlinks"
+	helppage "youtube-downloader/libs/mvd-core/run/help"
 	"youtube-downloader/libs/mvd-core/keybar"
 )
 
@@ -35,54 +36,75 @@ func waitDesigner(l *connect.Link) tea.Cmd {
 	}
 }
 
-// publish tells the designer what the screen shows, by the input names of its design: the
-// values the screen gives its page, with every row of a pane in place of the rows that fit.
-func (m Model) publish() {
-	if m.link == nil || m.width == 0 || m.height == 0 {
-		return
-	}
+// Live is the page the screen shows now and its inputs, by the input names of its design,
+// for the live connection to the designer: the help and the box for adding links are pages
+// of their own while they are open, and a pane gives every row, not the rows that fit.
+func (m Model) Live() (pageName string, inputs map[string]any) {
 	w, h := m.width, m.height
+	switch {
+	case m.showHelp:
+		return "Help", helppage.Live(w, h, m.ctrl.LogPath())
+	case m.adding:
+		props := addlinkspage.Default()
+		props.Hints = keybar.Of[addlinkspage.HintsHint](addLinksHints())
+		props.LinksView = m.links.View()
+		return "AddLinks", connect.Plain(addlinkspage.Inputs(props))
+	}
 	p := m.downloadProps(w, h)
 	p.Playlists, _ = p.PlaylistsRows(w, liveRows)
 	p.Entries, _ = p.EntriesRows(w, liveRows)
 	p.Notes, _ = p.NotesRows(w, liveRows)
 	p.Output, _ = p.OutputRows(w, liveRows)
-	inputs := Inputs(p)
-	for name, v := range inputs {
-		// The screen colours some of its texts with escape codes; the designer draws its own.
-		if text, ok := v.(string); ok {
-			inputs[name] = ansi.Strip(text)
-		}
+	return page, connect.Plain(Inputs(p))
+}
+
+// publish tells the designer what the screen shows, when it is connected and is the
+// screen that listens: inside the app the router does it for every screen.
+func (m Model) publish() {
+	if m.link == nil || m.width == 0 || m.height == 0 {
+		return
 	}
-	m.link.Publish(page, inputs, true)
+	name, inputs := m.Live()
+	m.link.Publish(name, inputs, true)
 }
 
 // designerEvent does what a click on the designer's drawing does on the screen itself.
 func (m Model) designerEvent(msg designerMsg) (tea.Model, tea.Cmd) {
-	if msg.Page != page || m.showHelp || m.confirmQuit || m.adding {
+	if msg.Page != page {
 		return m, waitDesigner(m.link)
 	}
-	ev, ok := EventNamed(msg.Name, msg.X, msg.Y)
+	next, cmd := m.ApplyDesigner(msg.Name, msg.X, msg.Y)
+	return next, tea.Batch(cmd, waitDesigner(m.link))
+}
+
+// ApplyDesigner does what a click on the designer's drawing does: a key bar entry presses
+// its key, and a playlist or an entry is selected. x and y are the cell inside the
+// component that was clicked.
+func (m Model) ApplyDesigner(name string, x, y int) (Model, tea.Cmd) {
+	if m.showHelp || m.confirmQuit || m.adding {
+		return m, nil
+	}
+	ev, ok := EventNamed(name, x, y)
 	if !ok {
-		return m, waitDesigner(m.link)
+		return m, nil
 	}
 	frame := Layout(m.downloadProps(m.width, m.height), m.width, m.height)
 	switch ev.(type) {
 	case HintEvent:
-		if h, found := keybar.At(m.hints(), msg.X); found {
+		if h, found := keybar.At(m.hints(), x); found {
 			if key, clickable := keybar.KeyMsg(h.Key); clickable {
 				next, cmd := m.handleKey(key)
-				return next, tea.Batch(cmd, waitDesigner(m.link))
+				return next.(Model), cmd
 			}
 		}
 	case PickPlaylistEvent:
 		if r, found := frame.RegionNamed("Playlists rows"); found {
-			m.clickPlaylist(r.Y + msg.Y)
+			m.clickPlaylist(r.Y + y)
 		}
 	case PickEntryEvent:
 		if r, found := frame.RegionNamed("Entries rows"); found {
-			m.clickEntry(r.Y + msg.Y)
+			m.clickEntry(r.Y + y)
 		}
 	}
-	return m, waitDesigner(m.link)
+	return m, nil
 }

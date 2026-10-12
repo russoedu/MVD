@@ -103,7 +103,7 @@ func New(c Controller) Model {
 		events: c.Events(),
 		state:  runstate.New(c.Sources()),
 		follow: true,
-		link:   connect.FromEnvironment(page),
+		link:   connect.FromEnvironment(),
 	}
 }
 
@@ -385,6 +385,8 @@ func (m Model) View() tea.View { return screenview.Of(m.render()) }
 func NewEmbedded(c Controller) Model {
 	m := New(c)
 	m.embedded = true
+	// The app model listens for the designer for every screen, so one reader has the events.
+	m.link = nil
 	return m
 }
 

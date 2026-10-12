@@ -1,6 +1,7 @@
 package help
 
 import (
+	"youtube-downloader/libs/mvd-core/connect"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -13,6 +14,17 @@ import (
 // glyphs and where the full output is written, fitted to the room the window has. It
 // is the hand written side of the Help page; the page itself is generated.
 func Screen(width, height int, logPath string) string {
+	return padded(View(props(width, height, logPath), width, height).View, width)
+}
+
+// Live is the inputs of the page, by the input names of its design, for the live
+// connection to the designer.
+func Live(width, height int, logPath string) map[string]any {
+	return connect.Plain(Inputs(props(width, height, logPath)))
+}
+
+// props fills the page for a window of width by height cells.
+func props(width, height int, logPath string) Props {
 	maxW := width - 6
 	if maxW < 20 {
 		maxW = 20
@@ -57,7 +69,7 @@ func Screen(width, height int, logPath string) string {
 	for _, l := range lines {
 		props.Lines = append(props.Lines, LinesRow{Line: cells.CellText(l)})
 	}
-	return padded(View(props, width, height).View, width)
+	return props
 }
 
 // padded makes every line of a drawn page exactly w cells wide: a design draws only what

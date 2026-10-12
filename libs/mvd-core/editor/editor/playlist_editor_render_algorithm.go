@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"youtube-downloader/libs/mvd-core/connect"
 	"fmt"
 	"strings"
 	"time"
@@ -33,9 +34,23 @@ func (m Model) listHeight() int {
 func (m Model) Render() string {
 	width := max(m.width, 20)
 	if m.planning {
-		return m.renderPlanning(width)
+		return screenview.Padded(editorplanningpage.View(m.planningProps(width), width, m.height).View, width)
 	}
+	return screenview.Padded(View(m.editorProps(width), width, m.height).View, width)
+}
 
+// Live is the page the editor draws now and its inputs, by the input names of the design,
+// for the live connection to the designer.
+func (m Model) Live() (page string, inputs map[string]any) {
+	width := max(m.width, 20)
+	if m.planning {
+		return "EditorPlanning", connect.Plain(editorplanningpage.Inputs(m.planningProps(width)))
+	}
+	return "Editor", connect.Plain(Inputs(m.editorProps(width)))
+}
+
+// editorProps fills the page of the song list.
+func (m Model) editorProps(width int) Props {
 	props := Default()
 	props.Palette = Palette(look.CurrentPalette())
 	props.Title = " " + m.title()
@@ -49,10 +64,11 @@ func (m Model) Render() string {
 	props.Hints = keybar.Of[HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
-	return screenview.Padded(View(props, width, m.height).View, width)
+	return props
 }
 
-func (m Model) renderPlanning(width int) string {
+// planningProps fills the page shown while the plan runs.
+func (m Model) planningProps(width int) editorplanningpage.Props {
 	t := m.state.Tally()
 	done := t.Planned + t.NotFound + t.Failed
 	body := []string{
@@ -81,7 +97,7 @@ func (m Model) renderPlanning(width int) string {
 	props.Hints = keybar.Of[editorplanningpage.HintsHint](m.hints())
 	props.ShowKeys, props.ShowLine = keys, !keys
 	props.Bottom = line
-	return screenview.Padded(editorplanningpage.View(props, width, m.height).View, width)
+	return props
 }
 
 func (m Model) title() string {
@@ -376,6 +392,31 @@ func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 	}
 	if row := y - 2; row >= 0 && row < m.listHeight() && m.top+row < len(m.rows) {
 		m.sel = m.top + row
+	}
+	return m, nil
+}
+
+// ApplyDesigner does what a click on the designer's drawing does: a key bar entry presses
+// its key and a song of the list is selected. x and y are the cell inside the component.
+func (m Model) ApplyDesigner(name string, x, y int) (Model, tea.Cmd) {
+	if m.planning || m.mode != Browsing {
+		return m, nil
+	}
+	ev, ok := EventNamed(name, x, y)
+	if !ok {
+		return m, nil
+	}
+	switch ev.(type) {
+	case HintEvent:
+		if h, found := keybar.At(m.hints(), x); found {
+			if key, clickable := keybar.KeyMsg(h.Key); clickable {
+				return m.handleKey(key)
+			}
+		}
+	case PickEvent:
+		if y >= 0 && y < m.listHeight() && m.top+y < len(m.rows) {
+			m.sel = m.top + y
+		}
 	}
 	return m, nil
 }
