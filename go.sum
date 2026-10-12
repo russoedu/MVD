@@ -77,8 +77,6 @@ github.com/mattn/go-isatty v0.0.22 h1:j8l17JJ9i6VGPUFUYoTUKPSgKe/83EYU2zBC7YNKMw
 github.com/mattn/go-isatty v0.0.22/go.mod h1:ZXfXG4SQHsB/w3ZeOYbR0PrPwLy+n6xiMrJlRFqopa4=
 github.com/mattn/go-runewidth v0.0.30 h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk=
 github.com/mattn/go-runewidth v0.0.30/go.mod h1:3qAiGCV4Koz/yuveO58qUefmUTRm8r0IGEXZ9jeHp/8=
-github.com/meta-ui-labs/cuppa/libs/connector v0.0.0-20261011223636-98e2f7adf5cc h1:WA1e4AUvQO5Z/O/+tz4EcDq7Mha+Iq44YK0upevgjnU=
-github.com/meta-ui-labs/cuppa/libs/connector v0.0.0-20261011223636-98e2f7adf5cc/go.mod h1:5gmPjvByDZiiFZs6zG8SOQo+oGzjV/4q2+1TVCGC1R8=
 github.com/meta-ui-labs/treactui/packages/tty-go v0.1.5 h1:oGzrPcxUmXebWcKHlg0bZ+vfXH4StFdiYMUNzMdbWw8=
 github.com/meta-ui-labs/treactui/packages/tty-go v0.1.5/go.mod h1:PYo3GQpOMfwE9aKztnvvcWj0gxFE36DbWD405oc7nTQ=
 github.com/muesli/cancelreader v0.2.2 h1:3I4Kt4BQjOR54NavqnDogx/MIoWBFa0StPA8ELUXHmA=

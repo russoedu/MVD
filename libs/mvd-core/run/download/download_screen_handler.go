@@ -1,7 +1,6 @@
 package download
 
 import (
-	"youtube-downloader/libs/mvd-core/connect"
 	"context"
 	"fmt"
 	"os"
@@ -82,7 +81,6 @@ type Model struct {
 	embedded      bool // inside an app model: ends with FinishedMsg instead of quitting
 	adding        bool // the box for adding links is open
 	links         textarea.Model
-	link          *connect.Link // the live connection to the designer; nil unless asked for
 }
 
 // FinishedMsg tells the app model the user left the download screen.
@@ -103,7 +101,6 @@ func New(c Controller) Model {
 		events: c.Events(),
 		state:  runstate.New(c.Sources()),
 		follow: true,
-		link:   connect.FromEnvironment(),
 	}
 }
 
@@ -122,20 +119,10 @@ func tick() tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(waitEvent(m.events), tick(), waitDesigner(m.link))
+	return tea.Batch(waitEvent(m.events), tick())
 }
 
-// Update handles a message and then tells the designer, when it is connected, what the
-// screen shows now.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	next, cmd := m.update(msg)
-	if nm, ok := next.(Model); ok {
-		nm.publish()
-	}
-	return next, cmd
-}
-
-func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -162,13 +149,6 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case evClosed:
 		return m, m.quit()
-
-	case designerMsg:
-		return m.designerEvent(msg)
-
-	case designerClosed:
-		m.link = nil
-		return m, nil
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
@@ -385,8 +365,6 @@ func (m Model) View() tea.View { return screenview.Of(m.render()) }
 func NewEmbedded(c Controller) Model {
 	m := New(c)
 	m.embedded = true
-	// The app model listens for the designer for every screen, so one reader has the events.
-	m.link = nil
 	return m
 }
 
@@ -394,7 +372,7 @@ func NewEmbedded(c Controller) Model {
 // has ended and no longer has a screen to take it.
 func IsLeftover(msg tea.Msg) bool {
 	switch msg.(type) {
-	case tickMsg, evMsg, evClosed, designerMsg, designerClosed:
+	case tickMsg, evMsg, evClosed:
 		return true
 	}
 	return false
