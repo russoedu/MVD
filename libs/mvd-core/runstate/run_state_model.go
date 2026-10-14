@@ -161,6 +161,16 @@ func (s *State) Apply(ev interface{}) int {
 	return -1
 }
 
+// AllListed reports whether every playlist known so far has been listed, or failed to be.
+func (s *State) AllListed() bool {
+	for _, pl := range s.Playlists {
+		if !pl.Listed {
+			return false
+		}
+	}
+	return true
+}
+
 // Entry returns the entry with the given id, or nil.
 func (s *State) Entry(id int) *Entry {
 	if id < 0 || id >= len(s.Entries) {

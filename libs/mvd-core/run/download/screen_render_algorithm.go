@@ -5,6 +5,7 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/run/loading"
 	helppage "youtube-downloader/libs/mvd-core/run/help"
 	"youtube-downloader/libs/mvd-core/screenview"
 
@@ -20,6 +21,10 @@ func (m Model) render() string {
 		return look.Dim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
+	if !m.loaded && !m.adding && !m.showHelp {
+		return m.renderLoading()
+	}
+
 	view := screenview.Padded(View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
 
 	if m.adding {
@@ -29,6 +34,20 @@ func (m Model) render() string {
 		return m.renderHelp()
 	}
 	return view
+}
+
+// renderLoading is the screen shown until every playlist of the run has been listed.
+func (m Model) renderLoading() string {
+	p := loading.Progress{Spin: m.spin, Detail: "Reading the songs of each playlist"}
+	for _, pl := range m.state.Playlists {
+		p.Playlists = append(p.Playlists, loading.Playlist{
+			Name: pl.Title, Songs: len(pl.Entries), Listed: pl.Listed, Failed: pl.Err != "",
+		})
+	}
+	if m.confirmQuit {
+		p.Confirm = look.Red.Render(" Downloads are still running. Quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
+	}
+	return loading.Render(p, m.width, m.height)
 }
 
 // outputLines returns the log lines for the current selection.

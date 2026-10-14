@@ -71,6 +71,7 @@ type Model struct {
 	selEntry      int
 	outScroll     int // lines scrolled up from the bottom of the output pane
 	follow        bool
+	loaded        bool // every playlist has been listed; until then the loading screen is shown
 	filterFailed  bool
 	fullLog       bool
 	showHelp      bool
@@ -96,11 +97,14 @@ func (m Model) quit() tea.Cmd {
 }
 
 func New(c Controller) Model {
+	state := runstate.New(c.Sources())
 	return Model{
 		ctrl:   c,
 		events: c.Events(),
-		state:  runstate.New(c.Sources()),
+		state:  state,
 		follow: true,
+		// A run with no playlists to list (the download of a plan) has nothing to wait for.
+		loaded: len(state.Playlists) == 0,
 	}
 }
 
@@ -134,6 +138,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case evMsg:
 		id := m.state.Apply(msg.ev)
+		if !m.loaded && (m.state.Idle || m.state.AllListed()) {
+			m.loaded = true
+		}
 		if st, ok := msg.ev.(engine.EvEntryState); ok && m.follow {
 			if st.State == engine.StateDownloading || st.State == engine.StateResolving {
 				m.jumpTo(id)

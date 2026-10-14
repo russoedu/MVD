@@ -2,12 +2,14 @@ package tui
 
 import (
 	"os"
+	"time"
 	"path/filepath"
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
 	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	"youtube-downloader/libs/mvd-core/look"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
+	"youtube-downloader/libs/mvd-core/run/loading"
 	"youtube-downloader/libs/mvd-core/screenview"
 
 	tea "charm.land/bubbletea/v2"
@@ -32,6 +34,19 @@ func NewAppModel(in AppInput) tea.Model {
 	return m
 }
 
+// runStartedMsg carries the run the host built, or why it could not.
+type runStartedMsg struct {
+	run Run
+	err error
+}
+
+// loadingTickMsg moves the spinner of the loading screen on.
+type loadingTickMsg struct{}
+
+func loadingTick() tea.Cmd {
+	return tea.Tick(120*time.Millisecond, func(time.Time) tea.Msg { return loadingTickMsg{} })
+}
+
 // runClosedMsg says a run finished winding down after the user left its screen.
 type runClosedMsg struct{}
 
@@ -49,6 +64,8 @@ type appModel struct {
 	run         Run
 	downloading bool
 	stopping    bool   // the run is winding down; input is ignored until it has
+	starting    bool   // the run is being built; the loading screen is shown until it is
+	spin        int    // frame of the loading screen's spinner
 	notice      string // why the user is back on the setup screens
 
 	// The playlist editor: its screen, the plan-only run that feeds it while it works, and
@@ -92,6 +109,14 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.startRun(msg.result)
 	case downloadpage.FinishedMsg:
 		return m.stopRun()
+	case runStartedMsg:
+		return m.runStarted(msg)
+	case loadingTickMsg:
+		if !m.starting {
+			return m, nil
+		}
+		m.spin = (m.spin + 1) % len(look.SpinnerFrames)
+		return m, loadingTick()
 	case runClosedMsg:
 		return m.backToSetup()
 	case planClosedMsg:
@@ -109,7 +134,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m.forwardToEditor(msg)
 	}
-	if m.stopping {
+	if m.stopping || m.starting {
 		return m, nil
 	}
 	if !m.downloading {
@@ -143,7 +168,7 @@ func (m appModel) forward(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m appModel) startRun(res SetupResult) (tea.Model, tea.Cmd) {
 	m.cfg, m.urls = res.Cfg, res.URLs
 	if res.Action == ActionQuit {
-		return m, tea.Quit
+		return m, m.quit()
 	}
 	if len(m.urls) == 0 {
 		m.setup = m.newSetup(false)
@@ -153,12 +178,25 @@ func (m appModel) startRun(res SetupResult) (tea.Model, tea.Cmd) {
 	if res.Action == ActionReview || len(planFilesOf(m.urls)) > 0 {
 		return m.startReview()
 	}
-	run, err := m.in.Start(m.cfg, m.urls)
-	if err != nil {
+	// Building the run can take a while (browser cookies are looked for), so it is not
+	// done here, where it would freeze the screen: the loading screen shows meanwhile.
+	m.starting = true
+	start, cfg, urls := m.in.Start, m.cfg, m.urls
+	return m, tea.Batch(loadingTick(), func() tea.Msg {
+		run, err := start(cfg, urls)
+		return runStartedMsg{run: run, err: err}
+	})
+}
+
+// runStarted shows the download screen of the run the host built, or says why not.
+func (m appModel) runStarted(msg runStartedMsg) (tea.Model, tea.Cmd) {
+	m.starting = false
+	if msg.err != nil {
 		m.setup = m.newSetup(false)
-		m.notice = "Cannot start the download: " + err.Error()
+		m.notice = "Cannot start the download: " + msg.err.Error()
 		return m, m.setup.Init()
 	}
+	run := msg.run
 	dm := downloadpage.NewEmbedded(run)
 	next, _ := dm.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 	m.run, m.download, m.downloading = run, next.(downloadpage.Model), true
@@ -191,7 +229,21 @@ func (m appModel) backToSetup() (tea.Model, tea.Cmd) {
 	return m, m.setup.Init()
 }
 
+// quit ends the app, telling the host first so it can close the window that shows it.
+func (m appModel) quit() tea.Cmd {
+	onQuit := m.in.OnQuit
+	return func() tea.Msg {
+		if onQuit != nil {
+			onQuit()
+		}
+		return tea.Quit()
+	}
+}
+
 func (m appModel) render() string {
+	if m.starting {
+		return loading.Render(loading.Progress{Spin: m.spin, Detail: "Getting ready"}, m.width, m.height)
+	}
 	if m.editing && !m.downloading {
 		return m.editor.Render()
 	}
