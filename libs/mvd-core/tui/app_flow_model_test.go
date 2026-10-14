@@ -73,7 +73,7 @@ func runNow(cmd tea.Cmd) []tea.Msg {
 				out = append(out, runNow(c)...)
 			}
 			return out
-		case setupFinishedMsg, downloadpage.FinishedMsg, runClosedMsg, planClosedMsg, editorpage.PlannedMsg, editorpage.LeaveMsg, editorpage.DownloadMsg, editorpage.DescribedMsg, editorpage.FilePickedMsg:
+		case setupFinishedMsg, runStartedMsg, downloadpage.FinishedMsg, runClosedMsg, planClosedMsg, editorpage.PlannedMsg, editorpage.LeaveMsg, editorpage.DownloadMsg, editorpage.DescribedMsg, editorpage.FilePickedMsg:
 			return []tea.Msg{msg}
 		}
 	case <-time.After(30 * time.Millisecond):
@@ -232,5 +232,41 @@ func TestAppModelShowsTheWholeListWhenTheSizeArrivesAfterTheProgramStarted(t *te
 
 	if !strings.Contains(out.String(), "1 https://www.youtube.com/playlist") {
 		t.Error("the list should start at its first line")
+	}
+}
+
+func TestAppModelShowsTheLoadingScreenWhileTheRunIsBuilt(t *testing.T) {
+	m, _ := appForTest(t, []string{"https://a"}, func(config.Config, []string) (Run, error) {
+		return newFakeRun(), nil
+	})
+	next, cmd := m.Update(key("ctrl+s"))
+	var start tea.Cmd
+	for _, msg := range runNow(cmd) {
+		next, start = next.Update(msg)
+	}
+	app := next.(appModel)
+	if !app.starting {
+		t.Fatal("should be starting")
+	}
+	if got := app.render(); !strings.Contains(got, "Loading playlists") {
+		t.Errorf("the loading screen is not shown:\n%s", got)
+	}
+	for _, msg := range runNow(start) {
+		next, _ = next.Update(msg)
+	}
+	if got := next.(appModel); got.starting || !got.downloading {
+		t.Errorf("should be on the download screen: %+v", got)
+	}
+}
+
+func TestQuittingTheScreensTellsTheHost(t *testing.T) {
+	quit := false
+	m := NewAppModel(AppInput{
+		Setup:  SetupInput{Cfg: config.Default(t.TempDir(), t.TempDir())},
+		OnQuit: func() { quit = true },
+	})
+	_, cmd := m.(appModel).startRun(SetupResult{Action: ActionQuit})
+	if _, ok := cmd().(tea.QuitMsg); !ok || !quit {
+		t.Errorf("quit command: host told %v", quit)
 	}
 }

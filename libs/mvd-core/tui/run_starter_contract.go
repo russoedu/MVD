@@ -9,4 +9,7 @@ type AppInput struct {
 	Editor EditorHost
 	// ReviewOnStart opens the playlist editor on the list at once, instead of the list.
 	ReviewOnStart bool
+	// OnQuit is called when the user quits the app from the setup screens, so a host that
+	// shows the program in a window can close it; nil for none.
+	OnQuit func()
 }

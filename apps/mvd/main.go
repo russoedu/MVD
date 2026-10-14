@@ -1,6 +1,6 @@
 // MVD desktop app: a window of its own that shows the terminal interface (the same
 // screens as the terminal app), carried over the window's own events with no server or
-// port, and that takes new URLs while it downloads. Closing the window quits. The terminal app is apps/mvd-tui; both share
+// port, and that takes new URLs while it downloads. Closing the window quits, and so does quitting from its screens. The terminal app is apps/mvd-tui; both share
 // libs/mvd-core.
 package main
 
@@ -141,6 +141,9 @@ func run(movedFrom string, askToMove bool, review string) error {
 		SaveFile: func(dir, name string) (string, bool, error) {
 			return folderdialog.Dialog{}.SaveFile(ctx, dir, name, "mvd", "MVD review")
 		},
+		// Quitting from the screens ends the program that runs them, and the window would
+		// otherwise stay open on a page with nothing behind it.
+		Quit:       stop,
 		Uninstall:  terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop),

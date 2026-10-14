@@ -47,6 +47,9 @@ type Host struct {
 	// SaveFile is the operating system's own save-file window, which the editor's save
 	// key shows; nil to ask for the path on the screen's bottom line.
 	SaveFile func(dir, name string) (string, bool, error)
+	// Quit is called when the person quits the app from its screens, so the window that
+	// shows them closes with it; nil for none.
+	Quit func()
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -71,6 +74,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 			Setup:         tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
 			Start:         host.Start,
 			ReviewOnStart: reviewNow,
+			OnQuit:        host.Quit,
 			Editor: tui.EditorHost{
 				Plan:         host.Plan,
 				PlanDownload: host.PlanDownload,

@@ -29,6 +29,7 @@ func sampleModel(t *testing.T) Model {
 	t.Helper()
 	c := &fakeController{events: make(chan interface{}), sources: []engine.PlaylistSource{{Index: 0, URL: "https://a"}, {Index: 1, URL: "https://b"}, {Index: 2, URL: "https://c"}}}
 	m := New(c)
+	m.loaded = true
 	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "90s UK Dance Hits", Entries: []engine.EntryInfo{
 		{ID: 0, Playlist: 0, Index: 1, VideoID: "rnlp_avexYQ", Title: "You Don't Know Me (feat. Duane Harden) (Radio Edit)", Channel: "Armand Van Helden - Topic"},
 		{ID: 1, Playlist: 0, Index: 2, VideoID: "LIWrcD4ImwA", Title: "Don't Call Me Baby", Channel: "Madison Avenue - Topic"},
