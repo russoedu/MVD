@@ -62,7 +62,7 @@ type Options struct {
 	// song to the search again, without that video; an error only means it could not be
 	// checked. The file itself is never changed.
 	CheckDownload func(ctx context.Context, path string) (problem string, err error)
-	Workers       int    // videos in flight across all playlists
+	Workers       int    // the most videos in flight across all playlists; fewer while the service limits requests
 	LogPath       string // "" disables the log file
 	Resolver      OfficialResolver
 	// Tracks, when set, lists the playlists of another service and finds the
@@ -111,6 +111,8 @@ type notFoundRow struct{ playlist, artist, title, url string }
 // through Events().
 type Engine struct {
 	opts    Options
+	// throttle keeps the downloads at or below Workers, fewer while the service limits requests.
+	throttle *downloadThrottle
 	sources []PlaylistSource
 
 	events chan interface{}
@@ -154,6 +156,7 @@ func New(opts Options) (*Engine, error) {
 		wake:           make(chan struct{}, 1),
 		claims:         make(map[int]map[string]int),
 		playlistTitles: make(map[int]string),
+		throttle:       newDownloadThrottle(opts.Workers),
 	}
 	for i, u := range opts.URLs {
 		e.sources = append(e.sources, PlaylistSource{Index: i, URL: u})
@@ -746,7 +749,7 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 	immediateUsed := false
 	for {
-		err := e.download(ctx, en)
+		err := e.throttledDownload(ctx, en)
 		if err == nil {
 			e.setState(en, StateDone, "")
 			return
@@ -813,6 +816,29 @@ func (e *Engine) process(ctx context.Context, id int) {
 			return
 		}
 	}
+}
+
+// throttledDownload is download under the throttle: it waits for a downloader the
+// current limit allows, and tells the throttle how the download went.
+func (e *Engine) throttledDownload(ctx context.Context, en *engineEntry) error {
+	release, ok := e.throttle.acquire(ctx)
+	if !ok {
+		return ctx.Err()
+	}
+	defer release()
+
+	err := e.download(ctx, en)
+	var change string
+	switch {
+	case err == nil:
+		change = e.throttle.succeeded()
+	case isRateLimited(err.Error()):
+		change = e.throttle.rateLimited()
+	}
+	if change != "" {
+		e.log(en.info.Playlist, -1, "%s", change)
+	}
+	return err
 }
 
 // download runs yt-dlp for the entry's current target, turning its output

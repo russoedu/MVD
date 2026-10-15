@@ -714,7 +714,7 @@ Settings that shape the pipeline (the rest are in `NORMAL-README.md`):
 | `list_workers` | 4 | Playlists listed at once |
 | `name_workers` | 8 | Uploads named at once |
 | `pick_workers` | 4 | Versions picked at once |
-| `max_concurrent_downloads` | 4 | Videos downloading at once |
+| `max_concurrent_downloads` | 4 | The most videos downloading at once; lowered while 429/409 answers come, raised back as they stop |
 | `concurrent_fragments` | 4 | Fragments of one video fetched in parallel |
 | `download_official_music_video` | false | Turn the whole lookup on |
 | `auto_retry` | true | Immediate retries and the sweep |
