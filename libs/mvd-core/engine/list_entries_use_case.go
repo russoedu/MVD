@@ -12,7 +12,7 @@ import (
 // parallel to the entries; for yt-dlp they are nil.
 func (e *Engine) listEntries(ctx context.Context, src PlaylistSource) ([]ytdlp.PlaylistEntry, []Track, error) {
 	if e.opts.Tracks == nil || !e.opts.Tracks.Handles(src.URL) {
-		entries, err := ytdlp.ListPlaylist(ctx, e.opts.YtDlp, src.URL, e.opts.ExtraArgs)
+		entries, err := ytdlp.ListPlaylist(ctx, e.opts.YtDlp, src.URL, e.settings().ExtraArgs)
 		return entries, nil, err
 	}
 
@@ -56,7 +56,7 @@ func (e *Engine) findTrack(ctx context.Context, en *engineEntry) bool {
 		e.mu.Unlock()
 		e.setState(en, StateFailed, err.Error())
 		return false
-	case id == "" && e.opts.OfficialOnly:
+	case id == "" && e.settings().OfficialOnly:
 		// No video at all is no official video either.
 		e.markNotFound(en)
 		return false
