@@ -42,7 +42,31 @@ type Entry struct {
 
 	// Downloaded is true once the song has been downloaded, so the next time it is skipped.
 	Downloaded bool `json:"downloaded,omitempty"`
+
+	// State is how far the song has got, as the run last reported it (see the State
+	// constants), and Error why it failed. A song that is not Downloaded goes back in
+	// the queue when the list is run again.
+	State string `json:"state,omitempty"`
+	Error string `json:"error,omitempty"`
 }
+
+// How far a song has got.
+const (
+	// StateWaiting is a song nothing has been done to yet.
+	StateWaiting = ""
+	// StatePlanned has its version chosen and waits for a go.
+	StatePlanned = "planned"
+	// StateQueued waits for a downloader.
+	StateQueued = "queued"
+	// StateDownloading is being fetched.
+	StateDownloading = "downloading"
+	// StateDone has been downloaded.
+	StateDone = "done"
+	// StateFailed could not be downloaded; Error says why.
+	StateFailed = "failed"
+	// StateNotFound is a song with no official video, when only those are wanted.
+	StateNotFound = "not found"
+)
 
 // Key identifies a song across files and runs: the playlist and the upload in it.
 func (e Entry) Key() string {

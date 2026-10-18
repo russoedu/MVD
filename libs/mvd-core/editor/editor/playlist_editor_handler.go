@@ -244,7 +244,7 @@ func (m Model) autosave() {
 	if m.host.SessionFile == "" || m.planning {
 		return
 	}
-	_ = playlistfile.Save(m.host.SessionFile, playlistfile.File{Entries: m.rows})
+	_ = playlistfile.Save(m.host.SessionFile, playlistfile.FromSongs(m.rows))
 }
 
 // withDownloaded marks the songs a download finished, and saves.
@@ -552,7 +552,7 @@ func (m Model) saveFile(path string) (Model, tea.Cmd) {
 	if filepath.Ext(path) == "" {
 		path += playlistfile.Extension
 	}
-	if err := playlistfile.Save(path, playlistfile.File{Entries: m.rows}); err != nil {
+	if err := playlistfile.Save(path, playlistfile.FromSongs(m.rows)); err != nil {
 		m.Flash("cannot save: " + err.Error())
 		return m, nil
 	}
@@ -577,7 +577,7 @@ func (m Model) loadFile(path string) (Model, tea.Cmd) {
 		m.Flash("cannot open it: " + err.Error())
 		return m, nil
 	}
-	m.rows = file.Entries
+	m.rows = file.Songs()
 	m.sel, m.top = 0, 0
 	m.autosave()
 	m.Flash(fmt.Sprintf("opened %d songs from %s", len(m.rows), filepath.Base(path)))

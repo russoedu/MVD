@@ -192,7 +192,7 @@ func TestReviewPlansTheListThenDownloadsWhatWasConfirmedOrReplaced(t *testing.T)
 		t.Errorf("downloaded flags %+v", back.editor.Rows())
 	}
 	saved, err := playlistfile.Load(filepath.Join(f.dir, "plan.mvd"))
-	if err != nil || len(saved.Entries) != 3 || !saved.Entries[0].Downloaded || saved.Entries[1].ChosenID != "MINE0000001" {
+	if err != nil || len(saved.Songs()) != 3 || !saved.Songs()[0].Downloaded || saved.Songs()[1].ChosenID != "MINE0000001" {
 		t.Fatalf("the session file: %+v, %v", saved, err)
 	}
 
@@ -223,7 +223,7 @@ func TestAReviewFromLastTimeIsOfferedAndBroughtAlong(t *testing.T) {
 		{Playlist: "Mine", PlaylistURL: "https://a", Upload: ytdlp.PlaylistEntry{ID: "up00000001", Title: "One (Radio Edit)", PlaylistIndex: 1}, TargetID: "OFFICIAL001", Kind: "official", Decision: playlistfile.DecisionConfirmed, Downloaded: true},
 		{Playlist: "Mine", PlaylistURL: "https://a", Upload: ytdlp.PlaylistEntry{ID: "up00000002", Title: "Two", PlaylistIndex: 2}, TargetID: "BETTER00002", Kind: "better", Decision: playlistfile.DecisionSkipped},
 	}
-	if err := playlistfile.Save(filepath.Join(f.dir, "plan.mvd"), playlistfile.File{Entries: last}); err != nil {
+	if err := playlistfile.Save(filepath.Join(f.dir, "plan.mvd"), playlistfile.FromSongs(last)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -250,7 +250,7 @@ func TestAReviewFromLastTimeIsOfferedAndBroughtAlong(t *testing.T) {
 func TestAReviewFromLastTimeCanBeLeftBehind(t *testing.T) {
 	f := newEditorFixture(t, []string{"https://a"}, samePlan())
 	last := []playlistfile.Entry{{Playlist: "Mine", PlaylistURL: "https://a", Upload: ytdlp.PlaylistEntry{ID: "up00000001"}, TargetID: "X", Kind: "official", Decision: playlistfile.DecisionSkipped}}
-	if err := playlistfile.Save(filepath.Join(f.dir, "plan.mvd"), playlistfile.File{Entries: last}); err != nil {
+	if err := playlistfile.Save(filepath.Join(f.dir, "plan.mvd"), playlistfile.FromSongs(last)); err != nil {
 		t.Fatal(err)
 	}
 	f.press("ctrl+e", "n")
@@ -267,7 +267,7 @@ func TestASavedPlanInTheListOpensTheEditorWithoutPlanning(t *testing.T) {
 	rows := []playlistfile.Entry{
 		{Playlist: "Mine", PlaylistURL: "https://a", Upload: ytdlp.PlaylistEntry{ID: "up00000001", Title: "One"}, TargetID: "OFFICIAL001", Kind: "official", Decision: playlistfile.DecisionConfirmed},
 	}
-	if err := playlistfile.Save(path, playlistfile.File{Entries: rows}); err != nil {
+	if err := playlistfile.Save(path, playlistfile.FromSongs(rows)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -323,7 +323,7 @@ func TestSaveAndOpenAPlanFile(t *testing.T) {
 	f.m = drive(t, f.m, key("enter"))
 
 	saved, err := playlistfile.Load(target + ".mvd")
-	if err != nil || len(saved.Entries) != 3 || saved.Entries[0].Decision != playlistfile.DecisionConfirmed {
+	if err != nil || len(saved.Songs()) != 3 || saved.Songs()[0].Decision != playlistfile.DecisionConfirmed {
 		t.Fatalf("saved %+v, %v", saved, err)
 	}
 
@@ -345,7 +345,7 @@ func TestTheFileWindowOfTheSystemOpensTheFileItReturns(t *testing.T) {
 	f.planDone()
 	f.press("c", "c")
 	target := filepath.Join(f.dir, "chunk.mvd")
-	if err := playlistfile.Save(target, playlistfile.File{Entries: f.app().editor.Rows()}); err != nil {
+	if err := playlistfile.Save(target, playlistfile.FromSongs(f.app().editor.Rows())); err != nil {
 		t.Fatal(err)
 	}
 	f.press("home", "z")
@@ -437,7 +437,7 @@ func TestTheSaveWindowOfTheSystemWritesTheFileItReturns(t *testing.T) {
 		t.Error("no line should be asked for when the system's window is used")
 	}
 	saved, err := playlistfile.Load(target + ".mvd")
-	if err != nil || len(saved.Entries) != 3 || saved.Entries[0].Decision != playlistfile.DecisionConfirmed {
+	if err != nil || len(saved.Songs()) != 3 || saved.Songs()[0].Decision != playlistfile.DecisionConfirmed {
 		t.Fatalf("saved %+v, %v", saved, err)
 	}
 

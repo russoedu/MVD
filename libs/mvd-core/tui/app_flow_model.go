@@ -284,7 +284,7 @@ func (m appModel) startReview() (tea.Model, tea.Cmd) {
 		if err != nil {
 			return m.reviewRefused("Cannot open " + f + ": " + err.Error())
 		}
-		brought = playlisteditor.Merge(brought, file.Entries)
+		brought = playlisteditor.Merge(brought, file.Songs())
 	}
 	for _, u := range m.urls {
 		if !files[u] {
@@ -303,9 +303,9 @@ func (m appModel) startReview() (tea.Model, tea.Cmd) {
 	var saved []playlistfile.Entry
 	if len(brought) == 0 && m.in.Editor.SessionFile != "" {
 		if file, err := playlistfile.Load(m.in.Editor.SessionFile); err == nil {
-			for _, e := range file.Entries {
+			for _, e := range file.Songs() {
 				if !e.Downloaded {
-					saved = file.Entries
+					saved = file.Songs()
 					break
 				}
 			}

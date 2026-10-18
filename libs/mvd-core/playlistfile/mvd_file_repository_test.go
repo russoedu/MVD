@@ -15,15 +15,15 @@ import (
 func sample() File {
 	return File{
 		Created: time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC),
-		Entries: []Entry{
+		Items: []Item{{Source: "https://youtube.com/playlist?list=M", Songs: []Entry{
 			{
 				Playlist: "Mine", PlaylistURL: "https://youtube.com/playlist?list=M",
 				Upload:   ytdlp.PlaylistEntry{ID: "aaaaaaaaaa1", Title: "Café ☕ (Live)", Channel: "Artist - Topic", PlaylistIndex: 1},
 				TargetID: "OFFICIAL001", Kind: "official", Reason: "linked from the description", Artist: "Artist", Title: "Café",
 				Decision: DecisionReplaced, ChosenID: "CHOSEN00001", ChosenTitle: "Café (official)", Downloaded: true,
 			},
-			{Playlist: "Mine", PlaylistURL: "https://youtube.com/playlist?list=M", Upload: ytdlp.PlaylistEntry{ID: "bbbbbbbbbb1", Title: "Two", PlaylistIndex: 2}, TargetID: "bbbbbbbbbb1", Kind: "original"},
-		},
+			{Playlist: "Mine", PlaylistURL: "https://youtube.com/playlist?list=M", Upload: ytdlp.PlaylistEntry{ID: "bbbbbbbbbb1", Title: "Two", PlaylistIndex: 2}, TargetID: "bbbbbbbbbb1", Kind: "original", State: StateQueued, Error: "slow"},
+		}}},
 	}
 }
 
@@ -37,11 +37,11 @@ func TestAFileReadsBackAsItWasWritten(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := sample()
-	if !got.Created.Equal(want.Created) || len(got.Entries) != 2 {
+	if !got.Created.Equal(want.Created) || len(got.Items) != 1 || got.Items[0].Source != want.Items[0].Source || len(got.Songs()) != 2 {
 		t.Fatalf("got %+v", got)
 	}
-	if got.Entries[0] != want.Entries[0] || got.Entries[1] != want.Entries[1] {
-		t.Errorf("entries differ:\n got %+v\nwant %+v", got.Entries, want.Entries)
+	if got.Songs()[0] != want.Songs()[0] || got.Songs()[1] != want.Songs()[1] {
+		t.Errorf("songs differ:\n got %+v\nwant %+v", got.Songs(), want.Songs())
 	}
 }
 
@@ -60,8 +60,8 @@ func TestAFileIsCompressedJSONLines(t *testing.T) {
 	var plain bytes.Buffer
 	_, _ = plain.ReadFrom(zr)
 	lines := strings.Split(strings.TrimSpace(plain.String()), "\n")
-	if len(lines) != 3 || !strings.HasPrefix(lines[0], `{"mvd":1`) {
-		t.Errorf("want a header and two songs as JSON lines, got %q", lines)
+	if len(lines) != 2 || !strings.HasPrefix(lines[0], `{"mvd":2`) {
+		t.Errorf("want a header and one item as JSON lines, got %q", lines)
 	}
 }
 
@@ -71,12 +71,12 @@ func TestSaveAndLoadGoThroughAFileAndReplaceAnOldOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := sample()
-	f.Entries = f.Entries[:1]
+	f.Items[0].Songs = f.Items[0].Songs[:1]
 	if err := Save(path, f); err != nil {
 		t.Fatal(err)
 	}
 	got, err := Load(path)
-	if err != nil || len(got.Entries) != 1 {
+	if err != nil || len(got.Songs()) != 1 {
 		t.Fatalf("%+v, %v", got, err)
 	}
 	if left, _ := filepath.Glob(filepath.Join(filepath.Dir(path), ".mvd-*")); len(left) != 0 {
@@ -99,7 +99,8 @@ func TestFilesThatAreNotMVDFilesAreRefusedWithAReason(t *testing.T) {
 	}{
 		"text":      {[]byte("just some text"), "not an MVD file"},
 		"gzip":      {gzipped("{\"hello\":1}\n"), "not an MVD file"},
-		"newer":     {gzipped("{\"mvd\":99}\n"), "update MVD"},
+		"newer":     {gzipped("{\"mvd\":99}\n"), "another version"},
+		"older":     {gzipped("{\"mvd\":1}\n"), "another version"},
 		"empty":     {nil, "not an MVD file"},
 		"empty-zip": {gzipped(""), "not an MVD file"},
 	} {
@@ -127,5 +128,20 @@ func TestTheKeyOfASongIsThePlaylistAndTheUpload(t *testing.T) {
 	t2 := Entry{PlaylistURL: "u", Upload: ytdlp.PlaylistEntry{Title: "Other", Channel: "Artist", PlaylistIndex: 4}}
 	if t1.Key() == t2.Key() {
 		t.Error("two songs of another service share a key")
+	}
+}
+
+func TestFromSongsMakesOneItemPerPlaylistInOrder(t *testing.T) {
+	songs := []Entry{
+		{PlaylistURL: "a", Upload: ytdlp.PlaylistEntry{ID: "1"}},
+		{PlaylistURL: "b", Upload: ytdlp.PlaylistEntry{ID: "2"}},
+		{PlaylistURL: "a", Upload: ytdlp.PlaylistEntry{ID: "3"}},
+	}
+	f := FromSongs(songs)
+	if got := f.Sources(); len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("sources %v", got)
+	}
+	if len(f.Items[0].Songs) != 2 || f.Songs()[1].Upload.ID != "3" {
+		t.Errorf("songs %+v", f.Songs())
 	}
 }
