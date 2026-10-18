@@ -1,30 +1,30 @@
-[1;38;2;255;0;127m MVD · Advanced[m                                                                                     
-  Extra yt-dlp args             [38;2;0;240;255m--proxy http://x[m                                                    
-[38;2;255;0;127m▸ [m[1;38;2;229;231;235;48;2;59;15;42mParallel fragments per video[m  [38;2;0;240;255m4[m                                                                   
-  Auto Retry                    [38;2;0;240;255myes[m                                                                 
-                                                                                                    
-[38;2;107;114;128mThese are passed straight to yt-dlp. Parallel fragments and the cookie[m                              
-[38;2;107;114;128mflags are already handled; only add things you understand.[m                                          
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
- [1;38;2;255;230;0m↑↓[m [38;2;107;114;128mmove[m  [1;38;2;255;230;0menter[m [38;2;107;114;128medit[m  [1;38;2;255;230;0ms[m [38;2;107;114;128msave[m  [1;38;2;255;230;0mesc[m [38;2;107;114;128mback[m                                                              
+[38;2;255;0;127;1m MVD · Advanced[m
+[38;2;255;0;127m  [mExtra yt-dlp args             [38;2;0;240;255m--proxy http://x[m
+[38;2;255;0;127m▸ [38;2;229;231;235;48;2;59;15;42;1mParallel fragments per video[m  [38;2;0;240;255m4[m
+[38;2;255;0;127m  [mAuto Retry                    [38;2;0;240;255myes[m
+[38;2;255;0;127m  [mRetry cycles                  [38;2;0;240;255m30[m
+[38;2;255;0;127m  [mRetry wait (s x attempt)      [38;2;0;240;255m30  (30s, 60s, 90s, ...)[m
+
+[38;2;107;114;128mThese are passed straight to yt-dlp. Parallel fragments and the cookie[m
+[38;2;107;114;128mflags are already handled; only add things you understand.[m
+
+[38;2;107;114;128mRetry wait is multiplied by the attempt: with 10 seconds the first retry[m
+[38;2;107;114;128mwaits 10 s, the second 20 s, the third 30 s, and so on, up to the cycles.[m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ [38;2;255;230;0;1m↑↓[m [38;2;107;114;128mmove[m  [38;2;255;230;0;1menter[m [38;2;107;114;128medit[m  [38;2;255;230;0;1ms[m [38;2;107;114;128msave[m  [38;2;255;230;0;1mesc[m [38;2;107;114;128mback[m

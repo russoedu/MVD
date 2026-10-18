@@ -16,12 +16,12 @@ import (
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
-// defaultRetryCooldown is how long the engine waits before the deferred
-// retry sweep, so rate-limit windows have time to reset.
-const defaultRetryCooldown = 20 * time.Second
+// defaultRetryWait is the wait before the first retry cycle; each further cycle waits
+// that long again, once more (the second twice as long, the third three times).
+const defaultRetryWait = 30 * time.Second
 
-// maxSweeps is how many deferred retry passes a failed entry gets.
-const maxSweeps = 1
+// defaultRetryCycles is how many retry cycles a failed entry gets.
+const defaultRetryCycles = 30
 
 // Options configures an Engine.
 type Options struct {
@@ -68,10 +68,14 @@ type Options struct {
 	// Tracks, when set, lists the playlists of another service and finds the
 	// YouTube video of each track.
 	Tracks TrackSource
-	// AutoRetry turns on immediate one-off retries and the deferred sweep.
+	// AutoRetry turns on the immediate one-off retry and the retry cycles.
 	AutoRetry bool
-	// RetryCooldown is the wait before each deferred sweep. 0 uses the default.
-	RetryCooldown time.Duration
+	// RetryCycles is how many times a failed download is retried once the backlog has
+	// drained. 0 uses 30.
+	RetryCycles int
+	// RetryWait is the wait before the first cycle, multiplied by the number of the cycle:
+	// with 10 seconds the first retry waits 10, the second 20, and so on. 0 uses 30 seconds.
+	RetryWait time.Duration
 }
 
 type engineEntry struct {
@@ -96,8 +100,8 @@ type engineEntry struct {
 	userChose bool
 	track     *Track // set when the entry is a song with no video yet
 	err       string
-	deferred  bool // failed with a transient error, eligible for the sweep
-	sweeps    int  // deferred retry passes already spent
+	deferred  bool // failed with an error a later retry may fix, eligible for a cycle
+	sweeps    int  // retry cycles already spent
 }
 
 // namedSong is a song as a music database named it.
@@ -357,19 +361,19 @@ func orDefault(n, fallback int) int {
 	return n
 }
 
-// coordinate waits for the queue to drain and then either runs a deferred
-// retry sweep (after a cooldown) or emits the final idle event.
+// coordinate waits for the queue to drain and then either runs a retry cycle (after a
+// wait that grows with the cycle) or emits the final idle event.
 func (e *Engine) coordinate(ctx context.Context) {
-	cooldown := e.opts.RetryCooldown
-	if cooldown <= 0 {
-		cooldown = defaultRetryCooldown
+	wait := e.opts.RetryWait
+	if wait <= 0 {
+		wait = defaultRetryWait
 	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-e.drained:
-			ids := e.sweepCandidates()
+			ids, cycle := e.sweepCandidates()
 			if len(ids) == 0 {
 				e.markIdle()
 				continue
@@ -377,7 +381,8 @@ func (e *Engine) coordinate(ctx context.Context) {
 			e.mu.Lock()
 			pl := e.entries[ids[0]].info.Playlist
 			e.mu.Unlock()
-			e.log(pl, -1, "cooling down %s before retrying %d rate-limited download(s)", cooldown, len(ids))
+			cooldown := wait * time.Duration(cycle)
+			e.log(pl, -1, "retry %d of %d: waiting %s before retrying %d failed download(s)", cycle, e.retryCycles(), cooldown, len(ids))
 			if !sleepCtx(ctx, cooldown) {
 				return
 			}
@@ -387,6 +392,9 @@ func (e *Engine) coordinate(ctx context.Context) {
 		}
 	}
 }
+
+// retryCycles is how many retry cycles an entry gets.
+func (e *Engine) retryCycles() int { return orDefault(e.opts.RetryCycles, defaultRetryCycles) }
 
 // Retry re-queues a failed entry. It returns false when the entry is not
 // in a failed state.
@@ -803,6 +811,10 @@ func (e *Engine) process(ctx context.Context, id int) {
 				e.setState(en, StateDownloading, "")
 				continue
 			}
+			// An error nobody has classified may be a glitch that a later cycle clears.
+			e.mu.Lock()
+			en.deferred = true
+			e.mu.Unlock()
 			e.setState(en, StateFailed, err.Error())
 			return
 		case ClassDeferred:
@@ -999,21 +1011,26 @@ func (e *Engine) markIdle() {
 	}
 }
 
-// sweepCandidates returns the failed entries still eligible for a deferred
-// retry pass.
-func (e *Engine) sweepCandidates() []int {
+// sweepCandidates returns the failed entries still owed a retry cycle, and the number of
+// the cycle they are about to get: the lowest count among them plus one, so the wait
+// grows with the attempts and starts over for entries that fail later.
+func (e *Engine) sweepCandidates() ([]int, int) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if !e.opts.AutoRetry {
-		return nil
+		return nil, 0
 	}
 	var ids []int
+	cycle := 0
 	for _, en := range e.entries {
-		if en.deferred && en.state == StateFailed && en.sweeps < maxSweeps {
+		if en.deferred && en.state == StateFailed && en.sweeps < e.retryCycles() {
 			ids = append(ids, en.info.ID)
+			if cycle == 0 || en.sweeps+1 < cycle {
+				cycle = en.sweeps + 1
+			}
 		}
 	}
-	return ids
+	return ids, cycle
 }
 
 // autoRetry re-queues a deferred failure for the sweep, counting the pass.
@@ -1032,7 +1049,7 @@ func (e *Engine) autoRetry(id int) {
 	e.mu.Unlock()
 
 	e.emit(EvEntryState{Entry: id, State: StateQueued, TargetID: en.targetID, Official: en.official, Better: en.better})
-	e.log(en.info.Playlist, id, "auto-retry after cooldown")
+	e.log(en.info.Playlist, id, "retrying after the wait")
 	e.nameQueue.Push(id)
 }
 

@@ -32,8 +32,8 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 3, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:28:selbg=@Selected:selfg=@Text:selbold,Gap:2,Value:ellipsis:fg=@Focus", "focused": "true", "gap": "0", "rows": "▸ ,Extra yt-dlp args,,(none);  ,Parallel fragments per video,,4;  ,Auto Retry,,yes", "styles": "selected,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 1, cuppa.Cells(((float64(w) * 100.0 / 100.0) - 2.0)), 3
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Items", X: 0, Y: 1, W: 98, H: 5, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Mark:2:fg=@Accent,Name:28:selbg=@Selected:selfg=@Text:selbold,Gap:2,Value:ellipsis:fg=@Focus", "focused": "true", "gap": "0", "rows": "▸ ,Extra yt-dlp args,,(none);  ,Parallel fragments per video,,4;  ,Auto Retry,,yes;  ,Retry cycles,,30;  ,Retry wait (s x attempt),,30", "styles": "selected,normal,normal,normal,normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, 1, cuppa.Cells(((float64(w) * 100.0 / 100.0) - 2.0)), 5
 		}},
 		Event: "Pick",
 		Late: func(p Props, v map[string]string, w, h int) {
@@ -76,8 +76,8 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Hint 1", X: 0, Y: 5, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "These are passed straight to yt-dlp. Parallel fragments and the cookie", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 5, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Hint 1", X: 0, Y: 7, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "These are passed straight to yt-dlp. Parallel fragments and the cookie", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, 7, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
@@ -87,8 +87,30 @@ var parts = append(master.PartsFor(masterProps), []cuppa.ScreenPart[Props]{
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Hint 2", X: 0, Y: 6, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "flags are already handled; only add things you understand.", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
-			return 0, 6, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Hint 2", X: 0, Y: 8, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "flags are already handled; only add things you understand.", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, 8, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Apply: func(p Props, v map[string]string, w, h int) bool {
+			if p.Palette.Dim != "" {
+				v["color"] = p.Palette.Dim
+			}
+			return true
+		},
+	},
+	{
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Hint 3", X: 0, Y: 10, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "Retry wait is multiplied by the attempt: with 10 seconds the first retry", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, 10, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
+		}},
+		Apply: func(p Props, v map[string]string, w, h int) bool {
+			if p.Palette.Dim != "" {
+				v["color"] = p.Palette.Dim
+			}
+			return true
+		},
+	},
+	{
+		Placed: cuppa.Placed{Kind: "lipgloss.label", Name: "Hint 4", X: 0, Y: 11, W: 100, H: 1, Props: map[string]string{"align": "left", "background": "", "bold": "false", "color": "#6b7280", "text": "waits 10 s, the second 20 s, the third 30 s, and so on, up to the cycles.", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 1, MinH: 1, Fit: func(w, h int) (x, y, cw, ch int) {
+			return 0, 11, cuppa.Cells((float64(w) * 100.0 / 100.0)), 1
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
@@ -248,7 +270,7 @@ func Default() Props {
 		Title:     " MVD · Advanced",
 		Hints:     []HintsHint{{Key: "↑↓", Label: "move"}, {Key: "enter", Label: "edit"}, {Key: "s", Label: "save"}, {Key: "esc", Label: "back"}},
 		ShowKeys:  true,
-		Items:     []ItemsRow{{Mark: "▸ ", Name: "Extra yt-dlp args", Gap: "", Value: "(none)", Style: cuppa.RowSelected}, {Mark: "  ", Name: "Parallel fragments per video", Gap: "", Value: "4", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Auto Retry", Gap: "", Value: "yes", Style: cuppa.RowNormal}},
+		Items:     []ItemsRow{{Mark: "▸ ", Name: "Extra yt-dlp args", Gap: "", Value: "(none)", Style: cuppa.RowSelected}, {Mark: "  ", Name: "Parallel fragments per video", Gap: "", Value: "4", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Auto Retry", Gap: "", Value: "yes", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Retry cycles", Gap: "", Value: "30", Style: cuppa.RowNormal}, {Mark: "  ", Name: "Retry wait (s x attempt)", Gap: "", Value: "30", Style: cuppa.RowNormal}},
 		ItemsRows: nil,
 		Palette:   DefaultPalette(),
 	}

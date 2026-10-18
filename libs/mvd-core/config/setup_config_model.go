@@ -38,6 +38,11 @@ type Config struct {
 	// address of the video, when there is one).
 	SaveNotFound bool
 	AutoRetry    bool
+	// RetryCycles is how many times a failed download is retried.
+	RetryCycles int
+	// RetryWaitSeconds is the wait before the first retry, multiplied by the number of
+	// the retry: with 10, the first waits 10 seconds, the second 20, and so on.
+	RetryWaitSeconds int
 
 	// CookiesFromBrowser pins one yt-dlp browser spec; empty means none pinned.
 	CookiesFromBrowser string
@@ -74,6 +79,8 @@ func Default(appDir, downloadsDir string) Config {
 		OfficialVideo:          OfficialYes,
 		SaveNotFound:           true,
 		AutoRetry:              true,
+		RetryCycles:            30,
+		RetryWaitSeconds:       30,
 		CookiesFromBrowser:     "",
 		AutoCookies:            true,
 		CookiesFile:            filepath.Join(appDir, "cookies.txt"),

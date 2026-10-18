@@ -16,6 +16,9 @@ func TestDefaults(t *testing.T) {
 	if d.MaxConcurrentDownloads != 4 || d.ConcurrentFragments != 4 || !d.AutoRetry || !d.AutoCookies {
 		t.Errorf("unexpected defaults: %+v", d)
 	}
+	if d.RetryCycles != 30 || d.RetryWaitSeconds != 30 {
+		t.Errorf("retry defaults should be 30 cycles of 30 s, got %d and %d", d.RetryCycles, d.RetryWaitSeconds)
+	}
 	if d.CookiesFile != filepath.Join("/app", "cookies.txt") || d.LogDir != "/app" || !d.CreateLogFile {
 		t.Errorf("path defaults wrong: %+v", d)
 	}
