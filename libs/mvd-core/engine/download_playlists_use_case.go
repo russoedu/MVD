@@ -76,6 +76,9 @@ type Options struct {
 	// RetryWait is the wait before the first cycle, multiplied by the number of the cycle:
 	// with 10 seconds the first retry waits 10, the second 20, and so on. 0 uses 30 seconds.
 	RetryWait time.Duration
+	// StartTimeout is how long a download may take to begin fetching data before it is
+	// stopped and counted as a failure the retry cycles take up. 0 waits as long as it takes.
+	StartTimeout time.Duration
 }
 
 type engineEntry struct {
@@ -887,7 +890,7 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	}
 	args := fetch.DownloadArgs(options, append(trailing, "https://www.youtube.com/watch?v="+target)...)
 
-	err := fetch.Download(ctx, e.opts.YtDlp, args, func(line string) {
+	err := fetch.DownloadWithStartTimeout(ctx, e.opts.YtDlp, args, e.opts.StartTimeout, func(line string) {
 		if p, ok := fetch.ParseProgressLine(line); ok {
 			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA, Parts: partsInFlight(p, e.opts.ConcurrentFragments)})
 			return

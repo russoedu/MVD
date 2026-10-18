@@ -9,6 +9,8 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
 )
@@ -17,6 +19,26 @@ import (
 // combined stdout and stderr to onLine. When yt-dlp fails, the returned
 // error carries its last "ERROR:" line.
 func Download(ctx context.Context, bin string, args []string, onLine func(line string)) error {
+	return DownloadWithStartTimeout(ctx, bin, args, 0, onLine)
+}
+
+// DownloadWithStartTimeout is Download that gives up on a download which has not begun
+// to fetch data (no progress line) within startTimeout: yt-dlp is stopped and the error
+// says it timed out. 0 waits as long as it takes.
+func DownloadWithStartTimeout(parent context.Context, bin string, args []string, startTimeout time.Duration, onLine func(line string)) error {
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
+	var timedOut atomic.Bool
+	var started atomic.Bool
+	if startTimeout > 0 {
+		timer := time.AfterFunc(startTimeout, func() {
+			if !started.Load() {
+				timedOut.Store(true)
+				cancel()
+			}
+		})
+		defer timer.Stop()
+	}
 	cmd := exec.CommandContext(ctx, bin, args...)
 	procwindow.Hide(cmd)
 	pr, pw := io.Pipe()
@@ -42,6 +64,9 @@ func Download(ctx context.Context, bin string, args []string, onLine func(line s
 			if strings.HasPrefix(line, "ERROR:") {
 				lastError = strings.TrimSpace(strings.TrimPrefix(line, "ERROR:"))
 			}
+			if _, ok := ParseProgressLine(line); ok {
+				started.Store(true)
+			}
 			onLine(line)
 		}
 	}()
@@ -51,6 +76,9 @@ func Download(ctx context.Context, bin string, args []string, onLine func(line s
 	<-scanDone
 
 	if waitErr != nil {
+		if timedOut.Load() && parent.Err() == nil {
+			return fmt.Errorf("timed out: the download did not start within %s", startTimeout)
+		}
 		if ctx.Err() != nil {
 			return fmt.Errorf("cancelled")
 		}

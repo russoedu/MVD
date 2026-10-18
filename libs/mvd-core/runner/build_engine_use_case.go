@@ -100,6 +100,7 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 		LogPath:             cfg.LogFile(),
 		AutoRetry:           cfg.AutoRetry,
 		RetryCycles:         cfg.RetryCycles,
+		StartTimeout:        time.Duration(cfg.StartTimeoutSeconds) * time.Second,
 		RetryWait:           time.Duration(cfg.RetryWaitSeconds) * time.Second,
 		PlanOnly:            planOnly,
 		Plan:                plan,

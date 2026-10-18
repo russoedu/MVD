@@ -24,9 +24,9 @@ const (
 	Cancel
 )
 
-const advItemCount = 5
+const advItemCount = 6
 
-var advLabels = []string{"Extra yt-dlp args", "Parallel fragments per video", "Auto Retry", "Retry cycles", "Retry wait (s x attempt)"}
+var advLabels = []string{"Extra yt-dlp args", "Parallel fragments per video", "Auto Retry", "Retry cycles", "Retry wait (s x attempt)", "Start timeout (s)"}
 
 // Model is the "if you know what you're doing" screen: raw yt-dlp
 // args, the fragment count and auto-retry.
@@ -119,7 +119,7 @@ func (m *Model) activate() {
 		m.mode = settings.EditNumber
 	case 2:
 		m.cfg.AutoRetry = !m.cfg.AutoRetry
-	case 3, 4:
+	case 3, 4, 5:
 		m.input.SetValue(strconv.Itoa(m.current()))
 		m.input.CursorEnd()
 		m.input.Focus()
@@ -142,6 +142,8 @@ func (m Model) current() int {
 		return m.cfg.RetryCycles
 	case 4:
 		return m.cfg.RetryWaitSeconds
+	case 5:
+		return m.cfg.StartTimeoutSeconds
 	}
 	return m.cfg.ConcurrentFragments
 }
@@ -162,6 +164,10 @@ func (m *Model) commit() {
 		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 1 {
 			m.cfg.RetryWaitSeconds = n
 		}
+	case 5:
+		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 1 {
+			m.cfg.StartTimeoutSeconds = n
+		}
 	}
 }
 
@@ -180,6 +186,8 @@ func (m Model) display(i int) string {
 		return strconv.Itoa(m.cfg.RetryCycles)
 	case 4:
 		return retryWaitText(m.cfg.RetryWaitSeconds)
+	case 5:
+		return strconv.Itoa(m.cfg.StartTimeoutSeconds)
 	}
 	return ""
 }

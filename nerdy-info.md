@@ -719,6 +719,7 @@ Settings that shape the pipeline (the rest are in `NORMAL-README.md`):
 | `download_official_music_video` | false | Turn the whole lookup on |
 | `auto_retry` | true | The immediate retry and the retry cycles |
 | `retry_cycles` | 30 | How many retry cycles a failed download gets |
+| `start_timeout_seconds` | 120 | A download with no progress by then is stopped and retried by the cycles |
 | `retry_wait_seconds` | 30 | Wait before a cycle, times the number of the retry (10 gives 10 s, 20 s, 30 s, ...) |
 
 ### Moving in and updating
