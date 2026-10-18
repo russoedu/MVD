@@ -726,6 +726,7 @@ func runWithNameWorkers(t *testing.T, workers int) int {
 	resolver := &measuringResolver{}
 	eng := stubEngine(t, false, "https://youtube.com/playlist?list=A")
 	eng.opts.Resolver = resolver
+	eng.live = liveOf(eng.opts)
 	eng.opts.NameWorkers = workers
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -748,6 +749,7 @@ func TestNamingWorkersAreBoundedByTheLimitAndRunInParallelWhenAllowed(t *testing
 func TestOnlyOfficialVideosAreDownloadedAndTheOthersAreListedInTheCSV(t *testing.T) {
 	eng := stubEngine(t, true, "https://youtube.com/playlist?list=B")
 	eng.opts.OfficialOnly = true
+	eng.live = liveOf(eng.opts)
 	notFound := filepath.Join(t.TempDir(), "out", "not-found.csv")
 	eng.opts.NotFoundFile = notFound
 
@@ -788,6 +790,7 @@ func TestOnlyOfficialVideosAreDownloadedAndTheOthersAreListedInTheCSV(t *testing
 func TestOnlyOfficialVideosKeepsTheOnesThatAreOfficial(t *testing.T) {
 	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A")
 	eng.opts.OfficialOnly = true
+	eng.live = liveOf(eng.opts)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})

@@ -120,10 +120,11 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 	resolver, searcher := BuildResolver(ctx, ResolverInput{
 		YtDlp: ytDlpPath, ExtraArgs: extraArgs, CookiesFile: cfg.CookiesFile, CookiesActive: cookiesActive, CacheFile: cacheFile,
 	}, log)
-	if cfg.LooksForOfficial() {
-		resolver.OfficialOnly = cfg.OfficialVideo == config.OfficialOnly
-		opts.Resolver = engineResolver{resolver}
-	}
+	// The resolver is always given, and switched on or off by the settings, which can change
+	// while the run goes on.
+	resolver.SetOfficialOnly(cfg.OfficialVideo == config.OfficialOnly)
+	opts.Resolver = engineResolver{resolver}
+	opts.OfficialLookupOff = !cfg.LooksForOfficial()
 	// A plan already holds the choices, so nothing is left out of it for lacking an official
 	// video; and a plan is not a run that lists what it could not find.
 	if cfg.OfficialVideo == config.OfficialOnly && len(plan) == 0 {

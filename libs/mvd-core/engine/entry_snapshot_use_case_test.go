@@ -8,6 +8,7 @@ import (
 func TestSnapshotNamesEverySongWithItsVersionAndState(t *testing.T) {
 	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A")
 	eng.opts.HoldForReview = true
+	eng.live = liveOf(eng.opts)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { eng.Run(ctx); close(done) }()

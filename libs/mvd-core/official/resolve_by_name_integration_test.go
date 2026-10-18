@@ -371,7 +371,7 @@ func TestWhenOnlyOfficialVideosAreWantedTheBestQualityUploadIsNotLookedFor(t *te
 			return trackpick.Quality{Height: 1080, AudioKbps: 160}, nil
 		},
 	})
-	res.OfficialOnly = true
+	res.SetOfficialOnly(true)
 
 	if got := res.ResolveVersion("up1", "Run to You", "Rage - Topic", 0, nil); got.ID != "" {
 		t.Errorf("got %+v, want nothing: there is no official video", got)

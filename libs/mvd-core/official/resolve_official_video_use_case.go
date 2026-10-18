@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 	"youtube-downloader/libs/mvd-core/official/musicsource"
 	"youtube-downloader/libs/mvd-core/official/trackfind"
@@ -40,9 +41,10 @@ type Resolver struct {
 	// called (YouTube Music's own tag) and names the song's real artist; without it
 	// every upload is looked up and the artist is the channel's name.
 	TrackInfos musicsource.TrackDescriber
-	// OfficialOnly leaves out the choice of the best quality upload when there is no
-	// official video: the caller only wants official videos.
-	OfficialOnly bool
+	// officialOnly leaves out the choice of the best quality upload when there is no
+	// official video: the caller only wants official videos. It can change while the
+	// resolver works (SetOfficialOnly).
+	officialOnly atomic.Bool
 	// trackfind.Sources are the other places the video of a song is looked for (Wikidata, YouTube
 	// Music's video search) and the cache of earlier runs; each is optional.
 	Sources trackfind.Sources
@@ -218,7 +220,7 @@ func (r *Resolver) Pick(identified Identified, logFn func(format string, a ...in
 		}
 	}
 	// Only an official video is wanted: the best quality upload is not looked for.
-	if !r.OfficialOnly {
+	if !r.officialOnly.Load() {
 		if best, bestWhy := r.fromBestQuality(identified.song, results, logf); best != "" {
 			return Version{ID: best, Reason: bestWhy}
 		}

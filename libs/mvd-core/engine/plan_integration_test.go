@@ -13,6 +13,7 @@ import (
 func TestPlanOnlyProposesVersionsAndDownloadsNothing(t *testing.T) {
 	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A", "https://youtube.com/playlist?list=B")
 	eng.opts.PlanOnly = true
+	eng.live = liveOf(eng.opts)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -57,6 +58,7 @@ func TestPlanOnlyKeepsTheSongsWithNoOfficialVideoInThePlan(t *testing.T) {
 	eng := stubEngine(t, true, "https://youtube.com/playlist?list=B")
 	eng.opts.PlanOnly = true
 	eng.opts.OfficialOnly = true
+	eng.live = liveOf(eng.opts)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
