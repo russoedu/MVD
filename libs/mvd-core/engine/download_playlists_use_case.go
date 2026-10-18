@@ -43,6 +43,11 @@ type Options struct {
 	// ends as StatePlanned (or not found, or failed) and Plan() says what would be
 	// downloaded. Nothing is downloaded.
 	PlanOnly bool
+	// HoldForReview runs the listing, naming and picking stages and keeps going: each song
+	// waits as StatePlanned until Release sends it to the download stage, so a song
+	// the person has looked at downloads while the others are still being looked up or
+	// looked at. Unlike PlanOnly the run goes on, ready for Release.
+	HoldForReview bool
 	// Plan, when set, is what to download: the playlists are not listed and no version is
 	// looked for, each entry goes straight to the download stage with the video it names.
 	Plan []PlannedEntry
@@ -638,7 +643,7 @@ func (e *Engine) advance(en *engineEntry) {
 		e.finishOne()
 		return
 	}
-	if e.opts.PlanOnly {
+	if e.opts.PlanOnly || e.opts.HoldForReview {
 		e.setState(en, StatePlanned, "")
 		e.finishOne()
 		return
