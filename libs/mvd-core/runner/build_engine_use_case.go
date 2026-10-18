@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 
 	"youtube-downloader/libs/mvd-core/appdir"
@@ -98,6 +99,8 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 		PickWorkers:         cfg.PickWorkers,
 		LogPath:             cfg.LogFile(),
 		AutoRetry:           cfg.AutoRetry,
+		RetryCycles:         cfg.RetryCycles,
+		RetryWait:           time.Duration(cfg.RetryWaitSeconds) * time.Second,
 		PlanOnly:            planOnly,
 		Plan:                plan,
 		CheckDownload:       checkOneSidedSound(ytDlpPath),

@@ -717,7 +717,9 @@ Settings that shape the pipeline (the rest are in `NORMAL-README.md`):
 | `max_concurrent_downloads` | 4 | The most videos downloading at once; lowered while 429/409 answers come, raised back as they stop |
 | `concurrent_fragments` | 4 | Fragments of one video fetched in parallel |
 | `download_official_music_video` | false | Turn the whole lookup on |
-| `auto_retry` | true | Immediate retries and the sweep |
+| `auto_retry` | true | The immediate retry and the retry cycles |
+| `retry_cycles` | 30 | How many retry cycles a failed download gets |
+| `retry_wait_seconds` | 30 | Wait before a cycle, times the number of the retry (10 gives 10 s, 20 s, 30 s, ...) |
 
 ### Moving in and updating
 

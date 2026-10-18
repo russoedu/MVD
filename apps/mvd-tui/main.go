@@ -210,6 +210,7 @@ func printBanner(cfg config.Config, cfgPath, listPath string) {
 	fmt.Printf("Concurrent Fragments:     %d\n", cfg.ConcurrentFragments)
 	fmt.Printf("Official Music Video:     %s\n", cfg.OfficialVideo)
 	fmt.Printf("Auto Retry:               %v\n", cfg.AutoRetry)
+	fmt.Printf("Retry Cycles / Wait:      %d / %ds x attempt\n", cfg.RetryCycles, cfg.RetryWaitSeconds)
 	fmt.Printf("Cookies:                  %s\n", cookieDescription(cfg))
 	fmt.Printf("Log File:                 %s\n", orNone(cfg.LogFile()))
 	fmt.Println("-------------------------")

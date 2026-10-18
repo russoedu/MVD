@@ -1,6 +1,7 @@
 package advanced
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
@@ -23,9 +24,9 @@ const (
 	Cancel
 )
 
-const advItemCount = 3
+const advItemCount = 5
 
-var advLabels = []string{"Extra yt-dlp args", "Parallel fragments per video", "Auto Retry"}
+var advLabels = []string{"Extra yt-dlp args", "Parallel fragments per video", "Auto Retry", "Retry cycles", "Retry wait (s x attempt)"}
 
 // Model is the "if you know what you're doing" screen: raw yt-dlp
 // args, the fragment count and auto-retry.
@@ -118,15 +119,31 @@ func (m *Model) activate() {
 		m.mode = settings.EditNumber
 	case 2:
 		m.cfg.AutoRetry = !m.cfg.AutoRetry
+	case 3, 4:
+		m.input.SetValue(strconv.Itoa(m.current()))
+		m.input.CursorEnd()
+		m.input.Focus()
+		m.mode = settings.EditNumber
 	}
 }
 
 func (m Model) numberValue() int {
 	n, err := strconv.Atoi(strings.TrimSpace(m.input.Value()))
 	if err != nil || n < 0 {
-		return m.cfg.ConcurrentFragments
+		return m.current()
 	}
 	return n
+}
+
+// current is the number the setting under the cursor holds now.
+func (m Model) current() int {
+	switch m.cursor {
+	case 3:
+		return m.cfg.RetryCycles
+	case 4:
+		return m.cfg.RetryWaitSeconds
+	}
+	return m.cfg.ConcurrentFragments
 }
 
 func (m *Model) commit() {
@@ -136,6 +153,14 @@ func (m *Model) commit() {
 	case 1:
 		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 0 {
 			m.cfg.ConcurrentFragments = n
+		}
+	case 3:
+		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 1 {
+			m.cfg.RetryCycles = n
+		}
+	case 4:
+		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 1 {
+			m.cfg.RetryWaitSeconds = n
 		}
 	}
 }
@@ -151,6 +176,10 @@ func (m Model) display(i int) string {
 		return strconv.Itoa(m.cfg.ConcurrentFragments)
 	case 2:
 		return settings.YesNo(m.cfg.AutoRetry)
+	case 3:
+		return strconv.Itoa(m.cfg.RetryCycles)
+	case 4:
+		return retryWaitText(m.cfg.RetryWaitSeconds)
 	}
 	return ""
 }
@@ -207,4 +236,10 @@ func (m Model) Select(row int) Model {
 		m.cursor = row
 	}
 	return m
+}
+
+// retryWaitText is the wait setting with what it comes to: the waits of the first
+// retries, since each is the setting times the number of the retry.
+func retryWaitText(seconds int) string {
+	return fmt.Sprintf("%d  (%ds, %ds, %ds, ...)", seconds, seconds, 2*seconds, 3*seconds)
 }

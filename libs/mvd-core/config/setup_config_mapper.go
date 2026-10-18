@@ -65,6 +65,14 @@ func applyKey(cfg *Config, key, val, path string) {
 		cfg.SaveNotFound = parseBool(val)
 	case "auto_retry":
 		cfg.AutoRetry = parseBool(val)
+	case "retry_cycles":
+		if n, err := strconv.Atoi(val); err == nil && n > 0 {
+			cfg.RetryCycles = n
+		}
+	case "retry_wait_seconds":
+		if n, err := strconv.Atoi(val); err == nil && n > 0 {
+			cfg.RetryWaitSeconds = n
+		}
 	case "cookies_from_browser":
 		switch strings.ToLower(val) {
 		case "", "all", "auto":
@@ -155,6 +163,8 @@ func configText(cfg Config) string {
 	w("official_video", string(cfg.OfficialVideo))
 	w("save_not_found", strconv.FormatBool(cfg.SaveNotFound))
 	w("auto_retry", strconv.FormatBool(cfg.AutoRetry))
+	w("retry_cycles", strconv.Itoa(cfg.RetryCycles))
+	w("retry_wait_seconds", strconv.Itoa(cfg.RetryWaitSeconds))
 	w("cookies_from_browser", cookieSetting(cfg))
 	w("cookies_file", cfg.CookiesFile)
 	w("create_log_file", strconv.FormatBool(cfg.CreateLogFile))

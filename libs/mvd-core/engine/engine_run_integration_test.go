@@ -352,7 +352,7 @@ func retryEngine(t *testing.T, autoRetry bool, stateDir string) *Engine {
 		MergeOutputFormat: "mp4",
 		Workers:           2,
 		AutoRetry:         autoRetry,
-		RetryCooldown:     10 * time.Millisecond,
+		RetryWait:         10 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -396,7 +396,7 @@ func TestEngineAutoRetry(t *testing.T) {
 	sawCooldown, sawImmediate := false, false
 	for _, ev := range events {
 		if lg, ok := ev.(EvLog); ok {
-			if strings.Contains(lg.Line, "auto-retry after cooldown") {
+			if strings.Contains(lg.Line, "retrying after the wait") {
 				sawCooldown = true
 			}
 			if strings.Contains(lg.Line, "retrying now") {
