@@ -69,6 +69,10 @@ func applyKey(cfg *Config, key, val, path string) {
 		if n, err := strconv.Atoi(val); err == nil && n > 0 {
 			cfg.RetryCycles = n
 		}
+	case "start_timeout_seconds":
+		if n, err := strconv.Atoi(val); err == nil && n > 0 {
+			cfg.StartTimeoutSeconds = n
+		}
 	case "retry_wait_seconds":
 		if n, err := strconv.Atoi(val); err == nil && n > 0 {
 			cfg.RetryWaitSeconds = n
@@ -165,6 +169,7 @@ func configText(cfg Config) string {
 	w("auto_retry", strconv.FormatBool(cfg.AutoRetry))
 	w("retry_cycles", strconv.Itoa(cfg.RetryCycles))
 	w("retry_wait_seconds", strconv.Itoa(cfg.RetryWaitSeconds))
+	w("start_timeout_seconds", strconv.Itoa(cfg.StartTimeoutSeconds))
 	w("cookies_from_browser", cookieSetting(cfg))
 	w("cookies_file", cfg.CookiesFile)
 	w("create_log_file", strconv.FormatBool(cfg.CreateLogFile))

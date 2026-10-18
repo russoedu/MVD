@@ -43,6 +43,9 @@ type Config struct {
 	// RetryWaitSeconds is the wait before the first retry, multiplied by the number of
 	// the retry: with 10, the first waits 10 seconds, the second 20, and so on.
 	RetryWaitSeconds int
+	// StartTimeoutSeconds is how long a download may take to start before it is stopped
+	// and retried.
+	StartTimeoutSeconds int
 
 	// CookiesFromBrowser pins one yt-dlp browser spec; empty means none pinned.
 	CookiesFromBrowser string
@@ -81,6 +84,7 @@ func Default(appDir, downloadsDir string) Config {
 		AutoRetry:              true,
 		RetryCycles:            30,
 		RetryWaitSeconds:       30,
+		StartTimeoutSeconds:    120,
 		CookiesFromBrowser:     "",
 		AutoCookies:            true,
 		CookiesFile:            filepath.Join(appDir, "cookies.txt"),

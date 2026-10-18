@@ -35,13 +35,13 @@ func TestAdvancedModel(t *testing.T) {
 	}
 
 	// Retry cycles (item 3) and the wait (item 4): edit and commit.
-	for cursor, want := range map[int]int{3: 12, 4: 7} {
+	for cursor, want := range map[int]int{3: 12, 4: 7, 5: 45} {
 		m.cursor = cursor
 		m, _, _, _ = m.Update(keys.Press("enter"))
 		m.input.SetValue(strconv.Itoa(want))
 		m, _, _, _ = m.Update(keys.Press("enter"))
 	}
-	if m.cfg.RetryCycles != 12 || m.cfg.RetryWaitSeconds != 7 {
+	if m.cfg.RetryCycles != 12 || m.cfg.RetryWaitSeconds != 7 || m.cfg.StartTimeoutSeconds != 45 {
 		t.Errorf("retry settings not committed: %d cycles, %d s", m.cfg.RetryCycles, m.cfg.RetryWaitSeconds)
 	}
 	m.cursor = 4

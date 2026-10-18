@@ -35,6 +35,13 @@ var permanentSignals = []string{
 	"age-restricted",
 	"violat", // violating / terms violation
 	"copyright",
+	// A video taken out of a playlist after it was made: nothing to fetch, ever.
+	"video unavailable",
+	"video is unavailable",
+	"video not found",
+	"video does not exist",
+	"video has been deleted",
+	"http error 404",
 }
 
 // deferredSignals mark transient failures that need time before a retry:
