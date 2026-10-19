@@ -11,6 +11,9 @@ import (
 // render draws the menu bar on the top row and, under it, the review or the download
 // screen. An open menu is laid over them, and the question or the notice takes the bottom
 // row.
+// Render is the screen as text, for a host that lays something over it.
+func (m Model) Render() string { return m.render() }
+
 func (m Model) render() string {
 	if m.width == 0 || m.height == 0 {
 		return "starting..."

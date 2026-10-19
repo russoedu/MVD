@@ -2,10 +2,12 @@ package tui
 
 import (
 	"context"
+	"reflect"
 
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/screenview"
@@ -43,43 +45,75 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
+		if a.inPrefs {
+			a.prefs = a.prefs.sizedTo(a.popupSize())
+		}
 	case workspace.PreferencesRequestedMsg:
 		in := a.in.Setup
 		in.Cfg, in.OpenConfig = a.cfg, true
 		a.prefs = newSetupModel(in)
 		a.prefs.embedded, a.prefs.prefsOnly = true, true
-		next, _ := a.prefs.Update(tea.WindowSizeMsg{Width: a.width, Height: a.height})
-		a.prefs, a.inPrefs = next.(setupModel), true
+		a.prefs, a.inPrefs = a.prefs.sizedTo(a.popupSize()), true
 		return a, a.prefs.Init()
 	case setupFinishedMsg:
 		a.inPrefs = false
-		a.cfg = msg.result.Cfg
-		live := engine.LiveSettings{}
-		if a.in.Live != nil {
-			live = a.in.Live(a.cfg)
+		if msg.result.Confirmed {
+			a = a.apply(msg.result.Cfg, true)
 		}
-		a.ws = a.ws.Reconfigure(a.cfg, live)
+		ApplyTheme(a.cfg.Colors)
 		return a, nil
 	}
 	if a.inPrefs {
-		if _, ok := msg.(tea.WindowSizeMsg); !ok {
-			next, cmd := a.prefs.Update(msg)
-			a.prefs = next.(setupModel)
-			return a, cmd
+		if _, ok := msg.(tea.MouseMsg); ok {
+			return a, nil
 		}
-		next, _ := a.prefs.Update(msg)
+		next, cmd := a.prefs.Update(msg)
 		a.prefs = next.(setupModel)
+		// Each change is kept and goes to the run at once; the places the files go to and
+		// the pattern of their names wait for the person to confirm with save.
+		return a.apply(a.prefs.config.Config(), false), cmd
 	}
 	next, cmd := a.ws.Update(msg)
 	a.ws = next.(workspace.Model)
 	return a, cmd
 }
 
-func (a workspaceApp) View() tea.View {
-	if a.inPrefs {
-		return screenview.Of(a.prefs.render())
+// apply takes cfg as the settings, keeping the places and the name pattern as they were
+// unless confirmed; it writes them to the config file and tells the run.
+func (a workspaceApp) apply(cfg config.Config, confirmed bool) workspaceApp {
+	if !confirmed {
+		cfg.OutputDir, cfg.OutputTemplate, cfg.LogDir = a.cfg.OutputDir, a.cfg.OutputTemplate, a.cfg.LogDir
 	}
-	return a.ws.View()
+	if reflect.DeepEqual(cfg, a.cfg) {
+		return a
+	}
+	a.cfg = cfg
+	_ = config.Save(cfg, a.in.Setup.CfgPath)
+	live := engine.LiveSettings{}
+	if a.in.Live != nil {
+		live = a.in.Live(cfg)
+	}
+	a.ws = a.ws.Reconfigure(cfg, live)
+	return a
+}
+
+// popupSize is the room the preferences take over the workspace.
+func (a workspaceApp) popupSize() (int, int) {
+	return max(min(a.width-6, 112), 1), max(min(a.height-4, 36), 1)
+}
+
+func (m setupModel) sizedTo(w, h int) setupModel {
+	next, _ := m.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	return next.(setupModel)
+}
+
+func (a workspaceApp) View() tea.View {
+	if !a.inPrefs {
+		return a.ws.View()
+	}
+	w, h := a.popupSize()
+	x, y := dialog.Centre(a.width, a.height, w, h)
+	return screenview.Of(dialog.Overlay(a.ws.Render(), a.prefs.render(), x, y))
 }
 
 // RunWorkspace runs the workspace app until the person quits it or ctx ends.

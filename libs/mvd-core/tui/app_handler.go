@@ -49,7 +49,9 @@ type SetupInput struct {
 
 // SetupResult is returned when the setup screens close.
 type SetupResult struct {
-	Action SetupAction
+	// Confirmed is true when the preferences were left with save, not cancelled.
+	Confirmed bool
+	Action    SetupAction
 	Cfg    config.Config
 	URLs   []string
 }
@@ -185,7 +187,7 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			_ = config.Save(m.cfg, m.cfgPath)
 			m.screen = screenList
 			if m.prefsOnly {
-				m.result = SetupResult{Action: ActionQuit, Cfg: m.cfg, URLs: m.list.URLs()}
+				m.result = SetupResult{Confirmed: true, Action: ActionQuit, Cfg: m.cfg, URLs: m.list.URLs()}
 				return m, m.finish()
 			}
 			return m, nil
