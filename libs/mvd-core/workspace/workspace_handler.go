@@ -599,4 +599,13 @@ func (m Model) Reconfigure(cfg config.Config, live engine.LiveSettings) Model {
 	return m
 }
 
-func (m Model) View() tea.View { return screenview.Of(m.render()) }
+// View is the screen. While a menu is open the mouse is followed wherever it goes, so that
+// moving over another heading opens its menu, as in a desktop app; otherwise only clicks and
+// drags are reported.
+func (m Model) View() tea.View {
+	view := screenview.Of(m.render())
+	if m.bar.Open() >= 0 {
+		view.MouseMode = tea.MouseModeAllMotion
+	}
+	return view
+}
