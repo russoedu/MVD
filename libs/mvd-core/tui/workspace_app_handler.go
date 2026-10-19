@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -102,8 +103,9 @@ func (a workspaceApp) popupSize() (int, int) {
 	return max(min(a.width-6, 112), 1), max(min(a.height-4, 36), 1)
 }
 
+// sizedTo gives the screens the inside of a frame w by h.
 func (m setupModel) sizedTo(w, h int) setupModel {
-	next, _ := m.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	next, _ := m.Update(tea.WindowSizeMsg{Width: w - 2, Height: h - 2})
 	return next.(setupModel)
 }
 
@@ -113,7 +115,8 @@ func (a workspaceApp) View() tea.View {
 	}
 	w, h := a.popupSize()
 	x, y := dialog.Centre(a.width, a.height, w, h)
-	return screenview.Of(dialog.Overlay(a.ws.Render(), a.prefs.render(), x, y))
+	inner := strings.Split(a.prefs.render(), "\n")
+	return screenview.Of(dialog.Overlay(a.ws.Render(), dialog.Frame("Preferences", inner, w, h), x, y))
 }
 
 // RunWorkspace runs the workspace app until the person quits it or ctx ends.

@@ -52,8 +52,8 @@ type SetupResult struct {
 	// Confirmed is true when the preferences were left with save, not cancelled.
 	Confirmed bool
 	Action    SetupAction
-	Cfg    config.Config
-	URLs   []string
+	Cfg       config.Config
+	URLs      []string
 }
 
 // RunSetup runs the list + config screens and returns the user's choice.

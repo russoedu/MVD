@@ -2,9 +2,9 @@ package tui
 
 import (
 	"os"
-	"time"
 	"path/filepath"
 	"strings"
+	"time"
 	"youtube-downloader/libs/mvd-core/cells"
 	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	"youtube-downloader/libs/mvd-core/look"

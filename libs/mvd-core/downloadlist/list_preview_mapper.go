@@ -27,6 +27,8 @@ func PreviewOf(file playlistfile.File) *runstate.State {
 	id := 0
 	for i, item := range file.Items {
 		if len(item.Songs) == 0 {
+			// Nobody has looked at it yet: it is shown as it is, not as being listed.
+			state.Apply(engine.EvPlaylistListed{Playlist: i, Title: item.Source})
 			continue
 		}
 		infos := make([]engine.EntryInfo, len(item.Songs))
