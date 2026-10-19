@@ -317,7 +317,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m.askWhereToSave(askSaveAs)
 	case entryEditList:
 		return m.openEdit(), nil
-	case entryDelete, entryMoveUp, entryMoveDown:
+	case entryDelete, entryMoveUp, entryMoveDown, entryUndo, entryRedo:
 		if !m.editing {
 			m.notice = "Open Edit list first (Ctrl+E), then " + strings.ToLower(name) + " there"
 			return m, nil
@@ -326,6 +326,8 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 			entryDelete:   {Code: tea.KeyDelete},
 			entryMoveUp:   {Code: tea.KeyUp, Mod: tea.ModShift},
 			entryMoveDown: {Code: tea.KeyDown, Mod: tea.ModShift},
+			entryUndo:     {Code: 'z', Mod: tea.ModCtrl},
+			entryRedo:     {Code: 'y', Mod: tea.ModCtrl},
 		}[name]
 		edit, cmd := m.edit.Update(key)
 		m.edit = edit

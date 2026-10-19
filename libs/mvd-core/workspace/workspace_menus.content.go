@@ -11,6 +11,8 @@ const (
 	entryPreferences = "Preferences…"
 	entryQuit        = "Quit"
 	entryEditList    = "Edit list…"
+	entryUndo        = "Undo"
+	entryRedo        = "Redo"
 	entryDelete      = "Delete"
 	entryMoveUp      = "Move up"
 	entryMoveDown    = "Move down"
@@ -36,8 +38,8 @@ func menus() []menubar.Menu {
 		{Name: "Edit", Entries: []menubar.Entry{
 			{Name: entryEditList, Shortcut: "Ctrl+E"},
 			{Separator: true},
-			{Name: "Undo", Shortcut: "Ctrl+Z"},
-			{Name: "Redo", Shortcut: "Ctrl+Y"},
+			{Name: entryUndo, Shortcut: "Ctrl+Z"},
+			{Name: entryRedo, Shortcut: "Ctrl+Y"},
 			{Separator: true},
 			{Name: "Copy", Shortcut: "Ctrl+C"},
 			{Name: "Paste", Shortcut: "Ctrl+V"},
@@ -56,5 +58,5 @@ func menus() []menubar.Menu {
 // notYet are the entries whose popups come with later parts of the list rework; they are
 // shown greyed out until then.
 var notYet = []string{
-	"Undo", "Redo", "Copy", "Paste",
+	"Copy", "Paste",
 }

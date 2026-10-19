@@ -78,3 +78,24 @@ func TestTheEditReachesTheListOnlyWhenSaved(t *testing.T) {
 		t.Errorf("editing %v sources %v", m.editing, m.session.Sources())
 	}
 }
+
+func TestUndoAndRedoWalkBackThroughTheChanges(t *testing.T) {
+	songs := []playlistfile.Entry{{Title: "one", Artist: "x"}, {Title: "two", Artist: "x"}}
+	p := newEditPopup(playlistfile.File{Items: []playlistfile.Item{{Source: "a", Songs: songs}, {Source: "b"}}})
+	p = keys(p, tea.KeyPressMsg{Code: tea.KeyDown}, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift}, rune_('d'))
+	if len(p.items[0].Songs) != 1 || p.items[0].Songs[0].Title != "two" {
+		t.Fatalf("songs %+v", p.items[0].Songs)
+	}
+	p = keys(p, rune_('u'))
+	if len(p.items[0].Songs) != 2 || p.items[0].Songs[0].Title != "two" {
+		t.Errorf("after one undo %+v", p.items[0].Songs)
+	}
+	p = keys(p, rune_('u'))
+	if p.items[0].Songs[0].Title != "one" {
+		t.Errorf("after two undos %+v", p.items[0].Songs)
+	}
+	p = keys(p, rune_('r'), rune_('r'))
+	if len(p.items[0].Songs) != 1 {
+		t.Errorf("after redo %+v", p.items[0].Songs)
+	}
+}
