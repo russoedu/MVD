@@ -85,6 +85,9 @@ func (m Model) renderPlanning(width int) string {
 }
 
 func (m Model) title() string {
+	if m.live != nil {
+		return m.liveTitle()
+	}
 	var downloaded, revised int
 	for _, r := range m.rows {
 		switch {
@@ -105,6 +108,82 @@ func (m Model) title() string {
 		parts = append(parts, fmt.Sprintf("%d downloaded", downloaded))
 	}
 	return "MVD · Review before downloading  ·  " + strings.Join(parts, " · ")
+}
+
+// liveTitle is the title of a review that goes on while the songs are looked up: how
+// many there are, how many are still being looked up, and how many have gone to download.
+func (m Model) liveTitle() string {
+	var waiting, sent, done int
+	for i := range m.rows {
+		switch {
+		case m.waiting(i):
+			waiting++
+		case m.rows[i].Downloaded:
+			done++
+		case m.sent(i):
+			sent++
+		}
+	}
+	parts := []string{fmt.Sprintf("%d songs", len(m.rows))}
+	if waiting > 0 {
+		parts = append(parts, fmt.Sprintf("%d being looked up", waiting))
+	}
+	if n := playlisteditor.Unreviewed(m.rows) - waiting; n > 0 {
+		parts = append(parts, fmt.Sprintf("%d to look at", n))
+	}
+	if sent > 0 {
+		parts = append(parts, fmt.Sprintf("%d downloading", sent))
+	}
+	if done > 0 {
+		parts = append(parts, fmt.Sprintf("%d downloaded", done))
+	}
+	return "MVD · Review  ·  " + strings.Join(parts, " · ")
+}
+
+// waiting is true for a song of a live review that has not been looked up yet.
+func (m Model) waiting(i int) bool {
+	if m.live == nil || i >= len(m.states) {
+		return false
+	}
+	return (m.states[i] == engine.StateQueued || m.states[i] == engine.StateResolving) && m.rows[i].TargetID == "" && m.rows[i].Decision == playlistfile.DecisionNone
+}
+
+// sent is true for a song of a live review that has gone to download and is not done.
+func (m Model) sent(i int) bool {
+	if m.live == nil || i >= len(m.states) {
+		return false
+	}
+	switch m.states[i] {
+	case engine.StateQueued, engine.StateDownloading, engine.StateMerging, engine.StateResolving:
+		return !m.waiting(i)
+	}
+	return false
+}
+
+// rowLabel is what the review column says of a song: what is proposed for it, or in a live
+// review where the song has got to.
+func (m Model) rowLabel(i int, r playlistfile.Entry) string {
+	if m.live != nil {
+		switch {
+		case m.waiting(i):
+			return "looking up…"
+		case r.Downloaded:
+			return "downloaded"
+		case m.sent(i) && i < len(m.states) && (m.states[i] == engine.StateDownloading || m.states[i] == engine.StateMerging):
+			return "downloading"
+		case m.sent(i):
+			return "queued"
+		case i < len(m.states) && m.states[i] == engine.StateFailed:
+			return "failed"
+		}
+	}
+	switch r.Decision {
+	case playlistfile.DecisionReplaced:
+		return "chosen"
+	case playlistfile.DecisionOriginal:
+		return "original"
+	}
+	return kindLabel(r)
 }
 
 // rowName is what a song is called on its line: the artist and the title a music database
@@ -178,13 +257,7 @@ func (m Model) songRows(width int) []SongsRow {
 	for i := m.top; i < min(len(m.rows), m.top+m.listHeight()); i++ {
 		r := m.rows[i]
 		col := playlisteditor.ColumnsOf(r)
-		kind := kindLabel(r)
-		switch r.Decision {
-		case playlistfile.DecisionReplaced:
-			kind = "chosen"
-		case playlistfile.DecisionOriginal:
-			kind = "original"
-		}
+		kind := m.rowLabel(i, r)
 		mark := " "
 		if i == m.sel {
 			mark = "▸"
@@ -203,7 +276,7 @@ func (m Model) songRows(width int) []SongsRow {
 		if i == m.sel {
 			row.Style = RowSelected
 		} else {
-			dimmed := r.Downloaded || r.Decision == playlistfile.DecisionSkipped
+			dimmed := r.Downloaded || r.Decision == playlistfile.DecisionSkipped || m.waiting(i) || m.sent(i)
 			row.MarkStyle = CellStyle{Fg: look.Colours.Dim}
 			row.GlyphStyle = CellStyle{Fg: m.glyphColour(r)}
 			row.ReviewStyle = CellStyle{Fg: kindColour(r, dimmed)}
@@ -319,6 +392,12 @@ func (m Model) hints() []keybar.Hint {
 	if m.planning {
 		return []keybar.Hint{{Key: "esc", Desc: "cancel"}}
 	}
+	if m.live != nil {
+		return []keybar.Hint{
+			{Key: "o", Desc: "open"}, {Key: "c", Desc: "confirm"}, {Key: "r", Desc: "replace"}, {Key: "u", Desc: "original"}, {Key: "x", Desc: "skip"},
+			{Key: "a", Desc: "send all"}, {Key: "esc", Desc: "downloads"},
+		}
+	}
 	return []keybar.Hint{
 		{Key: "o", Desc: "open"}, {Key: "c", Desc: "confirm"}, {Key: "r", Desc: "replace"}, {Key: "u", Desc: "original"}, {Key: "x", Desc: "skip"},
 		{Key: "a", Desc: "confirm all"}, {Key: "d", Desc: "download"}, {Key: "s", Desc: "save"}, {Key: "l", Desc: "open file"}, {Key: "esc", Desc: "back"},
@@ -394,7 +473,7 @@ func (m Model) Outline() outline.ScreenOutline {
 	h := m.listHeight()
 	for i := m.top; i < min(len(m.rows), m.top+h); i++ {
 		r := m.rows[i]
-		value := kindLabel(r) + ", " + strings.TrimSpace(strings.ReplaceAll(stripANSI(m.decisionText(r)), "\n", " "))
+		value := m.rowLabel(i, r) + ", " + strings.TrimSpace(strings.ReplaceAll(stripANSI(m.decisionText(r)), "\n", " "))
 		out.Items = append(out.Items, outline.Item{Label: rowName(r), Value: value, Selected: i == m.sel})
 	}
 	switch m.mode {

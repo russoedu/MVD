@@ -44,7 +44,8 @@ func isRateLimited(errMsg string) bool {
 // throttleStep successes undo it: the wait shrinks first, then downloaders come back,
 // up to the maximum.
 type downloadThrottle struct {
-	max       int
+	max       int // the number of downloaders asked for, which can change (setMax)
+	paused    bool
 	firstWait time.Duration
 	maxWait   time.Duration
 
@@ -77,7 +78,7 @@ func (t *downloadThrottle) broadcast() {
 func (t *downloadThrottle) acquire(ctx context.Context) (release func(), ok bool) {
 	for {
 		t.mu.Lock()
-		if t.active < t.limit {
+		if !t.paused && t.active < t.limit {
 			t.active++
 			wait := t.wait
 			t.mu.Unlock()
@@ -101,6 +102,31 @@ func (t *downloadThrottle) acquire(ctx context.Context) (release func(), ok bool
 			return nil, false
 		}
 	}
+}
+
+// setMax changes the number of downloaders asked for. A throttle that was at its maximum
+// goes to the new one at once; one that has been held back by the service keeps its
+// limit, lowered if it is above the new maximum, and may grow back up to it. Downloads
+// under way are not interrupted: a lower number is reached as they finish.
+func (t *downloadThrottle) setMax(n int) {
+	n = atLeast(n, 1)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	atMax := t.limit == t.max
+	t.max = n
+	if atMax || t.limit > n {
+		t.limit = n
+	}
+	t.broadcast()
+}
+
+// setPaused stops new downloads from starting (true), or lets them start again (false).
+// Downloads under way carry on.
+func (t *downloadThrottle) setPaused(paused bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.paused = paused
+	t.broadcast()
 }
 
 // succeeded records a finished download and says what changed, "" for nothing.

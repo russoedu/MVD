@@ -82,6 +82,9 @@ func (m Model) hints() []keybar.Hint {
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "l", Desc: "full log"}}
 	}
+	if m.hosted {
+		return hints
+	}
 	if m.canAdd() {
 		hints = append(hints, keybar.Hint{Key: "a", Desc: "add links"})
 	}
@@ -92,7 +95,11 @@ func (m Model) hints() []keybar.Hint {
 }
 
 func (m Model) renderHelp() string {
-	return helppage.Screen(m.width, m.height, m.ctrl.LogPath())
+	logPath := ""
+	if m.ctrl != nil {
+		logPath = m.ctrl.LogPath()
+	}
+	return helppage.Screen(m.width, m.height, logPath)
 }
 
 // downloadingSummary is the speed of all the downloads together, and how many files and

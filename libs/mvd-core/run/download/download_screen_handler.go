@@ -80,6 +80,7 @@ type Model struct {
 	status        string // transient message shown in the key bar
 	statusUntil   time.Time
 	embedded      bool // inside an app model: ends with FinishedMsg instead of quitting
+	hosted        bool // inside the workspace: it owns quitting and adding links, and the run comes and goes
 	adding        bool // the box for adding links is open
 	links         textarea.Model
 }
@@ -123,6 +124,9 @@ func tick() tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
+	if m.events == nil {
+		return tick()
+	}
 	return tea.Batch(waitEvent(m.events), tick())
 }
 
@@ -155,6 +159,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitEvent(m.events)
 
 	case evClosed:
+		if m.hosted {
+			// The run is over; what it reported stays on the screen.
+			m.events, m.ctrl = nil, nil
+			return m, func() tea.Msg { return RunEndedMsg{} }
+		}
 		return m, m.quit()
 
 	case tea.KeyPressMsg:
@@ -198,6 +207,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.showHelp {
 		m.showHelp = false
 		return m, nil
+	}
+
+	if m.hosted && (key == "q" || key == "esc" || key == "a") {
+		return m, nil // the workspace takes these
 	}
 
 	switch key {
@@ -292,6 +305,10 @@ func (m *Model) move(delta int) {
 }
 
 func (m *Model) retry() {
+	if m.ctrl == nil {
+		m.flash("nothing is running; start the downloads first")
+		return
+	}
 	switch m.focus {
 	case paneEntries:
 		en := m.selectedEntry()
@@ -372,6 +389,51 @@ func (m Model) View() tea.View { return screenview.Of(m.render()) }
 func NewEmbedded(c Controller) Model {
 	m := New(c)
 	m.embedded = true
+	return m
+}
+
+// RunEndedMsg tells the workspace that the run behind a hosted screen has ended: its events
+// are over, and the screen keeps showing what it reported.
+type RunEndedMsg struct{}
+
+// NewHosted is the download screen as the main part of the workspace: it begins with no run
+// (showing whatever state it is given), takes a run with Attach and lets it go when it ends.
+// Quitting and adding links are left to the workspace.
+func NewHosted() Model {
+	return Model{embedded: true, hosted: true, loaded: true, follow: true, state: runstate.New(nil)}
+}
+
+// WithState shows state, for a list that is not being run: what an earlier session
+// reported, read from the list file.
+func (m Model) WithState(state *runstate.State) Model {
+	m.state = state
+	m.selPlaylist, m.selEntry, m.outScroll = 0, 0, 0
+	return m
+}
+
+// Attach shows a run that has begun: the screen starts again from what the run reports. The
+// command it returns waits for the run's first event.
+func (m Model) Attach(c Controller) (Model, tea.Cmd) {
+	m.ctrl, m.events = c, c.Events()
+	m.state = runstate.New(c.Sources())
+	m.loaded = len(m.state.Playlists) == 0
+	m.follow = true
+	m.selPlaylist, m.selEntry, m.outScroll = 0, 0, 0
+	return m, waitEvent(m.events)
+}
+
+// Detach lets the run go, keeping what it reported on the screen.
+func (m Model) Detach() Model {
+	m.ctrl, m.events = nil, nil
+	return m
+}
+
+// Running reports whether a run is attached.
+func (m Model) Running() bool { return m.ctrl != nil }
+
+// Resize gives the screen its size.
+func (m Model) Resize(w, h int) Model {
+	m.width, m.height = w, h
 	return m
 }
 

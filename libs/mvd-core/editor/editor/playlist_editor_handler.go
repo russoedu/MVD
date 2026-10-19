@@ -36,6 +36,11 @@ type (
 	}
 	// DescribedMsg carries the title of a video the person picked.
 	DescribedMsg struct{ key, title string }
+	// RefreshMsg is the beat at which a live editor looks at its run again.
+	RefreshMsg time.Time
+	// DecidedMsg says the person decided on a song of a live review, so the list that keeps
+	// the decisions can be brought up to date.
+	DecidedMsg struct{}
 )
 
 // Mode is what the editor is doing with the keys.
@@ -79,6 +84,15 @@ type Model struct {
 	spin     int
 	planDone bool // the run has finished while a question was waiting
 
+	// live is the run a live review shows (nil for a review of a finished plan); states are
+	// the states of its songs, parallel to rows.
+	live   Live
+	states []engine.EntryState
+	// decisions are what the person decided, by song, kept from one refresh to the next
+	// (a live review rebuilds its rows from the run).
+	decisions map[string]playlistfile.Entry
+	version   int // grows with every decision, so a host can tell when to save them
+
 	// saved is the review of last time, offered while planning; previous is what is
 	// brought along when planning ends.
 	saved    []playlistfile.Entry
@@ -101,6 +115,49 @@ func NewFromRows(host EditorHost, rows []playlistfile.Entry) Model {
 	return Model{host: host, rows: rows}
 }
 
+// NewLive opens the editor on a run that holds its songs for review. brought are the
+// decisions kept from an earlier session, which are put on the songs they belong to.
+func NewLive(host EditorHost, live Live, brought []playlistfile.Entry) Model {
+	m := Model{host: host, live: live, decisions: map[string]playlistfile.Entry{}}
+	for _, b := range brought {
+		if b.Decision != playlistfile.DecisionNone || b.Downloaded {
+			m.decisions[b.Key()] = b
+		}
+	}
+	m.refresh()
+	return m
+}
+
+// Live reports whether the editor shows a run as it goes.
+func (m Model) Live() bool { return m.live != nil }
+
+// Version grows with every decision of a live review.
+func (m Model) Version() int { return m.version }
+
+// refresh takes the songs of the run as they stand, and puts the decisions on them.
+func (m *Model) refresh() {
+	snap := m.live.Snapshot()
+	rows := make([]playlistfile.Entry, len(snap))
+	states := make([]engine.EntryState, len(snap))
+	for i, s := range snap {
+		row := playlisteditor.FromPlan([]engine.PlannedEntry{s.PlannedEntry})[0]
+		if d, ok := m.decisions[row.Key()]; ok {
+			row.Decision, row.ChosenID, row.ChosenTitle = d.Decision, d.ChosenID, d.ChosenTitle
+		}
+		row.Downloaded = s.State == engine.StateDone || s.State == engine.StateDuplicate
+		rows[i], states[i] = row, s.State
+	}
+	m.rows, m.states = rows, states
+	if m.sel >= len(rows) {
+		m.sel = max(len(rows)-1, 0)
+	}
+	m.keepSelectionVisible()
+}
+
+func refreshTick() tea.Cmd {
+	return tea.Tick(400*time.Millisecond, func(t time.Time) tea.Msg { return RefreshMsg(t) })
+}
+
 // NewPlanning opens the editor while a plan-only run works. brought is what the
 // person asked to bring from files; saved is the review of last time, which they are
 // asked about when there is nothing else to bring.
@@ -121,6 +178,9 @@ func NewPlanning(host EditorHost, run downloadpage.Run, brought, saved []playlis
 }
 
 func (m Model) Init() tea.Cmd {
+	if m.live != nil {
+		return refreshTick()
+	}
 	if !m.planning {
 		return nil
 	}
@@ -167,6 +227,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case EvClosed:
 		return m, nil
+
+	case RefreshMsg:
+		if m.live == nil {
+			return m, nil
+		}
+		m.refresh()
+		return m, refreshTick()
 
 	case FilePickedMsg:
 		m.picking = false
@@ -244,7 +311,7 @@ func (m Model) autosave() {
 	if m.host.SessionFile == "" || m.planning {
 		return
 	}
-	_ = playlistfile.Save(m.host.SessionFile, playlistfile.File{Entries: m.rows})
+	_ = playlistfile.Save(m.host.SessionFile, playlistfile.FromSongs(m.rows))
 }
 
 // withDownloaded marks the songs a download finished, and saves.
@@ -297,6 +364,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 			return m, func() tea.Msg { return LeaveMsg{} }
 		}
 		return m, nil
+	}
+
+	if m.live != nil && (key == "s" || key == "l" || key == "d") {
+		return m, nil // a live review is saved with the list, and downloads as it goes
 	}
 
 	switch key {
@@ -407,6 +478,18 @@ func (m Model) confirm() (Model, tea.Cmd) {
 
 // confirmAll accepts what was proposed for every song nobody has decided on.
 func (m Model) confirmAll() (Model, tea.Cmd) {
+	if m.live != nil {
+		n := m.live.ReleaseAll()
+		for i := range m.rows {
+			if m.rows[i].Decision == playlistfile.DecisionNone && i < len(m.states) && m.states[i] == engine.StatePlanned {
+				m.rows[i].Decision = playlistfile.DecisionConfirmed
+				m.remember(i)
+			}
+		}
+		m.refresh()
+		m.Flash(fmt.Sprintf("%d songs sent to download as proposed", n))
+		return m, nil
+	}
 	n := 0
 	for i := range m.rows {
 		row := m.rows[i]
@@ -438,8 +521,17 @@ func (m Model) decide(decision, chosenID, chosenTitle string) (Model, tea.Cmd) {
 		m.Flash("this song has no original upload")
 		return m, nil
 	}
+	if m.live != nil {
+		var ok bool
+		if m, ok = m.releaseFor(decision, chosenID); !ok {
+			return m, nil
+		}
+	}
 	m.rows[m.sel].Decision = decision
 	m.rows[m.sel].ChosenID, m.rows[m.sel].ChosenTitle = chosenID, chosenTitle
+	if m.live != nil {
+		m.remember(m.sel)
+	}
 	m.autosave()
 	// A decision hands the person the next song, as confirming always has; undoing one
 	// stays where it is.
@@ -466,6 +558,52 @@ func (m Model) decide(decision, chosenID, chosenTitle string) (Model, tea.Cmd) {
 		return asked, tea.Batch(cmd, askCmd)
 	}
 	return m, cmd
+}
+
+// releaseFor sends the selected song of a live review to download when the decision is
+// one that downloads it, and refuses a decision the run cannot follow: a song still being
+// looked up, or one that has already been sent.
+func (m Model) releaseFor(decision, chosenID string) (Model, bool) {
+	state := engine.StatePlanned
+	if m.sel < len(m.states) {
+		state = m.states[m.sel]
+	}
+	held := state == engine.StatePlanned || state == engine.StateNotFound || state == engine.StateFailed
+	switch decision {
+	case playlistfile.DecisionNone, playlistfile.DecisionSkipped:
+		if !held {
+			m.Flash("this song has been sent to download already")
+			return m, false
+		}
+		return m, true
+	}
+	if state == engine.StateQueued || state == engine.StateResolving {
+		m.Flash("this song is still being looked up")
+		return m, false
+	}
+	if !held {
+		m.Flash("this song has been sent to download already")
+		return m, false
+	}
+	video := chosenID
+	if decision == playlistfile.DecisionOriginal {
+		video = m.rows[m.sel].Upload.ID
+	}
+	if !m.live.Release(m.sel, video) {
+		m.Flash("this song cannot be downloaded: replace it or skip it")
+		return m, false
+	}
+	m.states[m.sel] = engine.StateQueued
+	return m, true
+}
+
+// remember keeps the decision on row i, so the next refresh puts it back.
+func (m *Model) remember(i int) {
+	if m.decisions == nil {
+		m.decisions = map[string]playlistfile.Entry{}
+	}
+	m.decisions[m.rows[i].Key()] = m.rows[i]
+	m.version++
 }
 
 // ask opens the one-line question.
@@ -552,7 +690,7 @@ func (m Model) saveFile(path string) (Model, tea.Cmd) {
 	if filepath.Ext(path) == "" {
 		path += playlistfile.Extension
 	}
-	if err := playlistfile.Save(path, playlistfile.File{Entries: m.rows}); err != nil {
+	if err := playlistfile.Save(path, playlistfile.FromSongs(m.rows)); err != nil {
 		m.Flash("cannot save: " + err.Error())
 		return m, nil
 	}
@@ -577,7 +715,7 @@ func (m Model) loadFile(path string) (Model, tea.Cmd) {
 		m.Flash("cannot open it: " + err.Error())
 		return m, nil
 	}
-	m.rows = file.Entries
+	m.rows = file.Songs()
 	m.sel, m.top = 0, 0
 	m.autosave()
 	m.Flash(fmt.Sprintf("opened %d songs from %s", len(m.rows), filepath.Base(path)))
@@ -670,7 +808,7 @@ func (m Model) answerPrevious(key string) (Model, tea.Cmd) {
 // it while it is on the screen.
 func Owns(msg tea.Msg) bool {
 	switch msg.(type) {
-	case EvMsg, EvClosed, TickMsg, DescribedMsg, FilePickedMsg:
+	case EvMsg, EvClosed, TickMsg, DescribedMsg, FilePickedMsg, RefreshMsg:
 		return true
 	}
 	return false

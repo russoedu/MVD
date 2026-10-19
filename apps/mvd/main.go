@@ -128,6 +128,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 		Review: review,
 	}, terminalui.Host{
 		Start:        terminalRuns.Start(ctx, ytDlpPath, logf),
+		StartList:    terminalRuns.StartList(ctx, ytDlpPath, logf),
 		Plan:         terminalRuns.StartPlan(ctx, ytDlpPath, logf),
 		PlanDownload: terminalRuns.StartPlanDownload(ctx, ytDlpPath, logf),
 		Describe: func(videoID string) (string, error) {
@@ -143,8 +144,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 		},
 		// Quitting from the screens ends the program that runs them, and the window would
 		// otherwise stay open on a page with nothing behind it.
-		Quit:       stop,
-		Uninstall:  terminalui.Uninstall(removal),
+		Quit:      stop,
+		Uninstall: terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop),
 	}, logf))

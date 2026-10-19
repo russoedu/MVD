@@ -3,7 +3,8 @@ package engine
 import "testing"
 
 func TestSweepCandidatesCountTheCycle(t *testing.T) {
-	e := &Engine{opts: Options{AutoRetry: true, RetryCycles: 3}}
+	opts := Options{AutoRetry: true, RetryCycles: 3}
+	e := &Engine{opts: opts, live: liveOf(opts)}
 	e.entries = []*engineEntry{
 		{info: EntryInfo{ID: 0}, state: StateFailed, deferred: true, sweeps: 1},
 		{info: EntryInfo{ID: 1}, state: StateFailed, deferred: true, sweeps: 0},
@@ -26,7 +27,7 @@ func TestSweepCandidatesCountTheCycle(t *testing.T) {
 }
 
 func TestRetryCyclesDefaultToThirty(t *testing.T) {
-	if got := (&Engine{}).retryCycles(); got != 30 {
+	if got := (&Engine{live: liveOf(Options{})}).retryCycles(); got != 30 {
 		t.Errorf("retryCycles = %d, want 30", got)
 	}
 }

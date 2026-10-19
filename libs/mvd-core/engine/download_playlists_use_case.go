@@ -20,6 +20,11 @@ import (
 // that long again, once more (the second twice as long, the third three times).
 const defaultRetryWait = 30 * time.Second
 
+// maxDownloaders is the most downloads that can ever be in flight: the pool is this big,
+// and the throttle holds it to the number the person asks for, which can change while
+// the run goes on.
+const maxDownloaders = 64
+
 // defaultRetryCycles is how many retry cycles a failed entry gets.
 const defaultRetryCycles = 30
 
@@ -43,6 +48,14 @@ type Options struct {
 	// ends as StatePlanned (or not found, or failed) and Plan() says what would be
 	// downloaded. Nothing is downloaded.
 	PlanOnly bool
+	// OfficialLookupOff builds the run with the lookup of official videos switched off; it
+	// can be switched on later (see Reconfigure). Without a Resolver there is no lookup.
+	OfficialLookupOff bool
+	// HoldForReview runs the listing, naming and picking stages and keeps going: each song
+	// waits as StatePlanned until Release sends it to the download stage, so a song
+	// the person has looked at downloads while the others are still being looked up or
+	// looked at. Unlike PlanOnly the run goes on, ready for Release.
+	HoldForReview bool
 	// Plan, when set, is what to download: the playlists are not listed and no version is
 	// looked for, each entry goes straight to the download stage with the video it names.
 	Plan []PlannedEntry
@@ -120,6 +133,9 @@ type Engine struct {
 	opts    Options
 	// throttle keeps the downloads at or below Workers, fewer while the service limits requests.
 	throttle *downloadThrottle
+	// live holds the options that can change while the run goes on (see Reconfigure).
+	liveMu sync.RWMutex
+	live   LiveSettings
 	sources []PlaylistSource
 
 	events chan interface{}
@@ -164,6 +180,7 @@ func New(opts Options) (*Engine, error) {
 		claims:         make(map[int]map[string]int),
 		playlistTitles: make(map[int]string),
 		throttle:       newDownloadThrottle(opts.Workers),
+		live:           liveOf(opts),
 	}
 	for i, u := range opts.URLs {
 		e.sources = append(e.sources, PlaylistSource{Index: i, URL: u})
@@ -255,7 +272,6 @@ func (e *Engine) Run(ctx context.Context) {
 		defer func() { _ = os.RemoveAll(dir) }()
 	}
 
-	workers := atLeast(e.opts.Workers, 1)
 	listWorkers := orDefault(e.opts.ListWorkers, 4)
 	nameWorkers := orDefault(e.opts.NameWorkers, 8)
 	pickWorkers := orDefault(e.opts.PickWorkers, 4)
@@ -292,7 +308,7 @@ func (e *Engine) Run(ctx context.Context) {
 	}
 	naming := pool(nameWorkers, e.nameQueue, e.nameStage)
 	picking := pool(pickWorkers, e.pickQueue, e.pickStage)
-	downloading := pool(workers, e.queue, func(ctx context.Context, id int) {
+	downloading := pool(maxDownloaders, e.queue, func(ctx context.Context, id int) {
 		e.process(ctx, id)
 		e.finishOne()
 	})
@@ -367,7 +383,7 @@ func orDefault(n, fallback int) int {
 // coordinate waits for the queue to drain and then either runs a retry cycle (after a
 // wait that grows with the cycle) or emits the final idle event.
 func (e *Engine) coordinate(ctx context.Context) {
-	wait := e.opts.RetryWait
+	wait := e.settings().RetryWait
 	if wait <= 0 {
 		wait = defaultRetryWait
 	}
@@ -397,7 +413,7 @@ func (e *Engine) coordinate(ctx context.Context) {
 }
 
 // retryCycles is how many retry cycles an entry gets.
-func (e *Engine) retryCycles() int { return orDefault(e.opts.RetryCycles, defaultRetryCycles) }
+func (e *Engine) retryCycles() int { return orDefault(e.settings().RetryCycles, defaultRetryCycles) }
 
 // Retry re-queues a failed entry. It returns false when the entry is not
 // in a failed state.
@@ -570,13 +586,13 @@ func (e *Engine) nameStage(ctx context.Context, id int) {
 	switch {
 	case en.track != nil:
 		e.pickQueue.Push(id) // a song of another service is found by its own search
-	case e.opts.Resolver != nil && e.opts.Resolver.Wanted(en.info.Title, en.raw.Channel, en.raw.Uploader):
+	case e.resolver() != nil && e.resolver().Wanted(en.info.Title, en.raw.Channel, en.raw.Uploader):
 		e.setState(en, StateResolving, "")
 		channel := en.raw.Channel
 		if channel == "" {
 			channel = en.raw.Uploader
 		}
-		identification := e.opts.Resolver.Identify(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), e.entryLog(pl, eid))
+		identification := e.resolver().Identify(en.info.VideoID, en.raw.Title, channel, int(en.raw.Duration), e.entryLog(pl, eid))
 		if identification.Done {
 			e.applyResolution(en, identification.Resolution)
 			e.advance(en)
@@ -593,7 +609,7 @@ func (e *Engine) nameStage(ctx context.Context, id int) {
 		// Nothing to look up. With a resolver that means the upload says it is the
 		// official video, which is then what is wanted.
 		e.mu.Lock()
-		en.ownOfficial = e.opts.Resolver != nil
+		en.ownOfficial = e.resolver() != nil
 		e.mu.Unlock()
 		e.advance(en)
 	}
@@ -620,8 +636,8 @@ func (e *Engine) pickStage(ctx context.Context, id int) {
 			return
 		}
 		e.log(pl, eid, "%s - %s -> %s (official: %v)", en.track.Artist, en.track.Title, en.targetID, en.official)
-	case identification != nil && e.opts.Resolver != nil:
-		e.applyResolution(en, e.opts.Resolver.Pick(*identification, e.entryLog(pl, eid)))
+	case identification != nil && e.resolver() != nil:
+		e.applyResolution(en, e.resolver().Pick(*identification, e.entryLog(pl, eid)))
 	}
 	e.advance(en)
 }
@@ -633,12 +649,12 @@ func (e *Engine) advance(en *engineEntry) {
 	official := en.official || en.ownOfficial
 	e.mu.Unlock()
 
-	if e.opts.OfficialOnly && !official {
+	if e.settings().OfficialOnly && !official {
 		e.markNotFound(en)
 		e.finishOne()
 		return
 	}
-	if e.opts.PlanOnly {
+	if e.opts.PlanOnly || e.opts.HoldForReview {
 		e.setState(en, StatePlanned, "")
 		e.finishOne()
 		return
@@ -756,8 +772,6 @@ func (e *Engine) process(ctx context.Context, id int) {
 		return
 	}
 
-	e.setState(en, StateDownloading, "")
-
 	immediateUsed := false
 	for {
 		err := e.throttledDownload(ctx, en)
@@ -779,7 +793,6 @@ func (e *Engine) process(ctx context.Context, id int) {
 				e.setState(en, StateDuplicate, "")
 				return
 			}
-			e.setState(en, StateDownloading, "")
 			continue
 		}
 
@@ -797,11 +810,10 @@ func (e *Engine) process(ctx context.Context, id int) {
 				e.setState(en, StateDuplicate, "")
 				return
 			}
-			e.setState(en, StateDownloading, "")
 			continue
 		}
 
-		if !e.opts.AutoRetry {
+		if !e.settings().AutoRetry {
 			e.setState(en, StateFailed, err.Error())
 			return
 		}
@@ -811,7 +823,6 @@ func (e *Engine) process(ctx context.Context, id int) {
 			if !immediateUsed {
 				immediateUsed = true
 				e.log(pl, eid, "retrying now (%v)", err)
-				e.setState(en, StateDownloading, "")
 				continue
 			}
 			// An error nobody has classified may be a glitch that a later cycle clears.
@@ -841,6 +852,14 @@ func (e *Engine) throttledDownload(ctx context.Context, en *engineEntry) error {
 		return ctx.Err()
 	}
 	defer release()
+	// The song shows as downloading only once a downloader is free, so a song waiting its
+	// turn (or a pause) is still queued.
+	e.mu.Lock()
+	downloading := en.state == StateDownloading || en.state == StateMerging
+	e.mu.Unlock()
+	if !downloading {
+		e.setState(en, StateDownloading, "")
+	}
 
 	err := e.download(ctx, en)
 	var change string
@@ -865,16 +884,17 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	target := en.targetID
 	e.mu.Unlock()
 
-	template := fetch.ApplyPlaylistFields(e.opts.OutputTemplate, en.raw)
+	live := e.settings()
+	template := fetch.ApplyPlaylistFields(live.OutputTemplate, en.raw)
 	options := fetch.DownloadOptions{
-		Format:              e.opts.Quality,
-		OutputTemplate:      filepath.Join(e.opts.OutputDir, template),
-		MergeOutputFormat:   e.opts.MergeOutputFormat,
-		ConcurrentFragments: e.opts.ConcurrentFragments,
-		ExtraArgs:           e.opts.ExtraArgs,
+		Format:              live.Quality,
+		OutputTemplate:      filepath.Join(live.OutputDir, template),
+		MergeOutputFormat:   live.MergeOutputFormat,
+		ConcurrentFragments: live.ConcurrentFragments,
+		ExtraArgs:           live.ExtraArgs,
 	}
 	if e.opts.PartialDir != "" {
-		options.OutputTemplate, options.HomeDir, options.TempDir = template, e.opts.OutputDir, e.opts.PartialDir
+		options.OutputTemplate, options.HomeDir, options.TempDir = template, live.OutputDir, e.opts.PartialDir
 	}
 	trailing := []string{"--newline", "--progress-template", fetch.ProgressTemplate, "--no-playlist"}
 	// yt-dlp writes the path of every finished file here, for CheckDownload. Only a
@@ -890,9 +910,9 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	}
 	args := fetch.DownloadArgs(options, append(trailing, "https://www.youtube.com/watch?v="+target)...)
 
-	err := fetch.DownloadWithStartTimeout(ctx, e.opts.YtDlp, args, e.opts.StartTimeout, func(line string) {
+	err := fetch.DownloadWithStartTimeout(ctx, e.opts.YtDlp, args, live.StartTimeout, func(line string) {
 		if p, ok := fetch.ParseProgressLine(line); ok {
-			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA, Parts: partsInFlight(p, e.opts.ConcurrentFragments)})
+			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA, Parts: partsInFlight(p, live.ConcurrentFragments)})
 			return
 		}
 		if fetch.IsPostProcessLine(line) {
@@ -968,7 +988,7 @@ func (e *Engine) searchAgain(en *engineEntry, bad *rejectedDownload) {
 	e.log(pl, eid, "%s was removed (%s); looking for another version", en.targetID, bad.problem)
 
 	var res Resolution
-	if picker, ok := e.opts.Resolver.(RePicker); ok && identified != nil {
+	if picker, ok := e.resolver().(RePicker); ok && identified != nil {
 		res = picker.PickWithout(*identified, rejected, e.entryLog(pl, eid))
 	}
 
@@ -1020,7 +1040,7 @@ func (e *Engine) markIdle() {
 func (e *Engine) sweepCandidates() ([]int, int) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if !e.opts.AutoRetry {
+	if !e.settings().AutoRetry {
 		return nil, 0
 	}
 	var ids []int

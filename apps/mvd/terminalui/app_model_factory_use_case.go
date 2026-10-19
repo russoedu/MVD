@@ -5,15 +5,20 @@ package terminalui
 
 import (
 	"path/filepath"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/downloadlist"
+	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/openurl"
 	"youtube-downloader/libs/mvd-core/playlistfile"
+	"youtube-downloader/libs/mvd-core/runner"
 	"youtube-downloader/libs/mvd-core/sourcelist"
 	"youtube-downloader/libs/mvd-core/tui"
+	"youtube-downloader/libs/mvd-core/workspace"
 )
 
 // Files are where the settings and the download list live, the same files the
@@ -29,6 +34,8 @@ type Files struct {
 type Host struct {
 	// Start starts a download run from the screens.
 	Start tui.RunStarter
+	// StartList starts the run that carries the download list on.
+	StartList func(config.Config, []string, []engine.PlannedEntry, bool) (workspace.ListRun, error)
 	// PickFolder is the operating system's own folder chooser, which the folder
 	// settings open; nil to use the built-in browser.
 	PickFolder tui.FolderPicker
@@ -65,26 +72,38 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 		}
 		tui.ApplyTheme(cfg.Colors)
 		urls, _ := sourcelist.Load(files.List)
-		reviewNow := false
+		list := downloadlist.New(urls)
 		if review != "" {
-			urls, reviewNow, review = []string{review}, true, ""
+			if strings.EqualFold(filepath.Ext(review), playlistfile.Extension) {
+				if opened, err := downloadlist.Open(review); err == nil {
+					list = opened
+				} else {
+					logf("cannot open %s: %v", review, err)
+				}
+			} else {
+				list = downloadlist.New([]string{review})
+			}
+			review = ""
 		}
 
-		return accessibleApp{tui.NewAppModel(tui.AppInput{
-			Setup:         tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
-			Start:         host.Start,
-			ReviewOnStart: reviewNow,
-			OnQuit:        host.Quit,
-			Editor: tui.EditorHost{
-				Plan:         host.Plan,
-				PlanDownload: host.PlanDownload,
-				Open:         openurl.Open,
-				Describe:     host.Describe,
-				PickFile:     host.PickFile,
-				SaveFile:     host.SaveFile,
-				SessionFile:  filepath.Join(appDir, "plan"+playlistfile.Extension),
-				SaveDir:      filepath.Join(appDir, "plans"),
-				DecisionLog:  filepath.Join(appDir, "editor-decisions.jsonl"),
+		return accessibleApp{tui.NewWorkspaceApp(tui.WorkspaceInput{
+			Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
+			List:  list,
+			Live:  runner.LiveSettings,
+			Host: workspace.Host{
+				Start: host.StartList,
+				Editor: tui.EditorHost{
+					Open:        openurl.Open,
+					Describe:    host.Describe,
+					SessionFile: filepath.Join(appDir, "plan"+playlistfile.Extension),
+					SaveDir:     filepath.Join(appDir, "plans"),
+					DecisionLog: filepath.Join(appDir, "editor-decisions.jsonl"),
+				},
+				ListDir:  filepath.Join(appDir, "lists"),
+				PickFile: host.PickFile,
+				SaveFile: host.SaveFile,
+				Open:     openurl.Open,
+				Quit:     host.Quit,
 			},
 		})}
 	}
