@@ -18,6 +18,7 @@ import (
 
 	"youtube-downloader/apps/mvd/appwindow"
 	"youtube-downloader/apps/mvd/console"
+	"youtube-downloader/apps/mvd/filetype"
 	"youtube-downloader/apps/mvd/folderdialog"
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/notification"
@@ -27,6 +28,7 @@ import (
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-core/playlistfile"
+	"youtube-downloader/libs/mvd-core/workspace"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -150,13 +152,29 @@ func run(movedFrom string, askToMove bool, review string) error {
 		Move: terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop),
 	}, logf))
 
+	// .mvd files are download lists of this program: they get its icon and open it. It is
+	// told at every start, so it follows the program when it moves.
+	if exe, err := os.Executable(); err == nil {
+		if err := filetype.Register(exe); err != nil {
+			logf("cannot register the .mvd file type: %v", err)
+		}
+	}
+
 	fmt.Printf("MVD %s\n", version)
 	updates.AtStart()
 
 	// The window runs on this goroutine (macOS needs the main thread) until it is closed,
 	// and closing it ends the app. A second start does not get past appwindow.Run: it
 	// raises the first window and ends.
-	err = appwindow.Run(ctx, appwindow.Options{Program: program, DataDir: appDir, Busy: terminalRuns.Busy})
+	err = appwindow.Run(ctx, appwindow.Options{
+		Program: program, DataDir: appDir, Busy: terminalRuns.Busy,
+		// A list double clicked while the app is open is opened in the window that is.
+		OnSecondStart: func(args []string) {
+			if list := filetype.ListInArgs(args); list != "" {
+				program.Send(workspace.OpenListMsg{Path: list})
+			}
+		},
+	})
 	stop()
 
 	return err

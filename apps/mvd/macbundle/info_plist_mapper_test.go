@@ -26,6 +26,23 @@ func TestTheBundleDescribesANormalApplicationNamedMVD(t *testing.T) {
 	}
 }
 
+func TestTheBundleSaysItOpensMVDFilesAndGivesThemItsIcon(t *testing.T) {
+	plist := InfoPlist("0.0.7", true)
+
+	for _, want := range []string{
+		"<key>CFBundleDocumentTypes</key>",
+		"<string>" + Identifier + ".list</string>",
+		"<key>UTExportedTypeDeclarations</key>",
+		"<key>public.filename-extension</key>\n\t\t\t\t<array>\n\t\t\t\t\t<string>mvd</string>",
+		"<key>CFBundleTypeIconFile</key>\n\t\t\t<string>" + IconName + "</string>",
+		"<key>UTTypeIconFile</key>\n\t\t\t<string>" + IconName + "</string>",
+	} {
+		if !strings.Contains(plist, want) {
+			t.Errorf("the Info.plist lacks %q", want)
+		}
+	}
+}
+
 func TestAVersionIsEscapedSoItCannotBreakTheDocument(t *testing.T) {
 	plist := InfoPlist(`1.0 </string><key>Evil</key><string>x`, false)
 
