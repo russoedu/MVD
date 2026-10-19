@@ -3,6 +3,8 @@ package install
 import (
 	"path/filepath"
 	"strings"
+
+	"youtube-downloader/apps/mvd/filetype"
 )
 
 // linuxIconPath is where the icon goes for the menu entry in applicationsDir, in the
@@ -33,8 +35,9 @@ func desktopEntryWithIcon(program, icon string) string {
 Type=Application
 Name=MVD
 Comment=Music video downloader
-Exec=` + quoted + `
+Exec=` + quoted + ` %f
 ` + iconLine + `Terminal=false
 Categories=Network;AudioVideo;
+MimeType=` + filetype.MimeType + `;
 `
 }

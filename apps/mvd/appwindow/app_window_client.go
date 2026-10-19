@@ -36,6 +36,10 @@ type Options struct {
 	DataDir string
 	// Busy reports whether downloads are running, so closing the window asks first.
 	Busy func() bool
+	// OnSecondStart is told the arguments of a second start of the app, which raises this
+	// window instead of opening its own: a .mvd file double clicked while the app is open
+	// arrives this way. Nil for none.
+	OnSecondStart func(args []string)
 }
 
 // Run opens the window and returns when it is closed. A second start of the app does not
@@ -54,9 +58,12 @@ func Run(ctx context.Context, opts Options) error {
 		AssetServer:      &assetserver.Options{Assets: pageAssets()},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: uniqueID,
-			OnSecondInstanceLaunch: func(options.SecondInstanceData) {
+			OnSecondInstanceLaunch: func(second options.SecondInstanceData) {
 				if windowCtx == nil {
 					return
+				}
+				if opts.OnSecondStart != nil {
+					opts.OnSecondStart(second.Args)
 				}
 				wailsruntime.WindowUnminimise(windowCtx)
 				wailsruntime.Show(windowCtx)

@@ -44,6 +44,10 @@ type (
 // with Reconfigure.
 type PreferencesRequestedMsg struct{}
 
+// OpenListMsg asks the workspace to open the list at Path, as when a .mvd file is double
+// clicked while the app is already open.
+type OpenListMsg struct{ Path string }
+
 // saveEvery is how often the list file is brought up to date while a run goes on.
 const saveEvery = 2 * time.Second
 
@@ -137,6 +141,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.syncList()
 		return m, saveTick()
+
+	case OpenListMsg:
+		if m.running() || m.starting || m.stopping {
+			m.notice = "Stop the downloads before opening " + filepath.Base(msg.Path)
+			return m, nil
+		}
+		m.editing, m.reviewing, m.asking = false, false, askNone
+		return m.answered(askOpen, msg.Path)
 
 	case filePickedMsg:
 		if msg.err != nil {

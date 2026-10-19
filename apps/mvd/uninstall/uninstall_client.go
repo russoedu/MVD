@@ -1,11 +1,13 @@
 package uninstall
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"youtube-downloader/apps/mvd/console"
+	"youtube-downloader/apps/mvd/filetype"
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/notification"
 	"youtube-downloader/apps/mvd/question"
@@ -35,7 +37,7 @@ func Here(version, appDir, configPath string, quit func()) Service {
 		RemoveAll:          os.RemoveAll,
 		Remove:             os.Remove,
 		RemoveProgram:      removeRunningProgram,
-		RemoveRegistration: install.RemoveUninstallEntries,
+		RemoveRegistration: func() error { return errors.Join(install.RemoveUninstallEntries(), filetype.Unregister()) },
 		Quit:               quit,
 	}}
 }

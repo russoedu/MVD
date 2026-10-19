@@ -9,9 +9,12 @@ const Identifier = "io.github.russoedu.mvd"
 // itself, and the one the release build puts in the .dmg. withIcon names the icon file
 // that Write places in Resources. The app is a normal one, with a Dock icon and a window.
 func InfoPlist(version string, withIcon bool) string {
-	icon := ""
+	icon, docIcon, typeIcon := "", "", ""
 	if withIcon {
 		icon = "\t<key>CFBundleIconFile</key>\n\t<string>" + IconName + "</string>\n"
+		// The lists wear the icon of the app.
+		docIcon = "\t\t\t<key>CFBundleTypeIconFile</key>\n\t\t\t<string>" + IconName + "</string>\n"
+		typeIcon = "\t\t\t<key>UTTypeIconFile</key>\n\t\t\t<string>" + IconName + "</string>\n"
 	}
 
 	return `<?xml version="1.0" encoding="UTF-8"?>
@@ -32,7 +35,42 @@ func InfoPlist(version string, withIcon bool) string {
 	<string>` + html.EscapeString(version) + `</string>
 	<key>CFBundleShortVersionString</key>
 	<string>` + html.EscapeString(version) + `</string>
-` + icon + `	<key>LSMinimumSystemVersion</key>
+` + icon + `	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>MVD download list</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>` + Identifier + `.list</string>
+			</array>
+` + docIcon + `		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>` + Identifier + `.list</string>
+			<key>UTTypeDescription</key>
+			<string>MVD download list</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+` + typeIcon + `			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mvd</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>

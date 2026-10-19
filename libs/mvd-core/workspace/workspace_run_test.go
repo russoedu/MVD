@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/config"
@@ -102,5 +103,30 @@ func TestStoppingClosesTheRunAndKeepsTheList(t *testing.T) {
 	}
 	if _, ok := msg.(runClosedMsg); !ok {
 		t.Errorf("msg %T", msg)
+	}
+}
+
+func TestAListDoubleClickedWhileTheAppIsOpenIsOpenedUnlessDownloadsAreGoing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "other.mvd")
+	other := downloadlist.New([]string{"https://youtu.be/other"})
+	if err := other.Save(path); err != nil {
+		t.Fatal(err)
+	}
+
+	m := sized(New(Host{}, config.Config{}, nil))
+	next, _ := m.Update(OpenListMsg{Path: path})
+	m = next.(Model)
+	if m.session.Path() != path {
+		t.Errorf("the list was not opened: %q (%s)", m.session.Path(), m.notice)
+	}
+
+	running, _ := started(t, false)
+	next, _ = running.Update(OpenListMsg{Path: path})
+	running = next.(Model)
+	if running.session.Path() == path {
+		t.Error("a list was opened over a run that is going")
+	}
+	if !strings.Contains(running.notice, "Stop the downloads") {
+		t.Errorf("notice %q", running.notice)
 	}
 }
