@@ -27,6 +27,11 @@ func (m Model) render() string {
 		lines[len(lines)-1] = bottom
 	}
 	screen := m.barRow() + "\n" + strings.Join(lines, "\n")
+	if m.editing {
+		w, h := min(m.width-4, 100), min(m.height-4, 24)
+		x, y := dialog.Centre(m.width, m.height, w, h)
+		screen = dialog.Overlay(screen, m.edit.View(w, h), x, y)
+	}
 	if m.bar.Open() >= 0 {
 		screen = dialog.Overlay(screen, m.bar.View(), 0, 0)
 	}

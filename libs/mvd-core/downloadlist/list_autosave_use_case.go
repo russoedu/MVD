@@ -63,3 +63,12 @@ func (s *Session) Decide(decided []playlistfile.Entry) error {
 	s.mu.Unlock()
 	return s.flush()
 }
+
+// Replace puts the given items in the list, as the person edited them, and writes the
+// list when it has a file.
+func (s *Session) Replace(items []playlistfile.Item) error {
+	s.mu.Lock()
+	s.file.Items = items
+	s.mu.Unlock()
+	return s.flush()
+}

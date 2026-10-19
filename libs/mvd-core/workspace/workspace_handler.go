@@ -69,6 +69,9 @@ type Model struct {
 	reviewing bool
 	decided   int // the version of the decisions of the review the list has
 
+	edit    editPopup
+	editing bool
+
 	asking purpose
 	input  textinput.Model
 
@@ -128,6 +131,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncList()
 		return m, saveTick()
 
+	case editSavedMsg:
+		m.editing = false
+		if err := m.session.Replace(msg.items); err != nil {
+			m.notice = "Cannot save the list: " + err.Error()
+		}
+		m.screen = m.screen.WithState(m.session.Preview())
+		return m, nil
+
+	case editCancelledMsg:
+		m.editing = false
+		return m, nil
+
 	case editorpage.LeaveMsg:
 		m.reviewing = false
 		return m, nil
@@ -150,12 +165,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.stopping || m.starting {
 			return m, nil
 		}
+		if m.editing && m.bar.Open() < 0 {
+			edit, cmd := m.edit.Update(key)
+			m.edit = edit
+			return m, cmd
+		}
 		if m.bar.Open() < 0 && !m.reviewing {
 			if next, cmd, handled := m.runKey(key.String()); handled {
 				return next, cmd
 			}
 		}
-		if !m.reviewing || m.bar.Open() >= 0 {
+		if !m.reviewing && !m.editing || m.bar.Open() >= 0 {
 			bar, cmd := m.bar.Update(msg)
 			m.bar = bar
 			if cmd != nil || m.bar.Open() >= 0 {
@@ -168,6 +188,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.toScreen(msg)
 	}
 
+	if m.editing && m.bar.Open() < 0 {
+		if click, ok := msg.(tea.MouseClickMsg); !ok || click.Y != 0 {
+			return m, nil
+		}
+	}
 	if click, ok := msg.(tea.MouseClickMsg); ok && (click.Y == 0 || m.bar.Open() >= 0) {
 		bar, cmd := m.bar.Update(msg)
 		m.bar = bar
@@ -232,6 +257,9 @@ func (m Model) runKey(key string) (Model, tea.Cmd, bool) {
 			m.reviewing = true
 			return m, nil, true
 		}
+		if !m.running() {
+			return m.openEdit(), nil, true
+		}
 	}
 	return m, nil, false
 }
@@ -263,6 +291,21 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		m.save("")
 	case entrySaveAs:
 		return m.ask(askSaveAs, "Save the list as", m.defaultPath()), textinput.Blink
+	case entryEditList:
+		return m.openEdit(), nil
+	case entryDelete, entryMoveUp, entryMoveDown:
+		if !m.editing {
+			m.notice = "Open Edit list first (Ctrl+E), then " + strings.ToLower(name) + " there"
+			return m, nil
+		}
+		key := map[string]tea.KeyPressMsg{
+			entryDelete:   {Code: tea.KeyDelete},
+			entryMoveUp:   {Code: tea.KeyUp, Mod: tea.ModShift},
+			entryMoveDown: {Code: tea.KeyDown, Mod: tea.ModShift},
+		}[name]
+		edit, cmd := m.edit.Update(key)
+		m.edit = edit
+		return m, cmd
 	case entryPreferences:
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
@@ -277,6 +320,17 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m.stop(true)
 	}
 	return m, nil
+}
+
+// openEdit shows the list to be edited. A list that is going cannot be, as the run has
+// its own copy of it: it has to be stopped first.
+func (m Model) openEdit() Model {
+	if m.running() || m.starting {
+		m.notice = "Stop the downloads before editing the list"
+		return m
+	}
+	m.edit, m.editing = newEditPopup(m.session.File()), true
+	return m
 }
 
 func (m Model) defaultPath() string {
