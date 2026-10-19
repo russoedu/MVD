@@ -65,12 +65,12 @@ func TestTheEditReachesTheListOnlyWhenSaved(t *testing.T) {
 	if !m.editing {
 		t.Fatal("not editing")
 	}
-	next, cmd := m.Update(tea.KeyPressMsg{Text: "d", Code: 'd'})
+	next, _ = m.Update(tea.KeyPressMsg{Text: "d", Code: 'd'})
 	m = next.(Model)
 	if len(m.session.Sources()) != 2 {
 		t.Fatal("the list changed before saving")
 	}
-	next, cmd = m.Update(tea.KeyPressMsg{Text: "s", Code: 's'})
+	next, cmd := m.Update(tea.KeyPressMsg{Text: "s", Code: 's'})
 	m = next.(Model)
 	next, _ = m.Update(cmd())
 	m = next.(Model)

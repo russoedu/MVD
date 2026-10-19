@@ -15,14 +15,12 @@ func TestHeldSongsDownloadOnlyWhenReleased(t *testing.T) {
 	done := make(chan struct{})
 	go func() { eng.Run(ctx); close(done) }()
 
-	var seen []interface{}
 	idle := false
 	deadline := time.After(20 * time.Second)
 	// Nothing downloads while the songs are held.
 	for !idle {
 		select {
 		case ev := <-eng.Events():
-			seen = append(seen, ev)
 			switch e := ev.(type) {
 			case EvEntryState:
 				if e.State == StateDownloading || e.State == StateDone {

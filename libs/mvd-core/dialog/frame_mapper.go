@@ -22,8 +22,6 @@ func Frame(title string, lines []string, w, h int) string {
 		if ansi.StringWidth(text) > inner-2 {
 			text = ansi.Truncate(text, inner-2, "…")
 		}
-		head = "─" + look.Title.Render(text)
-		head += border.Render(strings.Repeat("─", max(inner-1-ansi.StringWidth(text), 0)))
 		head = border.Render("╭") + border.Render("─") + look.Title.Render(text) + border.Render(strings.Repeat("─", max(inner-1-ansi.StringWidth(text), 0))) + border.Render("╮")
 	} else {
 		head = border.Render("╭" + strings.Repeat("─", inner) + "╮")
