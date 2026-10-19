@@ -3,6 +3,8 @@ package workspace
 import (
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/look"
@@ -36,7 +38,7 @@ func (m Model) render() string {
 		screen = dialog.Overlay(screen, m.edit.View(w, h), x, y)
 	}
 	if m.bar.Open() >= 0 {
-		screen = dialog.Overlay(screen, m.bar.View(), 0, 0)
+		screen = overlayMenu(screen, m.bar.View())
 	}
 	return screen
 }
@@ -62,4 +64,23 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Red.Render(m.notice), m.width)
 	}
 	return ""
+}
+
+// overlayMenu lays the open menu over the screen: the bar on the top row, and the box of
+// the menu alone under it, so the screen shows at both sides of the box and below it.
+func overlayMenu(screen, barView string) string {
+	lines := strings.Split(screen, "\n")
+	rows := strings.Split(barView, "\n")
+	lines[0] = rows[0]
+	screen = strings.Join(lines, "\n")
+	for y := 1; y < len(rows); y++ {
+		plain := ansi.Strip(rows[y])
+		left := len(plain) - len(strings.TrimLeft(plain, " "))
+		right := len(strings.TrimRight(plain, " "))
+		if right <= left {
+			continue
+		}
+		screen = dialog.Overlay(screen, ansi.Cut(rows[y], left, right), left, y)
+	}
+	return screen
 }
