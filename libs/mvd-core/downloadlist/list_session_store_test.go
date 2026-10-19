@@ -153,3 +153,23 @@ func TestSetSourcesKeepsTheSongsOfWhatStays(t *testing.T) {
 		t.Errorf("items %+v", got.Items)
 	}
 }
+
+func TestThePreviewShowsEachSongInTheStateTheFileKept(t *testing.T) {
+	s := New([]string{listURL, "https://not.looked.at"})
+	s.Apply([]engine.EntrySnapshot{
+		snap("one", 1, engine.StateDone, "one"),
+		snap("two", 2, engine.StateFailed, "two"),
+		snap("three", 3, engine.StatePlanned, "three"),
+	})
+	state := s.Preview()
+	if len(state.Playlists) != 2 || len(state.Playlists[0].Entries) != 3 || len(state.Playlists[1].Entries) != 0 {
+		t.Fatalf("playlists %+v", state.Playlists)
+	}
+	tally := state.Tally()
+	if tally.Done != 1 || tally.Failed != 1 || tally.Planned != 1 {
+		t.Errorf("tally %+v", tally)
+	}
+	if state.Playlists[0].Title != "A" || state.Playlists[1].Title != "https://not.looked.at" {
+		t.Errorf("titles %q %q", state.Playlists[0].Title, state.Playlists[1].Title)
+	}
+}
