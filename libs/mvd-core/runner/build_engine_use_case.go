@@ -21,22 +21,29 @@ import (
 // BuildEngine resolves cookies and builds the engine for cfg and urls. logf
 // receives human-readable progress (cookie discovery, etc.); it may be nil.
 func BuildEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, logf func(string, ...interface{})) (*engine.Engine, error) {
-	return build(ctx, ytDlpPath, cfg, urls, nil, false, logf)
+	return build(ctx, ytDlpPath, cfg, urls, nil, false, false, logf)
 }
 
 // BuildPlanEngine builds an engine that lists, names and picks but downloads nothing:
 // its Plan says what would be downloaded for each song.
 func BuildPlanEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, logf func(string, ...interface{})) (*engine.Engine, error) {
-	return build(ctx, ytDlpPath, cfg, urls, nil, true, logf)
+	return build(ctx, ytDlpPath, cfg, urls, nil, true, false, logf)
 }
 
 // BuildPlanDownloadEngine builds an engine that downloads exactly what a plan names, with
 // no lookup of another version.
 func BuildPlanDownloadEngine(ctx context.Context, ytDlpPath string, cfg config.Config, plan []engine.PlannedEntry, logf func(string, ...interface{})) (*engine.Engine, error) {
-	return build(ctx, ytDlpPath, cfg, nil, plan, false, logf)
+	return build(ctx, ytDlpPath, cfg, nil, plan, false, false, logf)
 }
 
-func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, plan []engine.PlannedEntry, planOnly bool, logf func(string, ...interface{})) (*engine.Engine, error) {
+// BuildListEngine builds the engine that carries a download list on: urls are the addresses
+// nobody has looked at yet, plan the songs of the others, and with hold every song is held
+// for review until it is released.
+func BuildListEngine(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, plan []engine.PlannedEntry, hold bool, logf func(string, ...interface{})) (*engine.Engine, error) {
+	return build(ctx, ytDlpPath, cfg, urls, plan, false, hold, logf)
+}
+
+func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []string, plan []engine.PlannedEntry, planOnly, hold bool, logf func(string, ...interface{})) (*engine.Engine, error) {
 	log := func(format string, a ...interface{}) {
 		if logf != nil {
 			logf(format, a...)
@@ -103,6 +110,7 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 		StartTimeout:        time.Duration(cfg.StartTimeoutSeconds) * time.Second,
 		RetryWait:           time.Duration(cfg.RetryWaitSeconds) * time.Second,
 		PlanOnly:            planOnly,
+		HoldForReview:       hold,
 		Plan:                plan,
 		CheckDownload:       checkOneSidedSound(ytDlpPath),
 	}

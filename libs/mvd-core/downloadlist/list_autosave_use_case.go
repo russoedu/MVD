@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/playlistfile"
 )
 
 // DefaultSaveEvery is how often Watch looks at the run: often enough that little is lost
@@ -34,6 +35,31 @@ func (s *Session) Watch(ctx context.Context, eng *engine.Engine, every time.Dura
 
 // Sync writes the list now, from the engine as it stands.
 func (s *Session) Sync(eng *engine.Engine) error {
-	s.Apply(eng.Snapshot())
+	return s.SyncSnapshot(eng.Snapshot())
+}
+
+// SyncSnapshot writes the list now, from a snapshot of a run.
+func (s *Session) SyncSnapshot(snapshot []engine.EntrySnapshot) error {
+	s.Apply(snapshot)
+	return s.flush()
+}
+
+// Decide puts the decisions of a review on the songs they belong to, by key: a song with
+// no decision there keeps what it has. It writes the list when it has a file.
+func (s *Session) Decide(decided []playlistfile.Entry) error {
+	s.mu.Lock()
+	byKey := make(map[string]playlistfile.Entry, len(decided))
+	for _, d := range decided {
+		byKey[d.Key()] = d
+	}
+	for i := range s.file.Items {
+		songs := s.file.Items[i].Songs
+		for j := range songs {
+			if d, ok := byKey[songs[j].Key()]; ok {
+				songs[j].Decision, songs[j].ChosenID, songs[j].ChosenTitle = d.Decision, d.ChosenID, d.ChosenTitle
+			}
+		}
+	}
+	s.mu.Unlock()
 	return s.flush()
 }

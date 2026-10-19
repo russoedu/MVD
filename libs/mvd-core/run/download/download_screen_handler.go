@@ -422,6 +422,12 @@ func (m Model) Attach(c Controller) (Model, tea.Cmd) {
 	return m, waitEvent(m.events)
 }
 
+// Detach lets the run go, keeping what it reported on the screen.
+func (m Model) Detach() Model {
+	m.ctrl, m.events = nil, nil
+	return m
+}
+
 // Running reports whether a run is attached.
 func (m Model) Running() bool { return m.ctrl != nil }
 
