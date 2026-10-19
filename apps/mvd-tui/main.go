@@ -17,6 +17,7 @@ import (
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/deps"
+	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/openurl"
 	"youtube-downloader/libs/mvd-core/plain"
@@ -24,6 +25,7 @@ import (
 	"youtube-downloader/libs/mvd-core/runner"
 	"youtube-downloader/libs/mvd-core/sourcelist"
 	"youtube-downloader/libs/mvd-core/tui"
+	"youtube-downloader/libs/mvd-core/workspace"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -84,7 +86,7 @@ func runInteractive(ytDlpPath string, cfg config.Config, cfgPath, listPath strin
 
 	// Nothing is printed while the screens are up; the engine writes its own log file.
 	quiet := func(string, ...interface{}) {}
-	startEngine := func(build func(context.Context) (*engine.Engine, error)) (tui.Run, error) {
+	startEngine := func(build func(context.Context) (*engine.Engine, error)) (*engineRun, error) {
 		runCtx, cancel := context.WithCancel(appCtx)
 		eng, err := build(runCtx)
 		if err != nil {
@@ -96,44 +98,52 @@ func runInteractive(ytDlpPath string, cfg config.Config, cfgPath, listPath strin
 		return run, nil
 	}
 
-	in := tui.AppInput{
-		Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: cfgPath, ListPath: listPath, OpenConfig: created},
-		Start: func(cfg config.Config, urls []string) (tui.Run, error) {
-			if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
-				return nil, fmt.Errorf("cannot create the output directory %s: %w", cfg.OutputDir, err)
+	list := downloadlist.New(urls)
+	if review != "" {
+		if strings.EqualFold(filepath.Ext(review), playlistfile.Extension) {
+			opened, err := downloadlist.Open(review)
+			if err != nil {
+				fmt.Printf("Cannot open %s: %v\n", review, err)
+				return
 			}
-			return startEngine(func(ctx context.Context) (*engine.Engine, error) {
-				return runner.BuildEngine(ctx, ytDlpPath, cfg, urls, quiet)
-			})
-		},
-		Editor: tui.EditorHost{
-			Plan: func(cfg config.Config, urls []string) (tui.Run, error) {
-				return startEngine(func(ctx context.Context) (*engine.Engine, error) {
-					return runner.BuildPlanEngine(ctx, ytDlpPath, cfg, urls, quiet)
-				})
-			},
-			PlanDownload: func(cfg config.Config, plan []engine.PlannedEntry) (tui.Run, error) {
+			list = opened
+		} else {
+			list = downloadlist.New([]string{review})
+		}
+	}
+
+	in := tui.WorkspaceInput{
+		Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: cfgPath, ListPath: listPath, OpenConfig: created},
+		List:  list,
+		Live:  runner.LiveSettings,
+		Host: workspace.Host{
+			Start: func(cfg config.Config, sources []string, plan []engine.PlannedEntry, hold bool) (workspace.ListRun, error) {
 				if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
 					return nil, fmt.Errorf("cannot create the output directory %s: %w", cfg.OutputDir, err)
 				}
-				return startEngine(func(ctx context.Context) (*engine.Engine, error) {
-					return runner.BuildPlanDownloadEngine(ctx, ytDlpPath, cfg, plan, quiet)
+				run, err := startEngine(func(ctx context.Context) (*engine.Engine, error) {
+					return runner.BuildListEngine(ctx, ytDlpPath, cfg, sources, plan, hold, quiet)
 				})
+				if err != nil {
+					return nil, err
+				}
+				return run, nil
 			},
-			Open: openurl.Open,
-			Describe: func(videoID string) (string, error) {
-				return ytdlp.VideoTitle(appCtx, ytDlpPath, videoID, nil)
+			Editor: tui.EditorHost{
+				Open: openurl.Open,
+				Describe: func(videoID string) (string, error) {
+					return ytdlp.VideoTitle(appCtx, ytDlpPath, videoID, nil)
+				},
+				SessionFile: filepath.Join(appDir, "plan"+playlistfile.Extension),
+				SaveDir:     filepath.Join(appDir, "plans"),
+				DecisionLog: filepath.Join(appDir, "editor-decisions.jsonl"),
 			},
-			SessionFile: filepath.Join(appDir, "plan"+playlistfile.Extension),
-			SaveDir:     filepath.Join(appDir, "plans"),
-			DecisionLog: filepath.Join(appDir, "editor-decisions.jsonl"),
+			ListDir: filepath.Join(appDir, "lists"),
+			Open:    openurl.Open,
 		},
 	}
-	if review != "" {
-		in.Setup.URLs, in.ReviewOnStart = []string{review}, true
-	}
 
-	if err := tui.RunApp(appCtx, in); err != nil && appCtx.Err() == nil {
+	if err := tui.RunWorkspace(appCtx, in); err != nil && appCtx.Err() == nil {
 		fmt.Printf("Interface error: %v\n", err)
 	}
 }

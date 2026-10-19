@@ -33,6 +33,10 @@ type (
 	saveTickMsg time.Time
 )
 
+// PreferencesRequestedMsg asks the host to show the preferences; it gives the result back
+// with Reconfigure.
+type PreferencesRequestedMsg struct{}
+
 // saveEvery is how often the list file is brought up to date while a run goes on.
 const saveEvery = 2 * time.Second
 
@@ -259,6 +263,8 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		m.save("")
 	case entrySaveAs:
 		return m.ask(askSaveAs, "Save the list as", m.defaultPath()), textinput.Blink
+	case entryPreferences:
+		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
 		m.notice = "MVD, Music Video Downloader"
 	case entryOpenSource:

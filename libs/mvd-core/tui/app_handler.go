@@ -90,6 +90,7 @@ type setupModel struct {
 	colours       colourspage.Model
 	songs         songspage.Model
 	result        SetupResult
+	prefsOnly     bool // only the preferences: leaving them ends the screens
 	embedded      bool // inside an app model: ends with setupFinishedMsg instead of quitting
 	pick          FolderPicker
 	uninstall     Uninstaller
@@ -183,10 +184,18 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cfg = cfg
 			_ = config.Save(m.cfg, m.cfgPath)
 			m.screen = screenList
+			if m.prefsOnly {
+				m.result = SetupResult{Action: ActionQuit, Cfg: m.cfg, URLs: m.list.URLs()}
+				return m, m.finish()
+			}
 			return m, nil
 		case preferencespage.Cancel:
 			ApplyTheme(m.cfg.Colors)
 			m.screen = screenList
+			if m.prefsOnly {
+				m.result = SetupResult{Action: ActionQuit, Cfg: m.cfg, URLs: m.list.URLs()}
+				return m, m.finish()
+			}
 			return m, nil
 		case preferencespage.Advanced:
 			m.advanced = advancedpage.New(m.config.Config()).SetSize(m.width, m.height)

@@ -50,5 +50,5 @@ func menus() []menubar.Menu {
 // notYet are the entries whose popups come with later parts of the list rework; they are
 // shown greyed out until then.
 var notYet = []string{
-	entryPreferences, "Undo", "Redo", "Copy", "Paste", "Delete", "Move up", "Move down",
+	"Undo", "Redo", "Copy", "Paste", "Delete", "Move up", "Move down",
 }
