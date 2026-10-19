@@ -28,7 +28,11 @@ type WorkspaceInput struct {
 // NewWorkspaceApp returns the app whose main screen is the workspace: the download list
 // under a menu bar. The preferences are shown over it from the File menu.
 func NewWorkspaceApp(in WorkspaceInput) tea.Model {
-	return workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg}
+	a := workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg}
+	if in.Setup.OpenConfig {
+		a = a.openPrefs() // the first run: the settings have never been looked at
+	}
+	return a
 }
 
 type workspaceApp struct {
@@ -40,7 +44,12 @@ type workspaceApp struct {
 	width, height int
 }
 
-func (a workspaceApp) Init() tea.Cmd { return a.ws.Init() }
+func (a workspaceApp) Init() tea.Cmd {
+	if a.inPrefs {
+		return tea.Batch(a.ws.Init(), a.prefs.Init())
+	}
+	return a.ws.Init()
+}
 
 func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -50,11 +59,7 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.prefs = a.prefs.sizedTo(a.popupSize())
 		}
 	case workspace.PreferencesRequestedMsg:
-		in := a.in.Setup
-		in.Cfg, in.OpenConfig = a.cfg, true
-		a.prefs = newSetupModel(in)
-		a.prefs.embedded, a.prefs.prefsOnly = true, true
-		a.prefs, a.inPrefs = a.prefs.sizedTo(a.popupSize()), true
+		a = a.openPrefs()
 		return a, a.prefs.Init()
 	case setupFinishedMsg:
 		a.inPrefs = false
@@ -77,6 +82,16 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := a.ws.Update(msg)
 	a.ws = next.(workspace.Model)
 	return a, cmd
+}
+
+// openPrefs shows the preferences over the workspace.
+func (a workspaceApp) openPrefs() workspaceApp {
+	in := a.in.Setup
+	in.Cfg, in.OpenConfig = a.cfg, true
+	a.prefs = newSetupModel(in)
+	a.prefs.embedded, a.prefs.prefsOnly = true, true
+	a.prefs, a.inPrefs = a.prefs.sizedTo(a.popupSize()), true
+	return a
 }
 
 // apply takes cfg as the settings, keeping the places and the name pattern as they were
@@ -107,6 +122,14 @@ func (a workspaceApp) popupSize() (int, int) {
 func (m setupModel) sizedTo(w, h int) setupModel {
 	next, _ := m.Update(tea.WindowSizeMsg{Width: w - 2, Height: h - 2})
 	return next.(setupModel)
+}
+
+// Outline describes the current screen (see ScreenOutline).
+func (a workspaceApp) Outline() ScreenOutline {
+	if a.inPrefs {
+		return a.prefs.Outline()
+	}
+	return a.ws.Outline()
 }
 
 func (a workspaceApp) View() tea.View {

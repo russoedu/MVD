@@ -28,6 +28,12 @@ type Host struct {
 	Editor editorpage.EditorHost
 	// ListDir is the folder lists are opened from and saved to by default.
 	ListDir string
+	// PickFile shows the operating system's own open-file window, starting in start, and
+	// returns the file chosen; chosen is false when the person cancelled. Without it the
+	// path is asked for on the bottom line.
+	PickFile func(start string) (path string, chosen bool, err error)
+	// SaveFile is the same for saving: it starts in dir with name offered.
+	SaveFile func(dir, name string) (path string, chosen bool, err error)
 	// Open opens an address in the person's browser; nil for none.
 	Open func(url string) error
 	// Quit is called when the person quits, so a host that shows the program in a window

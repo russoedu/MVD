@@ -10,6 +10,7 @@ import (
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runner"
 	"youtube-downloader/libs/mvd-core/tui"
+	"youtube-downloader/libs/mvd-core/workspace"
 )
 
 // Runs starts the download runs of the terminal interface and remembers the one
@@ -69,6 +70,24 @@ func (r *Runs) Start(parent context.Context, ytDlpPath string, logf func(string,
 			return nil, err
 		}
 		return r.launch(ctx, cancel, eng, true), nil
+	}
+}
+
+// StartList starts the run that carries a download list on: the addresses nobody has looked
+// at yet are listed as usual, the songs of the others go straight to download, and with
+// hold every song waits for review. It counts as the current run, like Start.
+func (r *Runs) StartList(parent context.Context, ytDlpPath string, logf func(string, ...interface{})) func(config.Config, []string, []engine.PlannedEntry, bool) (workspace.ListRun, error) {
+	return func(cfg config.Config, sources []string, plan []engine.PlannedEntry, hold bool) (workspace.ListRun, error) {
+		if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
+			return nil, fmt.Errorf("cannot create the download folder %s: %w", cfg.OutputDir, err)
+		}
+		ctx, cancel := context.WithCancel(parent)
+		eng, err := runner.BuildListEngine(ctx, ytDlpPath, cfg, sources, plan, hold, logf)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		return r.launch(ctx, cancel, eng, true).(*engineRun), nil
 	}
 }
 

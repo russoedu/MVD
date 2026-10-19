@@ -29,6 +29,13 @@ type (
 	}
 	// runClosedMsg says a run finished winding down.
 	runClosedMsg struct{ quit bool }
+	// filePickedMsg is what the operating system's file window answered.
+	filePickedMsg struct {
+		purpose purpose
+		path    string
+		chosen  bool
+		err     error
+	}
 	// saveTickMsg is the beat at which the list is brought up to date with the run.
 	saveTickMsg time.Time
 )
@@ -130,6 +137,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.syncList()
 		return m, saveTick()
+
+	case filePickedMsg:
+		if msg.err != nil {
+			m.notice = "Cannot show the file window: " + msg.err.Error()
+			return m, nil
+		}
+		if !msg.chosen {
+			return m, nil
+		}
+		return m.answered(msg.purpose, msg.path)
 
 	case editSavedMsg:
 		m.editing = false
@@ -283,14 +300,21 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 			m.notice = "Stop the downloads before opening another list"
 			return m, nil
 		}
+		if m.host.PickFile != nil {
+			pick, dir := m.host.PickFile, m.host.ListDir
+			return m, func() tea.Msg {
+				path, chosen, err := pick(dir)
+				return filePickedMsg{askOpen, path, chosen, err}
+			}
+		}
 		return m.ask(askOpen, "Open the list", m.defaultPath()), textinput.Blink
 	case entrySave:
 		if m.session.Path() == "" {
-			return m.ask(askSaveAs, "Save the list as", m.defaultPath()), textinput.Blink
+			return m.askWhereToSave(askSaveAs)
 		}
 		m.save("")
 	case entrySaveAs:
-		return m.ask(askSaveAs, "Save the list as", m.defaultPath()), textinput.Blink
+		return m.askWhereToSave(askSaveAs)
 	case entryEditList:
 		return m.openEdit(), nil
 	case entryDelete, entryMoveUp, entryMoveDown:
@@ -331,6 +355,19 @@ func (m Model) openEdit() Model {
 	}
 	m.edit, m.editing = newEditPopup(m.session.File()), true
 	return m
+}
+
+// askWhereToSave shows the file window for a list to be saved, or asks for the path on the
+// bottom line when the host has none.
+func (m Model) askWhereToSave(p purpose) (Model, tea.Cmd) {
+	if m.host.SaveFile == nil {
+		return m.ask(p, "Save the list as", m.defaultPath()), textinput.Blink
+	}
+	save, dir, name := m.host.SaveFile, filepath.Dir(m.defaultPath()), filepath.Base(m.defaultPath())
+	return m, func() tea.Msg {
+		path, chosen, err := save(dir, name)
+		return filePickedMsg{p, path, chosen, err}
+	}
 }
 
 func (m Model) defaultPath() string {
@@ -444,6 +481,9 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		p := askSaveThenStart
 		if review {
 			p = askSaveThenReview
+		}
+		if m.host.SaveFile != nil {
+			return m.askWhereToSave(p)
 		}
 		return m.ask(p, "Save the list as, then it starts", m.defaultPath()), textinput.Blink
 	}
