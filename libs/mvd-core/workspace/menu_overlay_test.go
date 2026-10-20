@@ -45,3 +45,24 @@ func TestAnOpenMenuFollowsTheMouseAndMovingOverAnotherHeadingOpensIt(t *testing.
 		t.Errorf("open menu %d, want 1 (Edit)", got)
 	}
 }
+
+func TestAnOpenMenuLeavesTheCellJustRightOfItsBorder(t *testing.T) {
+	m := sized(New(Host{}, config.Config{}, downloadlist.New([]string{"https://youtu.be/x"})))
+	closed := strings.Split(ansi.Strip(m.render()), "\n")
+	m.bar.SetOpen(0)
+	open := strings.Split(ansi.Strip(m.render()), "\n")
+	row := []rune(open[3])
+	edge := -1 // the cell of the right border of the box
+	for i := len(row) - 1; i >= 0; i-- {
+		if row[i] == '│' && i > 0 && strings.Contains(string(row[:i]), "│") {
+			edge = i
+			break
+		}
+	}
+	if edge < 0 {
+		t.Fatalf("no box in %q", open[3])
+	}
+	if got, want := ansi.Cut(open[3], edge+1, ansi.StringWidth(open[3])), ansi.Cut(closed[3], edge+1, ansi.StringWidth(closed[3])); got != want {
+		t.Errorf("right of the box: %q, want %q", got, want)
+	}
+}
