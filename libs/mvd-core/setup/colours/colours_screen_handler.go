@@ -43,6 +43,9 @@ func New(cfg config.Config) Model {
 	return Model{cfg: cfg, input: ti}
 }
 
+// Config is the settings as they stand, including changes not yet saved.
+func (m Model) Config() config.Config { return m.cfg }
+
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-8))

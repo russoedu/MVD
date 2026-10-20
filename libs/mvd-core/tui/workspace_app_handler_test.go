@@ -65,7 +65,7 @@ func TestAClickOnThePopupKeyBarIsWorkedOutInsideItsFrame(t *testing.T) {
 	// The last line of the inside is the key bar: one of its hints closes the popup.
 	closed := false
 	for x := 0; x < w-2 && !closed; x++ {
-		_, cmd := a.Update(click(x0+1+x, y0+h-2))
+		_, cmd := a.Update(click(x0+1+x, y0+h-3))
 		if cmd == nil {
 			continue
 		}
@@ -75,5 +75,43 @@ func TestAClickOnThePopupKeyBarIsWorkedOutInsideItsFrame(t *testing.T) {
 	}
 	if !closed {
 		t.Errorf("no hint on the key bar of the popup closed it")
+	}
+}
+
+func openedPreferences(t *testing.T) (workspaceApp, int, int, int, int) {
+	t.Helper()
+	a := NewWorkspaceApp(WorkspaceInput{
+		Setup: SetupInput{Cfg: config.Config{OutputDir: "/music"}, CfgPath: filepath.Join(t.TempDir(), "config.conf")},
+	}).(workspaceApp)
+	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	next, _ = next.Update(workspace.PreferencesRequestedMsg{})
+	a = next.(workspaceApp)
+	w, h := a.popupSize()
+	x0, y0 := dialog.Centre(a.width, a.height, w, h)
+	return a, x0, y0, w, h
+}
+
+func TestTheTabsOfThePopupShowTheirScreens(t *testing.T) {
+	a, x0, y0, _, _ := openedPreferences(t)
+	_, spans := dialog.Tabs(popupTabs, 0)
+	for tab, want := range map[int]int{tabAdvanced: screenAdvanced, tabColours: screenColours, tabPreferences: screenConfig} {
+		click := tea.MouseClickMsg{X: x0 + 2 + spans[tab].X0, Y: y0 + 1, Button: tea.MouseLeft}
+		next, _ := a.Update(click)
+		a = next.(workspaceApp)
+		if a.prefs.screen != want {
+			t.Errorf("tab %d shows screen %d, want %d", tab, a.prefs.screen, want)
+		}
+	}
+}
+
+func TestTheButtonsOfThePopupCloseIt(t *testing.T) {
+	_, spans := dialog.Buttons(popupButtons, -1, nil)
+	for button, name := range popupButtons {
+		a, x0, y0, _, h := openedPreferences(t)
+		click := tea.MouseClickMsg{X: x0 + 2 + spans[button].X0, Y: y0 + h - 2, Button: tea.MouseLeft}
+		next, _ := a.Update(click)
+		if next.(workspaceApp).inPrefs {
+			t.Errorf("%s did not close the popup", name)
+		}
 	}
 }
