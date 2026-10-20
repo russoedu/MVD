@@ -9,6 +9,7 @@ import (
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/prefspopup"
 	"youtube-downloader/libs/mvd-core/workspace"
 )
 
@@ -39,19 +40,22 @@ func TestPreferencesApplyAtOnceExceptWhereFilesGo(t *testing.T) {
 	}
 }
 
-func TestAClickOnThePopupKeyBarIsWorkedOutInsideItsFrame(t *testing.T) {
-	a := NewWorkspaceApp(WorkspaceInput{
-		Setup: SetupInput{Cfg: config.Config{OutputDir: "/music"}, CfgPath: filepath.Join(t.TempDir(), "config.conf")},
+func openedPreferences(t *testing.T) (a workspaceApp, x0, y0, w, h int) {
+	t.Helper()
+	a = NewWorkspaceApp(WorkspaceInput{
+		Setup: SetupInput{Cfg: config.Config{OutputDir: "/music", MaxConcurrentDownloads: 2}, CfgPath: filepath.Join(t.TempDir(), "config.conf")},
 	}).(workspaceApp)
 	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	next, _ = next.Update(workspace.PreferencesRequestedMsg{})
 	a = next.(workspaceApp)
-	next, _ = a.Update(workspace.PreferencesRequestedMsg{})
-	a = next.(workspaceApp)
+	w, h = a.popupSize()
+	x0, y0 = dialog.Centre(a.width, a.height, w, h)
+	return a, x0, y0, w, h
+}
 
-	w, h := a.popupSize()
-	x0, y0 := dialog.Centre(a.width, a.height, w, h)
+func TestAClickIsWorkedOutInsideTheFrameOfThePopup(t *testing.T) {
+	a, x0, y0, _, _ := openedPreferences(t)
 	click := func(x, y int) tea.MouseClickMsg { return tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft} }
-
 	if _, in := a.inPopup(click(x0, y0)); in {
 		t.Errorf("a click on the frame reached the preferences")
 	}
@@ -62,45 +66,14 @@ func TestAClickOnThePopupKeyBarIsWorkedOutInsideItsFrame(t *testing.T) {
 	if !in || got.Mouse().X != 2 || got.Mouse().Y != 1 {
 		t.Errorf("a click inside = %+v, %v", got, in)
 	}
-	// The last line of the inside is the key bar: one of its hints closes the popup.
-	closed := false
-	for x := 0; x < w-2 && !closed; x++ {
-		_, cmd := a.Update(click(x0+1+x, y0+h-3))
-		if cmd == nil {
-			continue
-		}
-		if _, ok := cmd().(setupFinishedMsg); ok {
-			closed = true
-		}
-	}
-	if !closed {
-		t.Errorf("no hint on the key bar of the popup closed it")
-	}
 }
 
-func openedPreferences(t *testing.T) (workspaceApp, int, int, int, int) {
-	t.Helper()
-	a := NewWorkspaceApp(WorkspaceInput{
-		Setup: SetupInput{Cfg: config.Config{OutputDir: "/music"}, CfgPath: filepath.Join(t.TempDir(), "config.conf")},
-	}).(workspaceApp)
-	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	next, _ = next.Update(workspace.PreferencesRequestedMsg{})
-	a = next.(workspaceApp)
-	w, h := a.popupSize()
-	x0, y0 := dialog.Centre(a.width, a.height, w, h)
-	return a, x0, y0, w, h
-}
-
-func TestTheTabsOfThePopupShowTheirScreens(t *testing.T) {
+func TestAClickOnATabOfThePopupShowsItsPage(t *testing.T) {
 	a, x0, y0, _, _ := openedPreferences(t)
-	_, spans := dialog.Tabs(popupTabs, 0)
-	for tab, want := range map[int]int{tabAdvanced: screenAdvanced, tabColours: screenColours, tabPreferences: screenConfig} {
-		click := tea.MouseClickMsg{X: x0 + 2 + spans[tab].X0, Y: y0 + 1, Button: tea.MouseLeft}
-		next, _ := a.Update(click)
-		a = next.(workspaceApp)
-		if a.prefs.screen != want {
-			t.Errorf("tab %d shows screen %d, want %d", tab, a.prefs.screen, want)
-		}
+	// The Download tab: the second box of the row, a few columns in.
+	next, _ := a.Update(tea.MouseClickMsg{X: x0 + 1 + 14, Y: y0 + 2, Button: tea.MouseLeft})
+	if got := next.(workspaceApp).prefs.Tab(); got != 1 {
+		t.Errorf("tab %d, want 1", got)
 	}
 }
 
@@ -113,5 +86,21 @@ func TestTheButtonsOfThePopupCloseIt(t *testing.T) {
 		if next.(workspaceApp).inPrefs {
 			t.Errorf("%s did not close the popup", name)
 		}
+	}
+}
+
+func TestEscClosesThePopupAndSaveKeepsTheFolders(t *testing.T) {
+	a, _, _, _, _ := openedPreferences(t)
+	_, cmd := a.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	next, _ := a.Update(cmd())
+	if next.(workspaceApp).inPrefs {
+		t.Error("esc did not close the popup")
+	}
+
+	a, _, _, _, _ = openedPreferences(t)
+	a.prefs = a.prefs.WithConfig(config.Config{OutputDir: "/elsewhere", MaxConcurrentDownloads: 2})
+	next, _ = a.Update(prefspopup.SaveMsg{})
+	if got := next.(workspaceApp).cfg.OutputDir; got != "/elsewhere" {
+		t.Errorf("save left the folder at %q", got)
 	}
 }
