@@ -76,7 +76,7 @@ func overlayMenu(screen, barView string) string {
 	for y := 1; y < len(rows); y++ {
 		plain := ansi.Strip(rows[y])
 		left := len(plain) - len(strings.TrimLeft(plain, " "))
-		right := len(strings.TrimRight(plain, " "))
+		right := ansi.StringWidth(strings.TrimRight(plain, " "))
 		if right <= left {
 			continue
 		}
