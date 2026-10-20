@@ -99,3 +99,17 @@ func TestUndoAndRedoWalkBackThroughTheChanges(t *testing.T) {
 		t.Errorf("after redo %+v", p.items[0].Songs)
 	}
 }
+
+func TestPastedLinesBecomeAddressesAfterTheSelectedOne(t *testing.T) {
+	p := newEditPopup(playlistfile.File{Items: []playlistfile.Item{{Source: "https://a"}, {Source: "https://z"}}})
+	p = p.addAddresses("https://b\n\n  https://c ")
+	if len(p.items) != 4 || p.items[1].Source != "https://b" || p.items[2].Source != "https://c" || p.items[3].Source != "https://z" {
+		t.Fatalf("items = %+v", p.items)
+	}
+	if p.selectedText() != "https://b" {
+		t.Fatalf("selected %q", p.selectedText())
+	}
+	if p = p.undo(); len(p.items) != 2 {
+		t.Fatalf("undo left %d items", len(p.items))
+	}
+}
