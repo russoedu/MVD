@@ -43,7 +43,7 @@ func (p editPopup) Outline() outline.ScreenOutline {
 		Title:      fmt.Sprintf("MVD · Edit the list: %d addresses", len(p.items)),
 		ItemsLabel: "Addresses and songs",
 		Keys: []outline.Key{
-			{Key: "a", Description: "add"}, {Key: "enter", Description: "change address"}, {Key: "d", Description: "remove"},
+			{Key: "a", Description: "add"}, {Key: "enter", Description: "change address"}, {Key: "d", Description: "remove"}, {Key: "c", Description: "copy"}, {Key: "v", Description: "paste"},
 			{Key: "K", Description: "move up"}, {Key: "J", Description: "move down"}, {Key: "s", Description: "save"}, {Key: "esc", Description: "cancel"},
 		},
 	}

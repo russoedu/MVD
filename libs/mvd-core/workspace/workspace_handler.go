@@ -96,9 +96,6 @@ func New(host Host, cfg config.Config, list *downloadlist.Session) Model {
 		list = downloadlist.New(nil)
 	}
 	bar := menubar.New(menubar.WithMenus(menus()...), menubar.WithTitle("MVD"))
-	for _, name := range notYet {
-		bar.SetEnabled(name, false)
-	}
 	m := Model{host: host, cfg: cfg, session: list, bar: bar, screen: downloadpage.NewHosted()}
 	m.screen = m.screen.WithState(list.Preview())
 	return m
@@ -167,6 +164,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.screen = m.screen.WithState(m.session.Preview())
 		return m, nil
+
+	case tea.ClipboardMsg:
+		if m.editing && m.asking == askNone {
+			m.edit = m.edit.addAddresses(msg.Content)
+		}
+		return m, nil
+
+	case tea.PasteMsg:
+		if m.editing && m.asking == askNone && m.edit.asking == "" {
+			m.edit = m.edit.addAddresses(msg.Content)
+			return m, nil
+		}
 
 	case editCancelledMsg:
 		m.editing = false
@@ -344,6 +353,15 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		edit, cmd := m.edit.Update(key)
 		m.edit = edit
 		return m, cmd
+	case entryCopy, entryPaste:
+		if !m.editing {
+			m.notice = "Open Edit list first (Ctrl+E), then " + strings.ToLower(name) + " there"
+			return m, nil
+		}
+		if name == entryCopy {
+			return m, m.edit.copy()
+		}
+		return m, tea.ReadClipboard
 	case entryPreferences:
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:

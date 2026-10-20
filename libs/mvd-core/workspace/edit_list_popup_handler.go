@@ -133,6 +133,10 @@ func (p editPopup) Update(msg tea.KeyPressMsg) (editPopup, tea.Cmd) {
 		if r, ok := p.current(); ok && r.song < 0 {
 			return p.ask("edit", "Address", p.items[r.item].Source), textinput.Blink
 		}
+	case "c", "ctrl+c":
+		return p, p.copy()
+	case "v", "ctrl+v":
+		return p, tea.ReadClipboard
 	case "d", "delete":
 		return p.remove(), nil
 	case "K", "shift+up":
@@ -187,6 +191,50 @@ func (p editPopup) answer(msg tea.KeyPressMsg) (editPopup, tea.Cmd) {
 	in, cmd := p.input.Update(msg)
 	p.input = in
 	return p, cmd
+}
+
+// addAddresses adds one address for each non-empty line of text, after the address the
+// selection is on (or at the end), and selects the first one added.
+func (p editPopup) addAddresses(text string) editPopup {
+	var added []playlistfile.Item
+	for _, line := range strings.Split(text, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			added = append(added, playlistfile.Item{Source: line})
+		}
+	}
+	if len(added) == 0 {
+		return p
+	}
+	p = p.remember()
+	at := len(p.items)
+	if r, ok := p.current(); ok {
+		at = r.item + 1
+	}
+	items := append([]playlistfile.Item(nil), p.items[:at]...)
+	items = append(items, added...)
+	p.items = append(items, p.items[at:]...)
+	return p.selectRow(editRow{at, -1})
+}
+
+// selectedText is what Copy puts on the clipboard: the address, or the name of the song,
+// the selection is on.
+func (p editPopup) selectedText() string {
+	r, ok := p.current()
+	if !ok {
+		return ""
+	}
+	if r.song < 0 {
+		return p.items[r.item].Source
+	}
+	return songName(p.items[r.item].Songs[r.song])
+}
+
+// copy puts the selected address or song on the clipboard.
+func (p editPopup) copy() tea.Cmd {
+	if text := p.selectedText(); text != "" {
+		return tea.SetClipboard(text)
+	}
+	return nil
 }
 
 // remove takes out the song or the address (with its songs) the selection is on.
@@ -268,7 +316,7 @@ func (p editPopup) View(w, h int) string {
 	if p.asking != "" {
 		lines = append(lines, look.Key.Render(" "+p.input.View()))
 	} else {
-		lines = append(lines, look.Dim.Render(" ↑↓ move  a add  ⏎ change address  d remove  K/J move  u undo  r redo  s save  esc cancel"))
+		lines = append(lines, look.Dim.Render(" ↑↓ move  a add  ⏎ change address  d remove  K/J move  c copy  v paste  u undo  r redo  s save  esc cancel"))
 	}
 	return dialog.Frame(fmt.Sprintf("Edit the list · %d addresses", len(p.items)), lines, w, h)
 }
