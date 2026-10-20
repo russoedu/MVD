@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"reflect"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -56,7 +55,7 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
 		if a.inPrefs {
-			a.prefs = a.prefs.sizedTo(a.popupSize())
+			a.prefs = a.prefs.sizedTo(a.bodySize())
 		}
 	case workspace.PreferencesRequestedMsg:
 		a = a.openPrefs()
@@ -75,7 +74,10 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !inside {
 				return a, nil
 			}
-			msg = inner
+			var forward bool
+			if a, msg, forward = a.popupMouse(inner); !forward {
+				return a, nil
+			}
 		}
 		next, cmd := a.prefs.Update(msg)
 		a.prefs = next.(setupModel)
@@ -88,36 +90,13 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a, cmd
 }
 
-// inPopup puts a mouse event in the coordinates of the preferences inside their frame, and
-// says whether it was inside them: the frame, and what is outside it, take no clicks.
-func (a workspaceApp) inPopup(msg tea.MouseMsg) (tea.MouseMsg, bool) {
-	w, h := a.popupSize()
-	x, y := dialog.Centre(a.width, a.height, w, h)
-	m := msg.Mouse()
-	m.X, m.Y = m.X-x-1, m.Y-y-1
-	if m.X < 0 || m.Y < 0 || m.X >= w-2 || m.Y >= h-2 {
-		return nil, false
-	}
-	switch msg.(type) {
-	case tea.MouseClickMsg:
-		return tea.MouseClickMsg(m), true
-	case tea.MouseReleaseMsg:
-		return tea.MouseReleaseMsg(m), true
-	case tea.MouseMotionMsg:
-		return tea.MouseMotionMsg(m), true
-	case tea.MouseWheelMsg:
-		return tea.MouseWheelMsg(m), true
-	}
-	return nil, false
-}
-
 // openPrefs shows the preferences over the workspace.
 func (a workspaceApp) openPrefs() workspaceApp {
 	in := a.in.Setup
 	in.Cfg, in.OpenConfig = a.cfg, true
 	a.prefs = newSetupModel(in)
 	a.prefs.embedded, a.prefs.prefsOnly = true, true
-	a.prefs, a.inPrefs = a.prefs.sizedTo(a.popupSize()), true
+	a.prefs, a.inPrefs = a.prefs.sizedTo(a.bodySize()), true
 	return a
 }
 
@@ -165,8 +144,7 @@ func (a workspaceApp) View() tea.View {
 	}
 	w, h := a.popupSize()
 	x, y := dialog.Centre(a.width, a.height, w, h)
-	inner := strings.Split(a.prefs.render(), "\n")
-	return screenview.Of(dialog.Overlay(a.ws.Render(), dialog.Frame("Preferences", inner, w, h), x, y))
+	return screenview.Of(dialog.Overlay(a.ws.Render(), dialog.Frame("Preferences", a.popupLines(), w, h), x, y))
 }
 
 // RunWorkspace runs the workspace app until the person quits it or ctx ends.
