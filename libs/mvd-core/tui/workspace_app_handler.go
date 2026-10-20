@@ -70,8 +70,12 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 	}
 	if a.inPrefs {
-		if _, ok := msg.(tea.MouseMsg); ok {
-			return a, nil
+		if mouse, ok := msg.(tea.MouseMsg); ok {
+			inner, inside := a.inPopup(mouse)
+			if !inside {
+				return a, nil
+			}
+			msg = inner
 		}
 		next, cmd := a.prefs.Update(msg)
 		a.prefs = next.(setupModel)
@@ -82,6 +86,29 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := a.ws.Update(msg)
 	a.ws = next.(workspace.Model)
 	return a, cmd
+}
+
+// inPopup puts a mouse event in the coordinates of the preferences inside their frame, and
+// says whether it was inside them: the frame, and what is outside it, take no clicks.
+func (a workspaceApp) inPopup(msg tea.MouseMsg) (tea.MouseMsg, bool) {
+	w, h := a.popupSize()
+	x, y := dialog.Centre(a.width, a.height, w, h)
+	m := msg.Mouse()
+	m.X, m.Y = m.X-x-1, m.Y-y-1
+	if m.X < 0 || m.Y < 0 || m.X >= w-2 || m.Y >= h-2 {
+		return nil, false
+	}
+	switch msg.(type) {
+	case tea.MouseClickMsg:
+		return tea.MouseClickMsg(m), true
+	case tea.MouseReleaseMsg:
+		return tea.MouseReleaseMsg(m), true
+	case tea.MouseMotionMsg:
+		return tea.MouseMotionMsg(m), true
+	case tea.MouseWheelMsg:
+		return tea.MouseWheelMsg(m), true
+	}
+	return nil, false
 }
 
 // openPrefs shows the preferences over the workspace.
