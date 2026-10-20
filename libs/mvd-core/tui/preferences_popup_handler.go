@@ -6,91 +6,28 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
-	advancedpage "youtube-downloader/libs/mvd-core/setup/advanced"
-	colourspage "youtube-downloader/libs/mvd-core/setup/colours"
+	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 )
 
-// The popup of the preferences: a row of tabs, the screen of the tab under it, and a row
-// of buttons. The screens are the ones the preferences have always had; the tabs and the
-// buttons are the popup's own.
-var (
-	popupTabs    = []string{"Preferences", "Advanced", "Colours"}
-	popupButtons = []string{"Save", "Close"}
-)
-
-const (
-	tabPreferences = iota
-	tabAdvanced
-	tabColours
-)
+// The popup of the preferences is the prefspopup, in a frame, with a row of buttons under
+// it. The tabs, and the settings under them, are the prefspopup's own.
+var popupButtons = []string{"Save", "Close"}
 
 const (
 	buttonSave = iota
 	buttonClose
 )
 
-// activeTab is the tab whose screen is showing.
-func (m setupModel) activeTab() int {
-	switch m.screen {
-	case screenAdvanced:
-		return tabAdvanced
-	case screenColours:
-		return tabColours
-	}
-	return tabPreferences
-}
-
-// commit takes what the screen showing has changed into the preferences.
-func (m setupModel) commit() setupModel {
-	switch m.screen {
-	case screenAdvanced:
-		m.config = m.config.WithConfig(m.advanced.Config())
-	case screenColours:
-		m.config = m.config.WithConfig(m.colours.Config())
-	}
-	return m
-}
-
-// openTab shows the screen of tab, keeping the changes made in the one it leaves.
-func (m setupModel) openTab(tab int) setupModel {
-	if tab == m.activeTab() {
-		return m
-	}
-	m = m.commit()
-	switch tab {
-	case tabAdvanced:
-		m.advanced = advancedpage.New(m.config.Config()).SetSize(m.width, m.height)
-		m.screen = screenAdvanced
-	case tabColours:
-		m.colours = colourspage.New(m.config.Config()).SetSize(m.width, m.height)
-		m.screen = screenColours
-	default:
-		m.screen = screenConfig
-	}
-	return m
-}
-
-// bodySize is the room the screen of a tab takes: the inside of the frame less the rows
-// of the tabs and of the buttons.
+// bodySize is the room the prefspopup takes: the inside of the frame less the row of
+// buttons.
 func (a workspaceApp) bodySize() (int, int) {
 	w, h := a.popupSize()
-	return w, h - 2
+	return max(w-2, 1), max(h-3, 1)
 }
 
-// popupLines are the lines inside the frame: tabs, the screen, buttons.
+// popupLines are the lines inside the frame: the prefspopup, then the buttons.
 func (a workspaceApp) popupLines() []string {
-	_, h := a.popupSize()
-	body := h - 4
-	tabs, _ := dialog.Tabs(popupTabs, a.prefs.activeTab())
-	lines := []string{" " + tabs}
-	screen := strings.Split(a.prefs.render(), "\n")
-	for i := 0; i < body; i++ {
-		if i < len(screen) {
-			lines = append(lines, screen[i])
-		} else {
-			lines = append(lines, "")
-		}
-	}
+	lines := strings.Split(a.prefs.View(), "\n")
 	buttons, _ := dialog.Buttons(popupButtons, -1, nil)
 	return append(lines, " "+buttons)
 }
@@ -123,38 +60,50 @@ func withMouse(msg tea.MouseMsg, m tea.Mouse) (tea.MouseMsg, bool) {
 	return nil, false
 }
 
-// popupMouse works out an event inside the frame: a click on a tab or a button is the
-// popup's; any other goes to the screen under the tabs, in its own coordinates.
+// popupMouse works out an event inside the frame: a click on a button is the app's; any
+// other goes to the prefspopup, which takes the same coordinates.
 func (a workspaceApp) popupMouse(msg tea.MouseMsg) (workspaceApp, tea.Msg, bool) {
 	m := msg.Mouse()
-	_, h := a.popupSize()
+	_, h := a.bodySize()
+	if m.Y < h {
+		return a, msg, true
+	}
 	if _, ok := msg.(tea.MouseClickMsg); ok && m.Button == tea.MouseLeft {
-		switch m.Y {
-		case 0:
-			_, spans := dialog.Tabs(popupTabs, a.prefs.activeTab())
-			if i := dialog.At(spans, m.X-1); i >= 0 {
-				a.prefs = a.prefs.openTab(i)
-			}
-			return a, nil, false
-		case h - 3:
-			_, spans := dialog.Buttons(popupButtons, -1, nil)
-			switch dialog.At(spans, m.X-1) {
-			case buttonSave:
-				a.prefs = a.prefs.commit()
-				a = a.apply(a.prefs.config.Config(), true)
-				a.inPrefs = false
-				ApplyTheme(a.cfg.Colors)
-			case buttonClose:
-				a.inPrefs = false
-				ApplyTheme(a.cfg.Colors)
-			}
-			return a, nil, false
+		_, spans := dialog.Buttons(popupButtons, -1, nil)
+		switch dialog.At(spans, m.X-1) {
+		case buttonSave:
+			a = a.closePrefs(true)
+		case buttonClose:
+			a = a.closePrefs(false)
 		}
 	}
-	if m.Y == 0 || m.Y == h-3 {
-		return a, nil, false
+	return a, nil, false
+}
+
+// movingResult is what to tell the person about the move of the app.
+func movingResult(outcome preferencespage.MoveOutcome, err error) (string, error) {
+	switch {
+	case err != nil:
+		return "", err
+	case outcome == preferencespage.MoveStarted:
+		return "MVD was moved to its own folder. This window will close and the new copy will open.", nil
+	case outcome == preferencespage.MoveAlreadyThere:
+		return "MVD already lives in its own folder.", nil
+	case outcome == preferencespage.MoveUnavailable:
+		return "This machine has no place to move MVD to, or no way to ask. Start MVD with -move from a terminal.", nil
 	}
-	m.Y--
-	inner, ok := withMouse(msg, m)
-	return a, inner, ok
+	return "MVD was not moved.", nil
+}
+
+// removalResult is what to tell the person about the removal of the app.
+func removalResult(outcome preferencespage.RemovalOutcome, err error) (string, error) {
+	switch {
+	case err != nil:
+		return "", err
+	case outcome == preferencespage.RemovalStarted:
+		return "Removing MVD. This window will close.", nil
+	case outcome == preferencespage.RemovalDeclined:
+		return "Nothing was removed.", nil
+	}
+	return "This machine cannot ask for confirmation, so nothing was removed. Start MVD with -uninstall from a terminal.", nil
 }

@@ -10,6 +10,7 @@ import (
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/prefspopup"
 	"youtube-downloader/libs/mvd-core/screenview"
 	"youtube-downloader/libs/mvd-core/workspace"
 )
@@ -38,7 +39,7 @@ type workspaceApp struct {
 	in            WorkspaceInput
 	ws            workspace.Model
 	cfg           config.Config
-	prefs         setupModel
+	prefs         prefspopup.Model
 	inPrefs       bool
 	width, height int
 }
@@ -55,18 +56,15 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
 		if a.inPrefs {
-			a.prefs = a.prefs.sizedTo(a.bodySize())
+			a.prefs = a.prefs.SetSize(a.bodySize())
 		}
 	case workspace.PreferencesRequestedMsg:
 		a = a.openPrefs()
 		return a, a.prefs.Init()
-	case setupFinishedMsg:
-		a.inPrefs = false
-		if msg.result.Confirmed {
-			a = a.apply(msg.result.Cfg, true)
-		}
-		ApplyTheme(a.cfg.Colors)
-		return a, nil
+	case prefspopup.CloseMsg:
+		return a.closePrefs(false), nil
+	case prefspopup.SaveMsg:
+		return a.closePrefs(true), nil
 	}
 	if a.inPrefs {
 		if mouse, ok := msg.(tea.MouseMsg); ok {
@@ -79,11 +77,11 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return a, nil
 			}
 		}
-		next, cmd := a.prefs.Update(msg)
-		a.prefs = next.(setupModel)
+		var cmd tea.Cmd
+		a.prefs, cmd = a.prefs.Update(msg)
 		// Each change is kept and goes to the run at once; the places the files go to and
 		// the pattern of their names wait for the person to confirm with save.
-		return a.apply(a.prefs.config.Config(), false), cmd
+		return a.apply(a.prefs.Config(), false), cmd
 	}
 	next, cmd := a.ws.Update(msg)
 	a.ws = next.(workspace.Model)
@@ -92,12 +90,45 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // openPrefs shows the preferences over the workspace.
 func (a workspaceApp) openPrefs() workspaceApp {
-	in := a.in.Setup
-	in.Cfg, in.OpenConfig = a.cfg, true
-	a.prefs = newSetupModel(in)
-	a.prefs.embedded, a.prefs.prefsOnly = true, true
-	a.prefs, a.inPrefs = a.prefs.sizedTo(a.bodySize()), true
+	a.prefs = prefspopup.New(a.cfg, a.popupHost()).SetSize(a.bodySize())
+	a.inPrefs = true
 	return a
+}
+
+// closePrefs takes the preferences away; with confirm, the places the files go to and the
+// pattern of their names are kept too.
+func (a workspaceApp) closePrefs(confirm bool) workspaceApp {
+	if confirm {
+		a = a.apply(a.prefs.Config(), true)
+	}
+	a.inPrefs = false
+	ApplyTheme(a.cfg.Colors)
+	return a
+}
+
+// popupHost is what the preferences ask of the machine: a folder chooser, and moving and
+// removing the app.
+func (a workspaceApp) popupHost() prefspopup.Host {
+	in := a.in.Setup
+	host := prefspopup.Host{}
+	if in.PickFolder != nil {
+		host.PickFolder = in.PickFolder
+	}
+	if in.Move != nil {
+		move := in.Move
+		host.Move = func() (string, error) {
+			outcome, err := move()
+			return movingResult(outcome, err)
+		}
+	}
+	if in.Uninstall != nil {
+		uninstall := in.Uninstall
+		host.Uninstall = func() (string, error) {
+			outcome, err := uninstall()
+			return removalResult(outcome, err)
+		}
+	}
+	return host
 }
 
 // apply takes cfg as the settings, keeping the places and the name pattern as they were
@@ -122,12 +153,6 @@ func (a workspaceApp) apply(cfg config.Config, confirmed bool) workspaceApp {
 // popupSize is the room the preferences take over the workspace.
 func (a workspaceApp) popupSize() (int, int) {
 	return max(min(a.width-6, 112), 1), max(min(a.height-4, 36), 1)
-}
-
-// sizedTo gives the screens the inside of a frame w by h.
-func (m setupModel) sizedTo(w, h int) setupModel {
-	next, _ := m.Update(tea.WindowSizeMsg{Width: w - 2, Height: h - 2})
-	return next.(setupModel)
 }
 
 // Outline describes the current screen (see ScreenOutline).
