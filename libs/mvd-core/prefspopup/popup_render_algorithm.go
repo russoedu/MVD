@@ -52,7 +52,6 @@ type pageLayout struct {
 
 func width(s string) int { return ansi.StringWidth(s) }
 
-func ansiStrip(s string) string { return ansi.Strip(s) }
 
 func capitalise(s string) string {
 	if s == "" {
