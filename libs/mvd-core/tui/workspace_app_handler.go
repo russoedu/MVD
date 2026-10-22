@@ -55,6 +55,10 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
+		// The workspace behind the preferences needs the size too: on the first start the
+		// preferences are open at once, and it would never be drawn.
+		next, _ := a.ws.Update(msg)
+		a.ws = next.(workspace.Model)
 		if a.inPrefs {
 			a.prefs = a.prefs.SetSize(a.bodySize())
 		}
