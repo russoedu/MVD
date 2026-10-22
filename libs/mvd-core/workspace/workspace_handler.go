@@ -187,10 +187,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.editList(msg)
 
 	case tea.ClipboardMsg:
-		if m.inline.on {
-			return m.pasteInline(msg.Content), nil
-		}
-		return m.addAddresses(msg.Content), nil
+		return m.pasted(msg.Content), nil
 
 	case tea.PasteMsg:
 		if m.inline.on {
@@ -340,7 +337,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		m.save("")
 	case entrySaveAs:
 		return m.askWhereToSave(askSaveAs)
-	case entryUndo, entryRedo, entryCopy, entryPaste, entryDelete, entryMoveUp, entryMoveDown:
+	case entryUndo, entryRedo, entryCut, entryCopy, entryPaste, entryDelete, entryMoveUp, entryMoveDown:
 		return m.editCommand(name)
 	case entryPreferences:
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }

@@ -180,7 +180,7 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 			GlyphStyle: CellStyle{Fg: colour},
 		}
 		if m.editable {
-			row.Mark, row.Count, row.Glyph = "≡", "✎", "✕"
+			row.Mark, row.Count, row.Glyph = "≡", "✎", "×"
 			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
 		}
 		if m.dragRowOn && i == m.dropRow {

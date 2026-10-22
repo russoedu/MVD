@@ -53,6 +53,7 @@ func parseInto(path string, base Config) (Config, error) {
 		val := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
 		applyKey(&cfg, key, val, path)
 	}
+	settleTheme(&cfg)
 	return cfg, scanner.Err()
 }
 

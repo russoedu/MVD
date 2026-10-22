@@ -50,6 +50,7 @@ func (m Model) chips(field, w int) (lines []string, hits []hit, bounds []boundar
 		mark(0)
 		line.WriteString(look.Dim.Render("Click here and type, or add blocks below"))
 		hits = append(hits, hit{y: 0, x0: gutterWidth, x1: w, kind: hitCaret, field: field, arg: 0})
+		line.WriteString(look.Dim.Render(" .ext"))
 		return append(lines, line.String()), hits, bounds
 	}
 	for i, u := range units {
@@ -64,7 +65,7 @@ func (m Model) chips(field, w int) (lines []string, hits []hit, bounds []boundar
 		mark(i)
 		if u.isBlock() {
 			bw := width(u.label) + chipLeft + chipRight
-			line.WriteString(chipStyle.Render(" ") + chipGrip.Render("≡") + chipStyle.Render(" "+u.label+" ") + chipRemove.Render("✕") + chipStyle.Render(" "))
+			line.WriteString(chipStyle.Render(" ") + chipGrip.Render("≡") + chipStyle.Render(" "+u.label+" ") + chipRemove.Render("×") + chipStyle.Render(" "))
 			hits = append(hits,
 				hit{y: y, x0: x, x1: x + 3, kind: hitChipHandle, field: field, arg: i},
 				hit{y: y, x0: x + 3, x1: x + bw - 3, kind: hitCaret, field: field, arg: i + 1},
@@ -78,6 +79,7 @@ func (m Model) chips(field, w int) (lines []string, hits []hit, bounds []boundar
 	}
 	mark(len(units))
 	hits = append(hits, hit{y: y, x0: x, x1: w, kind: hitCaret, field: field, arg: len(units)})
+	line.WriteString(look.Dim.Render(".ext")) // the file's own extension, always last
 	return append(lines, line.String()), hits, bounds
 }
 

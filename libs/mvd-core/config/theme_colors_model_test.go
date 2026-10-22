@@ -53,3 +53,41 @@ func TestColoursRoundTrip(t *testing.T) {
 		t.Errorf("colors = %+v, want %+v", got.Colors, cfg.Colors)
 	}
 }
+
+func TestEveryThemeIsOfferedWithItsOwnNameAndColours(t *testing.T) {
+	names := ThemeNames()
+	if names[0] != DefaultThemeName || names[len(names)-1] != CustomTheme {
+		t.Errorf("names %v", names)
+	}
+	seen := map[string]bool{}
+	for _, p := range ThemePresets {
+		if seen[p.Name] {
+			t.Errorf("%q twice", p.Name)
+		}
+		seen[p.Name] = true
+		for _, c := range []string{p.Colors.Accent, p.Colors.Focus, p.Colors.Highlight, p.Colors.Success, p.Colors.Error, p.Colors.Dim, p.Colors.Text, p.Colors.Selected} {
+			if !ValidColour(c) {
+				t.Errorf("%s has the colour %q", p.Name, c)
+			}
+		}
+		if p.Colors.Background != "" && !ValidColour(p.Colors.Background) {
+			t.Errorf("%s has the background %q", p.Name, p.Colors.Background)
+		}
+	}
+}
+
+func TestATitleChangedAfterTheThemeWasPickedIsTheirOwn(t *testing.T) {
+	cfg := Default("/app", "/music")
+	cfg.ThemeName = "Dracula"
+	colours, _ := PresetColors("Dracula")
+	cfg.Colors = colours
+	settleTheme(&cfg)
+	if cfg.ThemeName != "Dracula" {
+		t.Errorf("an untouched theme became %q", cfg.ThemeName)
+	}
+	cfg.Colors.Accent = "#000"
+	settleTheme(&cfg)
+	if cfg.ThemeName != CustomTheme {
+		t.Errorf("a changed theme is %q", cfg.ThemeName)
+	}
+}

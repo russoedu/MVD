@@ -154,6 +154,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 		// otherwise stay open on a page with nothing behind it.
 		Quit:      stop,
 		Version:   version,
+		Clipboard: terminalui.SystemClipboard{},
 		Uninstall: terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: move,

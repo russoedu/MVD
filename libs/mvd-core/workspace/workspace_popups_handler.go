@@ -59,8 +59,9 @@ func (m Model) refreshMenus() Model {
 	writing := free && m.inline.on
 	i, has := m.selected()
 	n := len(m.session.File().Items)
+	m.bar.SetEnabled(entryCut, writing && m.inline.line.HasSelection())
 	m.bar.SetEnabled(entryCopy, writing && m.inline.line.HasSelection())
-	m.bar.SetEnabled(entryPaste, writing)
+	m.bar.SetEnabled(entryPaste, free)
 	m.bar.SetEnabled(entryUndo, free && !writing && len(m.undone) > 0)
 	m.bar.SetEnabled(entryRedo, free && !writing && len(m.redone) > 0)
 	m.bar.SetEnabled(entryDelete, free && !writing && has)

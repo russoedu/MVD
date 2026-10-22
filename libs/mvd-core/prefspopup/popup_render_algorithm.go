@@ -110,19 +110,31 @@ func (m Model) layout() pageLayout {
 				label = look.Text.Render(label)
 			}
 			shown := look.Cyan.Render(value)
+			if value == "" {
+				shown = look.Dim.Render("terminal default")
+			}
 			if editingHere(i) {
 				shown = m.input.View()
 			}
-			swatch := lipgloss.NewStyle().Background(lipgloss.Color(value)).Render("  ")
+			swatch := "  "
+			if value != "" {
+				swatch = lipgloss.NewStyle().Background(lipgloss.Color(value)).Render("  ")
+			}
 			y := add(focused, label+" "+swatch+" "+shown)
 			l.hits = append(l.hits, hit{y: y, x0: gutterWidth + 29, x1: w, kind: hitValue, field: i})
 		case kindChoice:
 			add(focused, look.Title.Render(f.label))
+			if f.hint != "" {
+				add(focused, look.Dim.Render(f.hint))
+			}
 			current := value
 			for j, option := range f.options {
 				text := "  " + look.Text.Render(f.optionText(option))
 				if option == current {
 					text = look.Yellow.Render("› ") + look.Text.Bold(true).Render(f.optionText(option))
+				}
+				if f.swatches != nil {
+					text += "  " + swatchRow(f.swatches(option))
 				}
 				y := add(focused, text)
 				l.hits = append(l.hits, hit{y: y, x0: gutterWidth, x1: w, kind: hitOption, field: i, arg: j})
@@ -303,4 +315,17 @@ func (m Model) hintLine() string {
 		return look.Dim.Render("enter apply  esc cancel")
 	}
 	return look.Dim.Render("↑↓ move  ←→ change  enter edit  tab page  s save  esc close")
+}
+
+// swatchRow draws a row of colours, two cells each; a colour that is "" is left blank.
+func swatchRow(colours []string) string {
+	var b strings.Builder
+	for _, c := range colours {
+		if c == "" {
+			b.WriteString(look.Dim.Render("··"))
+			continue
+		}
+		b.WriteString(lipgloss.NewStyle().Background(lipgloss.Color(c)).Render("  "))
+	}
+	return b.String()
 }

@@ -129,11 +129,11 @@ func (m Model) editCommand(name string) (tea.Model, tea.Cmd) {
 		m.redone = m.redone[:len(m.redone)-1]
 		return m.showItems(last, i), nil
 	case entryPaste:
-		return m, tea.ReadClipboard
+		return m.paste()
 	case entryCopy:
-		if m.inline.on {
-			return m, m.inline.line.Copy()
-		}
+		return m.copy(false)
+	case entryCut:
+		return m.copy(true)
 	}
 	if !ok {
 		return m, nil
@@ -147,4 +147,44 @@ func (m Model) editCommand(name string) (tea.Model, tea.Cmd) {
 		return m.editList(downloadpage.ListEditMsg{Op: "move", Index: i, To: i + 1})
 	}
 	return m, nil
+}
+
+// copy puts what is selected in the address being written on the clipboard; with cut it is taken
+// out too.
+func (m Model) copy(cut bool) (tea.Model, tea.Cmd) {
+	if !m.inline.on || !m.inline.line.HasSelection() {
+		return m, nil
+	}
+	text := m.inline.line.Selection()
+	if cut {
+		m.inline.line, _ = m.inline.line.Cut()
+	}
+	if m.host.Clipboard != nil {
+		if err := m.host.Clipboard.Write(text); err != nil {
+			m.notice = "Cannot copy: " + err.Error()
+		}
+		return m, nil
+	}
+	return m, tea.SetClipboard(text)
+}
+
+// paste puts the clipboard in the address being written, or adds its links to the list.
+func (m Model) paste() (tea.Model, tea.Cmd) {
+	if m.host.Clipboard == nil {
+		return m, tea.ReadClipboard // the terminal answers with a ClipboardMsg
+	}
+	text, err := m.host.Clipboard.Read()
+	if err != nil {
+		m.notice = "Cannot paste: " + err.Error()
+		return m, nil
+	}
+	return m.pasted(text), nil
+}
+
+// pasted takes text that came from the clipboard.
+func (m Model) pasted(text string) Model {
+	if m.inline.on {
+		return m.pasteInline(text)
+	}
+	return m.addAddresses(text)
 }

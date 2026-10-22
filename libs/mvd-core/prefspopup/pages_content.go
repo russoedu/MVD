@@ -57,9 +57,32 @@ var cookieOptions = []string{"all", "off", "firefox", "chrome", "edge", "brave",
 // colourField is a theme colour; slot points at it inside the config.
 func colourField(label string, slot func(*config.ThemeColors) *string) field {
 	return field{
-		label: label, kind: kindColour,
+		label: label, kind: kindColour, slot: slot,
 		get: func(c config.Config) string { return *slot(&c.Colors) },
-		set: func(c *config.Config, v string) { *slot(&c.Colors) = v },
+		// Changing a colour makes the theme the person's own, with the one before as its base.
+		set: func(c *config.Config, v string) { *slot(&c.Colors) = v; c.ThemeName = config.CustomTheme },
+	}
+}
+
+// themeField is the choice of theme: each of the themes of the app, and the person's own.
+func themeField() field {
+	return field{
+		label: "Theme", kind: kindChoice, options: config.ThemeNames(),
+		hint: "Pick one to start from, then change any colour below to make it yours",
+		get:  func(c config.Config) string { return c.ThemeName },
+		set: func(c *config.Config, v string) {
+			if colours, ok := config.PresetColors(v); ok {
+				c.Colors = colours
+			}
+			c.ThemeName = v
+		},
+		swatches: func(option string) []string {
+			c, ok := config.PresetColors(option)
+			if !ok {
+				return nil
+			}
+			return []string{c.Background, c.Accent, c.Focus, c.Highlight, c.Success, c.Error}
+		},
 	}
 }
 
@@ -69,9 +92,6 @@ func pages(host Host) []page {
 		{label: "Parallel Fragments Per Video", kind: kindStepper, min: 0, max: 16, step: 1, off: "off",
 			get: func(c config.Config) string { return intText(c.ConcurrentFragments) },
 			set: func(c *config.Config, v string) { c.ConcurrentFragments = parseInt(v) }},
-		{label: "Extra yt-dlp args", kind: kindText, placeholder: "These are passed directly to yt-dlp...",
-			get: func(c config.Config) string { return strings.Join(c.ExtraArgs, " ") },
-			set: func(c *config.Config, v string) { c.ExtraArgs = strings.Fields(v) }},
 		{label: "Start Timeout Seconds", kind: kindStepper, hint: "How long a download may take to start before it is stopped", min: 10, max: 3600, step: 10,
 			get: func(c config.Config) string { return intText(c.StartTimeoutSeconds) },
 			set: func(c *config.Config, v string) { c.StartTimeoutSeconds = parseInt(v) }},
@@ -130,6 +150,12 @@ func pages(host Host) []page {
 		}},
 		{name: "Advanced", fields: advanced},
 		{name: "Theme", fields: []field{
+			themeField(),
+			func() field {
+				f := colourField("Background", func(t *config.ThemeColors) *string { return &t.Background })
+				f.optional = true
+				return f
+			}(),
 			colourField("Accent (title)", func(t *config.ThemeColors) *string { return &t.Accent }),
 			colourField("Focus (active border)", func(t *config.ThemeColors) *string { return &t.Focus }),
 			colourField("Highlight (keys, bars)", func(t *config.ThemeColors) *string { return &t.Highlight }),

@@ -59,6 +59,8 @@ type Host struct {
 	Quit func()
 	// Version is the version of the app, for its About window.
 	Version string
+	// Clipboard is the machine's clipboard; nil to use the terminal's own.
+	Clipboard workspace.Clipboard
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -107,6 +109,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				Open:     openurl.Open,
 				Quit:     host.Quit,
 				Version:  host.Version,
+				Clipboard: host.Clipboard,
 			},
 		})}
 	}
