@@ -113,7 +113,8 @@ func (m Model) downloadProps(w, h int) Props {
 		p.ShowStatus = true
 		p.Status = " " + m.status
 	default:
-		p.ShowKeys = true
+		// The keys are for a run; while the list is only being made there is nothing to press.
+		p.ShowKeys = !m.editable
 	}
 	return p
 }
@@ -124,7 +125,9 @@ func (m Model) headerTexts() (counters, right string) {
 	elapsed := runstate.HumanDuration(time.Since(m.state.Started))
 
 	right = elapsed
-	if m.state.Idle {
+	if m.editable {
+		right = "" // nothing is running: there is no time to count
+	} else if m.state.Idle {
 		right = "FINISHED · " + elapsed
 	} else if t.Downloading > 0 {
 		right = downloadingSummary(t) + " · " + elapsed

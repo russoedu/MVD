@@ -83,6 +83,11 @@ type Model struct {
 	decided   int // the version of the decisions of the review the list has
 
 	about bool
+	// inline is the address being written in its row; clicked is the last click, for double clicks.
+	inline  inlineEdit
+	clicked lastClick
+	// hoverX and hoverY are where the pointer last was, for the buttons to light up.
+	hoverX, hoverY int
 
 	// undone and redone are the lists as they were before the changes made to it, and the
 	// ones taken back, most recent last.
@@ -103,7 +108,7 @@ func New(host Host, cfg config.Config, list *downloadlist.Session) Model {
 		list = downloadlist.New(nil)
 	}
 	bar := menubar.New(menubar.WithMenus(menus()...), menubar.WithTitle("MVD"))
-	m := Model{host: host, cfg: cfg, session: list, bar: bar, screen: downloadpage.NewHosted()}
+	m := Model{hoverX: -1, hoverY: -1, host: host, cfg: cfg, session: list, bar: bar, screen: downloadpage.NewHosted()}
 	m.screen = m.screen.WithState(list.Preview())
 	return m
 }
@@ -124,6 +129,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if mouse, ok := msg.(tea.MouseMsg); ok {
+		m.hoverX, m.hoverY = mouse.Mouse().X, mouse.Mouse().Y
+		if _, moved := msg.(tea.MouseMotionMsg); moved && m.bar.Open() < 0 {
+			m.bar, _ = m.bar.Update(msg) // the heading under the pointer lights up
+		}
+	}
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -176,9 +187,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.editList(msg)
 
 	case tea.ClipboardMsg:
+		if m.inline.on {
+			return m.pasteInline(msg.Content), nil
+		}
 		return m.addAddresses(msg.Content), nil
 
 	case tea.PasteMsg:
+		if m.inline.on {
+			return m.pasteInline(msg.Content), nil
+		}
 		if m.asking == askNone && !m.reviewing {
 			return m.addAddresses(msg.Content), nil
 		}
@@ -211,6 +228,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.stopping || m.starting {
 			return m, nil
 		}
+		if m.inline.on && m.bar.Open() < 0 {
+			return m.inlineKey(key)
+		}
 		if !m.reviewing || m.bar.Open() >= 0 {
 			bar, cmd := m.bar.Update(msg)
 			m.bar = bar
@@ -228,6 +248,11 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if next, cmd, handled := m.popupMouse(mouse); handled {
 			return next, cmd
 		}
+		next, cmd, handled := m.listMouse(mouse)
+		if handled {
+			return next, cmd
+		}
+		m = next
 	}
 	if click, ok := msg.(tea.MouseClickMsg); ok && m.bar.Open() < 0 && !m.reviewing && click.Button == tea.MouseLeft {
 		if next, cmd, handled := m.toolbarClick(click.X, click.Y); handled {
@@ -287,6 +312,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	}
 	switch name {
 	case entryNew:
+		m = m.stopInline(false)
 		if m.running() {
 			m.notice = "Stop the downloads before starting a new list"
 			return m, nil
@@ -573,8 +599,6 @@ func (m Model) Reconfigure(cfg config.Config, live engine.LiveSettings) Model {
 // drags are reported.
 func (m Model) View() tea.View {
 	view := screenview.Of(m.render())
-	if m.bar.Open() >= 0 {
-		view.MouseMode = tea.MouseModeAllMotion
-	}
+	view.MouseMode = tea.MouseModeAllMotion // the buttons light up under the pointer
 	return view
 }

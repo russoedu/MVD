@@ -3,7 +3,6 @@ package workspace
 import (
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/playlistfile"
@@ -66,8 +65,7 @@ func (m Model) editList(msg downloadpage.ListEditMsg) (tea.Model, tea.Cmd) {
 		out := append(append([]playlistfile.Item(nil), rest[:msg.To]...), moved)
 		m = m.setItems(append(out, rest[msg.To:]...), msg.To)
 	case "edit":
-		m.changing = msg.Index
-		return m.ask(askChangeLink, "Address", items[msg.Index].Source), textinput.Blink
+		return m.startChange(msg.Index)
 	}
 	return m, nil
 }
@@ -132,13 +130,15 @@ func (m Model) editCommand(name string) (tea.Model, tea.Cmd) {
 		return m.showItems(last, i), nil
 	case entryPaste:
 		return m, tea.ReadClipboard
+	case entryCopy:
+		if m.inline.on {
+			return m, m.inline.line.Copy()
+		}
 	}
 	if !ok {
 		return m, nil
 	}
 	switch name {
-	case entryCopy:
-		return m, tea.SetClipboard(m.session.File().Items[i].Source)
 	case entryDelete:
 		return m.editList(downloadpage.ListEditMsg{Op: "remove", Index: i})
 	case entryMoveUp:

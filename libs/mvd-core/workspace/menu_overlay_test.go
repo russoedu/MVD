@@ -31,9 +31,6 @@ func TestAnOpenMenuCoversOnlyItsOwnBox(t *testing.T) {
 
 func TestAnOpenMenuFollowsTheMouseAndMovingOverAnotherHeadingOpensIt(t *testing.T) {
 	m := sized(New(Host{}, config.Config{}, downloadlist.New([]string{"https://youtu.be/x"})))
-	if m.View().MouseMode == tea.MouseModeAllMotion {
-		t.Fatal("the mouse is followed with no menu open")
-	}
 	m.bar.SetOpen(0)
 	if m.View().MouseMode != tea.MouseModeAllMotion {
 		t.Fatal("the mouse is not followed while a menu is open")

@@ -28,7 +28,15 @@ func (a workspaceApp) bodySize() (int, int) {
 // popupLines are the lines inside the frame: the prefspopup, then the buttons.
 func (a workspaceApp) popupLines() []string {
 	lines := strings.Split(a.prefs.View(), "\n")
-	buttons, _ := dialog.Buttons(popupButtons, -1, nil)
+	_, h := a.bodySize()
+	w, ph := a.popupSize()
+	x, y := dialog.Centre(a.width, a.height, w, ph)
+	focus := -1
+	if a.hoverY == y+1+h {
+		_, spans := dialog.Buttons(popupButtons, -1, nil)
+		focus = dialog.At(spans, a.hoverX-x-2)
+	}
+	buttons, _ := dialog.Buttons(popupButtons, focus, nil)
 	return append(lines, " "+buttons)
 }
 

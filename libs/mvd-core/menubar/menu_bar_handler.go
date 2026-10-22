@@ -45,6 +45,8 @@ type Model struct {
 	active              bool
 	// disabled are the entries, by name, that are greyed out and cannot be chosen.
 	disabled map[string]bool
+	// hover is the heading the pointer is over while no menu is open, or -1.
+	hover int
 	w, h                int
 	originX, originY    int
 	accent, muted, rule string
@@ -55,7 +57,7 @@ type Option func(*Model)
 
 // New returns a closed bar with no menus.
 func New(opts ...Option) Model {
-	m := Model{open: -1, cursor: -1, w: 40, h: 8, accent: "212", muted: "245", rule: "240", disabled: map[string]bool{}}
+	m := Model{open: -1, cursor: -1, w: 40, h: 8, accent: "212", muted: "245", rule: "240", disabled: map[string]bool{}, hover: -1}
 	for _, o := range opts {
 		o(&m)
 	}
@@ -149,6 +151,9 @@ func (m *Model) SetEnabled(name string, enabled bool) {
 
 func (m Model) off(e Entry) bool { return m.disabled[e.Name] }
 
+// Enabled reports whether the entry with the given name can be chosen.
+func (m Model) Enabled(name string) bool { return !m.disabled[name] }
+
 // SetTitle changes the text at the left of the bar.
 func (m *Model) SetTitle(title string) { m.title = title }
 
@@ -221,6 +226,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 		return m.click(msg.X-m.originX, msg.Y-m.originY)
 	case tea.MouseMotionMsg:
+		m.hover = -1
+		if m.open < 0 && msg.Y-m.originY == 0 {
+			m.hover = m.headingAt(msg.X - m.originX)
+		}
 		if m.open >= 0 {
 			x, y := msg.X-m.originX, msg.Y-m.originY
 			if y == 0 {
@@ -458,6 +467,8 @@ func (m Model) View() string {
 		label := " " + mn.Name + " "
 		if i == m.open || (i == m.menuCursor && m.active) {
 			bar.WriteString(selected.Render(label))
+		} else if i == m.hover {
+			bar.WriteString(accent.Underline(true).Render(label))
 		} else {
 			bar.WriteString(muted.Render(label))
 		}

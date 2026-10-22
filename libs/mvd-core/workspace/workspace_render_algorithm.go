@@ -32,6 +32,9 @@ func (m Model) render() string {
 		lines[len(lines)-1] = bottom
 	}
 	screen := m.buttonsView(m.barRow() + "\n" + strings.Join(lines, "\n"))
+	if m.inline.on {
+		screen = m.inlineView(screen)
+	}
 	if m.about {
 		x, y := m.aboutOrigin()
 		screen = dialog.Overlay(screen, m.aboutView(), x, y)

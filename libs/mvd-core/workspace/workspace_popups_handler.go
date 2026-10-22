@@ -51,13 +51,20 @@ func (m Model) aboutMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-// refreshMenus greys out what the menus offer and the screen cannot do now: the list is
-// changed in place, so its commands wait for the downloads to stop.
+// refreshMenus greys out what the menus offer and does not make sense now. Copy and Paste are
+// for the address being written, and Copy needs something selected; the other commands work
+// on the playlist the cursor is on, and wait for the downloads to stop.
 func (m Model) refreshMenus() Model {
-	for _, name := range []string{entryUndo, entryRedo, entryCopy, entryPaste, entryDelete, entryMoveUp, entryMoveDown} {
-		m.bar.SetEnabled(name, m.editable() && !m.reviewing)
-	}
-	m.bar.SetEnabled(entryUndo, m.editable() && !m.reviewing && len(m.undone) > 0)
-	m.bar.SetEnabled(entryRedo, m.editable() && !m.reviewing && len(m.redone) > 0)
+	free := m.editable() && !m.reviewing
+	writing := free && m.inline.on
+	i, has := m.selected()
+	n := len(m.session.File().Items)
+	m.bar.SetEnabled(entryCopy, writing && m.inline.line.HasSelection())
+	m.bar.SetEnabled(entryPaste, writing)
+	m.bar.SetEnabled(entryUndo, free && !writing && len(m.undone) > 0)
+	m.bar.SetEnabled(entryRedo, free && !writing && len(m.redone) > 0)
+	m.bar.SetEnabled(entryDelete, free && !writing && has)
+	m.bar.SetEnabled(entryMoveUp, free && !writing && has && i > 0)
+	m.bar.SetEnabled(entryMoveDown, free && !writing && has && i < n-1)
 	return m
 }

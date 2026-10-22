@@ -89,7 +89,7 @@ func env(p Props, w, h int) cuppa.FitEnv {
 
 var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Props]{
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Header", X: 0, Y: 0, W: 120, H: 3, Props: map[string]string{"blurColor": "240", "border": "rounded", "color": "#6b7280", "focused": "true", "gradient": "", "right": "00:00:00", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "MVD · Music Video Downloader", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Header", X: 0, Y: 0, W: 120, H: 3, Props: map[string]string{"blurColor": "240", "border": "rounded", "color": "#6b7280", "focused": "true", "gradient": "", "right": "00:00:00", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, Fit: func(w, h int) (x, y, cw, ch int) {
 			return 0, 0, cuppa.Cells((float64(w) * 100.0 / 100.0)), 3
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {

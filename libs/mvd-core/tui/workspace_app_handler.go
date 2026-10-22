@@ -28,7 +28,7 @@ type WorkspaceInput struct {
 // NewWorkspaceApp returns the app whose main screen is the workspace: the download list
 // under a menu bar. The preferences are shown over it from the File menu.
 func NewWorkspaceApp(in WorkspaceInput) tea.Model {
-	a := workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg}
+	a := workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg, hoverX: -1, hoverY: -1}
 	if in.Setup.OpenConfig {
 		a = a.openPrefs() // the first run: the settings have never been looked at
 	}
@@ -42,6 +42,7 @@ type workspaceApp struct {
 	prefs         prefspopup.Model
 	inPrefs       bool
 	width, height int
+	hoverX, hoverY int
 }
 
 func (a workspaceApp) Init() tea.Cmd {
@@ -69,6 +70,9 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.closePrefs(false), nil
 	case prefspopup.SaveMsg:
 		return a.closePrefs(true), nil
+	}
+	if mouse, ok := msg.(tea.MouseMsg); ok {
+		a.hoverX, a.hoverY = mouse.Mouse().X, mouse.Mouse().Y
 	}
 	if a.inPrefs {
 		if mouse, ok := msg.(tea.MouseMsg); ok {
