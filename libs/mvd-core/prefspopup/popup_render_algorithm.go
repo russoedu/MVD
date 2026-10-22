@@ -152,6 +152,9 @@ func (m Model) layout() pageLayout {
 				hit{y: y, x0: gutterWidth + 2 + vw, x1: gutterWidth + 5 + vw, kind: hitPlus, field: i})
 		case kindTemplate:
 			add(focused, look.Title.Render(f.label))
+			if f.hint != "" {
+				add(focused, look.Dim.Render(f.hint))
+			}
 			rows, hits, bounds := m.chips(i, w)
 			first := len(l.lines)
 			for _, row := range rows {

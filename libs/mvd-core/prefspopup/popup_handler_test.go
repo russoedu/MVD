@@ -124,7 +124,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 		if h.kind == hitPlus && m.pages[m.tab].fields[h.field].label == "Max Concurrent Downloads" {
 			before := m.Config().MaxConcurrentDownloads
 			m = m.reveal()
-			m.scroll = 0
+			m.scroll = max(h.y-3, 0) // the page is longer than the room: bring the row into it
 			m = click(m, h.x0+1, tabRows+h.y-m.scroll)
 			if got := m.Config().MaxConcurrentDownloads; got != before+1 {
 				t.Errorf("a click on + gave %d, was %d", got, before)
