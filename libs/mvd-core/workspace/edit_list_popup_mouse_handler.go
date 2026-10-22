@@ -101,12 +101,6 @@ func (p editPopup) press(b editButton) (editPopup, tea.Cmd) {
 	switch b {
 	case buttonAdd:
 		return p.ask("add", "Address to add", ""), nil
-	case buttonPaste:
-		return p, tea.ReadClipboard
-	case buttonUndo:
-		return p.undo().reveal(), nil
-	case buttonRedo:
-		return p.redo().reveal(), nil
 	case buttonSave:
 		items := p.items
 		return p, func() tea.Msg { return editSavedMsg{items: items} }

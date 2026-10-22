@@ -73,7 +73,7 @@ func (m Model) toolbarLine() (string, []dialog.Span) {
 	if buttons[0].disabled {
 		focus = -1
 	}
-	line, spans := dialog.Buttons(labels, focus, disabled)
+	line, spans := dialog.Pills(labels, focus, disabled)
 	for i := range spans {
 		spans[i].X0++
 		spans[i].X1++

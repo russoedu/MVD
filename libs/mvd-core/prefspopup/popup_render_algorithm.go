@@ -25,6 +25,9 @@ const (
 	hitPlus                  // steps the number of the field up
 	hitBlock                 // adds the template block arg to the template
 	hitValue                 // starts changing the value of the field
+	hitCaret                 // puts the cursor of the template at the boundary arg
+	hitChipHandle            // takes hold of block arg of the template, to carry it
+	hitChipRemove            // takes block arg out of the template
 )
 
 // hit is a part of the page that takes clicks: line y of the page, columns x0 up to x1.
@@ -41,9 +44,10 @@ type span struct{ first, last int }
 // pageLayout is the page of a tab drawn once: its lines, where it takes clicks, and the
 // lines of each field.
 type pageLayout struct {
-	lines []string
-	hits  []hit
-	spans []span
+	lines  []string
+	hits   []hit
+	spans  []span
+	bounds []boundary // the places between the units of the template
 }
 
 func width(s string) int { return ansi.StringWidth(s) }
@@ -135,7 +139,33 @@ func (m Model) layout() pageLayout {
 			l.hits = append(l.hits,
 				hit{y: y, x0: gutterWidth, x1: gutterWidth + 2, kind: hitMinus, field: i},
 				hit{y: y, x0: gutterWidth + 2 + vw, x1: gutterWidth + 5 + vw, kind: hitPlus, field: i})
-		case kindText, kindFolder, kindTemplate:
+		case kindTemplate:
+			add(focused, look.Title.Render(f.label))
+			rows, hits, bounds := m.chips(i, w)
+			first := len(l.lines)
+			for _, row := range rows {
+				add(focused, row)
+			}
+			for _, h := range hits {
+				h.y += first
+				l.hits = append(l.hits, h)
+			}
+			for _, b := range bounds {
+				b.y += first
+				l.bounds = append(l.bounds, b)
+			}
+			add(focused, "")
+			palette, hits := m.palette(i)
+			y := add(focused, palette)
+			for _, h := range hits {
+				h.y = y
+				l.hits = append(l.hits, h)
+			}
+			add(focused, look.Dim.Render("Click a block to add it at the cursor, drag ≡ to reorder, ✕ to remove"))
+			add(focused, "")
+			add(focused, look.Title.Render("Output example"))
+			add(focused, look.Text.Render(cells.Display(ExampleName(value, m.cfg.MergeOutputFormat))))
+		case kindText, kindFolder:
 			add(focused, look.Title.Render(f.label))
 			shown := look.Text.Render(cells.Display(value))
 			switch {
@@ -148,9 +178,6 @@ func (m Model) layout() pageLayout {
 			l.hits = append(l.hits, hit{y: y, x0: gutterWidth, x1: w, kind: hitValue, field: i})
 			if f.hint != "" {
 				add(focused, look.Dim.Render(f.hint))
-			}
-			if f.kind == kindTemplate {
-				addBlocks(&l, add, i, focused, m.cfg.MergeOutputFormat, value)
 			}
 		case kindAction:
 			text := look.Yellow.Render("[ " + f.label + " ]")
@@ -170,77 +197,51 @@ func (m Model) layout() pageLayout {
 	return l
 }
 
-// blocks draws the blocks that add a field to the template, and the example it makes.
-func addBlocks(l *pageLayout, add func(bool, string) int, field int, focused bool, ext, template string) {
-	badge := lipgloss.NewStyle().Bold(true).
-		Background(lipgloss.Color(look.Colours.Accent)).Foreground(lipgloss.Color("#000000"))
-	var row strings.Builder
-	x := gutterWidth
-	type placed struct{ x0, x1, index int }
-	var at []placed
-	for j, b := range templateBlocks {
-		label := " " + b.name + " "
-		at = append(at, placed{x, x + width(label), j})
-		row.WriteString(badge.Render(label) + " ")
-		x += width(label) + 1
-	}
-	y := add(focused, row.String())
-	for _, p := range at {
-		l.hits = append(l.hits, hit{y: y, x0: p.x0, x1: p.x1, kind: hitBlock, field: field, arg: p.index})
-	}
-	add(focused, look.Dim.Render("Click a block to add it to the template"))
-	add(focused, "")
-	add(focused, look.Title.Render("Output example"))
-	add(focused, look.Text.Render(cells.Display(ExampleName(template, ext))))
-}
-
-// tabSpans are the columns each tab takes in the row of tabs.
+// tabSpans are the columns each tab takes in the row of tabs: the tabs touch, as Cuppa's
+// tab pages draw them.
 func (m Model) tabSpans() []span {
 	spans := make([]span, len(m.pages))
 	x := 0
 	for i, p := range m.pages {
-		width := width(p.name) + 4
-		spans[i] = span{x, x + width}
-		x += width + 1
+		w := width(p.name) + 4
+		spans[i] = span{x, x + w}
+		x += w
 	}
 	return spans
 }
 
-// tabLines draws the row of tabs as the tabs of a folder: each in a box of its own, the one
-// shown open at the bottom into the box of the page, the others closed by its top edge.
-// The third row is that top edge.
+// tabLines draws the row of tabs the way Cuppa's tab pages do, with the same characters so
+// every corner lines up: each tab is a box with rounded top corners, side by side, and the
+// one shown is open at the bottom into the box of the page (┘ and └), the others closed
+// onto its top edge (┴). The third row is that top edge.
 func (m Model) tabLines() [tabRows]string {
 	var rows [tabRows]string
 	w := max(m.w, 20)
 	edge := look.BorderOn
 	var line strings.Builder
+	used := 0
 	for i, p := range m.pages {
-		inner := " " + p.name + " "
-		bar := strings.Repeat("─", width(inner))
-		style, label := look.Dim, look.Dim.Render(inner)
+		label := " " + p.name + " "
+		bar := strings.Repeat("─", width(label))
+		style, text := edge, look.Dim.Render(label)
 		if i == m.tab {
-			style, label = look.BorderOn.Bold(true), look.BorderOn.Bold(true).Render(inner)
+			text = edge.Bold(true).Render(label)
 		}
-		rows[0] += style.Render("╭"+bar+"╮") + " "
-		rows[1] += style.Render("│") + label + style.Render("│") + " "
-
-		// Under the tab: the active one is open, and the line of the box turns up into it.
-		first := i == 0
+		rows[0] += style.Render("╭" + bar + "╮")
+		rows[1] += style.Render("│") + text + style.Render("│")
 		switch {
-		case i == m.tab && first:
-			line.WriteString(edge.Render("│") + strings.Repeat(" ", width(inner)) + edge.Render("╰"))
+		case i == m.tab && i == 0:
+			line.WriteString(edge.Render("│" + strings.Repeat(" ", width(label)) + "└"))
 		case i == m.tab:
-			line.WriteString(edge.Render("╯") + strings.Repeat(" ", width(inner)) + edge.Render("╰"))
-		case first:
+			line.WriteString(edge.Render("┘" + strings.Repeat(" ", width(label)) + "└"))
+		case i == 0:
 			line.WriteString(edge.Render("├" + bar + "┴"))
 		default:
 			line.WriteString(edge.Render("┴" + bar + "┴"))
 		}
-		if i < len(m.pages)-1 {
-			line.WriteString(edge.Render("─"))
-		}
+		used += width(label) + 2
 	}
-	rows[2] = line.String() + edge.Render(strings.Repeat("─", max(w-width(ansiStrip(line.String()))-1, 0))+"╮")
+	rows[2] = line.String() + edge.Render(strings.Repeat("─", max(w-used-1, 0))+"╮")
 	return rows
 }
 

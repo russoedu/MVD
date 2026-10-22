@@ -268,9 +268,6 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // toScreen gives a message to the download screen, which sits under the menu bar and the toolbar.
 func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if click, ok := msg.(tea.MouseClickMsg); ok {
-		if click.Button == tea.MouseLeft && m.onPencil(click.X, click.Y) {
-			return m.openEdit(), nil
-		}
 		click.Y -= topRows
 		msg = click
 	}

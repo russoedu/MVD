@@ -1,6 +1,7 @@
 package dialog
 
 import (
+	"charm.land/lipgloss/v2"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -64,4 +65,28 @@ func At(spans []Span, x int) int {
 		}
 	}
 	return -1
+}
+
+// Pills draws a row of buttons as filled pills: grey, the one at index primary in the accent
+// colour, and the ones in disabled darker with faint text. The columns each takes are
+// said too. A gap of two cells is left between them.
+func Pills(labels []string, primary int, disabled map[string]bool) (string, []Span) {
+	var b strings.Builder
+	spans := make([]Span, len(labels))
+	x := 0
+	for i, name := range labels {
+		label := "  " + name + "  "
+		spans[i] = Span{X0: x, X1: x + ansi.StringWidth(label)}
+		style := lipgloss.NewStyle().Background(lipgloss.Color("#3a3a3a")).Foreground(lipgloss.Color(look.Colours.Text))
+		switch {
+		case disabled[name]:
+			style = lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color(look.Colours.Dim)).Faint(true)
+		case i == primary:
+			style = lipgloss.NewStyle().Background(lipgloss.Color(look.Colours.Accent)).Foreground(lipgloss.Color("#000000")).Bold(true)
+		}
+		b.WriteString(style.Render(label))
+		b.WriteString("  ")
+		x += ansi.StringWidth(label) + 2
+	}
+	return strings.TrimRight(b.String(), " "), spans
 }

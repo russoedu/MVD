@@ -25,15 +25,12 @@ type editButton int
 
 const (
 	buttonAdd editButton = iota
-	buttonPaste
-	buttonUndo
-	buttonRedo
 	buttonSave
 	buttonCancel
 )
 
 var (
-	editButtonsLeft  = []string{"Add", "Paste", "Undo", "Redo"}
+	editButtonsLeft  = []string{"Add"}
 	editButtonsRight = []string{"Save", "Cancel"}
 )
 
@@ -85,8 +82,7 @@ func (p editPopup) clampTop() editPopup {
 // left of the inside: the ones that change the list at the left, save and cancel at the right.
 func (p editPopup) buttonSpans() (line string, at map[editButton]dialog.Span) {
 	iw, _ := p.inner()
-	disabled := map[string]bool{"Undo": len(p.undone) == 0, "Redo": len(p.redone) == 0}
-	left, leftSpans := dialog.Buttons(editButtonsLeft, -1, disabled)
+	left, leftSpans := dialog.Buttons(editButtonsLeft, -1, nil)
 	right, rightSpans := dialog.Buttons(editButtonsRight, -1, nil)
 	rightX := max(iw-ansi.StringWidth(right)-1, ansi.StringWidth(left)+3)
 

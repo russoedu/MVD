@@ -17,8 +17,10 @@ func (m Model) Outline() outline.ScreenOutline {
 			item.Value = f.numberText(f.get(m.cfg))
 		}
 		switch {
-		case m.editing && i == m.cursor:
+		case m.editing && i == m.cursor && f.kind != kindTemplate:
 			item.Editing, item.Value = true, m.input.Value()
+		case m.editing && i == m.cursor:
+			item.Editing = true
 		case f.kind == kindChoice:
 			item.Choices = make([]string, len(f.options))
 			for j, o := range f.options {

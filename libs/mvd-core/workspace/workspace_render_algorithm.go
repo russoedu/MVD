@@ -32,9 +32,6 @@ func (m Model) render() string {
 		lines[len(lines)-1] = bottom
 	}
 	screen := m.barRow() + "\n" + m.toolbarView() + "\n" + strings.Join(lines, "\n")
-	if px, py, ok := m.pencil(); ok && !m.editing {
-		screen = dialog.Overlay(screen, look.Yellow.Render(" ✎ "), px, py)
-	}
 	if m.editing {
 		x, y := m.editOrigin()
 		w, h := m.editSize()

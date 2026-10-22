@@ -78,18 +78,6 @@ func TestTheAboutWindowTellsTheVersionAndTheLinkAndOpensItOnAClick(t *testing.T)
 	}
 }
 
-func TestThePencilOnTheListOpensItsEdit(t *testing.T) {
-	m := listOf("https://youtu.be/a", "https://youtu.be/b")
-	px, py, ok := m.pencil()
-	if !ok {
-		t.Fatal("no pencil")
-	}
-	m = click(m, px+1, py)
-	if !m.editing {
-		t.Error("a click on the pencil did not open the edit of the list")
-	}
-}
-
 func TestTheEditOfTheListTakesTheMouse(t *testing.T) {
 	m := listOf("https://youtu.be/a", "https://youtu.be/b", "https://youtu.be/c").openEdit()
 	x0, y0 := m.editOrigin()
@@ -122,13 +110,14 @@ func TestTheEditOfTheListTakesTheMouse(t *testing.T) {
 	}
 	m.edit.asking = ""
 
-	// Undo is a button, and the close mark leaves without saving.
+	// Add is a button, and the close mark leaves without saving.
 	_, spans := m.edit.buttonSpans()
-	x, y = at(spans[buttonUndo].X0+1, m.edit.room())
+	x, y = at(spans[buttonAdd].X0+1, m.edit.room())
 	m = click(m, x, y)
-	if got := sources(m.edit); len(got) != 3 {
-		t.Errorf("after undo %v", got)
+	if m.edit.asking != "add" {
+		t.Errorf("asking %q after Add", m.edit.asking)
 	}
+	m.edit.asking = ""
 	m = click(m, x0+w-4, y0)
 	next, cmd := m.Update(tea.MouseClickMsg{X: x0 + w - 4, Y: y0, Button: tea.MouseLeft})
 	_ = next

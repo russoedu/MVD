@@ -81,25 +81,6 @@ func (m Model) aboutMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-// onPencil reports whether the cell of the screen (x, y) is the pencil that edits the list.
-func (m Model) onPencil(x, y int) bool {
-	px, py, ok := m.pencil()
-	return ok && y == py && x >= px && x < px+3
-}
-
-// pencil is where the pencil that edits the list is: on the bottom edge of the box of the
-// playlists, near its right end. ok is false when that box is not on the screen.
-func (m Model) pencil() (x, y int, ok bool) {
-	if m.reviewing {
-		return 0, 0, false
-	}
-	bx, by, bw, bh, drawn := m.screen.PlaylistsBox()
-	if !drawn {
-		return 0, 0, false
-	}
-	return bx + bw - 5, by + bh - 1 + topRows, true // the screen sits under the bar and the toolbar
-}
-
 // refreshMenus greys out what the menus offer and the screen cannot do now: changing the
 // list is done in the edit of the list, so its commands wait for that to be open.
 func (m Model) refreshMenus() Model {
