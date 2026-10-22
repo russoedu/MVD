@@ -90,3 +90,27 @@ func Pills(labels []string, primary int, disabled map[string]bool) (string, []Sp
 	}
 	return strings.TrimRight(b.String(), " "), spans
 }
+
+// PillKind is how a button that fills its width looks.
+type PillKind int
+
+const (
+	PillNormal PillKind = iota
+	PillPrimary
+	PillDisabled
+)
+
+// WidePill draws a button w cells wide with its label in the middle: grey, in the accent
+// colour for the main one, darker when it cannot be used.
+func WidePill(label string, w int, kind PillKind) string {
+	style := lipgloss.NewStyle().Background(lipgloss.Color("#3a3a3a")).Foreground(lipgloss.Color(look.Colours.Text)).Bold(true)
+	switch kind {
+	case PillPrimary:
+		style = lipgloss.NewStyle().Background(lipgloss.Color(look.Colours.Accent)).Foreground(lipgloss.Color("#000000")).Bold(true)
+	case PillDisabled:
+		style = lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color(look.Colours.Dim)).Faint(true)
+	}
+	room := max(w-ansi.StringWidth(label), 0)
+	left := room / 2
+	return style.Render(strings.Repeat(" ", left) + label + strings.Repeat(" ", room-left))
+}

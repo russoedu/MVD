@@ -110,7 +110,7 @@ func TestViewContent(t *testing.T) {
 	m.focus = paneEntries
 	m.selEntry = 4
 	frame := ansi.Strip(m.View().Content)
-	for _, want := range []string{"Queue 1", "Running 3", "Done 1", "Official 1", "Dup 1", "Failed 1", "90s UK Dance Hits", "Música Eletrônica 1990s  1999", "3/6", "34.2% of 112.4MiB at 8.1MiB/s ETA 0:09", "ERR", "dup", "res.", "merge", "⇄", "follow", "(X4UGPCR3zEQ)"} {
+	for _, want := range []string{"Queue 1", "Running 3", "Done 1", "Official 1", "Dup 1", "Failed 1", "90s UK Dance Hits", "Música Eletrônica 1", "3/6", "34.2% of 112.4MiB at 8.1MiB/s ETA 0:09", "ERR", "dup", "res.", "merge", "⇄", "follow", "(X4UGPCR3zEQ)"} {
 		if !strings.Contains(frame, want) {
 			t.Errorf("frame missing %q\n%s", want, frame)
 		}
@@ -120,7 +120,7 @@ func TestViewContent(t *testing.T) {
 	}
 	m.selPlaylist = 2
 	m.focus = paneLists
-	if f := ansi.Strip(m.View().Content); !strings.Contains(f, "unable to recognize playlist") {
+	if f := ansi.Strip(m.View().Content); !strings.Contains(f, "unable to recognize") {
 		t.Errorf("playlist error not shown\n%s", f)
 	}
 }

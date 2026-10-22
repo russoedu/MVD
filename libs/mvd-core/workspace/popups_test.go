@@ -10,6 +10,7 @@ import (
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/menubar"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 func listOf(addresses ...string) Model {
@@ -21,17 +22,7 @@ func click(m Model, x, y int) Model {
 	return next.(Model)
 }
 
-func TestTheCommandsOfTheEditOfTheListAreGreyedOutOutsideIt(t *testing.T) {
-	undo := tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl}
-	m := listOf("a", "b")
-	if _, cmd := m.bar.Update(undo); cmd != nil {
-		t.Error("Undo can be chosen with the edit of the list closed")
-	}
-	m = m.openEdit().refreshMenus()
-	if _, cmd := m.bar.Update(undo); cmd == nil {
-		t.Error("Undo cannot be chosen with the edit of the list open")
-	}
-}
+func addressesOf(m Model) []string { return m.session.Sources() }
 
 func TestSaveAsHasItsOwnShortcutAndHelpHasNoOpenSource(t *testing.T) {
 	var saveAs string
@@ -78,53 +69,90 @@ func TestTheAboutWindowTellsTheVersionAndTheLinkAndOpensItOnAClick(t *testing.T)
 	}
 }
 
-func TestTheEditOfTheListTakesTheMouse(t *testing.T) {
-	m := listOf("https://youtu.be/a", "https://youtu.be/b", "https://youtu.be/c").openEdit()
-	x0, y0 := m.editOrigin()
-	w, _ := m.editSize()
-	at := func(inside, row int) (int, int) { return x0 + 1 + inside, y0 + 1 + row }
-
-	// Drag the first address down to the third place by its grip.
-	x, y := at(1, 0)
-	m = click(m, x, y)
-	next, _ := m.Update(tea.MouseMotionMsg{X: x, Y: y + 2, Button: tea.MouseLeft})
+func TestTheListIsChangedInPlaceAndTheChangesCanBeUndone(t *testing.T) {
+	m := listOf("https://a", "https://b", "https://c")
+	next, _ := m.Update(downloadpage.ListEditMsg{Op: "move", Index: 0, To: 2})
 	m = next.(Model)
-	next, _ = m.Update(tea.MouseReleaseMsg{X: x, Y: y + 2, Button: tea.MouseLeft})
-	m = next.(Model)
-	if got := sources(m.edit); got[0] != "https://youtu.be/b" || got[2] != "https://youtu.be/a" {
-		t.Errorf("after the drag %v", got)
+	if got := addressesOf(m); got[0] != "https://b" || got[2] != "https://a" {
+		t.Errorf("after the move %v", got)
 	}
+	next, _ = m.Update(downloadpage.ListEditMsg{Op: "remove", Index: 1})
+	m = next.(Model)
+	if got := addressesOf(m); len(got) != 2 || got[1] != "https://a" {
+		t.Errorf("after the remove %v", got)
+	}
+	m, _ = choose(m, entryUndo)
+	m, _ = choose(m, entryUndo)
+	if got := addressesOf(m); len(got) != 3 || got[0] != "https://a" {
+		t.Errorf("after two undos %v", got)
+	}
+	m, _ = choose(m, entryRedo)
+	if got := addressesOf(m); got[0] != "https://b" {
+		t.Errorf("after a redo %v", got)
+	}
+}
 
-	// The cross on a row removes it.
-	x, y = at(m.edit.removeX()+1, 0)
-	m = click(m, x, y)
-	if got := sources(m.edit); len(got) != 2 || got[0] != "https://youtu.be/c" {
+func TestChangingAnAddressAsksForTheNewOne(t *testing.T) {
+	m := listOf("https://a", "https://b")
+	next, _ := m.Update(downloadpage.ListEditMsg{Op: "edit", Index: 1})
+	m = next.(Model)
+	if m.asking != askChangeLink {
+		t.Fatalf("asking %v", m.asking)
+	}
+	m.input.SetValue("https://z")
+	m, _ = press(m, "enter")
+	if got := addressesOf(m); got[1] != "https://z" || got[0] != "https://a" {
+		t.Errorf("after the change %v", got)
+	}
+}
+
+func TestPastedLinesBecomePlaylistsAfterTheSelectedOne(t *testing.T) {
+	m := listOf("https://a", "https://z")
+	next, _ := m.Update(tea.PasteMsg{Content: "https://b\n\n  https://c "})
+	m = next.(Model)
+	if got := addressesOf(m); len(got) != 4 || got[1] != "https://b" || got[2] != "https://c" || got[3] != "https://z" {
+		t.Errorf("after the paste %v", got)
+	}
+}
+
+func TestTheIconsOnARowChangeAndRemoveIt(t *testing.T) {
+	m := listOf("https://a", "https://b")
+	x, y, w, _, _, ok := m.screen.LeftColumn()
+	if !ok {
+		t.Fatal("no column of playlists")
+	}
+	// The second row: its cross is three cells from the right edge of the box, its pencil five.
+	row := y + 2 + topRows
+	next, cmd := m.Update(tea.MouseClickMsg{X: x + w - 5, Y: row, Button: tea.MouseLeft})
+	m = next.(Model)
+	if cmd == nil {
+		t.Fatal("the pencil did nothing")
+	}
+	next, _ = m.Update(cmd())
+	m = next.(Model)
+	if m.asking != askChangeLink || m.changing != 1 {
+		t.Errorf("asking %v, changing %d", m.asking, m.changing)
+	}
+	m.asking = askNone
+	next, cmd = m.Update(tea.MouseClickMsg{X: x + w - 3, Y: row, Button: tea.MouseLeft})
+	m = next.(Model)
+	next, _ = m.Update(cmd())
+	m = next.(Model)
+	if got := addressesOf(m); len(got) != 1 || got[0] != "https://a" {
 		t.Errorf("after the cross %v", got)
 	}
+}
 
-	// The pencil on a row asks for its address again.
-	x, y = at(m.edit.editX()+1, 0)
-	m = click(m, x, y)
-	if m.edit.asking != "edit" {
-		t.Errorf("asking %q", m.edit.asking)
+func TestTheButtonsStandUnderThePlaylistsAndStartIsTheFirst(t *testing.T) {
+	m := listOf("https://a")
+	x, y, w, ok := m.buttonRows()
+	if !ok {
+		t.Fatal("no buttons")
 	}
-	m.edit.asking = ""
-
-	// Add is a button, and the close mark leaves without saving.
-	_, spans := m.edit.buttonSpans()
-	x, y = at(spans[buttonAdd].X0+1, m.edit.room())
-	m = click(m, x, y)
-	if m.edit.asking != "add" {
-		t.Errorf("asking %q after Add", m.edit.asking)
+	screen := strings.Split(ansi.Strip(m.render()), "\n")
+	if !strings.Contains(screen[y], entryStart) {
+		t.Errorf("the first button row is %q", screen[y])
 	}
-	m.edit.asking = ""
-	m = click(m, x0+w-4, y0)
-	next, cmd := m.Update(tea.MouseClickMsg{X: x0 + w - 4, Y: y0, Button: tea.MouseLeft})
-	_ = next
-	if cmd == nil {
-		t.Fatal("the close mark did nothing")
-	}
-	if _, ok := cmd().(editCancelledMsg); !ok {
-		t.Errorf("the close mark sent %T", cmd())
-	}
+	m = click(m, x+w/2, y+1) // Get data for review
+	_ = m
 }

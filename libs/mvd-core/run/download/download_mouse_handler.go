@@ -62,6 +62,12 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if dir := pointer.WheelDirection(msg); dir != 0 {
 		return m.wheel(l, msg, dir)
 	}
+	if next, handled := m.dragBorder(msg); handled {
+		return next, nil
+	}
+	if next, cmd, handled := m.editClick(l, msg); handled {
+		return next, cmd
+	}
 	if !pointer.IsLeftClick(msg) {
 		return m, nil
 	}
@@ -133,4 +139,71 @@ func (m Model) PlaylistsBox() (x, y, w, h int, ok bool) {
 		return 0, 0, 0, 0, false
 	}
 	return l.playlists.x, l.playlists.y, l.playlists.w, l.playlists.h, true
+}
+
+// WithReserve keeps rows rows under the playlists free, for the buttons the app draws there.
+func (m Model) WithReserve(rows int) Model {
+	m.reserve = rows
+	return m
+}
+
+// LeftColumn is where the column of playlists is, in the cells of the screen, and how many
+// of its bottom rows are kept for the app's buttons; ok is false when the screen has no
+// such column.
+func (m Model) LeftColumn() (x, y, w, h, reserve int, ok bool) {
+	l, drawn := m.layout()
+	if !drawn || !l.hasLists || !m.columns(m.width) {
+		return 0, 0, 0, 0, 0, false
+	}
+	return l.playlists.x, l.playlists.y, l.playlists.w, l.playlists.h + m.reserve, m.reserve, true
+}
+
+// borderAt is the border between columns at column x: 1 after the playlists, 2 after the
+// entries, 0 for none. The cell each side of the line takes hold of it.
+func (m Model) borderAt(x, y int) int {
+	if !m.columns(m.width) || y < 3 || y >= m.height-1 {
+		return 0
+	}
+	left := m.leftWidth(m.width)
+	switch {
+	case x == left-1 || x == left:
+		return 1
+	case x == left+m.midWidth(m.width)-1 || x == left+m.midWidth(m.width):
+		return 2
+	}
+	return 0
+}
+
+// dragBorder works the dragging of the borders between the columns: pressing on one takes
+// hold of it, moving changes the width, letting go ends it. It says whether msg was meant
+// for the border.
+func (m Model) dragBorder(msg tea.MouseMsg) (Model, bool) {
+	pos := msg.Mouse()
+	switch msg.(type) {
+	case tea.MouseClickMsg:
+		if pos.Button == tea.MouseLeft {
+			if b := m.borderAt(pos.X, pos.Y); b > 0 {
+				m.dragging = b
+				return m, true
+			}
+		}
+	case tea.MouseMotionMsg:
+		if m.dragging == 0 {
+			return m, false
+		}
+		left := m.leftWidth(m.width)
+		if m.dragging == 1 {
+			m.leftW = max(minPane, min(pos.X, m.width-minPane*2))
+			m.midW = m.midWidth(m.width)
+		} else {
+			m.midW = max(minPane, min(pos.X-left, m.width-left-minPane))
+		}
+		return m, true
+	case tea.MouseReleaseMsg:
+		if m.dragging != 0 {
+			m.dragging = 0
+			return m, true
+		}
+	}
+	return m, false
 }
