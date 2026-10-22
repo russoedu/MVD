@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"strings"
+
+	"github.com/charmbracelet/x/ansi"
 	tea "charm.land/bubbletea/v2"
 
 	"path/filepath"
@@ -102,5 +105,16 @@ func TestEscClosesThePopupAndSaveKeepsTheFolders(t *testing.T) {
 	next, _ = a.Update(prefspopup.SaveMsg{})
 	if got := next.(workspaceApp).cfg.OutputDir; got != "/elsewhere" {
 		t.Errorf("save left the folder at %q", got)
+	}
+}
+
+func TestTheWorkspaceBehindThePreferencesOfTheFirstStartIsDrawn(t *testing.T) {
+	a := NewWorkspaceApp(WorkspaceInput{
+		Setup: SetupInput{Cfg: config.Config{OutputDir: "/music"}, CfgPath: filepath.Join(t.TempDir(), "config.conf"), OpenConfig: true},
+	})
+	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	screen := ansi.Strip(next.View().Content)
+	if strings.Contains(screen, "starting...") || !strings.Contains(screen, "Preferences") || !strings.Contains(screen, "Add link") {
+		t.Errorf("the first start shows\n%s", screen)
 	}
 }
