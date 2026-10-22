@@ -54,6 +54,9 @@ const (
 // minWideWidth is the window width from which the output pane is shown beside the lists.
 const minWideWidth = 100
 
+// minPane is the narrowest a column can be dragged to.
+const minPane = 20
+
 type (
 	evMsg    struct{ ev interface{} }
 	evClosed struct{}
@@ -74,6 +77,18 @@ type Model struct {
 	loaded        bool // every playlist has been listed; until then the loading screen is shown
 	filterFailed  bool
 	fullLog       bool
+	// leftW and midW are the widths the person gave the columns by dragging their borders;
+	// 0 is the default. dragging is the border being dragged: 1 after the playlists, 2 after
+	// the entries, 0 for none. reserve is the rows kept under the playlists for buttons.
+	leftW, midW, dragging, reserve int
+	// editable is true while the list can be changed here: each playlist then has a grip to
+	// carry it by, and icons to change and to remove it. dragRow is the playlist being
+	// carried, dropRow the one it is over; dragging a row is on while dragRowOn.
+	editable          bool
+	dragRowOn         bool
+	dragRow, dropRow  int
+	// marquee counts the ticks, for the text of the selected row that is wider than its column.
+	marquee int
 	showHelp      bool
 	confirmQuit   bool
 	spin          int
@@ -138,6 +153,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		m.spin = (m.spin + 1) % len(look.SpinnerFrames)
+		m.marquee++
 		return m, tick()
 
 	case evMsg:

@@ -24,6 +24,11 @@ type Model struct {
 	input   textinput.Model
 	// before is the text of the field when typing in it began, for esc to put back.
 	before string
+	// caret is the boundary of the template the cursor is at; dragging is true while a block
+	// is carried, from boundary dragFrom to dragTo.
+	caret            int
+	dragging         bool
+	dragFrom, dragTo int
 
 	busy      bool // a window of the host's is open and has the answer
 	status    string
@@ -215,19 +220,23 @@ func (m Model) picked(p pickedMsg) (Model, tea.Cmd) {
 // edit starts typing the value of the field the cursor is on.
 func (m Model) edit() Model {
 	m.before = m.current().get(m.cfg)
-	m.input.SetValue(m.before)
-	m.input.CursorEnd()
-	m.input.Focus()
+	if m.current().kind == kindTemplate {
+		m.caret = len(parseTemplate(m.before))
+	} else {
+		m.input.SetValue(m.before)
+		m.input.CursorEnd()
+		m.input.Focus()
+	}
 	m.editing, m.status = true, ""
 	return m
 }
 
 func (m Model) typing(k tea.KeyPressMsg) (Model, tea.Cmd) {
+	if m.current().kind == kindTemplate {
+		return m.typingTemplate(k), nil
+	}
 	switch k.String() {
 	case "esc":
-		if f := m.current(); f.kind == kindTemplate {
-			f.set(&m.cfg, m.before)
-		}
 		m.editing, m.status = false, ""
 		return m, nil
 	case "enter":
@@ -235,21 +244,63 @@ func (m Model) typing(k tea.KeyPressMsg) (Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(k)
-	return m.live(), cmd
+	return m, cmd
 }
 
-// live keeps the name pattern of the files as typed, so the example under it follows every
-// key; the other fields wait for enter.
-func (m Model) live() Model {
-	if f := m.current(); f.kind == kindTemplate {
-		f.set(&m.cfg, m.input.Value())
+// typingTemplate works the keys on the pattern: text goes in at the cursor, which moves
+// over characters and blocks, and backspace and delete take either out.
+func (m Model) typingTemplate(k tea.KeyPressMsg) Model {
+	f := m.current()
+	units := parseTemplate(f.get(m.cfg))
+	m.caret = max(min(m.caret, len(units)), 0)
+	switch k.String() {
+	case "esc":
+		f.set(&m.cfg, m.before)
+		m.editing = false
+		return m
+	case "enter":
+		m.editing = false
+		return m
+	case "left":
+		m.caret = max(m.caret-1, 0)
+		return m
+	case "right":
+		m.caret = min(m.caret+1, len(units))
+		return m
+	case "home":
+		m.caret = 0
+		return m
+	case "end":
+		m.caret = len(units)
+		return m
+	case "backspace":
+		if m.caret > 0 {
+			units, m.caret = removeUnit(units, m.caret-1), m.caret-1
+		}
+	case "delete":
+		units = removeUnit(units, m.caret)
+	default:
+		if k.Text == "" {
+			return m
+		}
+		var add []unit
+		for _, r := range k.Text {
+			add = append(add, unit{r: r})
+		}
+		units = insertUnits(units, m.caret, add...)
+		m.caret += len(add)
 	}
+	f.set(&m.cfg, formatTemplate(units))
 	return m
 }
 
 // accept takes what was typed as the value of the field.
 func (m Model) accept() Model {
 	f := m.current()
+	if f.kind == kindTemplate {
+		m.editing, m.status = false, ""
+		return m
+	}
 	text := strings.TrimSpace(m.input.Value())
 	switch f.kind {
 	case kindColour:
@@ -289,16 +340,16 @@ func (m Model) addBlock(index int) Model {
 	if !m.editing {
 		m = m.edit()
 	}
-	token := templateBlocks[index].token
-	text, at := []rune(m.input.Value()), m.input.Position()
-	at = max(min(at, len(text)), 0)
-	m.input.SetValue(string(text[:at]) + token + string(text[at:]))
-	m.input.SetCursor(at + len([]rune(token)))
-	return m.live()
+	b := templateBlocks[index]
+	units := parseTemplate(f.get(m.cfg))
+	m.caret = max(min(m.caret, len(units)), 0)
+	f.set(&m.cfg, formatTemplate(insertUnits(units, m.caret, unit{token: b.token, label: b.name})))
+	m.caret++
+	return m
 }
 
-// mouse works out a click on a tab or on the page, or the wheel over it. The position is
-// in the cells of the popup.
+// mouse works out a click on a tab or on the page, a block being carried, or the wheel over
+// it. The position is in the cells of the popup.
 func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 	pos := msg.Mouse()
 	pos.X-- // the page is inside the border of its box
@@ -310,6 +361,9 @@ func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 		l := m.layout()
 		m.scroll = max(min(m.scroll+by, len(l.lines)-m.bodyRows()), 0)
 		return m, nil
+	}
+	if m.dragging {
+		return m.carry(msg, pos), nil
 	}
 	click, ok := msg.(tea.MouseClickMsg)
 	if !ok || click.Button != tea.MouseLeft {
@@ -334,27 +388,12 @@ func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 		if h.y != line || pos.X < h.x0 || pos.X >= h.x1 {
 			continue
 		}
-		if m.editing && h.field == m.cursor && m.current().kind == kindTemplate {
-			// In the template the cursor goes where the pointer is, and a block goes in there.
-			switch h.kind {
-			case hitValue:
-				m.input.SetCursor(max(pos.X-gutterWidth-promptWidth, 0))
-				return m, nil
-			case hitBlock:
-				return m.addBlock(h.arg), nil
-			}
-		}
-		if m.editing {
+		if m.editing && h.field != m.cursor {
 			if m = m.accept(); m.editing {
 				return m, nil
 			}
 		}
 		m.cursor = h.field
-		if h.kind == hitValue && m.current().kind == kindTemplate {
-			m, cmd := m.hit(h)
-			m.input.SetCursor(max(pos.X-gutterWidth-promptWidth, 0))
-			return m, cmd
-		}
 		return m.hit(h)
 	}
 	if m.editing {
@@ -370,8 +409,26 @@ func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-// promptWidth is the columns of the prompt in front of what is typed.
-const promptWidth = 2
+// carry follows a block being carried: the pointer chooses the boundary it would land on,
+// and letting go puts it there.
+func (m Model) carry(msg tea.MouseMsg, pos tea.Mouse) Model {
+	l := m.layout()
+	switch msg.(type) {
+	case tea.MouseMotionMsg:
+		if at, ok := nearest(l.bounds, pos.X, pos.Y-tabRows+m.scroll); ok {
+			m.dragTo = at
+		}
+	case tea.MouseReleaseMsg:
+		if at, ok := nearest(l.bounds, pos.X, pos.Y-tabRows+m.scroll); ok {
+			m.dragTo = at
+		}
+		f := m.current()
+		units := parseTemplate(f.get(m.cfg))
+		f.set(&m.cfg, formatTemplate(moveUnit(units, m.dragFrom, m.dragTo)))
+		m.dragging = false
+	}
+	return m
+}
 
 // finishTyping takes what is typed as the value, if it is a value; typing goes on if it is not.
 func (m Model) finishTyping() Model {
@@ -395,6 +452,19 @@ func (m Model) hit(h hit) (Model, tea.Cmd) {
 		m = m.addBlock(h.arg)
 	case hitValue:
 		return m.activate()
+	case hitCaret:
+		if !m.editing {
+			m = m.edit()
+		}
+		m.caret = h.arg
+	case hitChipRemove:
+		units := parseTemplate(f.get(m.cfg))
+		f.set(&m.cfg, formatTemplate(removeUnit(units, h.arg)))
+		if m.caret > h.arg {
+			m.caret--
+		}
+	case hitChipHandle:
+		m.dragging, m.dragFrom, m.dragTo = true, h.arg, h.arg
 	}
 	return m, nil
 }

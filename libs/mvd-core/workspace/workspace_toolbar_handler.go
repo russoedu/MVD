@@ -1,21 +1,14 @@
 package workspace
 
 import (
-	"strings"
-
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
-	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/dialog"
 )
 
-// topRows is the rows above the screen: the menu bar, and the toolbar under it.
-const topRows = 2
-
-// toolbarRow is the row of the toolbar.
-const toolbarRow = 1
+// topRows is the rows above the screen: the menu bar.
+const topRows = 1
 
 // The buttons of the toolbar, and the Run menu entries that do the same.
 const (
@@ -45,7 +38,6 @@ func (m Model) buttons() []button {
 			{"▶ Start", entryStart, busy},
 			{"Get data for review", entryReview, busy},
 			{"+ Add link", entryAddLink, busy},
-			{"✎ Edit list", entryEditList, busy},
 		}
 	}
 	pause := button{"⏸ Pause", entryPause, busy}
@@ -59,40 +51,57 @@ func (m Model) buttons() []button {
 	return out
 }
 
-// toolbarLine draws the toolbar and says where each button is, counted from the left of the
-// screen. The first button, the one the person most likely wants, is lit.
-func (m Model) toolbarLine() (string, []dialog.Span) {
-	buttons := m.buttons()
-	labels := make([]string, len(buttons))
-	disabled := map[string]bool{}
-	for i, b := range buttons {
-		labels[i] = b.label
-		disabled[b.label] = b.disabled
+// buttonRows is where the buttons are: the rows at the bottom of the column of playlists,
+// counted on the screen, with the left column and the width of the buttons. ok is false
+// when the screen has no such column (a narrow window), and the Run menu is the way then.
+func (m Model) buttonRows() (x, y, w int, ok bool) {
+	cx, cy, cw, ch, reserve, drawn := m.screen.LeftColumn()
+	if !drawn || reserve == 0 || m.reviewing {
+		return 0, 0, 0, false
 	}
-	focus := 0
-	if buttons[0].disabled {
-		focus = -1
-	}
-	line, spans := dialog.Buttons(labels, focus, disabled)
-	for i := range spans {
-		spans[i].X0++
-		spans[i].X1++
-	}
-	return cells.Fit(" "+line, m.width), spans
+	return cx, cy + (ch - reserve) + topRows, cw, true
 }
 
-// toolbarClick does what the button under column x does; it reports false when there is none.
-func (m Model) toolbarClick(x int) (tea.Model, tea.Cmd, bool) {
-	_, spans := m.toolbarLine()
-	i := dialog.At(spans, x)
-	if i < 0 {
+// buttonKind is how a button looks: the first one that can be used is the main one.
+func buttonKind(buttons []button, i int) dialog.PillKind {
+	switch {
+	case buttons[i].disabled:
+		return dialog.PillDisabled
+	case i == 0:
+		return dialog.PillPrimary
+	}
+	return dialog.PillNormal
+}
+
+// buttonsView draws the buttons in the rows kept for them.
+func (m Model) buttonsView(screen string) string {
+	x, y, w, ok := m.buttonRows()
+	if !ok {
+		return screen
+	}
+	buttons := m.buttons()
+	for i, b := range buttons {
+		screen = dialog.Overlay(screen, dialog.WidePill(b.label, w, buttonKind(buttons, i)), x, y+i)
+	}
+	return screen
+}
+
+// toolbarClick does what the button at (x, y) of the screen does; it reports false when
+// there is none.
+func (m Model) toolbarClick(x, y int) (tea.Model, tea.Cmd, bool) {
+	bx, by, bw, ok := m.buttonRows()
+	if !ok || x < bx || x >= bx+bw {
 		return m, nil, false
 	}
-	b := m.buttons()[i]
-	if b.disabled {
+	buttons := m.buttons()
+	i := y - by
+	if i < 0 || i >= len(buttons) {
+		return m, nil, false
+	}
+	if buttons[i].disabled {
 		return m, nil, true
 	}
-	next, cmd := m.choose(b.entry)
+	next, cmd := m.choose(buttons[i].entry)
 	return next, cmd, true
 }
 
@@ -107,7 +116,6 @@ func (m Model) refreshRunMenus() Model {
 	m.bar.SetEnabled(entryStop, running && !busy)
 	m.bar.SetEnabled(entryRetry, running && !busy)
 	m.bar.SetEnabled(entryReviewSongs, running && !busy && m.editor.Live())
-	m.bar.SetEnabled(entryEditList, !running && !busy)
 	return m
 }
 
@@ -138,8 +146,9 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 	return m, nil, false
 }
 
-// toolbarView is the row drawn under the menu bar.
-func (m Model) toolbarView() string {
-	line, _ := m.toolbarLine()
-	return strings.TrimRight(line, " ") + strings.Repeat(" ", max(m.width-ansi.StringWidth(strings.TrimRight(line, " ")), 0))
+// keepRoomForButtons tells the screen how many rows under the playlists the buttons take, and
+// whether the list can be changed on it.
+func (m Model) keepRoomForButtons() Model {
+	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable())
+	return m
 }

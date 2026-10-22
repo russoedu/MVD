@@ -10,7 +10,6 @@ const (
 	entrySaveAs      = "Save as…"
 	entryPreferences = "Preferences…"
 	entryQuit        = "Quit"
-	entryEditList    = "Edit list…"
 	entryUndo        = "Undo"
 	entryRedo        = "Redo"
 	entryCopy        = "Copy"
@@ -34,13 +33,11 @@ func menus() []menubar.Menu {
 			{Name: entryQuit, Shortcut: "Ctrl+Q"},
 		}},
 		{Name: "Edit", Entries: []menubar.Entry{
-			{Name: entryEditList, Shortcut: "Ctrl+E"},
-			{Separator: true},
 			{Name: entryUndo, Shortcut: "Ctrl+Z"},
 			{Name: entryRedo, Shortcut: "Ctrl+Y"},
 			{Separator: true},
-			{Name: entryCopy, Shortcut: "Ctrl+C"},
-			{Name: entryPaste, Shortcut: "Ctrl+V"},
+			{Name: entryCopy},
+			{Name: entryPaste},
 			{Name: entryDelete, Shortcut: "Del"},
 			{Separator: true},
 			{Name: entryMoveUp, Shortcut: "Shift+Up"},

@@ -31,15 +31,7 @@ func (m Model) render() string {
 	if bottom := m.bottomLine(); bottom != "" && len(lines) > 0 {
 		lines[len(lines)-1] = bottom
 	}
-	screen := m.barRow() + "\n" + m.toolbarView() + "\n" + strings.Join(lines, "\n")
-	if px, py, ok := m.pencil(); ok && !m.editing {
-		screen = dialog.Overlay(screen, look.Yellow.Render(" ✎ "), px, py)
-	}
-	if m.editing {
-		x, y := m.editOrigin()
-		w, h := m.editSize()
-		screen = dialog.Overlay(screen, m.edit.sized(w, h).View(), x, y)
-	}
+	screen := m.buttonsView(m.barRow() + "\n" + strings.Join(lines, "\n"))
 	if m.about {
 		x, y := m.aboutOrigin()
 		screen = dialog.Overlay(screen, m.aboutView(), x, y)

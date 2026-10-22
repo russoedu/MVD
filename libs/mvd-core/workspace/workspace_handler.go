@@ -62,6 +62,7 @@ const (
 	askSaveThenStart
 	askSaveThenReview
 	askAddLink
+	askChangeLink
 )
 
 // Model is the workspace.
@@ -81,9 +82,13 @@ type Model struct {
 	reviewing bool
 	decided   int // the version of the decisions of the review the list has
 
-	edit    editPopup
-	editing bool
-	about   bool
+	about bool
+
+	// undone and redone are the lists as they were before the changes made to it, and the
+	// ones taken back, most recent last.
+	undone, redone [][]playlistfile.Item
+	// changing is the playlist whose address the question at the bottom is asking for.
+	changing int
 
 	asking purpose
 	input  textinput.Model
@@ -113,7 +118,7 @@ func (m Model) running() bool { return m.run != nil }
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if ws, ok := next.(Model); ok {
-		next = ws.refreshMenus().refreshRunMenus()
+		next = ws.refreshMenus().refreshRunMenus().keepRoomForButtons()
 	}
 	return next, cmd
 }
@@ -126,7 +131,6 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.screen = m.screen.Resize(msg.Width, max(msg.Height-topRows, 0))
 		next, _ := m.editor.Update(tea.WindowSizeMsg{Width: msg.Width, Height: max(msg.Height-topRows, 0)})
 		m.editor = next
-		m.edit = m.edit.sized(m.editSize())
 		return m, nil
 
 	case menubar.SelectedMsg:
@@ -155,7 +159,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.notice = "Stop the downloads before opening " + filepath.Base(msg.Path)
 			return m, nil
 		}
-		m.editing, m.reviewing, m.asking = false, false, askNone
+		m.reviewing, m.asking = false, askNone
 		return m.answered(askOpen, msg.Path)
 
 	case filePickedMsg:
@@ -168,29 +172,16 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m.answered(msg.purpose, msg.path)
 
-	case editSavedMsg:
-		m.editing = false
-		if err := m.session.Replace(msg.items); err != nil {
-			m.notice = "Cannot save the list: " + err.Error()
-		}
-		m.screen = m.screen.WithState(m.session.Preview())
-		return m, nil
+	case downloadpage.ListEditMsg:
+		return m.editList(msg)
 
 	case tea.ClipboardMsg:
-		if m.editing && m.asking == askNone {
-			m.edit = m.edit.addAddresses(msg.Content)
-		}
-		return m, nil
+		return m.addAddresses(msg.Content), nil
 
 	case tea.PasteMsg:
-		if m.editing && m.asking == askNone && m.edit.asking == "" {
-			m.edit = m.edit.addAddresses(msg.Content)
-			return m, nil
+		if m.asking == askNone && !m.reviewing {
+			return m.addAddresses(msg.Content), nil
 		}
-
-	case editCancelledMsg:
-		m.editing = false
-		return m, nil
 
 	case editorpage.LeaveMsg:
 		m.reviewing = false
@@ -220,12 +211,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.stopping || m.starting {
 			return m, nil
 		}
-		if m.editing && m.bar.Open() < 0 {
-			edit, cmd := m.edit.Update(key)
-			m.edit = edit
-			return m, cmd
-		}
-		if !m.reviewing && !m.editing || m.bar.Open() >= 0 {
+		if !m.reviewing || m.bar.Open() >= 0 {
 			bar, cmd := m.bar.Update(msg)
 			m.bar = bar
 			if cmd != nil || m.bar.Open() >= 0 {
@@ -243,11 +229,10 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return next, cmd
 		}
 	}
-	if click, ok := msg.(tea.MouseClickMsg); ok && click.Y == toolbarRow && m.bar.Open() < 0 && click.Button == tea.MouseLeft {
-		if next, cmd, handled := m.toolbarClick(click.X); handled {
+	if click, ok := msg.(tea.MouseClickMsg); ok && m.bar.Open() < 0 && !m.reviewing && click.Button == tea.MouseLeft {
+		if next, cmd, handled := m.toolbarClick(click.X, click.Y); handled {
 			return next, cmd
 		}
-		return m, nil
 	}
 	if click, ok := msg.(tea.MouseClickMsg); ok && (click.Y == 0 || m.bar.Open() >= 0) {
 		bar, cmd := m.bar.Update(msg)
@@ -267,12 +252,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // toScreen gives a message to the download screen, which sits under the menu bar and the toolbar.
 func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if click, ok := msg.(tea.MouseClickMsg); ok {
-		if click.Button == tea.MouseLeft && m.onPencil(click.X, click.Y) {
-			return m.openEdit(), nil
-		}
-		click.Y -= topRows
-		msg = click
+	if mouse, ok := msg.(tea.MouseMsg); ok {
+		msg = pointer.Shift(mouse, 0, -topRows)
 	}
 	next, cmd := m.screen.Update(msg)
 	m.screen = next.(downloadpage.Model)
@@ -333,32 +314,8 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		m.save("")
 	case entrySaveAs:
 		return m.askWhereToSave(askSaveAs)
-	case entryEditList:
-		return m.openEdit(), nil
-	case entryDelete, entryMoveUp, entryMoveDown, entryUndo, entryRedo:
-		if !m.editing {
-			m.notice = openEditFirst(name)
-			return m, nil
-		}
-		key := map[string]tea.KeyPressMsg{
-			entryDelete:   {Code: tea.KeyDelete},
-			entryMoveUp:   {Code: tea.KeyUp, Mod: tea.ModShift},
-			entryMoveDown: {Code: tea.KeyDown, Mod: tea.ModShift},
-			entryUndo:     {Code: 'z', Mod: tea.ModCtrl},
-			entryRedo:     {Code: 'y', Mod: tea.ModCtrl},
-		}[name]
-		edit, cmd := m.edit.Update(key)
-		m.edit = edit
-		return m, cmd
-	case entryCopy, entryPaste:
-		if !m.editing {
-			m.notice = openEditFirst(name)
-			return m, nil
-		}
-		if name == entryCopy {
-			return m, m.edit.copy()
-		}
-		return m, tea.ReadClipboard
+	case entryUndo, entryRedo, entryCopy, entryPaste, entryDelete, entryMoveUp, entryMoveDown:
+		return m.editCommand(name)
 	case entryPreferences:
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
@@ -367,17 +324,6 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m.stop(true)
 	}
 	return m, nil
-}
-
-// openEdit shows the list to be edited. A list that is going cannot be, as the run has
-// its own copy of it: it has to be stopped first.
-func (m Model) openEdit() Model {
-	if m.running() || m.starting {
-		m.notice = "Stop the downloads before editing the list"
-		return m
-	}
-	m.edit, m.editing = newEditPopup(m.session.File()).sized(m.editSize()), true
-	return m
 }
 
 // askWhereToSave shows the file window for a list to be saved, or asks for the path on the
@@ -458,13 +404,15 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 		}
 		return m.start(p == askSaveThenReview)
 	case askAddLink:
-		m.session.SetSources(append(m.session.Sources(), text))
 		if adder, ok := m.run.(downloadpage.SourceAdder); ok && m.run != nil {
+			m.session.SetSources(append(m.session.Sources(), text))
 			adder.AddSource(text)
+			m.syncFile()
 		} else {
-			m.screen = m.screen.WithState(m.session.Preview())
+			m = m.addAddresses(text)
 		}
-		m.syncFile()
+	case askChangeLink:
+		m = m.changeAddress(m.changing, text)
 	}
 	return m, nil
 }

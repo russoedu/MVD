@@ -68,6 +68,12 @@ func env(p Props, w, h int) cuppa.FitEnv {
 			return 0
 		case "LeftWidth":
 			return float64(p.LeftWidth)
+		case "MidWidth":
+			return float64(p.MidWidth)
+		case "Columns":
+			return float64(p.Columns)
+		case "LeftReserve":
+			return float64(p.LeftReserve)
 		case "PlaylistCount":
 			return float64(p.PlaylistCount)
 		case "HasNotes":
@@ -116,6 +122,9 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Playlists box", X: 0, Y: 3, W: 45, H: 8, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "false", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Playlists", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
+			if e.In("Columns") > 0.0 {
+				return 0, 3, cuppa.Cells(e.In("LeftWidth")), cuppa.Cells(float64(h) - 4.0 - e.In("LeftReserve"))
+			}
 			return 0, 3, cuppa.Cells(e.In("LeftWidth")), cuppa.Cells(min(min((e.In("PlaylistCount")+2.0), max(5.0, cuppa.Div(((float64(h)*100.0/100.0)-4.0), 3.0))), ((float64(h) * 100.0 / 100.0) - 9.0)))
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
@@ -188,6 +197,9 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Entries box", X: 0, Y: 11, W: 45, H: 25, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "true", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Entries", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
+			if e.In("Columns") > 0.0 {
+				return cuppa.Cells(e.In("LeftWidth")), 3, cuppa.Cells(e.In("MidWidth")), cuppa.Cells(float64(h) - 4.0)
+			}
 			return 0, cuppa.Cells(e.Rect("Playlists box", "bottom")), cuppa.Cells(e.In("LeftWidth")), cuppa.Cells((((float64(h) * 100.0 / 100.0) - e.Rect("Playlists box", "bottom")) - 1.0))
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
@@ -311,7 +323,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Output box", X: 45, Y: 3, W: 75, H: 32, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "false", "gradient": "", "right": "follow", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Output", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
-			return cuppa.Cells(e.In("LeftWidth")), cuppa.Cells(3.0), cuppa.Cells(((float64(w) * 100.0 / 100.0) - e.In("LeftWidth"))), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 4.0))
+			return cuppa.Cells(e.In("LeftWidth") + e.In("MidWidth")), cuppa.Cells(3.0), cuppa.Cells(((float64(w) * 100.0 / 100.0) - e.In("LeftWidth") - e.In("MidWidth"))), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 4.0))
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
@@ -545,6 +557,12 @@ type Props struct {
 	ShowStatus bool
 	// LeftWidth is the read by a layout expression or a condition.
 	LeftWidth int
+	// MidWidth is how wide the entries column is when the screen is in columns, else 0.
+	MidWidth int
+	// Columns is 1 when the playlists, the entries and the output are side by side.
+	Columns int
+	// LeftReserve is the rows the app keeps under the playlists, for its own buttons.
+	LeftReserve int
 	// PlaylistCount is the read by a layout expression or a condition.
 	PlaylistCount int
 	// HasNotes is the read by a layout expression or a condition.
@@ -871,6 +889,9 @@ func Inputs(p Props) map[string]any {
 		"Status":          p.Status,
 		"Show status":     p.ShowStatus,
 		"LeftWidth":       p.LeftWidth,
+		"MidWidth":        p.MidWidth,
+		"Columns":         p.Columns,
+		"LeftReserve":     p.LeftReserve,
 		"PlaylistCount":   p.PlaylistCount,
 		"HasNotes":        p.HasNotes,
 		"FullLog":         p.FullLog,

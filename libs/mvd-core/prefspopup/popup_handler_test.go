@@ -151,34 +151,106 @@ func TestEscAsksToClose(t *testing.T) {
 	}
 }
 
-func TestABlockGoesWhereThePointerPutTheCursorInTheTemplate(t *testing.T) {
+func chipAt(m Model, kind hitKind, arg int) hit {
+	for _, h := range m.layout().hits {
+		if h.field == 1 && h.kind == kind && h.arg == arg {
+			return h
+		}
+	}
+	return hit{x1: -1}
+}
+
+func clickHit(m Model, h hit) Model {
+	return click(m, 1+h.x0, tabRows+h.y-m.scroll)
+}
+
+func templateModel() Model {
 	m := newPopup().show(0)
 	m.cursor = 1
-	m.cfg.OutputTemplate = "%(title)s.%(ext)s"
-	var value, block hit
-	for _, h := range m.layout().hits {
-		if h.field == 1 && h.kind == hitValue {
-			value = h
-		}
-		if h.field == 1 && h.kind == hitBlock && h.arg == 0 {
-			block = h
+	m.cfg.OutputTemplate = "%(title)s - %(artist,uploader)s.%(ext)s"
+	return m
+}
+
+func TestTheTemplateIsBlocksWithTextBetweenThem(t *testing.T) {
+	units := parseTemplate("%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s")
+	var blocks, text int
+	for _, u := range units {
+		if u.isBlock() {
+			blocks++
+		} else {
+			text++
 		}
 	}
-	// A click on the pattern starts typing in it, the cursor where the pointer was (after
-	// the 9 characters of "%(title)s"; the page is in a box, and a prompt is before the text).
-	m = click(m, 1+gutterWidth+promptWidth+9, tabRows+value.y-m.scroll)
-	if !m.Editing() || m.input.Position() != 9 {
-		t.Fatalf("editing %v, cursor %d", m.Editing(), m.input.Position())
+	if blocks != 4 || text != 5 || units[0].label != "PLAYLIST NAME" || units[len(units)-1].label != "EXT" {
+		t.Errorf("blocks %d, text %d, units %+v", blocks, text, units)
 	}
-	m = click(m, 1+block.x0+1, tabRows+block.y-m.scroll)
-	if got, want := m.Config().OutputTemplate, "%(title)s%(artist,uploader)s.%(ext)s"; got != want {
+	if got := formatTemplate(units); got != "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s" {
+		t.Errorf("round trip %q", got)
+	}
+}
+
+func TestABlockOfThePaletteGoesWhereTheCursorIs(t *testing.T) {
+	m := templateModel()
+	// A click on the text puts the cursor there: before the "-", the third unit.
+	if h := chipAt(m, hitCaret, 2); h.x1 > 0 {
+		m = clickHit(m, h)
+	} else {
+		t.Fatal("no place for the cursor")
+	}
+	if !m.Editing() || m.caret != 2 {
+		t.Fatalf("editing %v, cursor %d", m.Editing(), m.caret)
+	}
+	m = clickHit(m, chipAt(m, hitBlock, 0))
+	if got, want := m.Config().OutputTemplate, "%(title)s %(artist,uploader)s- %(artist,uploader)s.%(ext)s"; got != want {
 		t.Errorf("template %q, want %q", got, want)
 	}
-	if !m.Editing() {
-		t.Error("typing ended with the block")
+}
+
+func TestTypedTextGoesBetweenBlocksAndBackspaceTakesAWholeBlock(t *testing.T) {
+	m := templateModel()
+	m = clickHit(m, chipAt(m, hitCaret, len(parseTemplate(m.cfg.OutputTemplate))))
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	if got := m.Config().OutputTemplate; got != "%(title)s - %(artist,uploader)s." {
+		t.Errorf("after backspace %q", got)
 	}
-	m = press(m, "esc")
-	if got := m.Config().OutputTemplate; got != "%(title)s.%(ext)s" {
-		t.Errorf("esc left %q", got)
+	m, _ = m.Update(tea.KeyPressMsg{Text: "!", Code: '!'})
+	if got := m.Config().OutputTemplate; got != "%(title)s - %(artist,uploader)s.!" {
+		t.Errorf("after typing %q", got)
+	}
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if got := m.Config().OutputTemplate; got != "%(title)s - %(artist,uploader)s.%(ext)s" || m.Editing() {
+		t.Errorf("esc left %q, editing %v", got, m.Editing())
+	}
+}
+
+func TestTheCrossOnABlockRemovesItAndEscPutsTheTemplateBack(t *testing.T) {
+	m := templateModel()
+	m = clickHit(m, chipAt(m, hitChipRemove, 0))
+	if got := m.Config().OutputTemplate; got != " - %(artist,uploader)s.%(ext)s" {
+		t.Errorf("after the cross %q", got)
+	}
+}
+
+func TestABlockCanBeCarriedToAnotherPlace(t *testing.T) {
+	m := templateModel()
+	l := m.layout()
+	from := chipAt(m, hitChipHandle, 0)
+	var to boundary
+	for _, b := range l.bounds {
+		if b.index == len(parseTemplate(m.cfg.OutputTemplate)) {
+			to = b
+		}
+	}
+	m = clickHit(m, from)
+	if !m.dragging {
+		t.Fatal("the block was not taken hold of")
+	}
+	m, _ = m.Update(tea.MouseMotionMsg{X: 1 + to.x, Y: tabRows + to.y - m.scroll, Button: tea.MouseLeft})
+	m, _ = m.Update(tea.MouseReleaseMsg{X: 1 + to.x, Y: tabRows + to.y - m.scroll, Button: tea.MouseLeft})
+	if got := m.Config().OutputTemplate; got != " - %(artist,uploader)s.%(ext)s%(title)s" {
+		t.Errorf("after the drag %q", got)
+	}
+	if m.dragging {
+		t.Error("still carrying")
 	}
 }

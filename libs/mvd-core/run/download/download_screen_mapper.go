@@ -26,6 +26,9 @@ func (m Model) downloadProps(w, h int) Props {
 
 	// The sizes the design cannot know: how wide the left column is.
 	p.LeftWidth = m.leftWidth(w)
+	if m.columns(w) {
+		p.Columns, p.MidWidth, p.LeftReserve = 1, m.midWidth(w), m.reserve
+	}
 	p.FullLog = 0
 	if m.fullLog {
 		p.FullLog = 1
@@ -46,16 +49,16 @@ func (m Model) downloadProps(w, h int) Props {
 	}
 
 	// Playlists.
-	p.PlaylistsRows = func(_, h int) ([]PlaylistsRow, int) {
-		return cuppa.Window(m.playlistRows(), m.selPlaylist, h)
+	p.PlaylistsRows = func(w, h int) ([]PlaylistsRow, int) {
+		return cuppa.Window(m.playlistRows(w), m.selPlaylist, h)
 	}
 	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
 	p.PlaylistsFocus = m.focus == paneLists
 
 	// Entries.
 	p.EntriesTitle, p.EntriesRight = m.entryHeader()
-	p.EntriesRows = func(_, h int) ([]EntriesRow, int) {
-		rows, sel := m.entryRows()
+	p.EntriesRows = func(w, h int) ([]EntriesRow, int) {
+		rows, sel := m.entryRows(w)
 		return cuppa.Window(rows, sel, h)
 	}
 	p.HasNotes = 0
@@ -150,7 +153,14 @@ func (m Model) headerTexts() (counters, right string) {
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the
 // title, the count and the glyph; the app says what each says and the colour of the glyph.
-func (m Model) playlistRows() []PlaylistsRow {
+func (m Model) playlistRows(w int) []PlaylistsRow {
+	if len(m.state.Playlists) == 0 {
+		var rows []PlaylistsRow
+		for _, line := range wrapText("Add music: playlists or videos, with the Add link button or by pasting links", w-6) {
+			rows = append(rows, PlaylistsRow{Mark: " ", Sp: " ", Title: line, TitleStyle: CellStyle{Fg: look.Colours.Dim}})
+		}
+		return rows
+	}
 	rows := make([]PlaylistsRow, 0, len(m.state.Playlists))
 	for i, pl := range m.state.Playlists {
 		finished, _, _ := m.state.PlaylistTally(pl)
@@ -161,12 +171,25 @@ func (m Model) playlistRows() []PlaylistsRow {
 			count = "listing"
 		}
 		glyph, colour := m.playlistGlyph(pl)
+		title := cells.CellText(cells.Display(pl.Title))
 		row := PlaylistsRow{
-			Mark: " ", Title: cells.CellText(cells.Display(pl.Title)), Count: count, Glyph: glyph,
+			Mark: " ", Title: title, Count: count, Glyph: glyph,
 			GlyphStyle: CellStyle{Fg: colour},
 		}
+		if m.editable {
+			row.Mark, row.Count, row.Glyph = "≡", "✎", "✕"
+			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
+		}
+		if m.dragRowOn && i == m.dropRow {
+			row.Mark = "▶"
+		}
 		if i == m.selPlaylist {
-			row.Mark, row.Style = "▸", RowSelected
+			// 6 cells are the mark, the gaps, the glyph and the end of the row.
+			row.Style = RowSelected
+			if !m.editable {
+				row.Mark = "▸"
+			}
+			row.Title = marquee(title, w-6-ansi.StringWidth(row.Count), m.marquee)
 		}
 		rows = append(rows, row)
 	}
@@ -175,8 +198,15 @@ func (m Model) playlistRows() []PlaylistsRow {
 
 // entryRows are the rows of the entries pane for the selected playlist and the row that
 // is selected.
-func (m Model) entryRows() (rows []EntriesRow, sel int) {
+func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 	ids := m.visibleEntries()
+	if len(ids) == 0 {
+		var rows []EntriesRow
+		for _, line := range wrapText("The songs of the selected playlist show here", w-6) {
+			rows = append(rows, EntriesRow{Glyph: " ", Sp: " ", Title: line, TitleStyle: CellStyle{Fg: look.Colours.Dim}})
+		}
+		return rows, 0
+	}
 	sel = viewport.Clamp(m.selEntry, 0, max(0, len(ids)-1))
 
 	for i, id := range ids {
@@ -190,6 +220,8 @@ func (m Model) entryRows() (rows []EntriesRow, sel int) {
 		if i == sel {
 			// Whether the pane has the focus is the design's: an unfocused pane draws it as text.
 			row.Style = RowSelected
+			// 6 cells are the glyph, the number, the gaps and the end of the row.
+			row.Title = marquee(row.Title, w-6-ansi.StringWidth(tag), m.marquee)
 		}
 		rows = append(rows, row)
 	}
@@ -304,5 +336,20 @@ func (m Model) leftWidth(w int) int {
 	case w < minWideWidth:
 		return w
 	}
-	return max(36, w*38/100)
+	if m.leftW > 0 {
+		return max(minPane, min(m.leftW, w-minPane*2))
+	}
+	return max(30, w*26/100)
+}
+
+// columns is whether the playlists, the entries and the output stand side by side.
+func (m Model) columns(w int) bool { return !m.fullLog && w >= minWideWidth }
+
+// midWidth is how wide the column of entries is, in the columns layout.
+func (m Model) midWidth(w int) int {
+	left := m.leftWidth(w)
+	if m.midW > 0 {
+		return max(minPane, min(m.midW, w-left-minPane))
+	}
+	return max(32, w*30/100)
 }

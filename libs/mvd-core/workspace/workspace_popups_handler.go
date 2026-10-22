@@ -1,28 +1,10 @@
 package workspace
 
 import (
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
-	"youtube-downloader/libs/mvd-core/menubar"
-	"youtube-downloader/libs/mvd-core/pointer"
 )
-
-// popupPercent is how much of the screen the edit of the list takes, in each direction.
-const popupPercent = 85
-
-// editSize is the room the edit of the list takes: most of the screen, whatever its size.
-func (m Model) editSize() (int, int) {
-	return dialog.Sized(m.width, m.height, popupPercent, 40, 12)
-}
-
-// editOrigin is the cell of the screen where the edit of the list begins.
-func (m Model) editOrigin() (int, int) {
-	w, h := m.editSize()
-	return dialog.Centre(m.width, m.height, w, h)
-}
 
 // aboutOrigin is the cell of the screen where the About window begins.
 func (m Model) aboutOrigin() (int, int) {
@@ -40,18 +22,6 @@ func (m Model) popupMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 	switch {
 	case m.about:
 		return m.aboutMouse(msg)
-	case m.editing:
-		x, y := m.editOrigin()
-		w, h := m.editSize()
-		pos := msg.Mouse()
-		inside := pos.X >= x && pos.X < x+w && pos.Y >= y && pos.Y < y+h
-		if !inside && !m.edit.dragging {
-			return m, nil, true
-		}
-		m.edit = m.edit.sized(w, h)
-		var cmd tea.Cmd
-		m.edit, cmd = m.edit.mouse(pointer.Shift(msg, -x, -y))
-		return m, cmd, true
 	}
 	return m, nil, false
 }
@@ -81,35 +51,13 @@ func (m Model) aboutMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-// onPencil reports whether the cell of the screen (x, y) is the pencil that edits the list.
-func (m Model) onPencil(x, y int) bool {
-	px, py, ok := m.pencil()
-	return ok && y == py && x >= px && x < px+3
-}
-
-// pencil is where the pencil that edits the list is: on the bottom edge of the box of the
-// playlists, near its right end. ok is false when that box is not on the screen.
-func (m Model) pencil() (x, y int, ok bool) {
-	if m.reviewing {
-		return 0, 0, false
-	}
-	bx, by, bw, bh, drawn := m.screen.PlaylistsBox()
-	if !drawn {
-		return 0, 0, false
-	}
-	return bx + bw - 5, by + bh - 1 + topRows, true // the screen sits under the bar and the toolbar
-}
-
-// refreshMenus greys out what the menus offer and the screen cannot do now: changing the
-// list is done in the edit of the list, so its commands wait for that to be open.
+// refreshMenus greys out what the menus offer and the screen cannot do now: the list is
+// changed in place, so its commands wait for the downloads to stop.
 func (m Model) refreshMenus() Model {
 	for _, name := range []string{entryUndo, entryRedo, entryCopy, entryPaste, entryDelete, entryMoveUp, entryMoveDown} {
-		m.bar.SetEnabled(name, m.editing)
+		m.bar.SetEnabled(name, m.editable() && !m.reviewing)
 	}
+	m.bar.SetEnabled(entryUndo, m.editable() && !m.reviewing && len(m.undone) > 0)
+	m.bar.SetEnabled(entryRedo, m.editable() && !m.reviewing && len(m.redone) > 0)
 	return m
-}
-
-// openEditFirst is what to say when a command of the edit of the list is used with it closed.
-func openEditFirst(name string) string {
-	return "Open Edit list first (" + menubar.ShortcutLabel("Ctrl+E") + "), then " + strings.ToLower(name) + " there"
 }
