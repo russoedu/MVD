@@ -17,7 +17,6 @@ func keys(p editPopup, names ...tea.KeyPressMsg) editPopup {
 	return p
 }
 
-func rune_(r rune) tea.KeyPressMsg { return tea.KeyPressMsg{Text: string(r), Code: r} }
 
 func sources(p editPopup) []string {
 	var out []string
@@ -33,11 +32,11 @@ func TestEditingMovesRemovesAndAddsAddresses(t *testing.T) {
 	if got := sources(p); got[0] != "b" || got[1] != "a" || p.sel != 0 {
 		t.Errorf("after move up %v sel %d", got, p.sel)
 	}
-	p = keys(p, rune_('d'))
+	p = keys(p, tea.KeyPressMsg{Code: tea.KeyDelete})
 	if got := sources(p); len(got) != 2 || got[0] != "a" {
 		t.Errorf("after remove %v", got)
 	}
-	p = keys(p, rune_('a'))
+	p, _ = p.press(buttonAdd)
 	p.input.SetValue("new")
 	p = keys(p, tea.KeyPressMsg{Code: tea.KeyEnter})
 	if got := sources(p); len(got) != 3 || got[1] != "new" || p.sel != 1 {
@@ -60,17 +59,16 @@ func TestSongsMoveAmongTheSongsOfTheirOwnAddress(t *testing.T) {
 func TestTheEditReachesTheListOnlyWhenSaved(t *testing.T) {
 	m := sized(New(Host{}, config.Config{}, nil))
 	m.session.SetSources([]string{"a", "b"})
-	next, _ := m.Update(tea.KeyPressMsg{Text: "e", Code: 'e'})
-	m = next.(Model)
+	m, _ = choose(m, entryEditList)
 	if !m.editing {
 		t.Fatal("not editing")
 	}
-	next, _ = m.Update(tea.KeyPressMsg{Text: "d", Code: 'd'})
+	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
 	m = next.(Model)
 	if len(m.session.Sources()) != 2 {
 		t.Fatal("the list changed before saving")
 	}
-	next, cmd := m.Update(tea.KeyPressMsg{Text: "s", Code: 's'})
+	next, cmd := m.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	m = next.(Model)
 	next, _ = m.Update(cmd())
 	m = next.(Model)
@@ -82,19 +80,20 @@ func TestTheEditReachesTheListOnlyWhenSaved(t *testing.T) {
 func TestUndoAndRedoWalkBackThroughTheChanges(t *testing.T) {
 	songs := []playlistfile.Entry{{Title: "one", Artist: "x"}, {Title: "two", Artist: "x"}}
 	p := newEditPopup(playlistfile.File{Items: []playlistfile.Item{{Source: "a", Songs: songs}, {Source: "b"}}})
-	p = keys(p, tea.KeyPressMsg{Code: tea.KeyDown}, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift}, rune_('d'))
+	p = keys(p, tea.KeyPressMsg{Code: tea.KeyDown}, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift}, tea.KeyPressMsg{Code: tea.KeyDelete})
 	if len(p.items[0].Songs) != 1 || p.items[0].Songs[0].Title != "two" {
 		t.Fatalf("songs %+v", p.items[0].Songs)
 	}
-	p = keys(p, rune_('u'))
+	p = keys(p, tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl})
 	if len(p.items[0].Songs) != 2 || p.items[0].Songs[0].Title != "two" {
 		t.Errorf("after one undo %+v", p.items[0].Songs)
 	}
-	p = keys(p, rune_('u'))
+	p = keys(p, tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl})
 	if p.items[0].Songs[0].Title != "one" {
 		t.Errorf("after two undos %+v", p.items[0].Songs)
 	}
-	p = keys(p, rune_('r'), rune_('r'))
+	redo := tea.KeyPressMsg{Code: 'y', Mod: tea.ModCtrl}
+	p = keys(p, redo, redo)
 	if len(p.items[0].Songs) != 1 {
 		t.Errorf("after redo %+v", p.items[0].Songs)
 	}

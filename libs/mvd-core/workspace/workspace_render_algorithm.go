@@ -25,17 +25,24 @@ func (m Model) render() string {
 		below = m.editor.Render()
 	}
 	lines := strings.Split(below, "\n")
-	if len(lines) > m.height-1 {
-		lines = lines[:m.height-1]
+	if len(lines) > m.height-topRows {
+		lines = lines[:m.height-topRows]
 	}
 	if bottom := m.bottomLine(); bottom != "" && len(lines) > 0 {
 		lines[len(lines)-1] = bottom
 	}
-	screen := m.barRow() + "\n" + strings.Join(lines, "\n")
+	screen := m.barRow() + "\n" + m.toolbarView() + "\n" + strings.Join(lines, "\n")
+	if px, py, ok := m.pencil(); ok && !m.editing {
+		screen = dialog.Overlay(screen, look.Yellow.Render(" ✎ "), px, py)
+	}
 	if m.editing {
-		w, h := min(m.width-4, 100), min(m.height-4, 24)
-		x, y := dialog.Centre(m.width, m.height, w, h)
-		screen = dialog.Overlay(screen, m.edit.View(w, h), x, y)
+		x, y := m.editOrigin()
+		w, h := m.editSize()
+		screen = dialog.Overlay(screen, m.edit.sized(w, h).View(), x, y)
+	}
+	if m.about {
+		x, y := m.aboutOrigin()
+		screen = dialog.Overlay(screen, m.aboutView(), x, y)
 	}
 	if m.bar.Open() >= 0 {
 		screen = overlayMenu(screen, m.bar.View())

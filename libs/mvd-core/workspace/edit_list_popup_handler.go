@@ -1,15 +1,12 @@
 package workspace
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/cells"
-	"youtube-downloader/libs/mvd-core/dialog"
-	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/playlistfile"
 )
 
@@ -31,6 +28,12 @@ type editPopup struct {
 	undone, redone [][]playlistfile.Item
 	// asking is "" for none, "add" for a new address, "edit" for the address of the row.
 	asking string
+
+	// w and h are the size of the popup, frame included; top is the first row that shows.
+	w, h, top int
+	// dragging is true while a row is being carried with the mouse; dropAt is the row it is over.
+	dragging bool
+	dropAt   int
 }
 
 // editRow is one line of the popup: an address (song is -1) or one of its songs.
@@ -109,39 +112,43 @@ func (p editPopup) selectRow(r editRow) editPopup {
 	return p
 }
 
+// Update takes a key and keeps the selection in view.
 func (p editPopup) Update(msg tea.KeyPressMsg) (editPopup, tea.Cmd) {
+	p, cmd := p.key(msg)
+	return p.reveal(), cmd
+}
+
+func (p editPopup) key(msg tea.KeyPressMsg) (editPopup, tea.Cmd) {
 	if p.asking != "" {
 		return p.answer(msg)
 	}
 	switch msg.String() {
 	case "esc":
 		return p, func() tea.Msg { return editCancelledMsg{} }
-	case "s", "ctrl+s":
+	case "ctrl+s":
 		items := p.items
 		return p, func() tea.Msg { return editSavedMsg{items: items} }
-	case "u", "ctrl+z":
+	case "ctrl+z":
 		return p.undo(), nil
-	case "r", "ctrl+y":
+	case "ctrl+y":
 		return p.redo(), nil
 	case "up":
 		p.sel = max(p.sel-1, 0)
 	case "down":
 		p.sel = min(p.sel+1, max(len(p.rows())-1, 0))
-	case "a":
-		return p.ask("add", "Address to add", ""), textinput.Blink
-	case "enter", "e":
+	case "enter":
 		if r, ok := p.current(); ok && r.song < 0 {
 			return p.ask("edit", "Address", p.items[r.item].Source), textinput.Blink
 		}
-	case "c", "ctrl+c":
+	case "ctrl+c":
 		return p, p.copy()
-	case "v", "ctrl+v":
+	case "ctrl+v":
 		return p, tea.ReadClipboard
-	case "d", "delete":
+	case "delete":
 		return p.remove(), nil
-	case "K", "shift+up":
+	case "shift+up":
 		return p.move(-1), nil
-	case "J", "shift+down":
+	case "shift+down":
 		return p.move(1), nil
 	}
 	return p, nil
@@ -279,46 +286,6 @@ func (p editPopup) move(by int) editPopup {
 	songs = p.items[r.item].Songs
 	songs[r.song], songs[to] = songs[to], songs[r.song]
 	return p.selectRow(editRow{r.item, to})
-}
-
-// View draws the popup w by h cells.
-func (p editPopup) View(w, h int) string {
-	inner := max(w-2, 1)
-	room := max(h-2-2, 1) // the frame, and the line of keys and the question
-	rows := p.rows()
-	top := 0
-	if p.sel >= room {
-		top = p.sel - room + 1
-	}
-	var lines []string
-	for i := top; i < min(len(rows), top+room); i++ {
-		r := rows[i]
-		var text string
-		if r.song < 0 {
-			text = "  " + cells.Display(p.items[r.item].Source)
-		} else {
-			text = "      " + songName(p.items[r.item].Songs[r.song])
-		}
-		if i == p.sel {
-			lines = append(lines, look.Key.Render(cells.Fit("▸"+text[1:], inner)))
-		} else if r.song >= 0 {
-			lines = append(lines, look.Dim.Render(cells.Fit(text, inner)))
-		} else {
-			lines = append(lines, cells.Fit(text, inner))
-		}
-	}
-	if len(rows) == 0 {
-		lines = append(lines, look.Dim.Render("  The list is empty: press a to add an address"))
-	}
-	for len(lines) < room {
-		lines = append(lines, "")
-	}
-	if p.asking != "" {
-		lines = append(lines, look.Key.Render(" "+p.input.View()))
-	} else {
-		lines = append(lines, look.Dim.Render(" ↑↓ move  a add  ⏎ change address  d remove  K/J move  c copy  v paste  u undo  r redo  s save  esc cancel"))
-	}
-	return dialog.Frame(fmt.Sprintf("Edit the list · %d addresses", len(p.items)), lines, w, h)
 }
 
 // songName is what a song is called: the artist and the title a music database gave it,

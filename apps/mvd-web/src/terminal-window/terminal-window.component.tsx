@@ -1,12 +1,10 @@
-import { createWailsSocket, TTY as Terminal } from '@treactui/tty'
+import { TTY as Terminal } from '@treactui/tty'
 import { useState } from 'react'
 import { AboutThisApp } from '../about-this-app'
 import { PageHeader } from '../page-header'
 import { useCaptureBrowserShortcuts } from './capture-browser-shortcuts.hook'
 import { useOpenLinksInBrowser } from './open-links-in-browser.hook'
-
-/** Created once: a new function on every render would make the terminal reconnect. */
-const wailsSocket = createWailsSocket()
+import { terminalSocket } from './terminal-socket.client'
 
 /**
  * The page: a 90s style header above the terminal-style interface, which is
@@ -22,7 +20,7 @@ export function TerminalWindow () {
     <>
       <PageHeader onAbout={() => setAboutOpen(true)} />
       <main className='terminal-window'>
-        <Terminal createSocket={wailsSocket} label='MVD' />
+        <Terminal createSocket={terminalSocket} label='MVD' />
       </main>
       <AboutThisApp open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </>

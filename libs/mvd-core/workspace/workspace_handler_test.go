@@ -28,6 +28,11 @@ func press(m Model, key string) (Model, tea.Cmd) {
 	return next.(Model), cmd
 }
 
+func choose(m Model, entry string) (Model, tea.Cmd) {
+	next, cmd := m.Update(menubar.SelectedMsg{Name: entry})
+	return next.(Model), cmd
+}
+
 func TestSavingAsWritesTheListAndKeepsItsFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mine")
 	m := sized(New(Host{ListDir: t.TempDir()}, config.Config{}, downloadlist.New([]string{"https://youtu.be/x"})))
@@ -49,7 +54,7 @@ func TestSavingAsWritesTheListAndKeepsItsFile(t *testing.T) {
 func TestStartingWithNothingToStartWithSaysSo(t *testing.T) {
 	host := Host{ListDir: t.TempDir()}
 	m := sized(New(host, config.Config{}, downloadlist.New([]string{"https://youtu.be/x"})))
-	m, _ = press(m, "s")
+	m, _ = choose(m, entryStart)
 	if m.notice != "Downloading is not available here" {
 		t.Errorf("notice %q", m.notice)
 	}
@@ -57,7 +62,7 @@ func TestStartingWithNothingToStartWithSaysSo(t *testing.T) {
 
 func TestAnEmptyListDoesNotStart(t *testing.T) {
 	m := sized(New(Host{}, config.Config{}, nil))
-	m, _ = press(m, "s")
+	m, _ = choose(m, entryStart)
 	if !strings.Contains(m.notice, "empty") {
 		t.Errorf("notice %q", m.notice)
 	}

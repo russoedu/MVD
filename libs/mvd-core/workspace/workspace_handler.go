@@ -16,6 +16,7 @@ import (
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/menubar"
 	"youtube-downloader/libs/mvd-core/playlistfile"
+	"youtube-downloader/libs/mvd-core/pointer"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	"youtube-downloader/libs/mvd-core/screenview"
 )
@@ -82,6 +83,7 @@ type Model struct {
 
 	edit    editPopup
 	editing bool
+	about   bool
 
 	asking purpose
 	input  textinput.Model
@@ -109,13 +111,22 @@ func (m Model) Init() tea.Cmd { return m.screen.Init() }
 func (m Model) running() bool { return m.run != nil }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	if ws, ok := next.(Model); ok {
+		next = ws.refreshMenus().refreshRunMenus()
+	}
+	return next, cmd
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.bar.SetSize(msg.Width, max(m.bar.ContentHeight(), 1))
-		m.screen = m.screen.Resize(msg.Width, max(msg.Height-1, 0))
-		next, _ := m.editor.Update(tea.WindowSizeMsg{Width: msg.Width, Height: max(msg.Height-1, 0)})
+		m.screen = m.screen.Resize(msg.Width, max(msg.Height-topRows, 0))
+		next, _ := m.editor.Update(tea.WindowSizeMsg{Width: msg.Width, Height: max(msg.Height-topRows, 0)})
 		m.editor = next
+		m.edit = m.edit.sized(m.editSize())
 		return m, nil
 
 	case menubar.SelectedMsg:
@@ -197,6 +208,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok {
+		if m.about {
+			if name := key.String(); name == "esc" || name == "enter" || name == "space" || name == "q" {
+				m.about = false
+			}
+			return m, nil
+		}
 		if m.asking != askNone {
 			return m.answer(key)
 		}
@@ -207,11 +224,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			edit, cmd := m.edit.Update(key)
 			m.edit = edit
 			return m, cmd
-		}
-		if m.bar.Open() < 0 && !m.reviewing {
-			if next, cmd, handled := m.runKey(key.String()); handled {
-				return next, cmd
-			}
 		}
 		if !m.reviewing && !m.editing || m.bar.Open() >= 0 {
 			bar, cmd := m.bar.Update(msg)
@@ -226,10 +238,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.toScreen(msg)
 	}
 
-	if m.editing && m.bar.Open() < 0 {
-		if click, ok := msg.(tea.MouseClickMsg); !ok || click.Y != 0 {
-			return m, nil
+	if mouse, ok := msg.(tea.MouseMsg); ok && m.bar.Open() < 0 {
+		if next, cmd, handled := m.popupMouse(mouse); handled {
+			return next, cmd
 		}
+	}
+	if click, ok := msg.(tea.MouseClickMsg); ok && click.Y == toolbarRow && m.bar.Open() < 0 && click.Button == tea.MouseLeft {
+		if next, cmd, handled := m.toolbarClick(click.X); handled {
+			return next, cmd
+		}
+		return m, nil
 	}
 	if click, ok := msg.(tea.MouseClickMsg); ok && (click.Y == 0 || m.bar.Open() >= 0) {
 		bar, cmd := m.bar.Update(msg)
@@ -247,10 +265,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.toScreen(msg)
 }
 
-// toScreen gives a message to the download screen, which sits one row under the top.
+// toScreen gives a message to the download screen, which sits under the menu bar and the toolbar.
 func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if click, ok := msg.(tea.MouseClickMsg); ok {
-		click.Y--
+		if click.Button == tea.MouseLeft && m.onPencil(click.X, click.Y) {
+			return m.openEdit(), nil
+		}
+		click.Y -= topRows
 		msg = click
 	}
 	next, cmd := m.screen.Update(msg)
@@ -261,6 +282,9 @@ func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 // toEditor gives a message to the review, and keeps the list up to date with what the
 // person decided there.
 func (m Model) toEditor(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if mouse, ok := msg.(tea.MouseMsg); ok {
+		msg = pointer.Shift(mouse, 0, -topRows)
+	}
 	next, cmd := m.editor.Update(msg)
 	m.editor = next
 	if m.editor.Version() != m.decided {
@@ -272,40 +296,13 @@ func (m Model) toEditor(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// runKey is what the keys of the workspace do while no menu or question is open.
-func (m Model) runKey(key string) (Model, tea.Cmd, bool) {
-	switch key {
-	case "s":
-		next, cmd := m.start(false)
-		return next, cmd, true
-	case "g":
-		next, cmd := m.start(true)
-		return next, cmd, true
-	case "p":
-		return m.togglePause(), nil, true
-	case "x":
-		next, cmd := m.stop(false)
-		return next, cmd, true
-	case "R":
-		return m.retryAll(), nil, true
-	case "a":
-		return m.ask(askAddLink, "Add a playlist or video link", ""), textinput.Blink, true
-	case "e":
-		if m.running() && m.editor.Live() {
-			m.reviewing = true
-			return m, nil, true
-		}
-		if !m.running() {
-			return m.openEdit(), nil, true
-		}
-	}
-	return m, nil, false
-}
-
 // choose does what a menu entry says.
 func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	if m.stopping || m.starting {
 		return m, nil
+	}
+	if next, cmd, handled := m.runChoice(name); handled {
+		return next, cmd
 	}
 	switch name {
 	case entryNew:
@@ -340,7 +337,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m.openEdit(), nil
 	case entryDelete, entryMoveUp, entryMoveDown, entryUndo, entryRedo:
 		if !m.editing {
-			m.notice = "Open Edit list first (Ctrl+E), then " + strings.ToLower(name) + " there"
+			m.notice = openEditFirst(name)
 			return m, nil
 		}
 		key := map[string]tea.KeyPressMsg{
@@ -355,7 +352,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m, cmd
 	case entryCopy, entryPaste:
 		if !m.editing {
-			m.notice = "Open Edit list first (Ctrl+E), then " + strings.ToLower(name) + " there"
+			m.notice = openEditFirst(name)
 			return m, nil
 		}
 		if name == entryCopy {
@@ -365,13 +362,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	case entryPreferences:
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
-		m.notice = "MVD, Music Video Downloader"
-	case entryOpenSource:
-		if m.host.Open != nil {
-			if err := m.host.Open(openSourceURL); err != nil {
-				m.notice = "Cannot open the browser: " + err.Error()
-			}
-		}
+		m.about = true
 	case entryQuit:
 		return m.stop(true)
 	}
@@ -385,7 +376,7 @@ func (m Model) openEdit() Model {
 		m.notice = "Stop the downloads before editing the list"
 		return m
 	}
-	m.edit, m.editing = newEditPopup(m.session.File()), true
+	m.edit, m.editing = newEditPopup(m.session.File()).sized(m.editSize()), true
 	return m
 }
 
@@ -545,7 +536,7 @@ func (m Model) runStarted(msg runStartedMsg) (tea.Model, tea.Cmd) {
 	if msg.review {
 		m.editor = editorpage.NewLive(m.host.Editor, msg.run, m.session.File().Songs())
 		m.decided = m.editor.Version()
-		next, _ := m.editor.Update(tea.WindowSizeMsg{Width: m.width, Height: max(m.height-1, 0)})
+		next, _ := m.editor.Update(tea.WindowSizeMsg{Width: m.width, Height: max(m.height-topRows, 0)})
 		m.editor, m.reviewing = next, true
 		cmds = append(cmds, m.editor.Init())
 	}

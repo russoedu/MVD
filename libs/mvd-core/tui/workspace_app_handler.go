@@ -68,6 +68,9 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if a.inPrefs {
 		if mouse, ok := msg.(tea.MouseMsg); ok {
+			if a.onClose(mouse) {
+				return a.closePrefs(false), nil
+			}
 			inner, inside := a.inPopup(mouse)
 			if !inside {
 				return a, nil
@@ -152,8 +155,11 @@ func (a workspaceApp) apply(cfg config.Config, confirmed bool) workspaceApp {
 
 // popupSize is the room the preferences take over the workspace.
 func (a workspaceApp) popupSize() (int, int) {
-	return max(min(a.width-6, 112), 1), max(min(a.height-4, 36), 1)
+	return dialog.Sized(a.width, a.height, popupPercent, 60, 20)
 }
+
+// popupPercent is how much of the screen the preferences take, in each direction.
+const popupPercent = 85
 
 // Outline describes the current screen (see ScreenOutline).
 func (a workspaceApp) Outline() ScreenOutline {
@@ -169,7 +175,7 @@ func (a workspaceApp) View() tea.View {
 	}
 	w, h := a.popupSize()
 	x, y := dialog.Centre(a.width, a.height, w, h)
-	return screenview.Of(dialog.Overlay(a.ws.Render(), dialog.Frame("Preferences", a.popupLines(), w, h), x, y))
+	return screenview.Of(dialog.Overlay(a.ws.Render(), dialog.ClosableFrame("Preferences", a.popupLines(), w, h), x, y))
 }
 
 // RunWorkspace runs the workspace app until the person quits it or ctx ends.

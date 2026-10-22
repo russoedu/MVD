@@ -408,7 +408,7 @@ func (m Model) boxWidth() int {
 	for _, e := range m.menus[m.open].Entries {
 		n := lipgloss.Width(e.Name)
 		if e.Shortcut != "" {
-			n += 3 + lipgloss.Width(e.Shortcut)
+			n += 3 + lipgloss.Width(ShortcutLabel(e.Shortcut))
 		}
 		w = max(w, n)
 	}
@@ -473,15 +473,16 @@ func (m Model) View() string {
 				box = append(box, rule.Render("│"+strings.Repeat("─", w)+"│"))
 				continue
 			}
-			gap := max(w-2*padX-lipgloss.Width(e.Name)-lipgloss.Width(e.Shortcut), 1)
+			shortcut := ShortcutLabel(e.Shortcut)
+			gap := max(w-2*padX-lipgloss.Width(e.Name)-lipgloss.Width(shortcut), 1)
 			pad := strings.Repeat(" ", padX)
 			var text string
 			if m.off(e) {
-				text = muted.Faint(true).Render(pad + e.Name + strings.Repeat(" ", gap) + e.Shortcut + pad)
+				text = muted.Faint(true).Render(pad + e.Name + strings.Repeat(" ", gap) + shortcut + pad)
 			} else if j == m.cursor {
-				text = selected.Render(pad + e.Name + strings.Repeat(" ", gap) + e.Shortcut + pad)
+				text = selected.Render(pad + e.Name + strings.Repeat(" ", gap) + shortcut + pad)
 			} else {
-				text = pad + e.Name + strings.Repeat(" ", gap) + muted.Render(e.Shortcut) + pad
+				text = pad + e.Name + strings.Repeat(" ", gap) + muted.Render(shortcut) + pad
 			}
 			box = append(box, rule.Render("│")+text+rule.Render("│"))
 		}

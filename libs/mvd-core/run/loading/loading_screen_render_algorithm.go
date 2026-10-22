@@ -12,9 +12,6 @@ import (
 	"youtube-downloader/libs/mvd-core/look"
 )
 
-// maxRows is how many playlists are named; the rest are counted.
-const maxRows = 8
-
 // barWidth is the width of the progress bar, in cells.
 const barWidth = 40
 
@@ -35,28 +32,47 @@ type Progress struct {
 	Playlists []Playlist
 	// Spin is the frame of the spinner to show.
 	Spin int
+	// Elapsed is how long the run has been going, "" when it is not known.
+	Elapsed string
 	// Confirm is a question on the bottom line, "" for none.
 	Confirm string
 }
 
-// Render draws the screen for a window of w by h cells.
+// Render draws the screen for a window of w by h cells: a panel with the progress, what has
+// been found so far, and every playlist with what became of it.
 func Render(p Progress, w, h int) string {
 	frame := look.SpinnerFrames[p.Spin%len(look.SpinnerFrames)]
 	lines := []string{look.Yellow.Render(frame) + " " + look.Text.Bold(true).Render("Loading playlists")}
 
 	if n := len(p.Playlists); n > 0 {
-		listed := 0
+		listed, failed, songs := 0, 0, 0
 		for _, pl := range p.Playlists {
 			if pl.Listed {
 				listed++
+				songs += pl.Songs
+			}
+			if pl.Failed {
+				failed++
 			}
 		}
-		lines = append(lines, "", bar(listed, n)+look.Dim.Render(fmt.Sprintf("  %d of %d", listed, n)))
+		lines = append(lines, "", bar(listed, n)+look.Dim.Render(fmt.Sprintf("  %d of %d  ·  %d%%", listed, n, 100*listed/n)))
+		facts := look.Dim.Render("Songs found ") + look.Text.Render(fmt.Sprint(songs))
+		if failed > 0 {
+			facts += look.Dim.Render("  ·  Could not load ") + look.Red.Render(fmt.Sprint(failed))
+		}
+		if p.Elapsed != "" {
+			facts += look.Dim.Render("  ·  Elapsed ") + look.Text.Render(p.Elapsed)
+		}
+		lines = append(lines, facts)
+	} else if p.Elapsed != "" {
+		lines = append(lines, "", look.Dim.Render("Elapsed ")+look.Text.Render(p.Elapsed))
 	}
 	if p.Detail != "" {
 		lines = append(lines, "", look.Dim.Render(p.Detail))
 	}
-	lines = append(lines, rows(p.Playlists, w)...)
+	// Every row the window has room for names a playlist.
+	room := max(h-len(lines)-6, 0)
+	lines = append(lines, rows(p.Playlists, w, room)...)
 
 	return centred(lines, p.Confirm, w, h)
 }
@@ -71,19 +87,23 @@ func bar(done, total int) string {
 }
 
 // rows names the playlists, the ones still loading first so the person sees what is
-// being waited for.
-func rows(playlists []Playlist, w int) []string {
-	if len(playlists) == 0 {
+// being waited for, as many as there is room for; the rest are counted.
+func rows(playlists []Playlist, w, room int) []string {
+	if len(playlists) == 0 || room < 2 {
 		return nil
 	}
 	out := []string{""}
+	room--
+	if len(playlists) > room {
+		room-- // the line that counts the rest
+	}
 	shown := 0
 	for _, pass := range []bool{false, true} {
 		for _, pl := range playlists {
-			if pl.Listed != pass || shown == maxRows {
+			if pl.Listed != pass || shown >= max(room, 1) {
 				continue
 			}
-			out = append(out, cells.Truncate(row(pl), max(10, min(w-4, 70))))
+			out = append(out, cells.Fit(cells.Truncate(row(pl), max(10, min(w-4, 90))), max(10, min(w-4, 90))))
 			shown++
 		}
 	}

@@ -124,3 +124,13 @@ func (m *Model) clickEntry(y int) {
 	m.follow = false
 	m.selEntry, m.outScroll = i, 0
 }
+
+// PlaylistsBox is where the Playlists box is drawn, in the cells of the screen; ok is false
+// when the screen draws no such box.
+func (m Model) PlaylistsBox() (x, y, w, h int, ok bool) {
+	l, drawn := m.layout()
+	if !drawn || !l.hasLists {
+		return 0, 0, 0, 0, false
+	}
+	return l.playlists.x, l.playlists.y, l.playlists.w, l.playlists.h, true
+}

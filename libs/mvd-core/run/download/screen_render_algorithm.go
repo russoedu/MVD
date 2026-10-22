@@ -2,6 +2,8 @@ package download
 
 import (
 	"fmt"
+	"time"
+
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
@@ -38,7 +40,7 @@ func (m Model) render() string {
 
 // renderLoading is the screen shown until every playlist of the run has been listed.
 func (m Model) renderLoading() string {
-	p := loading.Progress{Spin: m.spin, Detail: "Reading the songs of each playlist"}
+	p := loading.Progress{Spin: m.spin, Detail: "Reading the songs of each playlist", Elapsed: runstate.HumanDuration(time.Since(m.state.Started))}
 	for _, pl := range m.state.Playlists {
 		p.Playlists = append(p.Playlists, loading.Playlist{
 			Name: pl.Title, Songs: len(pl.Entries), Listed: pl.Listed, Failed: pl.Err != "",

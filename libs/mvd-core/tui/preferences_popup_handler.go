@@ -45,6 +45,17 @@ func (a workspaceApp) inPopup(msg tea.MouseMsg) (tea.MouseMsg, bool) {
 	return withMouse(msg, m)
 }
 
+// onClose reports whether msg is a click on the close mark in the top edge of the frame.
+func (a workspaceApp) onClose(msg tea.MouseMsg) bool {
+	click, ok := msg.(tea.MouseClickMsg)
+	if !ok || click.Button != tea.MouseLeft {
+		return false
+	}
+	w, h := a.popupSize()
+	x, y := dialog.Centre(a.width, a.height, w, h)
+	return click.Y == y && dialog.CloseSpan(w).Contains(click.X-x)
+}
+
 // withMouse is msg of the same kind as it was, with m for where it happened.
 func withMouse(msg tea.MouseMsg, m tea.Mouse) (tea.MouseMsg, bool) {
 	switch msg.(type) {

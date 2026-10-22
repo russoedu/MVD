@@ -48,6 +48,8 @@ type pageLayout struct {
 
 func width(s string) int { return ansi.StringWidth(s) }
 
+func ansiStrip(s string) string { return ansi.Strip(s) }
+
 func capitalise(s string) string {
 	if s == "" {
 		return s
@@ -73,7 +75,7 @@ func (f field) numberText(value string) string {
 
 // layout draws the page of the tab w columns wide.
 func (m Model) layout() pageLayout {
-	w := max(m.w, 20)
+	w := m.bodyWidth()
 	var l pageLayout
 	fields := m.pages[m.tab].fields
 	selected := lipgloss.NewStyle().Bold(true).
@@ -204,27 +206,49 @@ func (m Model) tabSpans() []span {
 	return spans
 }
 
-// tabLines draws the row of tabs: a box for each, the one shown lit.
+// tabLines draws the row of tabs as the tabs of a folder: each in a box of its own, the one
+// shown open at the bottom into the box of the page, the others closed by its top edge.
+// The third row is that top edge.
 func (m Model) tabLines() [tabRows]string {
 	var rows [tabRows]string
+	w := max(m.w, 20)
+	edge := look.BorderOn
+	var line strings.Builder
 	for i, p := range m.pages {
 		inner := " " + p.name + " "
-		edge := strings.Repeat("─", width(inner))
-		style := look.Dim
-		label := look.Dim.Render(inner)
+		bar := strings.Repeat("─", width(inner))
+		style, label := look.Dim, look.Dim.Render(inner)
 		if i == m.tab {
-			style = look.BorderOn.Bold(true)
-			label = look.BorderOn.Bold(true).Render(inner)
+			style, label = look.BorderOn.Bold(true), look.BorderOn.Bold(true).Render(inner)
 		}
-		rows[0] += style.Render("╭"+edge+"╮") + " "
+		rows[0] += style.Render("╭"+bar+"╮") + " "
 		rows[1] += style.Render("│") + label + style.Render("│") + " "
-		rows[2] += style.Render("╰"+edge+"╯") + " "
+
+		// Under the tab: the active one is open, and the line of the box turns up into it.
+		first := i == 0
+		switch {
+		case i == m.tab && first:
+			line.WriteString(edge.Render("│") + strings.Repeat(" ", width(inner)) + edge.Render("╰"))
+		case i == m.tab:
+			line.WriteString(edge.Render("╯") + strings.Repeat(" ", width(inner)) + edge.Render("╰"))
+		case first:
+			line.WriteString(edge.Render("├" + bar + "┴"))
+		default:
+			line.WriteString(edge.Render("┴" + bar + "┴"))
+		}
+		if i < len(m.pages)-1 {
+			line.WriteString(edge.Render("─"))
+		}
 	}
+	rows[2] = line.String() + edge.Render(strings.Repeat("─", max(w-width(ansiStrip(line.String()))-1, 0))+"╮")
 	return rows
 }
 
 // bodyRows is how many lines of the page show at once.
-func (m Model) bodyRows() int { return max(m.h-tabRows-1, 1) }
+func (m Model) bodyRows() int { return max(m.h-tabRows-2, 1) }
+
+// bodyWidth is the columns of the page: the inside of the box it is in.
+func (m Model) bodyWidth() int { return max(m.w, 20) - 2 }
 
 // reveal scrolls the page so the field the cursor is on shows.
 func (m Model) reveal() Model {
@@ -243,8 +267,8 @@ func (m Model) reveal() Model {
 	return m
 }
 
-// View draws the popup: the tabs, the page of the tab, and a line of keys or the last
-// thing that happened.
+// View draws the popup: the tabs, the page of the tab in a box under them, and a line of
+// keys or the last thing that happened.
 func (m Model) View() string {
 	w := max(m.w, 20)
 	out := make([]string, 0, m.h)
@@ -252,14 +276,16 @@ func (m Model) View() string {
 		out = append(out, cells.Fit(row, w))
 	}
 	l := m.layout()
+	edge := look.BorderOn.Render("│")
 	rows := m.bodyRows()
 	for i := 0; i < rows; i++ {
-		if line := m.scroll + i; line < len(l.lines) {
-			out = append(out, l.lines[line])
-		} else {
-			out = append(out, strings.Repeat(" ", w))
+		line := strings.Repeat(" ", w-2)
+		if at := m.scroll + i; at < len(l.lines) {
+			line = l.lines[at]
 		}
+		out = append(out, edge+line+edge)
 	}
+	out = append(out, look.BorderOn.Render("╰"+strings.Repeat("─", w-2)+"╯"))
 	return strings.Join(append(out, cells.Fit(" "+m.hintLine(), w)), "\n")
 }
 

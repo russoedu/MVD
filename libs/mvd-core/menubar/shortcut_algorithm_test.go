@@ -21,3 +21,19 @@ func TestShortcutKeysUseBubbleTeaSpelling(t *testing.T) {
 		}
 	}
 }
+
+func TestAMacShowsCmdWhereOthersShowCtrl(t *testing.T) {
+	defer func(was string) { hostOS = was }(hostOS)
+
+	hostOS = "windows"
+	if got := ShortcutLabel("Ctrl+Shift+S"); got != "Ctrl+Shift+S" {
+		t.Errorf("windows read %q", got)
+	}
+	hostOS = "darwin"
+	if got := ShortcutLabel("Ctrl+Shift+S"); got != "Cmd+Shift+S" {
+		t.Errorf("a mac read %q", got)
+	}
+	if got := ShortcutLabel("Del"); got != "Del" {
+		t.Errorf("a mac read %q", got)
+	}
+}

@@ -1,6 +1,9 @@
 package menubar
 
-import "strings"
+import (
+	"runtime"
+	"strings"
+)
 
 // keyAliases are the names a shortcut text may use for a key whose Bubble Tea
 // name is another.
@@ -31,4 +34,16 @@ func shortcutKeys(text string) []string {
 		keys = append(keys, strings.Join(parts, "+"))
 	}
 	return keys
+}
+
+// hostOS is the system the app runs on; a test sets it to look at another one.
+var hostOS = runtime.GOOS
+
+// ShortcutLabel is a shortcut as the person reads it: on a Mac the key that does the job
+// of Ctrl is Cmd, so that is what is shown.
+func ShortcutLabel(text string) string {
+	if hostOS != "darwin" {
+		return text
+	}
+	return strings.ReplaceAll(text, "Ctrl", "Cmd")
 }
