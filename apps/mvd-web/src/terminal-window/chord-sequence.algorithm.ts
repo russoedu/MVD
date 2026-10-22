@@ -17,10 +17,10 @@ export function chordSequence (pressed: PressedKey): string | null {
   const key = pressed.key.toLowerCase()
   const isLetter = letter.test(key)
   if (!isLetter && !punctuation.test(key)) return null
-  if (!pressed.shiftKey && !pressed.metaKey && isLetter) return null // Ctrl+letter is a control character
-  if (clipboardKeys.has(key) && !pressed.shiftKey) return null // the browser keeps copy, paste and cut
+  if (isLetter && !pressed.shiftKey && !pressed.metaKey) return null // Ctrl+letter is a control character
+  if (!pressed.shiftKey && clipboardKeys.has(key)) return null // the browser keeps copy, paste and cut
 
-  const shiftBit = pressed.shiftKey && isLetter ? 1 : 0
+  const shiftBit = isLetter && pressed.shiftKey ? 1 : 0
   const ctrlBit = 4
 
   return `\u{1B}[${key.codePointAt(0)};${1 + shiftBit + ctrlBit}u`
