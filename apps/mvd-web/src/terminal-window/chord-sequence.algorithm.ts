@@ -2,7 +2,7 @@ import type { PressedKey } from './browser-shortcut.policy'
 
 const clipboardKeys = new Set(['c', 'v', 'x'])
 const letter = /^[a-z]$/i
-const punctuation = /^[,.;/\-=[\]\']$/
+const punctuation = /^[,.;/\-=[\]']$/
 
 /**
  * The bytes to send the program for a chord that a terminal cannot spell with a control
@@ -17,11 +17,11 @@ export function chordSequence (pressed: PressedKey): string | null {
   const key = pressed.key.toLowerCase()
   const isLetter = letter.test(key)
   if (!isLetter && !punctuation.test(key)) return null
-  if (isLetter && !pressed.shiftKey && !pressed.metaKey) return null // Ctrl+letter is a control character
+  if (!pressed.shiftKey && !pressed.metaKey && isLetter) return null // Ctrl+letter is a control character
   if (clipboardKeys.has(key) && !pressed.shiftKey) return null // the browser keeps copy, paste and cut
 
   const shiftBit = pressed.shiftKey && isLetter ? 1 : 0
   const ctrlBit = 4
 
-  return `\u001B[${key.codePointAt(0)};${1 + shiftBit + ctrlBit}u`
+  return `\u{1B}[${key.codePointAt(0)};${1 + shiftBit + ctrlBit}u`
 }

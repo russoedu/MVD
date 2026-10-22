@@ -7,16 +7,16 @@ const press = (key: string, modifiers: Partial<PressedKey> = {}): PressedKey => 
 
 describe('chordSequence', () => {
   it('spells Ctrl+Shift+S with its modifiers', () => {
-    expect(chordSequence(press('S', { ctrlKey: true, shiftKey: true }))).toBe('\u001B[115;6u')
+    expect(chordSequence(press('S', { ctrlKey: true, shiftKey: true }))).toBe('\u{1B}[115;6u')
   })
 
   it('spells Ctrl+, which a terminal cannot', () => {
-    expect(chordSequence(press(',', { ctrlKey: true }))).toBe('\u001B[44;5u')
+    expect(chordSequence(press(',', { ctrlKey: true }))).toBe('\u{1B}[44;5u')
   })
 
   it('takes Cmd for Ctrl on a Mac', () => {
-    expect(chordSequence(press('s', { metaKey: true }))).toBe('\u001B[115;5u')
-    expect(chordSequence(press(',', { metaKey: true }))).toBe('\u001B[44;5u')
+    expect(chordSequence(press('s', { metaKey: true }))).toBe('\u{1B}[115;5u')
+    expect(chordSequence(press(',', { metaKey: true }))).toBe('\u{1B}[44;5u')
   })
 
   it('leaves plain Ctrl+letter to xterm', () => {
