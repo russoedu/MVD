@@ -60,6 +60,18 @@ func MoveNow(appDir, version string) MoveResult {
 	return Declined
 }
 
+// CanBeMoved reports whether the app runs from somewhere it could be moved out of: it has
+// a place of its own to go to, and is not already there.
+func CanBeMoved(appDir, version string) bool {
+	env, ok := realEnvironment(appDir, true, "", version)
+	if !ok {
+		return false
+	}
+	targets := installTargets(env.GOOS, env.Places)
+
+	return len(targets) > 0 && !isInstalled(env.GOOS, env.Exe, targets)
+}
+
 // realEnvironment describes this machine and this run to the move.
 func realEnvironment(appDir string, window bool, movedFrom, version string) (moveEnvironment, bool) {
 	exe, err := os.Executable()

@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { takesOverBrowserShortcut } from './browser-shortcut.policy'
+import { chordSequence } from './chord-sequence.algorithm'
+import { sendTerminalInput } from './terminal-socket.client'
 
 /** Where the terminal reads the keyboard: xterm's hidden input. */
 const terminalInput = (): HTMLElement | null => document.querySelector<HTMLElement>('.xterm-helper-textarea')
@@ -22,6 +24,16 @@ export function useCaptureBrowserShortcuts (): void {
     }
 
     const onKeyDown = (event: KeyboardEvent): void => {
+      // Chords xterm cannot spell (Ctrl+Shift+S, Ctrl+, and Cmd on a Mac) are sent as they are.
+      const sequence = chordSequence(event)
+      const origin = event.target instanceof Element ? event.target : null
+      if (sequence !== null && (origin?.closest('.xterm') != null || !ownsKeyboard(origin))) {
+        event.preventDefault()
+        event.stopPropagation()
+        sendTerminalInput(sequence)
+
+        return
+      }
       if (!takesOverBrowserShortcut(event)) return
 
       const target = event.target instanceof Element ? event.target : null

@@ -51,11 +51,11 @@ func started(t *testing.T, review bool) (Model, *fakeRun) {
 	}
 	cfg := config.Config{OutputDir: t.TempDir()}
 	m := sized(New(host, cfg, list))
-	key := "s"
+	entry := entryStart
 	if review {
-		key = "g"
+		entry = entryReview
 	}
-	m, cmd := press(m, key)
+	m, cmd := choose(m, entry)
 	if cmd == nil || !m.starting {
 		t.Fatal("the run did not begin to start")
 	}
@@ -68,15 +68,15 @@ func TestStartingRunsTheListAndPauseAndRetryAllReachTheRun(t *testing.T) {
 	if !m.running() || fake.hold {
 		t.Fatalf("running %v hold %v", m.running(), fake.hold)
 	}
-	m, _ = press(m, "p")
+	m, _ = choose(m, entryPause)
 	if !fake.paused {
 		t.Error("not paused")
 	}
-	m, _ = press(m, "p")
+	m, _ = choose(m, entryResume)
 	if fake.paused {
 		t.Error("not resumed")
 	}
-	m, _ = press(m, "R")
+	m, _ = choose(m, entryRetry)
 	if fake.retried != 1 || m.notice != "2 songs queued again" {
 		t.Errorf("retried %d, notice %q", fake.retried, m.notice)
 	}
@@ -91,7 +91,7 @@ func TestGettingDataForReviewHoldsTheSongs(t *testing.T) {
 
 func TestStoppingClosesTheRunAndKeepsTheList(t *testing.T) {
 	m, fake := started(t, false)
-	m, cmd := press(m, "x")
+	m, cmd := choose(m, entryStop)
 	if !m.stopping || cmd == nil {
 		t.Fatal("not stopping")
 	}

@@ -19,11 +19,7 @@ const (
 	entryMoveUp      = "Move up"
 	entryMoveDown    = "Move down"
 	entryAbout       = "About MVD"
-	entryOpenSource  = "Open Source"
 )
-
-// openSourceURL is where the code of the app is.
-const openSourceURL = "https://github.com/russoedu/mvd"
 
 func menus() []menubar.Menu {
 	return []menubar.Menu{
@@ -31,7 +27,7 @@ func menus() []menubar.Menu {
 			{Name: entryNew, Shortcut: "Ctrl+N"},
 			{Name: entryOpen, Shortcut: "Ctrl+O"},
 			{Name: entrySave, Shortcut: "Ctrl+S"},
-			{Name: entrySaveAs},
+			{Name: entrySaveAs, Shortcut: "Ctrl+Shift+S"},
 			{Separator: true},
 			{Name: entryPreferences, Shortcut: "Ctrl+,"},
 			{Separator: true},
@@ -50,9 +46,20 @@ func menus() []menubar.Menu {
 			{Name: entryMoveUp, Shortcut: "Shift+Up"},
 			{Name: entryMoveDown, Shortcut: "Shift+Down"},
 		}},
+		{Name: "Run", Entries: []menubar.Entry{
+			{Name: entryStart},
+			{Name: entryReview},
+			{Separator: true},
+			{Name: entryPause},
+			{Name: entryResume},
+			{Name: entryStop},
+			{Name: entryRetry},
+			{Separator: true},
+			{Name: entryAddLink},
+			{Name: entryReviewSongs},
+		}},
 		{Name: "Help", Entries: []menubar.Entry{
 			{Name: entryAbout},
-			{Name: entryOpenSource},
 		}},
 	}
 }

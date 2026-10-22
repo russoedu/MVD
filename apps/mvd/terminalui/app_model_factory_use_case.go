@@ -57,6 +57,8 @@ type Host struct {
 	// Quit is called when the person quits the app from its screens, so the window that
 	// shows them closes with it; nil for none.
 	Quit func()
+	// Version is the version of the app, for its About window.
+	Version string
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -104,6 +106,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				SaveFile: host.SaveFile,
 				Open:     openurl.Open,
 				Quit:     host.Quit,
+				Version:  host.Version,
 			},
 		})}
 	}

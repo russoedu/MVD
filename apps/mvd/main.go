@@ -28,6 +28,7 @@ import (
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-core/playlistfile"
+	"youtube-downloader/libs/mvd-core/tui"
 	"youtube-downloader/libs/mvd-core/workspace"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
@@ -123,6 +124,11 @@ func run(movedFrom string, askToMove bool, review string) error {
 	terminalRuns = terminalui.NewRuns(updates.AfterFailure)
 
 	removal := uninstall.Here(version, appDir, terminalui.ConfigPath(appDir), stop)
+	// Moving is only offered while the app has not been moved yet.
+	var move tui.Mover
+	if install.CanBeMoved(appDir, version) {
+		move = terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop)
+	}
 	// The terminal-style interface: the same screens as the terminal app, in a window.
 	program := terminalui.NewShared(terminalui.NewModelFactory(appDir, terminalui.Files{
 		Config: terminalui.ConfigPath(appDir),
@@ -147,9 +153,10 @@ func run(movedFrom string, askToMove bool, review string) error {
 		// Quitting from the screens ends the program that runs them, and the window would
 		// otherwise stay open on a page with nothing behind it.
 		Quit:      stop,
+		Version:   version,
 		Uninstall: terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
-		Move: terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop),
+		Move: move,
 	}, logf))
 
 	// .mvd files are download lists of this program: they get its icon and open it. It is

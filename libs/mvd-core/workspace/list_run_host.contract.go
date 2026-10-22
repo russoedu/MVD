@@ -39,4 +39,7 @@ type Host struct {
 	// Quit is called when the person quits, so a host that shows the program in a window
 	// can close it; nil for none.
 	Quit func()
+	// Version is the version of the app, which the About window tells; empty for a build
+	// that has none.
+	Version string
 }

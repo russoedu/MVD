@@ -22,6 +22,8 @@ type Model struct {
 	scroll  int // the first line of the page that shows
 	editing bool
 	input   textinput.Model
+	// before is the text of the field when typing in it began, for esc to put back.
+	before string
 
 	busy      bool // a window of the host's is open and has the answer
 	status    string
@@ -82,7 +84,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 		return m.key(msg)
 	case tea.MouseMsg:
-		if m.busy || m.editing {
+		if m.busy {
 			return m, nil
 		}
 		return m.mouse(msg)
@@ -212,7 +214,8 @@ func (m Model) picked(p pickedMsg) (Model, tea.Cmd) {
 
 // edit starts typing the value of the field the cursor is on.
 func (m Model) edit() Model {
-	m.input.SetValue(m.current().get(m.cfg))
+	m.before = m.current().get(m.cfg)
+	m.input.SetValue(m.before)
 	m.input.CursorEnd()
 	m.input.Focus()
 	m.editing, m.status = true, ""
@@ -222,6 +225,9 @@ func (m Model) edit() Model {
 func (m Model) typing(k tea.KeyPressMsg) (Model, tea.Cmd) {
 	switch k.String() {
 	case "esc":
+		if f := m.current(); f.kind == kindTemplate {
+			f.set(&m.cfg, m.before)
+		}
 		m.editing, m.status = false, ""
 		return m, nil
 	case "enter":
@@ -229,7 +235,16 @@ func (m Model) typing(k tea.KeyPressMsg) (Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(k)
-	return m, cmd
+	return m.live(), cmd
+}
+
+// live keeps the name pattern of the files as typed, so the example under it follows every
+// key; the other fields wait for enter.
+func (m Model) live() Model {
+	if f := m.current(); f.kind == kindTemplate {
+		f.set(&m.cfg, m.input.Value())
+	}
+	return m
 }
 
 // accept takes what was typed as the value of the field.
@@ -264,20 +279,29 @@ func (m Model) useDefaultColour() Model {
 	return m
 }
 
-// addBlock adds a block of the template to the end of the template.
+// addBlock puts a block of the template into the template, where the cursor is: typing in
+// it starts when it was not, with the cursor at the end.
 func (m Model) addBlock(index int) Model {
 	f := m.current()
 	if f.kind != kindTemplate || index < 0 || index >= len(templateBlocks) {
 		return m
 	}
-	f.set(&m.cfg, f.get(m.cfg)+templateBlocks[index].token)
-	return m
+	if !m.editing {
+		m = m.edit()
+	}
+	token := templateBlocks[index].token
+	text, at := []rune(m.input.Value()), m.input.Position()
+	at = max(min(at, len(text)), 0)
+	m.input.SetValue(string(text[:at]) + token + string(text[at:]))
+	m.input.SetCursor(at + len([]rune(token)))
+	return m.live()
 }
 
 // mouse works out a click on a tab or on the page, or the wheel over it. The position is
 // in the cells of the popup.
 func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 	pos := msg.Mouse()
+	pos.X-- // the page is inside the border of its box
 	if wheel, ok := msg.(tea.MouseWheelMsg); ok {
 		by := 3
 		if wheel.Button == tea.MouseWheelUp {
@@ -293,8 +317,8 @@ func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 	}
 	if pos.Y < tabRows {
 		for i, s := range m.tabSpans() {
-			if pos.X >= s.first && pos.X < s.last {
-				return m.show(i), nil
+			if pos.X+1 >= s.first && pos.X+1 < s.last {
+				return m.finishTyping().show(i), nil
 			}
 		}
 		return m, nil
@@ -310,8 +334,33 @@ func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 		if h.y != line || pos.X < h.x0 || pos.X >= h.x1 {
 			continue
 		}
+		if m.editing && h.field == m.cursor && m.current().kind == kindTemplate {
+			// In the template the cursor goes where the pointer is, and a block goes in there.
+			switch h.kind {
+			case hitValue:
+				m.input.SetCursor(max(pos.X-gutterWidth-promptWidth, 0))
+				return m, nil
+			case hitBlock:
+				return m.addBlock(h.arg), nil
+			}
+		}
+		if m.editing {
+			if m = m.accept(); m.editing {
+				return m, nil
+			}
+		}
 		m.cursor = h.field
+		if h.kind == hitValue && m.current().kind == kindTemplate {
+			m, cmd := m.hit(h)
+			m.input.SetCursor(max(pos.X-gutterWidth-promptWidth, 0))
+			return m, cmd
+		}
 		return m.hit(h)
+	}
+	if m.editing {
+		if m = m.accept(); m.editing {
+			return m, nil
+		}
 	}
 	for i, s := range l.spans {
 		if line >= s.first && line <= s.last {
@@ -319,6 +368,17 @@ func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// promptWidth is the columns of the prompt in front of what is typed.
+const promptWidth = 2
+
+// finishTyping takes what is typed as the value, if it is a value; typing goes on if it is not.
+func (m Model) finishTyping() Model {
+	if m.editing {
+		return m.accept()
+	}
+	return m
 }
 
 // hit does what a click on a part of the page does.

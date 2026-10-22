@@ -112,7 +112,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 	l := m.layout()
 	for _, h := range l.hits {
 		if h.kind == hitOption && h.field == 0 && h.arg == 2 {
-			m = click(m, h.x0+1, tabRows+h.y-m.scroll)
+			m = click(m, h.x0+2, tabRows+h.y-m.scroll)
 		}
 	}
 	if got := m.Config().VideoQuality; got != config.VideoPresets[2] {
@@ -123,7 +123,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 			before := m.Config().MaxConcurrentDownloads
 			m = m.reveal()
 			m.scroll = 0
-			m = click(m, h.x0, tabRows+h.y-m.scroll)
+			m = click(m, h.x0+1, tabRows+h.y-m.scroll)
 			if got := m.Config().MaxConcurrentDownloads; got != before+1 {
 				t.Errorf("a click on + gave %d, was %d", got, before)
 			}
@@ -133,7 +133,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 	m.cursor = 1
 	for _, h := range m.layout().hits {
 		if h.kind == hitBlock && h.arg == 1 {
-			m = click(m, h.x0+1, tabRows+h.y)
+			m = click(m, h.x0+2, tabRows+h.y)
 		}
 	}
 	if !strings.HasSuffix(m.Config().OutputTemplate, "%(title)s") {
@@ -148,5 +148,37 @@ func TestEscAsksToClose(t *testing.T) {
 	}
 	if _, ok := cmd().(CloseMsg); !ok {
 		t.Errorf("esc sent %T", cmd())
+	}
+}
+
+func TestABlockGoesWhereThePointerPutTheCursorInTheTemplate(t *testing.T) {
+	m := newPopup().show(0)
+	m.cursor = 1
+	m.cfg.OutputTemplate = "%(title)s.%(ext)s"
+	var value, block hit
+	for _, h := range m.layout().hits {
+		if h.field == 1 && h.kind == hitValue {
+			value = h
+		}
+		if h.field == 1 && h.kind == hitBlock && h.arg == 0 {
+			block = h
+		}
+	}
+	// A click on the pattern starts typing in it, the cursor where the pointer was (after
+	// the 9 characters of "%(title)s"; the page is in a box, and a prompt is before the text).
+	m = click(m, 1+gutterWidth+promptWidth+9, tabRows+value.y-m.scroll)
+	if !m.Editing() || m.input.Position() != 9 {
+		t.Fatalf("editing %v, cursor %d", m.Editing(), m.input.Position())
+	}
+	m = click(m, 1+block.x0+1, tabRows+block.y-m.scroll)
+	if got, want := m.Config().OutputTemplate, "%(title)s%(artist,uploader)s.%(ext)s"; got != want {
+		t.Errorf("template %q, want %q", got, want)
+	}
+	if !m.Editing() {
+		t.Error("typing ended with the block")
+	}
+	m = press(m, "esc")
+	if got := m.Config().OutputTemplate; got != "%(title)s.%(ext)s" {
+		t.Errorf("esc left %q", got)
 	}
 }

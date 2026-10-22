@@ -63,3 +63,26 @@ func TestTabsAndButtonsSayWhereTheyAre(t *testing.T) {
 		t.Errorf("buttons %+v", buttons)
 	}
 }
+
+func TestAClosableFrameKeepsItsWidthAndTellsWhereItsCloseMarkIs(t *testing.T) {
+	for _, title := range []string{"", "About MVD"} {
+		box := ansi.Strip(ClosableFrame(title, []string{"x"}, 30, 4))
+		top := strings.Split(box, "\n")[0]
+		if ansi.StringWidth(top) != 30 {
+			t.Errorf("%q: top is %d wide", title, ansi.StringWidth(top))
+		}
+		runes := []rune(top)
+		if got := string(runes[CloseSpan(30).X0 : CloseSpan(30).X1]); got != " ✕ " {
+			t.Errorf("%q: the close span holds %q", title, got)
+		}
+	}
+}
+
+func TestAPopupTakesAShareOfTheScreenWithinLimits(t *testing.T) {
+	if w, h := Sized(200, 50, 85, 40, 12); w != 170 || h != 42 {
+		t.Errorf("big screen: %d x %d", w, h)
+	}
+	if w, h := Sized(30, 10, 85, 40, 12); w != 28 || h != 8 {
+		t.Errorf("tiny screen: %d x %d", w, h)
+	}
+}
