@@ -92,17 +92,109 @@ func TestTheListIsChangedInPlaceAndTheChangesCanBeUndone(t *testing.T) {
 	}
 }
 
-func TestChangingAnAddressAsksForTheNewOne(t *testing.T) {
+func typeInto(m Model, text string) Model {
+	for _, r := range text {
+		next, _ := m.Update(tea.KeyPressMsg{Text: string(r), Code: r})
+		m = next.(Model)
+	}
+	return m
+}
+
+func TestChangingAnAddressIsDoneInItsRow(t *testing.T) {
 	m := listOf("https://a", "https://b")
 	next, _ := m.Update(downloadpage.ListEditMsg{Op: "edit", Index: 1})
 	m = next.(Model)
-	if m.asking != askChangeLink {
-		t.Fatalf("asking %v", m.asking)
+	if !m.inline.on || m.inline.adding || m.inline.index != 1 {
+		t.Fatalf("inline %+v", m.inline)
 	}
-	m.input.SetValue("https://z")
+	if !strings.Contains(ansi.Strip(m.render()), "https://b") {
+		t.Error("the address is not shown in its row")
+	}
+	m = typeInto(m, "https://z") // the address is selected, so this replaces it
 	m, _ = press(m, "enter")
-	if got := addressesOf(m); got[1] != "https://z" || got[0] != "https://a" {
-		t.Errorf("after the change %v", got)
+	if got := addressesOf(m); got[1] != "https://z" || got[0] != "https://a" || m.inline.on {
+		t.Errorf("after the change %v, inline %v", got, m.inline.on)
+	}
+}
+
+func TestAddingALinkOpensARowAfterTheSelectedOneAndEscDropsIt(t *testing.T) {
+	m := listOf("https://a", "https://b")
+	m, _ = choose(m, entryAddLink)
+	if !m.inline.on || !m.inline.adding || m.inline.index != 1 {
+		t.Fatalf("inline %+v", m.inline)
+	}
+	m = typeInto(m, "https://new")
+	m, _ = press(m, "enter")
+	if got := addressesOf(m); len(got) != 3 || got[1] != "https://new" {
+		t.Errorf("after the add %v", got)
+	}
+	m, _ = choose(m, entryAddLink)
+	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	m = next.(Model)
+	if got := addressesOf(m); len(got) != 3 || m.inline.on {
+		t.Errorf("after esc %v, inline %v", got, m.inline.on)
+	}
+}
+
+func TestADoubleClickOnARowChangesItAndOnTheEmptyRoomAddsOne(t *testing.T) {
+	m := listOf("https://a", "https://b")
+	x, y, _, _, _, _ := m.screen.LeftColumn()
+	row := y + 1 + topRows // the first playlist
+	m = click(m, x+4, row)
+	m = click(m, x+4, row)
+	if !m.inline.on || m.inline.adding || m.inline.index != 0 {
+		t.Fatalf("after a double click on a row: %+v", m.inline)
+	}
+	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	m = next.(Model)
+	empty := y + 8 + topRows // below the last playlist
+	m = click(m, x+4, empty)
+	m = click(m, x+4, empty)
+	if !m.inline.on || !m.inline.adding {
+		t.Errorf("after a double click on the empty room: %+v", m.inline)
+	}
+}
+
+func TestCopyAndPasteOfTheEditMenuAreForTheAddressBeingWritten(t *testing.T) {
+	copyKey := tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
+	_ = copyKey
+	m := listOf("https://a")
+	m = m.refreshMenus()
+	if m.bar.Enabled(entryCopy) || m.bar.Enabled(entryPaste) {
+		t.Error("Copy and Paste are on with no address being written")
+	}
+	if !m.bar.Enabled(entryDelete) || m.bar.Enabled(entryMoveUp) || m.bar.Enabled(entryMoveDown) {
+		t.Error("Delete works on the only playlist; there is nowhere to move it")
+	}
+	m, _ = m.startChange(0)
+	m = m.refreshMenus()
+	if !m.bar.Enabled(entryPaste) || !m.bar.Enabled(entryCopy) {
+		t.Error("Paste and Copy (the address starts selected) are off while writing")
+	}
+	if m.bar.Enabled(entryDelete) {
+		t.Error("Delete is on while writing")
+	}
+	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	m = next.(Model).refreshMenus()
+	if m.bar.Enabled(entryCopy) {
+		t.Error("Copy is on with nothing selected")
+	}
+}
+
+func TestDraggingOverTheAddressSelectsIt(t *testing.T) {
+	m := listOf("https://abcdef")
+	m, _ = m.startChange(0)
+	x, y, _, ok := m.inlineRow()
+	if !ok {
+		t.Fatal("no row")
+	}
+	left := x + gripCells
+	next, _ := m.Update(tea.MouseClickMsg{X: left + 8, Y: y, Button: tea.MouseLeft})
+	next, _ = next.Update(tea.MouseMotionMsg{X: left + 11, Y: y, Button: tea.MouseLeft})
+	next, _ = next.Update(tea.MouseReleaseMsg{X: left + 11, Y: y, Button: tea.MouseLeft})
+	m = next.(Model)
+	if got := m.inline.line.Selection(); got != "abc" {
+		t.Errorf("selected %q", got)
 	}
 }
 
@@ -130,10 +222,11 @@ func TestTheIconsOnARowChangeAndRemoveIt(t *testing.T) {
 	}
 	next, _ = m.Update(cmd())
 	m = next.(Model)
-	if m.asking != askChangeLink || m.changing != 1 {
-		t.Errorf("asking %v, changing %d", m.asking, m.changing)
+	if !m.inline.on || m.inline.index != 1 {
+		t.Errorf("inline %+v", m.inline)
 	}
-	m.asking = askNone
+	next, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	m = next.(Model)
 	next, cmd = m.Update(tea.MouseClickMsg{X: x + w - 3, Y: row, Button: tea.MouseLeft})
 	m = next.(Model)
 	next, _ = m.Update(cmd())

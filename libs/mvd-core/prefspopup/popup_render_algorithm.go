@@ -154,7 +154,7 @@ func (m Model) layout() pageLayout {
 				l.bounds = append(l.bounds, b)
 			}
 			add(focused, "")
-			palette, hits := m.palette(i)
+			palette, hits := m.palette(i, len(l.lines))
 			y := add(focused, palette)
 			for _, h := range hits {
 				h.y = y
@@ -225,6 +225,9 @@ func (m Model) tabLines() [tabRows]string {
 		style, text := edge, look.Dim.Render(label)
 		if i == m.tab {
 			text = edge.Bold(true).Render(label)
+		}
+		if s := m.tabSpans()[i]; m.hy >= 0 && m.hy < tabRows && m.hx >= s.first && m.hx < s.last {
+			text = look.Text.Underline(true).Render(label) // under the pointer
 		}
 		rows[0] += style.Render("╭" + bar + "╮")
 		rows[1] += style.Render("│") + text + style.Render("│")

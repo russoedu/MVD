@@ -67,30 +67,6 @@ func At(spans []Span, x int) int {
 	return -1
 }
 
-// Pills draws a row of buttons as filled pills: grey, the one at index primary in the accent
-// colour, and the ones in disabled darker with faint text. The columns each takes are
-// said too. A gap of two cells is left between them.
-func Pills(labels []string, primary int, disabled map[string]bool) (string, []Span) {
-	var b strings.Builder
-	spans := make([]Span, len(labels))
-	x := 0
-	for i, name := range labels {
-		label := "  " + name + "  "
-		spans[i] = Span{X0: x, X1: x + ansi.StringWidth(label)}
-		style := lipgloss.NewStyle().Background(lipgloss.Color("#3a3a3a")).Foreground(lipgloss.Color(look.Colours.Text))
-		switch {
-		case disabled[name]:
-			style = lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color(look.Colours.Dim)).Faint(true)
-		case i == primary:
-			style = lipgloss.NewStyle().Background(lipgloss.Color(look.Colours.Accent)).Foreground(lipgloss.Color("#000000")).Bold(true)
-		}
-		b.WriteString(style.Render(label))
-		b.WriteString("  ")
-		x += ansi.StringWidth(label) + 2
-	}
-	return strings.TrimRight(b.String(), " "), spans
-}
-
 // PillKind is how a button that fills its width looks.
 type PillKind int
 
@@ -101,14 +77,23 @@ const (
 )
 
 // WidePill draws a button w cells wide with its label in the middle: grey, in the accent
-// colour for the main one, darker when it cannot be used.
-func WidePill(label string, w int, kind PillKind) string {
+// colour for the main one, darker when it cannot be used, lighter and underlined under the
+// pointer.
+func WidePill(label string, w int, kind PillKind, hover bool) string {
 	style := lipgloss.NewStyle().Background(lipgloss.Color("#3a3a3a")).Foreground(lipgloss.Color(look.Colours.Text)).Bold(true)
 	switch kind {
 	case PillPrimary:
 		style = lipgloss.NewStyle().Background(lipgloss.Color(look.Colours.Accent)).Foreground(lipgloss.Color("#000000")).Bold(true)
 	case PillDisabled:
 		style = lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color(look.Colours.Dim)).Faint(true)
+	}
+	if hover && kind != PillDisabled {
+		style = style.Underline(true)
+		if kind == PillPrimary {
+			style = style.Background(lipgloss.Color("#ff5aa5"))
+		} else {
+			style = style.Background(lipgloss.Color("#5a5a5a"))
+		}
 	}
 	room := max(w-ansi.StringWidth(label), 0)
 	left := room / 2

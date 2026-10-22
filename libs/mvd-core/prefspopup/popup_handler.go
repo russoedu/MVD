@@ -26,6 +26,8 @@ type Model struct {
 	before string
 	// caret is the boundary of the template the cursor is at; dragging is true while a block
 	// is carried, from boundary dragFrom to dragTo.
+	// hx and hy are where the pointer last was, in the cells of the popup.
+	hx, hy             int
 	caret            int
 	dragging         bool
 	dragFrom, dragTo int
@@ -40,7 +42,7 @@ type Model struct {
 func New(cfg config.Config, host Host) Model {
 	in := textinput.New()
 	in.Prompt = "> "
-	return Model{cfg: cfg, host: host, pages: pages(host), input: in}
+	return Model{cfg: cfg, host: host, pages: pages(host), input: in, hx: -1, hy: -1}
 }
 
 // Config is the settings as changed so far.
@@ -352,6 +354,7 @@ func (m Model) addBlock(index int) Model {
 // it. The position is in the cells of the popup.
 func (m Model) mouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 	pos := msg.Mouse()
+	m.hx, m.hy = pos.X, pos.Y
 	pos.X-- // the page is inside the border of its box
 	if wheel, ok := msg.(tea.MouseWheelMsg); ok {
 		by := 3

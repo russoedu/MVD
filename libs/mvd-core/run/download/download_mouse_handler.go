@@ -71,7 +71,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if !pointer.IsLeftClick(msg) {
 		return m, nil
 	}
-	if msg.Mouse().Y == m.height-1 {
+	if msg.Mouse().Y == m.height-1 && !m.editable {
 		if h, found := keybar.At(m.hints(), msg.Mouse().X); found {
 			if key, clickable := keybar.KeyMsg(h.Key); clickable {
 				return m.handleKey(key)

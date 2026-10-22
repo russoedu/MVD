@@ -34,9 +34,10 @@ type button struct {
 func (m Model) buttons() []button {
 	busy := m.starting || m.stopping
 	if !m.running() {
+		nothing := busy || len(m.session.Sources()) == 0 // there is nothing to download
 		return []button{
-			{"▶ Start", entryStart, busy},
-			{"Get data for review", entryReview, busy},
+			{"▶ Start", entryStart, nothing},
+			{"Get data for review", entryReview, nothing},
 			{"+ Add link", entryAddLink, busy},
 		}
 	}
@@ -64,11 +65,16 @@ func (m Model) buttonRows() (x, y, w int, ok bool) {
 
 // buttonKind is how a button looks: the first one that can be used is the main one.
 func buttonKind(buttons []button, i int) dialog.PillKind {
-	switch {
-	case buttons[i].disabled:
+	if buttons[i].disabled {
 		return dialog.PillDisabled
-	case i == 0:
-		return dialog.PillPrimary
+	}
+	for j, b := range buttons {
+		if !b.disabled {
+			if j == i {
+				return dialog.PillPrimary
+			}
+			break
+		}
 	}
 	return dialog.PillNormal
 }
@@ -81,7 +87,8 @@ func (m Model) buttonsView(screen string) string {
 	}
 	buttons := m.buttons()
 	for i, b := range buttons {
-		screen = dialog.Overlay(screen, dialog.WidePill(b.label, w, buttonKind(buttons, i)), x, y+i)
+		hover := m.hoverY == y+i && m.hoverX >= x && m.hoverX < x+w
+		screen = dialog.Overlay(screen, dialog.WidePill(b.label, w, buttonKind(buttons, i), hover), x, y+i)
 	}
 	return screen
 }
@@ -109,8 +116,9 @@ func (m Model) toolbarClick(x, y int) (tea.Model, tea.Cmd, bool) {
 func (m Model) refreshRunMenus() Model {
 	busy := m.starting || m.stopping
 	running := m.running()
-	m.bar.SetEnabled(entryStart, !running && !busy)
-	m.bar.SetEnabled(entryReview, !running && !busy)
+	nothing := len(m.session.Sources()) == 0
+	m.bar.SetEnabled(entryStart, !running && !busy && !nothing)
+	m.bar.SetEnabled(entryReview, !running && !busy && !nothing)
 	m.bar.SetEnabled(entryPause, running && !busy && !m.run.Paused())
 	m.bar.SetEnabled(entryResume, running && !busy && m.run.Paused())
 	m.bar.SetEnabled(entryStop, running && !busy)
@@ -136,6 +144,10 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 	case entryRetry:
 		return m.retryAll(), nil, true
 	case entryAddLink:
+		if m.editable() {
+			next, cmd := m.startAdd()
+			return next, cmd, true
+		}
 		return m.ask(askAddLink, "Add a playlist or video link", ""), textinput.Blink, true
 	case entryReviewSongs:
 		if m.running() && m.editor.Live() {

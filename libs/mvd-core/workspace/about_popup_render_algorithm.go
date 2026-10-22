@@ -47,8 +47,16 @@ func (m Model) aboutLayout() aboutLayout {
 	add(look.Dim.Italic(true).Render(aboutFooter))
 	add("")
 	buttonY := len(lines)
-	label, spans := dialog.Buttons([]string{"OK"}, 0, nil)
-	pad := max((iw-ansi.StringWidth(label))/2, 0)
+	_, spans := dialog.Buttons([]string{"OK"}, 0, nil)
+	pad := max((iw-spans[0].X1)/2, 0)
+	focus := -1
+	if h := min(len(lines)+2, max(m.height-2, 4)); m.hoverY >= 0 {
+		x0, y0 := dialog.Centre(m.width, m.height, w, h)
+		if m.hoverY == y0+1+min(len(lines), h-3) && m.hoverX >= x0+1+pad && m.hoverX < x0+1+pad+spans[0].X1 {
+			focus = 0
+		}
+	}
+	label, _ := dialog.Buttons([]string{"OK"}, focus, nil)
 	lines = append(lines, strings.Repeat(" ", pad)+label)
 
 	h := min(len(lines)+2, max(m.height-2, 4))

@@ -16,6 +16,7 @@ var (
 	chipStyle  = lipgloss.NewStyle().Background(lipgloss.Color(chipGrey)).Foreground(lipgloss.Color("#e5e7eb"))
 	chipGrip   = lipgloss.NewStyle().Background(lipgloss.Color(chipGrey)).Foreground(lipgloss.Color("#9ca3af"))
 	chipRemove = lipgloss.NewStyle().Background(lipgloss.Color(chipGrey)).Foreground(lipgloss.Color("#ff4d4d"))
+	chipHover  = lipgloss.NewStyle().Background(lipgloss.Color("#5a5a5a")).Foreground(lipgloss.Color("#ffffff")).Underline(true)
 	caretStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffe600")).Bold(true)
 )
 
@@ -81,13 +82,17 @@ func (m Model) chips(field, w int) (lines []string, hits []hit, bounds []boundar
 }
 
 // palette draws the blocks that can be added to the pattern, as grey buttons.
-func (m Model) palette(field int) (string, []hit) {
+func (m Model) palette(field, y int) (string, []hit) {
 	var row strings.Builder
 	var hits []hit
 	x := gutterWidth
 	for j, b := range templateBlocks {
 		label := " + " + b.name + " "
-		row.WriteString(chipStyle.Render(label) + " ")
+		style := chipStyle
+		if m.hy-tabRows+m.scroll == y && m.hx-1 >= x && m.hx-1 < x+ansi.StringWidth(label) {
+			style = chipHover // under the pointer
+		}
+		row.WriteString(style.Render(label) + " ")
 		hits = append(hits, hit{x0: x, x1: x + ansi.StringWidth(label), kind: hitBlock, field: field, arg: j})
 		x += ansi.StringWidth(label) + 1
 	}
