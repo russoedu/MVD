@@ -1,11 +1,16 @@
 import { PixelLogo } from './pixel-logo.component'
+import { WindowControls } from './window-controls.component'
 import './page-header.style.css'
 
 interface PageHeaderProps {
   onAbout: () => void
 }
 
-/** The banner above the terminal: pixel logo, scrolling tagline and the About button. */
+/**
+ * The banner above the terminal: pixel logo, scrolling tagline, the About button and the
+ * window's own buttons. The window has no frame of the system's, so this is its title bar:
+ * it is dragged to move the window (see page-header.style.css).
+ */
 export function PageHeader ({ onAbout }: PageHeaderProps) {
   return (
     <header className='page-header'>
@@ -19,6 +24,7 @@ export function PageHeader ({ onAbout }: PageHeaderProps) {
       <button type='button' className='page-header-button' onClick={onAbout}>
         About this app
       </button>
+      <WindowControls />
     </header>
   )
 }

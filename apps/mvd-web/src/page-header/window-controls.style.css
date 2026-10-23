@@ -1,0 +1,29 @@
+.window-controls {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  align-self: flex-start;
+  margin: -4px -8px 0 0;
+  --wails-draggable: no-drag;
+}
+
+.window-control {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  font: bold 14px Arial, Helvetica, sans-serif;
+  line-height: 1;
+  color: #000;
+  background: #c0c0c0;
+  border: 2px outset #fff;
+  cursor: pointer;
+}
+
+.window-control:active {
+  border-style: inset;
+}
+
+.window-control-close:hover {
+  color: #fff;
+  background: #c00000;
+}

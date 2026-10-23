@@ -7,6 +7,9 @@
   background: linear-gradient(#2a0a4a, #000);
   border-bottom: 4px ridge #a020f0;
   font-family: 'Times New Roman', Times, serif;
+  /* The window has no frame of the system's: this is its title bar. */
+  --wails-draggable: drag;
+  user-select: none;
 }
 
 .pixel-logo {
@@ -56,6 +59,7 @@
   background: #c0c0c0;
   border: 2px outset #fff;
   cursor: pointer;
+  --wails-draggable: no-drag;
 }
 
 .page-header-button:active {
