@@ -183,7 +183,7 @@ func (a workspaceApp) View() tea.View {
 	}
 	w, h := a.popupSize()
 	x, y := dialog.Centre(a.width, a.height, w, h)
-	return screenview.Of(dialog.Overlay(a.ws.Render(), dialog.ClosableFrame("Preferences", a.popupLines(), w, h), x, y))
+	return screenview.Of(dialog.Overlay(dialog.Dim(a.ws.Render()), dialog.ClosableFrame("Preferences", a.popupLines(), w, h), x, y))
 }
 
 // RunWorkspace runs the workspace app until the person quits it or ctx ends.

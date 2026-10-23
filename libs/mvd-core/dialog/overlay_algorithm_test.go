@@ -86,3 +86,20 @@ func TestAPopupTakesAShareOfTheScreenWithinLimits(t *testing.T) {
 		t.Errorf("tiny screen: %d x %d", w, h)
 	}
 }
+
+func TestAScreenBehindAPopupIsFaintAndThePopupIsNot(t *testing.T) {
+	base := Dim("\x1b[31maaaaaaaaaa\x1b[0m bbbb\ncccccccccc")
+	got := Overlay(base, "XX", 3, 0)
+	line := strings.Split(got, "\n")[0]
+	right := strings.SplitN(line, "XX", 2)[1]
+	if !strings.Contains(right, "\x1b[2m") {
+		t.Errorf("the screen right of the popup is not faint: %q", right)
+	}
+	left := strings.SplitN(line, "XX", 2)[0]
+	if i := strings.LastIndex(left, "\x1b[0m"); i < 0 || strings.Contains(left[i:], "\x1b[2m") {
+		t.Errorf("the popup itself may be faint: %q", left)
+	}
+	if ansi.Strip(got) != "aaaXXaaaaa bbbb\nccccccccc" && ansi.Strip(got) != "aaaXXaaaaa bbbb\ncccccccccc" {
+		t.Errorf("text %q", ansi.Strip(got))
+	}
+}
