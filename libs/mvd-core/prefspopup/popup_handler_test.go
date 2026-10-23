@@ -1,6 +1,7 @@
 package prefspopup
 
 import (
+	"github.com/charmbracelet/x/ansi"
 	"strings"
 	"testing"
 
@@ -290,4 +291,18 @@ func TestAThemeSetsAllTheColoursAndChangingOneMakesItTheirOwn(t *testing.T) {
 		t.Errorf("background %q, editing %v", m.Config().Colors.Background, m.Editing())
 	}
 	look.Apply(config.DefaultThemeColors())
+}
+
+func TestALongDescriptionWrapsInsteadOfBeingCut(t *testing.T) {
+	m := New(config.Default("/app", "/music"), Host{}).SetSize(60, 40).show(2)
+	l := m.layout()
+	for _, line := range l.lines {
+		if strings.Contains(ansi.Strip(line), "…") {
+			t.Errorf("a line was cut: %q", ansi.Strip(line))
+		}
+	}
+	all := ansi.Strip(strings.Join(l.lines, " "))
+	if !strings.Contains(all, "no official video was found for.") {
+		t.Errorf("the end of the description is missing")
+	}
 }

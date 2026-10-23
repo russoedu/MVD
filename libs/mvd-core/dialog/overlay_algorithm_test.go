@@ -72,7 +72,7 @@ func TestAClosableFrameKeepsItsWidthAndTellsWhereItsCloseMarkIs(t *testing.T) {
 			t.Errorf("%q: top is %d wide", title, ansi.StringWidth(top))
 		}
 		runes := []rune(top)
-		if got := string(runes[CloseSpan(30).X0 : CloseSpan(30).X1]); got != " ✕ " {
+		if got := string(runes[CloseSpan(30).X0 : CloseSpan(30).X1]); got != " × " {
 			t.Errorf("%q: the close span holds %q", title, got)
 		}
 	}

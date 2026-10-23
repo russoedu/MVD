@@ -22,7 +22,7 @@ func ClosableFrame(title string, lines []string, w, h int) string {
 }
 
 // closeMark is what the close button of a frame looks like.
-const closeMark = " ✕ "
+const closeMark = " × "
 
 // CloseSpan is the columns, in a ClosableFrame w cells wide, that close it when clicked.
 func CloseSpan(w int) Span { return Span{X0: max(w, 4) - 5, X1: max(w, 4) - 2} }

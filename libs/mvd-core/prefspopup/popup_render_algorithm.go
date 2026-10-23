@@ -93,6 +93,12 @@ func (m Model) layout() pageLayout {
 		return len(l.lines) - 1
 	}
 	editingHere := func(i int) bool { return m.editing && i == m.cursor }
+	// A description is as long as it needs to be: it goes on to the next line at the width of the page.
+	addHint := func(focused bool, text string) {
+		for _, line := range strings.Split(ansi.Wrap(text, max(w-gutterWidth-1, 10), ""), "\n") {
+			add(focused, look.Dim.Render(line))
+		}
+	}
 
 	for i, f := range fields {
 		focused := i == m.cursor
@@ -125,7 +131,7 @@ func (m Model) layout() pageLayout {
 		case kindChoice:
 			add(focused, look.Title.Render(f.label))
 			if f.hint != "" {
-				add(focused, look.Dim.Render(f.hint))
+				addHint(focused, f.hint)
 			}
 			current := value
 			for j, option := range f.options {
@@ -142,7 +148,7 @@ func (m Model) layout() pageLayout {
 		case kindStepper:
 			add(focused, look.Title.Render(f.label))
 			if f.hint != "" {
-				add(focused, look.Dim.Render(f.hint))
+				addHint(focused, f.hint)
 			}
 			shown := f.numberText(value)
 			y := add(focused, look.Yellow.Render("-")+" "+look.Text.Bold(true).Render(shown)+" "+look.Yellow.Render("+"))
@@ -153,7 +159,7 @@ func (m Model) layout() pageLayout {
 		case kindTemplate:
 			add(focused, look.Title.Render(f.label))
 			if f.hint != "" {
-				add(focused, look.Dim.Render(f.hint))
+				addHint(focused, f.hint)
 			}
 			rows, hits, bounds := m.chips(i, w)
 			first := len(l.lines)
@@ -175,7 +181,7 @@ func (m Model) layout() pageLayout {
 				h.y = y
 				l.hits = append(l.hits, h)
 			}
-			add(focused, look.Dim.Render("Click a block to add it at the cursor, drag ≡ to reorder, ✕ to remove"))
+			add(focused, look.Dim.Render("Click a block to add it at the cursor, drag ≡ to reorder, × to remove"))
 			add(focused, "")
 			add(focused, look.Title.Render("Output example"))
 			add(focused, look.Text.Render(cells.Display(ExampleName(value, m.cfg.MergeOutputFormat))))
@@ -191,7 +197,7 @@ func (m Model) layout() pageLayout {
 			y := add(focused, shown)
 			l.hits = append(l.hits, hit{y: y, x0: gutterWidth, x1: w, kind: hitValue, field: i})
 			if f.hint != "" {
-				add(focused, look.Dim.Render(f.hint))
+				addHint(focused, f.hint)
 			}
 		case kindAction:
 			text := look.Yellow.Render("[ " + f.label + " ]")
