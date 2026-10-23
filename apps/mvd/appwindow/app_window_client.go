@@ -40,6 +40,8 @@ type Options struct {
 	// window instead of opening its own: a .mvd file double clicked while the app is open
 	// arrives this way. Nil for none.
 	OnSecondStart func(args []string)
+	// Backdrop, when set, is told by the program when a popup is open, and tells the page.
+	Backdrop *Backdrop
 }
 
 // Run opens the window and returns when it is closed. A second start of the app does not
@@ -71,6 +73,9 @@ func Run(ctx context.Context, opts Options) error {
 		},
 		OnStartup: func(c context.Context) {
 			windowCtx = c
+			if opts.Backdrop != nil {
+				opts.Backdrop.attach(c)
+			}
 			unbind = ttygo.BindShared(c, opts.Program, wailsEvents{ctx: c}, ttygo.BindOptions{})
 			go func() {
 				<-ctx.Done()

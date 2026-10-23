@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AboutThisApp } from '../about-this-app'
 import { PageHeader } from '../page-header'
 import { useCaptureBrowserShortcuts } from './capture-browser-shortcuts.hook'
+import { useDimWhileModal } from './dim-while-modal.hook'
 import { useOpenLinksInBrowser } from './open-links-in-browser.hook'
 import { terminalSocket } from './terminal-socket.client'
 
@@ -14,6 +15,7 @@ import { terminalSocket } from './terminal-socket.client'
 export function TerminalWindow () {
   const [aboutOpen, setAboutOpen] = useState(false)
   useCaptureBrowserShortcuts()
+  useDimWhileModal()
   useOpenLinksInBrowser()
 
   return (

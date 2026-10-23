@@ -6,6 +6,9 @@ import (
 	"youtube-downloader/libs/mvd-core/dialog"
 )
 
+// AboutOpen reports whether the About window is showing.
+func (m Model) AboutOpen() bool { return m.about }
+
 // aboutOrigin is the cell of the screen where the About window begins.
 func (m Model) aboutOrigin() (int, int) {
 	l := m.aboutLayout()

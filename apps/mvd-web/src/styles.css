@@ -25,3 +25,12 @@ main.terminal-window {
   flex: 1;
   min-height: 0;
 }
+
+/* While a popup is open over the terminal, the page around it steps back too. */
+.page-header {
+  transition: filter 120ms ease-out;
+}
+
+body.modal-open .page-header {
+  filter: brightness(0.45) saturate(0.7);
+}

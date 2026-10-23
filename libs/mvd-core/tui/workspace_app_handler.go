@@ -23,6 +23,9 @@ type WorkspaceInput struct {
 	List *downloadlist.Session
 	// Live is the settings a run reads again at every download, taken from the config.
 	Live func(config.Config) engine.LiveSettings
+	// Modal, when set, is called with true when a popup opens over the screen and false when
+	// the last one closes, so a host can dim what is around the terminal.
+	Modal func(open bool)
 }
 
 // NewWorkspaceApp returns the app whose main screen is the workspace: the download list
@@ -43,6 +46,8 @@ type workspaceApp struct {
 	inPrefs       bool
 	width, height int
 	hoverX, hoverY int
+	// modal is whether a popup was last reported open to Modal.
+	modal *bool
 }
 
 func (a workspaceApp) Init() tea.Cmd {
@@ -53,6 +58,19 @@ func (a workspaceApp) Init() tea.Cmd {
 }
 
 func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := a.update(msg)
+	if app, ok := next.(workspaceApp); ok && app.in.Modal != nil {
+		open := app.inPrefs || app.ws.AboutOpen()
+		if app.modal == nil || *app.modal != open {
+			app.in.Modal(open)
+			app.modal = &open
+		}
+		next = app
+	}
+	return next, cmd
+}
+
+func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
