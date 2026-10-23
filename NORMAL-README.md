@@ -26,7 +26,7 @@ A lightweight, zero-setup, concurrent Go application with two front ends, a desk
 
 ## 🌐 The desktop app (`mvd`)
 
-`apps/mvd` builds the program `mvd`, the main app: a window of its own showing the terminal interface (the same screens as the terminal app, `mvd-tui`, described after this section), on the same engine. It is a normal program: closing the window quits it (it asks first when downloads are still running). The window's page and its connection are Wails' own (no local server, no port), so nothing listens on the network. Starting it again raises the window that is already open instead of opening a second one. Paste links into it at any time, including while it is downloading (`a`).
+`apps/mvd` builds the program `mvd`, the main app: a window of its own showing the terminal interface (the same screens as the terminal app, `mvd-tui`, described after this section), on the same engine. It is a normal program: closing the window quits it (it asks first when downloads are still running). The window's page and its connection are Wails' own (no local server, no port), so nothing listens on the network. Starting it again raises the window that is already open instead of opening a second one. Add links to it at any time, including while it is downloading (the **Add link** button).
 
 ```powershell
 npx nx run mvd:build          # builds the React page, embeds it, builds the binary
@@ -152,27 +152,23 @@ Config and the download list live in your OS preferences folder, created on firs
 
 It holds `config.conf` (settings), `list.txt` (your URLs), `plan.mvd` (the review you were doing, so you can pick it up later), `official-videos.json` (the official videos already found, so a second run asks nobody; delete it to search again) and `cookies.txt` (the exported browser cookies, private — keep it safe). You normally never touch these by hand; edit everything in the app. A legacy `setup.conf`/`downloads.conf` next to the binary is imported once on first run.
 
-### Screens and keys
+### The main screen and the menus
 
-<p align="center">
-  <img src="assets/screenshots/preferences.png" alt="The preferences screen" width="360">
-  <img src="assets/screenshots/colours.png" alt="The colours screen" width="360">
-  <img src="assets/screenshots/advanced.png" alt="The advanced screen" width="360">
-</p>
+The app opens on one screen, in columns you can resize by dragging the borders between them: **Playlists**, **Entries** (the songs of the selected playlist) and **Output** (what yt-dlp says). Under the playlists are the buttons: **Start**, **Get data for review** (look up every song first, check the choices, then download) and **Add link**; while downloads go they become **Pause/Resume**, **Stop**, **Retry failed**, **Add link** and **Review songs**. The menu bar has **File** (New, Open, Save, Save as, Preferences, Quit), **Edit**, **Run** (the same actions as the buttons) and **Help** (About MVD, with the version and the link to this page).
 
-- **List** — paste/type URLs, one per line. `Ctrl+S` start · `Ctrl+E` review before downloading (see below) · `Ctrl+P` preferences · `Ctrl+R` reset · `Ctrl+Q`/`Esc` quit. (Ctrl here because Return makes a new line.)
-- **Preferences** — `↑↓` move · `Enter` edit/toggle · `a` advanced · `c` colours · `s` save · `Esc` cancel. Booleans toggle on Enter; quality/merge/cookies open a radio selector; the output and log folders open a folder navigator (`↑↓` move, `→` open, `←` up, `n` new folder, `Enter` choose, `Esc` cancel).
-- **Advanced** — raw extra yt-dlp args, parallel fragments and auto-retry. `s` save · `Esc` back.
-- **Colours** — the eight interface colours, each with a swatch. `Enter` edit (`#rgb` or `#rrggbb`, applied as soon as you accept it) · `d` default · `s` save · `Esc` back. Save on the preferences screen to keep them.
-- **Download** — the live dashboard (see above); `q` returns to the list.
+The list is edited where it is, with the mouse: drag a playlist by its `≡` to move it, click `✎` (or double-click the row) to change its address in the row, `×` to remove it, and double-click the empty room, or press **Add link**, to write a new one in a row of its own. In the row you can select with the keyboard (Shift+arrows) or by dragging, and Ctrl+C, Ctrl+X and Ctrl+V (Cmd on a Mac) use the clipboard of the machine. Pasting links anywhere adds them as playlists. **Edit** has Undo, Redo, Cut, Copy, Paste, Delete and Move up/down, and each is off when it makes no sense (Copy needs something selected, Delete needs a playlist). Nothing can be changed while downloads go.
 
-> Keys are bare single letters where you aren't typing; `Ctrl` is used only on the list editor. A terminal can't receive the Cmd key on macOS, so `Ctrl` is used on every platform.
+Shortcuts: `Ctrl+N` new · `Ctrl+O` open · `Ctrl+S` save · `Ctrl+Shift+S` save as · `Ctrl+,` preferences · `Ctrl+Z`/`Ctrl+Y` undo/redo · `Ctrl+Q` quit. On a Mac the Cmd key is shown and used in place of Ctrl.
+
+**Preferences** (File, or `Ctrl+,`) is a window over the screen with the tabs **Output**, **Download**, **Advanced** and **Theme**, and a short description under every setting. Changes apply at once; the folders and the name pattern wait for **Save**. The output template is a row of grey blocks (artist, title, playlist name, playlist index...) with any text you type between them: click between blocks to put the cursor there, click a block below to add it there, drag a block's `≡` to move it and `×` to remove it. The file's extension always ends the name and is not a block.
+
+**Themes.** The Theme tab offers MVD Neon (the original), Dark+, Monokai, Dracula, One Dark, Nord, Tokyo Night, GitHub Dark, Solarized Dark, Solarized Light and Light+, and **Create yours**. Picking one changes the whole interface, background included, at once; changing any single colour (including the **Background**, which can be left empty for the terminal's own) makes the theme your own, starting from the one that was selected.
 
 ### `config.conf` keys (for reference)
 
-`output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `list_workers`, `name_workers`, `pick_workers`, `official_video` (`yes`, the default; `no`; or `only`, which downloads only songs that have an official video), `save_not_found` (with `only`: write the songs without one to `not-found.csv` in the output folder, with the playlist, the artist, the title and the address), `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args`.
+`output_dir`, `video_quality` (best/2160p/1440p/1080p/720p/480p), `audio_quality` (best/high/medium/low), `raw_format` (raw `-f` override), `merge_output_format`, `output_template`, `max_concurrent_downloads`, `concurrent_fragments` (`off` to disable), `list_workers`, `name_workers`, `pick_workers`, `official_video` (`yes`, the default; `no`; or `only`, which downloads only songs that have an official video), `save_not_found` (with `only`: write the songs without one to `not-found.csv` in the output folder, with the playlist, the artist, the title and the address), `auto_retry`, `cookies_from_browser` (`all`/`off`/a browser name), `cookies_file`, `create_log_file`, `log_dir`, `extra_args` (advanced; no longer shown in the preferences, but still read).
 
-The interface colours are `color_accent`, `color_focus`, `color_highlight`, `color_success`, `color_error`, `color_dim`, `color_text` (text) and `color_selected` (background of the selected row), each a `#rgb` or `#rrggbb` value such as `color_accent=#ff007f`. A missing or invalid value keeps the default. You can also change them in the app: on the preferences press `c` for the colours screen, where each colour shows a swatch and applies as you accept it (`d` restores the default of the selected one). Edited in the file, they apply on the next start.
+The theme is `theme` (the name of one of the themes above, or `Create yours`). The interface colours are `color_background` (empty for the terminal's own), `color_accent`, `color_focus`, `color_highlight`, `color_success`, `color_error`, `color_dim`, `color_text` (text) and `color_selected` (background of the selected row), each a `#rgb` or `#rrggbb` value such as `color_accent=#ff007f`. A missing or invalid value keeps the default. You can also change them in the app: the Theme tab of the preferences shows a swatch for each colour (`d` restores the default of the selected one). Edited in the file, they apply on the next start.
 
 ### Browser cookies
 
