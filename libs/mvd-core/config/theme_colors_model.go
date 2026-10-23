@@ -20,6 +20,8 @@ type ThemeColors struct {
 	Text string
 	// Selected is the background of the selected row.
 	Selected string
+	// Background is the colour behind everything; "" leaves the terminal's own.
+	Background string
 }
 
 // DefaultThemeColors is the palette taken from the logo.

@@ -23,9 +23,15 @@ describe('chordSequence', () => {
     expect(chordSequence(press('s', { ctrlKey: true }))).toBeNull()
   })
 
-  it('leaves copy, paste and cut to the browser', () => {
-    expect(chordSequence(press('c', { metaKey: true }))).toBeNull()
-    expect(chordSequence(press('v', { metaKey: true }))).toBeNull()
+  it('spells copy, cut and paste, which the program handles with the machine clipboard', () => {
+    expect(chordSequence(press('c', { ctrlKey: true }))).toBe('[99;5u')
+    expect(chordSequence(press('v', { metaKey: true }))).toBe('[118;5u')
+    expect(chordSequence(press('x', { ctrlKey: true }))).toBe('[120;5u')
+  })
+
+  it('leaves the developer tools chords to the browser', () => {
+    expect(chordSequence(press('I', { ctrlKey: true, shiftKey: true }))).toBeNull()
+    expect(chordSequence(press('C', { ctrlKey: true, shiftKey: true }))).toBeNull()
   })
 
   it('ignores Alt chords and plain keys', () => {

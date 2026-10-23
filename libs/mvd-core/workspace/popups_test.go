@@ -160,8 +160,8 @@ func TestCopyAndPasteOfTheEditMenuAreForTheAddressBeingWritten(t *testing.T) {
 	_ = copyKey
 	m := listOf("https://a")
 	m = m.refreshMenus()
-	if m.bar.Enabled(entryCopy) || m.bar.Enabled(entryPaste) {
-		t.Error("Copy and Paste are on with no address being written")
+	if m.bar.Enabled(entryCopy) || m.bar.Enabled(entryCut) {
+		t.Error("Copy and Cut are on with no address being written")
 	}
 	if !m.bar.Enabled(entryDelete) || m.bar.Enabled(entryMoveUp) || m.bar.Enabled(entryMoveDown) {
 		t.Error("Delete works on the only playlist; there is nowhere to move it")
@@ -248,4 +248,40 @@ func TestTheButtonsStandUnderThePlaylistsAndStartIsTheFirst(t *testing.T) {
 	}
 	m = click(m, x+w/2, y+1) // Get data for review
 	_ = m
+}
+
+type fakeClipboard struct{ text string }
+
+func (c *fakeClipboard) Read() (string, error) { return c.text, nil }
+func (c *fakeClipboard) Write(t string) error  { c.text = t; return nil }
+
+func TestCopyCutAndPasteUseTheMachineClipboard(t *testing.T) {
+	clip := &fakeClipboard{text: "https://from-the-clipboard"}
+	m := New(Host{Clipboard: clip}, config.Config{}, downloadlist.New([]string{"https://a"}))
+	m = sized(m)
+	m, _ = m.startChange(0)
+	// The address starts selected: copy keeps it, cut takes it out.
+	next, _ := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	m = next.(Model)
+	if clip.text != "https://a" {
+		t.Errorf("copied %q", clip.text)
+	}
+	next, _ = m.Update(tea.KeyPressMsg{Code: 'x', Mod: tea.ModCtrl})
+	m = next.(Model)
+	if m.inline.line.Value() != "" {
+		t.Errorf("after the cut %q", m.inline.line.Value())
+	}
+	clip.text = "https://pasted"
+	next, _ = m.Update(tea.KeyPressMsg{Code: 'v', Mod: tea.ModCtrl})
+	m = next.(Model)
+	if m.inline.line.Value() != "https://pasted" {
+		t.Errorf("after the paste %q", m.inline.line.Value())
+	}
+	// With nothing being written, Paste from the menu adds the links on the clipboard.
+	m, _ = press(m, "enter")
+	clip.text = "https://one" + string(rune(10)) + "https://two"
+	m, _ = choose(m, entryPaste)
+	if got := addressesOf(m); len(got) != 3 || got[1] != "https://one" {
+		t.Errorf("after pasting links %v", got)
+	}
 }

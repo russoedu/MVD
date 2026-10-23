@@ -59,6 +59,10 @@ type Host struct {
 	Quit func()
 	// Version is the version of the app, for its About window.
 	Version string
+	// Clipboard is the machine's clipboard; nil to use the terminal's own.
+	Clipboard workspace.Clipboard
+	// Modal is told when a popup opens and closes over the screen; nil for none.
+	Modal func(open bool)
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -92,6 +96,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 			Setup: tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
 			List:  list,
 			Live:  runner.LiveSettings,
+			Modal: host.Modal,
 			Host: workspace.Host{
 				Start: host.StartList,
 				Editor: tui.EditorHost{
@@ -107,6 +112,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				Open:     openurl.Open,
 				Quit:     host.Quit,
 				Version:  host.Version,
+				Clipboard: host.Clipboard,
 			},
 		})}
 	}

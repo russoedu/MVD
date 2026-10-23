@@ -36,10 +36,15 @@ func labelOf(token string) string {
 	return strings.ToUpper(strings.ReplaceAll(name, "_", " "))
 }
 
-// parseTemplate splits a yt-dlp output template into blocks and characters.
+// extensionSuffix ends every output template: the file's own extension is not the person's to
+// move or take away, so it is kept out of the blocks and added again when the template is made.
+const extensionSuffix = ".%(ext)s"
+
+// parseTemplate splits a yt-dlp output template into blocks and characters, without its
+// extension.
 func parseTemplate(template string) []unit {
 	var units []unit
-	rest := template
+	rest := strings.TrimSuffix(template, extensionSuffix)
 	for rest != "" {
 		loc := blockToken.FindStringIndex(rest)
 		text := rest
@@ -59,7 +64,7 @@ func parseTemplate(template string) []unit {
 	return units
 }
 
-// formatTemplate is the yt-dlp template the units make.
+// formatTemplate is the yt-dlp template the units make, ending with the extension.
 func formatTemplate(units []unit) string {
 	var b strings.Builder
 	for _, u := range units {
@@ -69,6 +74,7 @@ func formatTemplate(units []unit) string {
 			b.WriteRune(u.r)
 		}
 	}
+	b.WriteString(extensionSuffix)
 	return b.String()
 }
 

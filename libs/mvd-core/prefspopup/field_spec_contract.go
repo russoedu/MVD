@@ -40,6 +40,12 @@ type field struct {
 	get         func(config.Config) string
 	set         func(*config.Config, string)
 	action      actionKind
+	// slot, for a colour, points at the colour inside the theme; optional says it may be left
+	// empty, for the terminal's own.
+	slot     func(*config.ThemeColors) *string
+	optional bool
+	// swatches, for a choice, are the colours shown beside an option.
+	swatches func(option string) []string
 }
 
 // Host is what the popup cannot do itself. Each one is optional.

@@ -26,6 +26,9 @@ export function useCaptureBrowserShortcuts (): void {
     const onKeyDown = (event: KeyboardEvent): void => {
       // Chords xterm cannot spell (Ctrl+Shift+S, Ctrl+, and Cmd on a Mac) are sent as they are.
       const sequence = chordSequence(event)
+      // Text selected on the page is copied by the browser, as the program has no selection of it.
+      const keepsSelection = ['c', 'x'].includes(event.key.toLowerCase()) && (globalThis.getSelection()?.toString() ?? '') !== ''
+      if (keepsSelection) return
       const origin = event.target instanceof Element ? event.target : null
       if (sequence !== null && (origin?.closest('.xterm') != null || !ownsKeyboard(origin))) {
         event.preventDefault()

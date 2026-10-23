@@ -72,7 +72,7 @@ func TestAClosableFrameKeepsItsWidthAndTellsWhereItsCloseMarkIs(t *testing.T) {
 			t.Errorf("%q: top is %d wide", title, ansi.StringWidth(top))
 		}
 		runes := []rune(top)
-		if got := string(runes[CloseSpan(30).X0 : CloseSpan(30).X1]); got != " ✕ " {
+		if got := string(runes[CloseSpan(30).X0 : CloseSpan(30).X1]); got != " × " {
 			t.Errorf("%q: the close span holds %q", title, got)
 		}
 	}
@@ -84,5 +84,22 @@ func TestAPopupTakesAShareOfTheScreenWithinLimits(t *testing.T) {
 	}
 	if w, h := Sized(30, 10, 85, 40, 12); w != 28 || h != 8 {
 		t.Errorf("tiny screen: %d x %d", w, h)
+	}
+}
+
+func TestAScreenBehindAPopupIsFaintAndThePopupIsNot(t *testing.T) {
+	base := Dim("\x1b[31maaaaaaaaaa\x1b[0m bbbb\ncccccccccc")
+	got := Overlay(base, "XX", 3, 0)
+	line := strings.Split(got, "\n")[0]
+	right := strings.SplitN(line, "XX", 2)[1]
+	if !strings.Contains(right, "\x1b[2m") {
+		t.Errorf("the screen right of the popup is not faint: %q", right)
+	}
+	left := strings.SplitN(line, "XX", 2)[0]
+	if i := strings.LastIndex(left, "\x1b[0m"); i < 0 || strings.Contains(left[i:], "\x1b[2m") {
+		t.Errorf("the popup itself may be faint: %q", left)
+	}
+	if ansi.Strip(got) != "aaaXXaaaaa bbbb\nccccccccc" && ansi.Strip(got) != "aaaXXaaaaa bbbb\ncccccccccc" {
+		t.Errorf("text %q", ansi.Strip(got))
 	}
 }

@@ -36,16 +36,16 @@ func (m Model) buttons() []button {
 	if !m.running() {
 		nothing := busy || len(m.session.Sources()) == 0 // there is nothing to download
 		return []button{
-			{"▶ Start", entryStart, nothing},
+			{"► Start", entryStart, nothing},
 			{"Get data for review", entryReview, nothing},
 			{"+ Add link", entryAddLink, busy},
 		}
 	}
-	pause := button{"⏸ Pause", entryPause, busy}
+	pause := button{"Pause", entryPause, busy}
 	if m.run.Paused() {
-		pause = button{"▶ Resume", entryResume, busy}
+		pause = button{"► Resume", entryResume, busy}
 	}
-	out := []button{pause, {"■ Stop", entryStop, busy}, {"↻ Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
+	out := []button{pause, {"■ Stop", entryStop, busy}, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
 	if m.editor.Live() {
 		out = append(out, button{"Review songs", entryReviewSongs, busy})
 	}

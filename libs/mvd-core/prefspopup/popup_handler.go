@@ -73,6 +73,14 @@ func (m Model) show(tab int) Model {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	if look.Colours != next.cfg.Colors {
+		look.Apply(next.cfg.Colors) // the screen shows a theme as soon as it is picked
+	}
+	return next, cmd
+}
+
+func (m Model) update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case pickedMsg:
 		return m.picked(msg)
@@ -306,6 +314,12 @@ func (m Model) accept() Model {
 	text := strings.TrimSpace(m.input.Value())
 	switch f.kind {
 	case kindColour:
+		if text == "" && f.optional {
+			f.set(&m.cfg, "")
+			look.Apply(m.cfg.Colors)
+			m.editing, m.status = false, ""
+			return m
+		}
 		if !config.ValidColour(text) {
 			m.status, m.statusBad = "Use a colour like #ff007f or #f07.", true
 			return m
@@ -325,9 +339,9 @@ func (m Model) accept() Model {
 
 // useDefaultColour puts the colour the cursor is on back to its default.
 func (m Model) useDefaultColour() Model {
+	f := m.current()
 	d := config.DefaultThemeColors()
-	defaults := []string{d.Accent, d.Focus, d.Highlight, d.Success, d.Error, d.Dim, d.Text, d.Selected}
-	m.current().set(&m.cfg, defaults[m.cursor])
+	f.set(&m.cfg, *f.slot(&d))
 	look.Apply(m.cfg.Colors)
 	return m
 }

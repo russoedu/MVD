@@ -57,33 +57,53 @@ var cookieOptions = []string{"all", "off", "firefox", "chrome", "edge", "brave",
 // colourField is a theme colour; slot points at it inside the config.
 func colourField(label string, slot func(*config.ThemeColors) *string) field {
 	return field{
-		label: label, kind: kindColour,
+		label: label, kind: kindColour, slot: slot,
 		get: func(c config.Config) string { return *slot(&c.Colors) },
-		set: func(c *config.Config, v string) { *slot(&c.Colors) = v },
+		// Changing a colour makes the theme the person's own, with the one before as its base.
+		set: func(c *config.Config, v string) { *slot(&c.Colors) = v; c.ThemeName = config.CustomTheme },
+	}
+}
+
+// themeField is the choice of theme: each of the themes of the app, and the person's own.
+func themeField() field {
+	return field{
+		label: "Theme", kind: kindChoice, options: config.ThemeNames(),
+		hint: "Pick one to start from, then change any colour below to make it yours",
+		get:  func(c config.Config) string { return c.ThemeName },
+		set: func(c *config.Config, v string) {
+			if colours, ok := config.PresetColors(v); ok {
+				c.Colors = colours
+			}
+			c.ThemeName = v
+		},
+		swatches: func(option string) []string {
+			c, ok := config.PresetColors(option)
+			if !ok {
+				return nil
+			}
+			return []string{c.Background, c.Accent, c.Focus, c.Highlight, c.Success, c.Error}
+		},
 	}
 }
 
 // pages are the tabs, in the order they are shown.
 func pages(host Host) []page {
 	advanced := []field{
-		{label: "Parallel Fragments Per Video", kind: kindStepper, min: 0, max: 16, step: 1, off: "off",
+		{label: "Parallel Fragments Per Video", hint: "Each video is fetched in pieces; this is how many pieces come at once. More can be faster.", kind: kindStepper, min: 0, max: 16, step: 1, off: "off",
 			get: func(c config.Config) string { return intText(c.ConcurrentFragments) },
 			set: func(c *config.Config, v string) { c.ConcurrentFragments = parseInt(v) }},
-		{label: "Extra yt-dlp args", kind: kindText, placeholder: "These are passed directly to yt-dlp...",
-			get: func(c config.Config) string { return strings.Join(c.ExtraArgs, " ") },
-			set: func(c *config.Config, v string) { c.ExtraArgs = strings.Fields(v) }},
 		{label: "Start Timeout Seconds", kind: kindStepper, hint: "How long a download may take to start before it is stopped", min: 10, max: 3600, step: 10,
 			get: func(c config.Config) string { return intText(c.StartTimeoutSeconds) },
 			set: func(c *config.Config, v string) { c.StartTimeoutSeconds = parseInt(v) }},
-		{label: "Cookies from Browser", kind: kindChoice, options: cookieOptions,
+		{label: "Cookies from Browser", hint: "Lets downloads use the YouTube login of your browser, for age-restricted or private videos. All tries each browser; Off uses none.", kind: kindChoice, options: cookieOptions,
 			get: cookieChoice, set: setCookieChoice},
-		{label: "Save Songs Without Official Video (CSV)", kind: kindChoice, options: yesNo,
+		{label: "Save Songs Without Official Video (CSV)", hint: "With Official Music Video set to Only: keep a list (a CSV file) of the songs no official video was found for.", kind: kindChoice, options: yesNo,
 			get: func(c config.Config) string { return boolText(c.SaveNotFound) },
 			set: func(c *config.Config, v string) { c.SaveNotFound = v == "yes" }},
-		{label: "Create Log File", kind: kindChoice, options: yesNo,
+		{label: "Create Log File", hint: "Write a log of what the app did, which helps to find out what went wrong.", kind: kindChoice, options: yesNo,
 			get: func(c config.Config) string { return boolText(c.CreateLogFile) },
 			set: func(c *config.Config, v string) { c.CreateLogFile = v == "yes" }},
-		{label: "Log File Location", kind: kindFolder,
+		{label: "Log File Location", hint: "The folder the log is written to.", kind: kindFolder,
 			get: func(c config.Config) string { return c.LogDir },
 			set: func(c *config.Config, v string) { c.LogDir = v }},
 	}
@@ -95,33 +115,33 @@ func pages(host Host) []page {
 	}
 	return []page{
 		{name: "Output", fields: []field{
-			{label: "Videos Output Folder", kind: kindFolder,
+			{label: "Videos Output Folder", hint: "Where the downloaded videos are saved.", kind: kindFolder,
 				get: func(c config.Config) string { return c.OutputDir },
 				set: func(c *config.Config, v string) { c.OutputDir = v }},
-			{label: "Output Template", kind: kindTemplate,
+			{label: "Output Template", hint: "How each file is named, and which folders it goes in. Add blocks, and type any text between them.", kind: kindTemplate,
 				get: func(c config.Config) string { return c.OutputTemplate },
 				set: func(c *config.Config, v string) { c.OutputTemplate = v }},
 		}},
 		{name: "Download", fields: []field{
-			{label: "Video Quality", kind: kindChoice, options: config.VideoPresets,
+			{label: "Video Quality", hint: "The best picture quality to download. A lower one makes smaller files.", kind: kindChoice, options: config.VideoPresets,
 				get: func(c config.Config) string { return c.VideoQuality },
 				set: func(c *config.Config, v string) { c.VideoQuality = v }},
-			{label: "Audio Quality", kind: kindChoice, options: config.AudioPresets,
+			{label: "Audio Quality", hint: "The sound quality to keep.", kind: kindChoice, options: config.AudioPresets,
 				get: func(c config.Config) string { return c.AudioQuality },
 				set: func(c *config.Config, v string) { c.AudioQuality = v }},
-			{label: "Merge Format", kind: kindChoice, options: []string{"mp4", "mkv", "webm"}, show: upper,
+			{label: "Merge Format", hint: "The kind of video file made. MP4 plays almost everywhere; MKV and WebM can hold higher quality.", kind: kindChoice, options: []string{"mp4", "mkv", "webm"}, show: upper,
 				get: func(c config.Config) string { return c.MergeOutputFormat },
 				set: func(c *config.Config, v string) { c.MergeOutputFormat = v }},
-			{label: "Download Official Music Video", kind: kindChoice, options: config.OfficialModes,
+			{label: "Download Official Music Video", hint: "Yes: use the official music video when there is one, and the video as it is otherwise. Only: download just the songs that have one. No: never look for it.", kind: kindChoice, options: config.OfficialModes,
 				get: func(c config.Config) string { return string(c.OfficialVideo) },
 				set: func(c *config.Config, v string) { c.OfficialVideo = config.OfficialMode(v) }},
-			{label: "Max Concurrent Downloads", kind: kindStepper, min: 1, max: 32, step: 1,
+			{label: "Max Concurrent Downloads", hint: "How many videos are downloaded at the same time. More is faster but uses more of your connection.", kind: kindStepper, min: 1, max: 32, step: 1,
 				get: func(c config.Config) string { return intText(c.MaxConcurrentDownloads) },
 				set: func(c *config.Config, v string) { c.MaxConcurrentDownloads = parseInt(v) }},
-			{label: "Retry Failed Downloads", kind: kindChoice, options: yesNo,
+			{label: "Retry Failed Downloads", hint: "Try a download again by itself when it fails, because of a dropped connection, for example.", kind: kindChoice, options: yesNo,
 				get: func(c config.Config) string { return boolText(c.AutoRetry) },
 				set: func(c *config.Config, v string) { c.AutoRetry = v == "yes" }},
-			{label: "Retry Attempts", kind: kindStepper, min: 1, max: 999, step: 1,
+			{label: "Retry Attempts", hint: "How many times a failed download is tried again before it is given up.", kind: kindStepper, min: 1, max: 999, step: 1,
 				get: func(c config.Config) string { return intText(c.RetryCycles) },
 				set: func(c *config.Config, v string) { c.RetryCycles = parseInt(v) }},
 			{label: "Retry Attempts Wait Seconds", kind: kindStepper, hint: "The wait before the first retry, times the number of the attempt", min: 1, max: 3600, step: 5,
@@ -130,6 +150,12 @@ func pages(host Host) []page {
 		}},
 		{name: "Advanced", fields: advanced},
 		{name: "Theme", fields: []field{
+			themeField(),
+			func() field {
+				f := colourField("Background", func(t *config.ThemeColors) *string { return &t.Background })
+				f.optional = true
+				return f
+			}(),
 			colourField("Accent (title)", func(t *config.ThemeColors) *string { return &t.Accent }),
 			colourField("Focus (active border)", func(t *config.ThemeColors) *string { return &t.Focus }),
 			colourField("Highlight (keys, bars)", func(t *config.ThemeColors) *string { return &t.Highlight }),

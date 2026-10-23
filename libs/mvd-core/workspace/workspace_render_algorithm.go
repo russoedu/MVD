@@ -37,7 +37,7 @@ func (m Model) render() string {
 	}
 	if m.about {
 		x, y := m.aboutOrigin()
-		screen = dialog.Overlay(screen, m.aboutView(), x, y)
+		screen = dialog.Overlay(dialog.Dim(screen), m.aboutView(), x, y)
 	}
 	if m.bar.Open() >= 0 {
 		screen = overlayMenu(screen, m.bar.View())

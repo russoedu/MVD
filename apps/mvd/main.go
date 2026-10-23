@@ -123,6 +123,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 	)
 	terminalRuns = terminalui.NewRuns(updates.AfterFailure)
 
+	// The page around the terminal dims with a popup, and is told when one is open.
+	backdrop := &appwindow.Backdrop{}
 	removal := uninstall.Here(version, appDir, terminalui.ConfigPath(appDir), stop)
 	// Moving is only offered while the app has not been moved yet.
 	var move tui.Mover
@@ -154,6 +156,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 		// otherwise stay open on a page with nothing behind it.
 		Quit:      stop,
 		Version:   version,
+		Clipboard: terminalui.SystemClipboard{},
+		Modal:     backdrop.Set,
 		Uninstall: terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: move,
@@ -174,7 +178,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// and closing it ends the app. A second start does not get past appwindow.Run: it
 	// raises the first window and ends.
 	err = appwindow.Run(ctx, appwindow.Options{
-		Program: program, DataDir: appDir, Busy: terminalRuns.Busy,
+		Program: program, DataDir: appDir, Busy: terminalRuns.Busy, Backdrop: backdrop,
 		// A list double clicked while the app is open is opened in the window that is.
 		OnSecondStart: func(args []string) {
 			if list := filetype.ListInArgs(args); list != "" {

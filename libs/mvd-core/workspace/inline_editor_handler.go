@@ -132,6 +132,12 @@ func (m Model) inlineKey(k tea.KeyPressMsg) (Model, tea.Cmd) {
 		return m.stopInline(false), nil
 	case "enter":
 		return m.stopInline(true), nil
+	case "ctrl+c", "ctrl+x", "ctrl+v":
+		if m.host.Clipboard != nil {
+			name := map[string]string{"ctrl+c": entryCopy, "ctrl+x": entryCut, "ctrl+v": entryPaste}[k.String()]
+			next, cmd := m.editCommand(name)
+			return next.(Model), cmd
+		}
 	}
 	line, cmd := m.inline.line.Update(k)
 	m.inline.line = line

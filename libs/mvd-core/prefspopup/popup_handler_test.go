@@ -1,12 +1,14 @@
 package prefspopup
 
 import (
+	"github.com/charmbracelet/x/ansi"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/look"
 )
 
 func newPopup() Model {
@@ -90,6 +92,7 @@ func TestAStepperStaysBetweenItsLimits(t *testing.T) {
 
 func TestAColourIsOnlyTakenWhenItIsOne(t *testing.T) {
 	m := newPopup().show(3)
+	m = press(press(m, "down"), "down") // past the theme and the background: the accent
 	m = press(m, "enter")
 	m.input.SetValue("pink")
 	if m = press(m, "enter"); !m.Editing() || m.status == "" {
@@ -122,7 +125,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 		if h.kind == hitPlus && m.pages[m.tab].fields[h.field].label == "Max Concurrent Downloads" {
 			before := m.Config().MaxConcurrentDownloads
 			m = m.reveal()
-			m.scroll = 0
+			m.scroll = max(h.y-3, 0) // the page is longer than the room: bring the row into it
 			m = click(m, h.x0+1, tabRows+h.y-m.scroll)
 			if got := m.Config().MaxConcurrentDownloads; got != before+1 {
 				t.Errorf("a click on + gave %d, was %d", got, before)
@@ -136,7 +139,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 			m = click(m, h.x0+2, tabRows+h.y)
 		}
 	}
-	if !strings.HasSuffix(m.Config().OutputTemplate, "%(title)s") {
+	if got := m.Config().OutputTemplate; !strings.HasSuffix(got, "%(title)s%(title)s.%(ext)s") {
 		t.Errorf("a block was not added: %q", m.Config().OutputTemplate)
 	}
 }
@@ -181,7 +184,7 @@ func TestTheTemplateIsBlocksWithTextBetweenThem(t *testing.T) {
 			text++
 		}
 	}
-	if blocks != 4 || text != 5 || units[0].label != "PLAYLIST NAME" || units[len(units)-1].label != "EXT" {
+	if blocks != 3 || text != 4 || units[0].label != "PLAYLIST NAME" || units[len(units)-1].label != "TITLE" {
 		t.Errorf("blocks %d, text %d, units %+v", blocks, text, units)
 	}
 	if got := formatTemplate(units); got != "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s" {
@@ -210,11 +213,11 @@ func TestTypedTextGoesBetweenBlocksAndBackspaceTakesAWholeBlock(t *testing.T) {
 	m := templateModel()
 	m = clickHit(m, chipAt(m, hitCaret, len(parseTemplate(m.cfg.OutputTemplate))))
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	if got := m.Config().OutputTemplate; got != "%(title)s - %(artist,uploader)s." {
+	if got := m.Config().OutputTemplate; got != "%(title)s - .%(ext)s" {
 		t.Errorf("after backspace %q", got)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Text: "!", Code: '!'})
-	if got := m.Config().OutputTemplate; got != "%(title)s - %(artist,uploader)s.!" {
+	if got := m.Config().OutputTemplate; got != "%(title)s - !.%(ext)s" {
 		t.Errorf("after typing %q", got)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -247,10 +250,59 @@ func TestABlockCanBeCarriedToAnotherPlace(t *testing.T) {
 	}
 	m, _ = m.Update(tea.MouseMotionMsg{X: 1 + to.x, Y: tabRows + to.y - m.scroll, Button: tea.MouseLeft})
 	m, _ = m.Update(tea.MouseReleaseMsg{X: 1 + to.x, Y: tabRows + to.y - m.scroll, Button: tea.MouseLeft})
-	if got := m.Config().OutputTemplate; got != " - %(artist,uploader)s.%(ext)s%(title)s" {
+	if got := m.Config().OutputTemplate; got != " - %(artist,uploader)s%(title)s.%(ext)s" {
 		t.Errorf("after the drag %q", got)
 	}
 	if m.dragging {
 		t.Error("still carrying")
+	}
+}
+
+func TestAThemeSetsAllTheColoursAndChangingOneMakesItTheirOwn(t *testing.T) {
+	m := newPopup().show(3)
+	if m.Config().ThemeName != config.DefaultThemeName {
+		t.Fatalf("starts with %q", m.Config().ThemeName)
+	}
+	// Pick Dracula: the second option after Dark+ and Monokai.
+	for i := 0; m.Config().ThemeName != "Dracula" && i < 20; i++ {
+		m = press(m, "right")
+	}
+	want, _ := config.PresetColors("Dracula")
+	if m.Config().Colors != want {
+		t.Errorf("colours %+v, want %+v", m.Config().Colors, want)
+	}
+	if look.Colours.Background != "#282a36" {
+		t.Errorf("the screen shows background %q", look.Colours.Background)
+	}
+	// Change the accent: the theme becomes the person's own, based on Dracula.
+	m = press(press(m, "down"), "down")
+	m = press(m, "enter")
+	m.input.SetValue("#123456")
+	m = press(m, "enter")
+	if m.Config().ThemeName != config.CustomTheme || m.Config().Colors.Background != "#282a36" || m.Config().Colors.Accent != "#123456" {
+		t.Errorf("theme %q, colours %+v", m.Config().ThemeName, m.Config().Colors)
+	}
+	// The background may be emptied, for the terminal's own.
+	m = press(m, "up")
+	m = press(m, "enter")
+	m.input.SetValue("")
+	m = press(m, "enter")
+	if m.Editing() || m.Config().Colors.Background != "" {
+		t.Errorf("background %q, editing %v", m.Config().Colors.Background, m.Editing())
+	}
+	look.Apply(config.DefaultThemeColors())
+}
+
+func TestALongDescriptionWrapsInsteadOfBeingCut(t *testing.T) {
+	m := New(config.Default("/app", "/music"), Host{}).SetSize(60, 40).show(2)
+	l := m.layout()
+	for _, line := range l.lines {
+		if strings.Contains(ansi.Strip(line), "…") {
+			t.Errorf("a line was cut: %q", ansi.Strip(line))
+		}
+	}
+	all := ansi.Strip(strings.Join(l.lines, " "))
+	if !strings.Contains(all, "no official video was found for.") {
+		t.Errorf("the end of the description is missing")
 	}
 }

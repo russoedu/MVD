@@ -6,6 +6,9 @@ import (
 	"youtube-downloader/libs/mvd-core/dialog"
 )
 
+// AboutOpen reports whether the About window is showing.
+func (m Model) AboutOpen() bool { return m.about }
+
 // aboutOrigin is the cell of the screen where the About window begins.
 func (m Model) aboutOrigin() (int, int) {
 	l := m.aboutLayout()
@@ -59,8 +62,9 @@ func (m Model) refreshMenus() Model {
 	writing := free && m.inline.on
 	i, has := m.selected()
 	n := len(m.session.File().Items)
+	m.bar.SetEnabled(entryCut, writing && m.inline.line.HasSelection())
 	m.bar.SetEnabled(entryCopy, writing && m.inline.line.HasSelection())
-	m.bar.SetEnabled(entryPaste, writing)
+	m.bar.SetEnabled(entryPaste, free)
 	m.bar.SetEnabled(entryUndo, free && !writing && len(m.undone) > 0)
 	m.bar.SetEnabled(entryRedo, free && !writing && len(m.redone) > 0)
 	m.bar.SetEnabled(entryDelete, free && !writing && has)

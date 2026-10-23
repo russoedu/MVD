@@ -34,3 +34,19 @@ func Overlay(base, popup string, x, y int) string {
 func Centre(screenW, screenH, w, h int) (x, y int) {
 	return max((screenW-w)/2, 0), max((screenH-h)/2, 0)
 }
+
+// Dim makes a drawn screen faint, to push it behind a popup laid over it: every line is set
+// faint at its start, and again after each reset in it.
+func Dim(screen string) string {
+	const faint = "\x1b[2m"
+	reset := strings.NewReplacer(
+		"\x1b[0m", "\x1b[0m"+faint,
+		"\x1b[m", "\x1b[m"+faint,
+		"\x1b[22m", "\x1b[22m"+faint,
+	)
+	lines := strings.Split(screen, "\n")
+	for i, l := range lines {
+		lines[i] = faint + reset.Replace(l) + "\x1b[0m"
+	}
+	return strings.Join(lines, "\n")
+}

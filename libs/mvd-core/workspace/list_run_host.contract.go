@@ -39,7 +39,16 @@ type Host struct {
 	// Quit is called when the person quits, so a host that shows the program in a window
 	// can close it; nil for none.
 	Quit func()
+	// Clipboard is the machine's own clipboard, which the page around the terminal cannot
+	// reach; nil for none, and the terminal's own is then asked for.
+	Clipboard Clipboard
 	// Version is the version of the app, which the About window tells; empty for a build
 	// that has none.
 	Version string
+}
+
+// Clipboard is the text the person copied, and a way to copy.
+type Clipboard interface {
+	Read() (string, error)
+	Write(text string) error
 }

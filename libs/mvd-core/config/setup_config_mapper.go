@@ -113,6 +113,10 @@ func applyKey(cfg *Config, key, val, path string) {
 				cfg.LogDir = d
 			}
 		}
+	case "theme":
+		if val != "" {
+			cfg.ThemeName = val
+		}
 	case "extra_args":
 		if val != "" {
 			cfg.ExtraArgs = strings.Fields(val)
@@ -143,6 +147,8 @@ func colourSlot(cfg *Config, key string) *string {
 		return &cfg.Colors.Text
 	case "color_selected":
 		return &cfg.Colors.Selected
+	case "color_background":
+		return &cfg.Colors.Background
 	}
 	return nil
 }
@@ -175,6 +181,7 @@ func configText(cfg Config) string {
 	w("create_log_file", strconv.FormatBool(cfg.CreateLogFile))
 	w("log_dir", cfg.LogDir)
 	w("extra_args", strings.Join(cfg.ExtraArgs, " "))
+	w("theme", cfg.ThemeName)
 	w("color_accent", cfg.Colors.Accent)
 	w("color_focus", cfg.Colors.Focus)
 	w("color_highlight", cfg.Colors.Highlight)
@@ -183,6 +190,7 @@ func configText(cfg Config) string {
 	w("color_dim", cfg.Colors.Dim)
 	w("color_text", cfg.Colors.Text)
 	w("color_selected", cfg.Colors.Selected)
+	w("color_background", cfg.Colors.Background)
 
 	return b.String()
 }
