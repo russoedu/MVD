@@ -28,7 +28,7 @@ func (m Model) downloadProps(w, h int) Props {
 	// The sizes the design cannot know: how wide the left column is.
 	p.LeftWidth = m.leftWidth(w)
 	if m.columns(w) {
-		p.Columns, p.MidWidth, p.LeftReserve = 1, m.midWidth(w), m.reserve
+		p.Columns, p.LeftReserve, p.DetailsHeight = 1, m.reserve, m.detailsHeight(h)
 	}
 	p.FullLog = 0
 	if m.fullLog {
@@ -42,7 +42,7 @@ func (m Model) downloadProps(w, h int) Props {
 
 	// The app has a footer under the output only when there is something for it.
 	footer := m.outputFooter()
-	if !showOutput {
+	if !showOutput || !m.technical {
 		footer = outputFooter{}
 	}
 	if len(footer.lines) > 0 {
@@ -61,6 +61,11 @@ func (m Model) downloadProps(w, h int) Props {
 	p.EntriesRows = func(w, h int) ([]EntriesRow, int) {
 		rows, sel := m.entryRows(w)
 		return cuppa.Window(rows, sel, h)
+	}
+	// The songs are a table, with a row of headings, whenever there are songs to show.
+	p.EntriesTable = m.songsTable
+	if len(m.visibleEntries()) > 0 && !m.entryNotesShown() {
+		p.TableHeader = 1
 	}
 	p.HasNotes = 0
 	if m.entryNotesShown() {
@@ -224,19 +229,13 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 	}
 	sel = viewport.Clamp(m.selEntry, 0, max(0, len(ids)-1))
 
+	cols := m.tableColumns(w)
 	for i, id := range ids {
-		en := m.state.Entries[id]
-		glyph, glyphColour := m.entryGlyph(en)
-		tag, tagColour := m.entryTag(en)
-		row := EntriesRow{
-			Glyph: glyph, Idx: fmt.Sprintf("%02d", en.Index), Title: cells.CellText(entryTitle(en)), Tag: tag,
-			GlyphStyle: CellStyle{Fg: glyphColour}, TagStyle: CellStyle{Fg: tagColour},
-		}
+		texts, styles := m.songCells(m.state.Entries[id], cols, i == sel)
+		row := EntriesRow{Cells: texts, CellStyles: styles}
 		if i == sel {
 			// Whether the pane has the focus is the design's: an unfocused pane draws it as text.
 			row.Style = RowSelected
-			// 6 cells are the glyph, the number, the gaps and the end of the row.
-			row.Title = marquee(row.Title, w-6-ansi.StringWidth(tag), m.marquee)
 		}
 		rows = append(rows, row)
 	}
@@ -304,12 +303,9 @@ func (m Model) outputFooter() outputFooter {
 	}
 	switch en.State {
 	case engine.StateDownloading, engine.StateMerging:
-		info := progressText(en)
-		if m.technical {
-			info = runstate.ProgressLine(en)
-			if en.State == engine.StateMerging {
-				info = "merging streams with ffmpeg"
-			}
+		info := runstate.ProgressLine(en)
+		if en.State == engine.StateMerging {
+			info = "merging streams with ffmpeg"
 		}
 		percent := en.Percent
 		if en.State == engine.StateMerging {
@@ -383,13 +379,15 @@ func (m Model) leftWidth(w int) int {
 // columns is whether the playlists, the entries and the output stand side by side.
 func (m Model) columns(w int) bool { return !m.fullLog && w >= minWideWidth }
 
-// midWidth is how wide the column of entries is, in the columns layout.
-func (m Model) midWidth(w int) int {
-	left := m.leftWidth(w)
-	if m.midW > 0 {
-		return max(minPane, min(m.midW, w-left-minPane))
+// detailsHeight is how tall the details pane under the songs is in a window h cells tall: enough
+// for the account of a song, or half of what there is for the log of the tool.
+func (m Model) detailsHeight(h int) int {
+	room := max(h-4, 6)
+	if m.technical {
+		return max(6, room/2)
 	}
-	return max(32, w*38/100)
+
+	return min(7, max(4, room/3))
 }
 
 // emptyPlaylistRows is what the playlists pane says while there is nothing in it: what to do

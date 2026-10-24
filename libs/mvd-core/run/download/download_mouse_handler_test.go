@@ -12,8 +12,8 @@ import (
 func TestDownloadScreenClicksSelectPanesRowsAndKeyBarEntries(t *testing.T) {
 	m := sampleModel(t)
 	m.width, m.height = 120, 36
-	// Wide layout, in columns: the playlists box is columns 0-30, the entries box columns
-	// 31-66 and the output box starts at column 67; all start at row 3, their rows at row 4.
+	// Wide layout: the links box is columns 0-30 and the songs box the rest, with the details
+	// under it; they start at row 3, the songs with a row of headings.
 
 	next, _ := m.Update(mouse.Click(5, 5))
 	m = next.(Model)
@@ -22,7 +22,7 @@ func TestDownloadScreenClicksSelectPanesRowsAndKeyBarEntries(t *testing.T) {
 	}
 
 	m.selPlaylist = 0
-	next, _ = m.Update(mouse.Click(40, 6))
+	next, _ = m.Update(mouse.Click(40, 7)) // the heading row is at row 4, so the rows start at row 5
 	m = next.(Model)
 	if m.selEntry != 2 || m.focus != paneEntries || m.follow {
 		t.Errorf("clicking the third entry: selEntry %d, focus %d, follow %v", m.selEntry, m.focus, m.follow)
@@ -40,8 +40,9 @@ func TestDownloadScreenWheelScrollsThePaneUnderThePointer(t *testing.T) {
 	m := sampleModel(t)
 	m.width, m.height = 120, 36
 	m.selEntry = 4 // the entry with a long log
+	m.technical = true
 
-	next, _ := m.Update(mouse.Wheel(90, 10, tea.MouseWheelUp)) // over the output box
+	next, _ := m.Update(mouse.Wheel(90, 30, tea.MouseWheelUp)) // over the output box, under the songs
 	m = next.(Model)
 	if m.focus != paneOutput || m.outScroll != pointer.WheelStep {
 		t.Errorf("wheel up over the output: focus %d, scrolled %d", m.focus, m.outScroll)
@@ -65,12 +66,12 @@ func TestDownloadScreenIgnoresTheMouseWhileConfirmingToQuit(t *testing.T) {
 	}
 }
 
-func TestTheBordersBetweenTheColumnsCanBeDragged(t *testing.T) {
+func TestTheBorderBetweenTheLinksAndTheSongsCanBeDragged(t *testing.T) {
 	m := sampleModel(t)
 	m.width, m.height = 120, 36
-	left, mid := m.leftWidth(120), m.midWidth(120)
+	left := m.leftWidth(120)
 
-	// Take hold of the border after the playlists and move it ten cells right.
+	// Take hold of the border after the links and move it ten cells right.
 	next, _ := m.Update(mouse.Click(left-1, 10))
 	m = next.(Model)
 	if m.dragging != 1 {
@@ -80,19 +81,12 @@ func TestTheBordersBetweenTheColumnsCanBeDragged(t *testing.T) {
 	m = next.(Model)
 	next, _ = m.Update(tea.MouseReleaseMsg{X: left + 10, Y: 10, Button: tea.MouseLeft})
 	m = next.(Model)
-	if m.dragging != 0 || m.leftWidth(120) != left+10 || m.midWidth(120) != mid {
-		t.Errorf("after the drag: left %d (was %d), mid %d (was %d), dragging %d", m.leftWidth(120), left, m.midWidth(120), mid, m.dragging)
+	if m.dragging != 0 || m.leftWidth(120) != left+10 {
+		t.Errorf("after the drag: left %d (was %d), dragging %d", m.leftWidth(120), left, m.dragging)
 	}
 
-	// The border after the entries changes only the width of the entries.
-	edge := m.leftWidth(120) + m.midWidth(120)
-	next, _ = m.Update(mouse.Click(edge, 10))
-	m = next.(Model)
-	next, _ = m.Update(tea.MouseMotionMsg{X: edge - 6, Y: 10, Button: tea.MouseLeft})
-	m = next.(Model)
-	next, _ = m.Update(tea.MouseReleaseMsg{X: edge - 6, Y: 10, Button: tea.MouseLeft})
-	m = next.(Model)
-	if m.leftWidth(120) != left+10 || m.midWidth(120) != mid-6 {
-		t.Errorf("after the second drag: left %d, mid %d", m.leftWidth(120), m.midWidth(120))
+	// The songs take the rest of the width: there is no other border to hold.
+	if m.borderAt(m.width/2, 10) != 0 {
+		t.Error("a border was found in the middle of the songs")
 	}
 }

@@ -158,18 +158,14 @@ func (m Model) LeftColumn() (x, y, w, h, reserve int, ok bool) {
 	return l.playlists.x, l.playlists.y, l.playlists.w, l.playlists.h + m.reserve, m.reserve, true
 }
 
-// borderAt is the border between columns at column x: 1 after the playlists, 2 after the
-// entries, 0 for none. The cell each side of the line takes hold of it.
+// borderAt is the border between the links and the songs at column x: 1 for it, 0 for none. The cell each side of the line takes hold of it.
 func (m Model) borderAt(x, y int) int {
 	if !m.columns(m.width) || y < 3 || y >= m.height-1 {
 		return 0
 	}
 	left := m.leftWidth(m.width)
-	switch {
-	case x == left-1 || x == left:
+	if x == left-1 || x == left {
 		return 1
-	case x == left+m.midWidth(m.width)-1 || x == left+m.midWidth(m.width):
-		return 2
 	}
 	return 0
 }
@@ -191,13 +187,7 @@ func (m Model) dragBorder(msg tea.MouseMsg) (Model, bool) {
 		if m.dragging == 0 {
 			return m, false
 		}
-		left := m.leftWidth(m.width)
-		if m.dragging == 1 {
-			m.leftW = max(minPane, min(pos.X, m.width-minPane*2))
-			m.midW = m.midWidth(m.width)
-		} else {
-			m.midW = max(minPane, min(pos.X-left, m.width-left-minPane))
-		}
+		m.leftW = max(minPane, min(pos.X, m.width-minPane*2))
 		return m, true
 	case tea.MouseReleaseMsg:
 		if m.dragging != 0 {

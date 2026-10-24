@@ -101,17 +101,18 @@ func TestTheWordsAtTheEndOfARowAreNotCodes(t *testing.T) {
 	want := map[engine.EntryState]string{
 		engine.StateQueued: "waiting", engine.StateResolving: "finding", engine.StateMerging: "joining",
 		engine.StateDuplicate: "have it", engine.StateNotFound: "no official", engine.StateFailed: "failed",
+		engine.StateDone: "saved",
 	}
 	for state, word := range want {
 		en := m.state.Entries[0]
-		en.State = state
-		if got, _ := m.entryTag(en); got != word {
+		en.State, en.Official = state, false
+		if got, _ := entryStatus(en); got != word {
 			t.Errorf("%v says %q, want %q", state, got, word)
 		}
 	}
 	en := m.state.Entries[4]
 	en.Total = 0
-	if got, _ := m.entryTag(en); got != "starting" {
+	if got, _ := entryStatus(en); got != "starting" {
 		t.Errorf("a download of unknown size says %q", got)
 	}
 }

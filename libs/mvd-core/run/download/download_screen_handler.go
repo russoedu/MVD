@@ -84,7 +84,7 @@ type Model struct {
 	// leftW and midW are the widths the person gave the columns by dragging their borders;
 	// 0 is the default. dragging is the border being dragged: 1 after the playlists, 2 after
 	// the entries, 0 for none. reserve is the rows kept under the playlists for buttons.
-	leftW, midW, dragging, reserve int
+	leftW, dragging, reserve int
 	// editable is true while the list can be changed here: each playlist then has a grip to
 	// carry it by, and icons to change and to remove it. dragRow is the playlist being
 	// carried, dropRow the one it is over; dragging a row is on while dragRowOn.
