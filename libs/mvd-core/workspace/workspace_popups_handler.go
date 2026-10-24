@@ -25,7 +25,7 @@ func (m Model) Caution(text string) Model {
 
 // WindowOpen reports whether a window of the workspace (About, Keyboard shortcuts) is showing
 // over the screen, which the page around the terminal dims itself for.
-func (m Model) WindowOpen() bool { return m.about || m.shortcuts }
+func (m Model) WindowOpen() bool { return m.about || m.shortcuts || m.closing.on }
 
 // shortcutsKey works a key press while the Keyboard shortcuts window is showing: it scrolls,
 // or it closes.
@@ -109,6 +109,9 @@ func (m Model) popupMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, false
 	}
 	switch {
+	case m.closing.on:
+		next, cmd := m.closeMouse(msg)
+		return next, cmd, true
 	case m.about:
 		return m.aboutMouse(msg)
 	case m.shortcuts:

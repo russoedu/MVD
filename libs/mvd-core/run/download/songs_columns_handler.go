@@ -4,8 +4,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
+	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/pointer"
 )
 
@@ -26,12 +28,57 @@ type columnDrag struct {
 type columnsMenu struct {
 	open bool
 	sel  int
+	// drag is a column being carried by its grip: it is row from, and would go to row to.
+	drag     bool
+	from, to int
 }
 
 // configurable are the columns the person can hide, in the order the menu lists them.
 var configurable = []struct{ name, label string }{
 	{columnArtist, "Artist"}, {columnVideo, "Video name"}, {columnAlbum, "Album"},
 	{columnQuality, "Quality"}, {columnProgress, "Progress"}, {columnStatus, "Status"},
+}
+
+// labelOf is how the list of columns calls a column.
+func labelOf(name string) string {
+	for _, c := range configurable {
+		if c.name == name {
+			return c.label
+		}
+	}
+
+	return name
+}
+
+// columnOrder is the columns the person can arrange, in the order they are shown: the one they gave,
+// else the order of configurable.
+func (m Model) columnOrder() []string {
+	order := make([]string, 0, len(configurable))
+	seen := map[string]bool{}
+	for _, name := range m.colOrder {
+		if resizable(name) && !seen[name] {
+			order, seen[name] = append(order, name), true
+		}
+	}
+	for _, c := range configurable {
+		if !seen[c.name] {
+			order = append(order, c.name)
+		}
+	}
+
+	return order
+}
+
+// moveColumn puts the column that is at row from of the list at row to.
+func (m *Model) moveColumn(from, to int) {
+	order := m.columnOrder()
+	if from < 0 || from >= len(order) || to < 0 || to >= len(order) || from == to {
+		return
+	}
+	moved := order[from]
+	rest := append(append([]string(nil), order[:from]...), order[from+1:]...)
+	out := append(append(append([]string(nil), rest[:to]...), moved), rest[to:]...)
+	m.colOrder = out
 }
 
 // columnSpan is where a column is in the pane of the table, counted from its first cell.
@@ -96,17 +143,22 @@ func (m Model) withTableControls(screen string) string {
 		return screen
 	}
 	r := m.columnsMenuRect(l)
-	lines := make([]string, 0, len(configurable))
-	for i, c := range configurable {
+	order := m.columnOrder()
+	lines := make([]string, 0, len(order))
+	for i, name := range order {
 		mark := "[x]"
-		if m.hiddenCols[c.name] {
+		if m.hiddenCols[name] {
 			mark = "[ ]"
 		}
-		cursor := "  "
-		if i == m.columnList.sel {
-			cursor = "▸ "
+		grip := "≡"
+		if m.columnList.drag && i == m.columnList.to {
+			grip = "▶"
 		}
-		lines = append(lines, cursor+mark+" "+c.label)
+		line := grip + " " + mark + " " + labelOf(name)
+		if i == m.columnList.sel {
+			line = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color(look.Colours.Selected)).Render(line + strings.Repeat(" ", max(r.w-2-len([]rune(line)), 0)))
+		}
+		lines = append(lines, line)
 	}
 
 	return dialog.Overlay(screen, dialog.Frame("Columns", lines, r.w, r.h), r.x, r.y)
@@ -131,8 +183,14 @@ func (m Model) columnsKey(key string) Model {
 		m.columnList.sel = max(m.columnList.sel-1, 0)
 	case "down", "j":
 		m.columnList.sel = min(m.columnList.sel+1, len(configurable)-1)
+	case "shift+up":
+		m.moveColumn(m.columnList.sel, m.columnList.sel-1)
+		m.columnList.sel = max(m.columnList.sel-1, 0)
+	case "shift+down":
+		m.moveColumn(m.columnList.sel, m.columnList.sel+1)
+		m.columnList.sel = min(m.columnList.sel+1, len(configurable)-1)
 	case "space", "enter":
-		m.toggleColumn(configurable[m.columnList.sel].name)
+		m.toggleColumn(m.columnOrder()[m.columnList.sel])
 	}
 
 	return m
@@ -184,17 +242,7 @@ func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, b
 	pos := msg.Mouse()
 
 	if m.columnList.open {
-		r := m.columnsMenuRect(l)
-		if _, isClick := msg.(tea.MouseClickMsg); isClick && pointer.IsLeftClick(msg) {
-			if i := pos.Y - (r.y + 1); r.contains(pos.X, pos.Y) && i >= 0 && i < len(configurable) {
-				m.columnList.sel = i
-				m.toggleColumn(configurable[i].name)
-			} else if !r.contains(pos.X, pos.Y) {
-				m.columnList.open = false
-			}
-		}
-
-		return m, nil, true
+		return m.columnsMouse(l, msg), nil, true
 	}
 
 	switch msg.(type) {
@@ -224,16 +272,24 @@ func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, b
 		case pos.Y == iy:
 			return m.headingClick(spans, ix, pos.X)
 		case pos.Y > iy && l.entries.rows().contains(pos.X, pos.Y):
+			if _, choosing := m.chooser(); !choosing {
+				return m, nil, false
+			}
+			m.clickEntry(pos.Y)
+			en := m.selectedEntry()
+			if en == nil {
+				return m, nil, true
+			}
 			for _, s := range spans {
 				if s.name == columnCheck && pos.X >= ix+s.x0 && pos.X < ix+s.x1 {
-					m.clickEntry(pos.Y)
-					if en := m.selectedEntry(); en != nil {
-						m.togglePick(en.ID)
-					}
+					m.togglePick(en.ID) // the box of a song ticks or unticks that song
 
 					return m, nil, true
 				}
 			}
+			m.pickOnly(en.ID) // anywhere else on the row chooses that song alone
+
+			return m, nil, true
 		}
 	}
 
@@ -273,4 +329,40 @@ func (m Model) headingClick(spans []columnSpan, ix, x int) (Model, tea.Cmd, bool
 // resizable says whether a column can be given another width by the person.
 func resizable(name string) bool {
 	return strings.Contains(" artist video album quality progress status ", " "+name+" ")
+}
+
+// columnsMouse works the mouse on the list of columns: the grip carries a column to another place,
+// anywhere else on a row shows or hides it, and a click outside closes the list.
+func (m Model) columnsMouse(l downloadLayout, msg tea.MouseMsg) Model {
+	r := m.columnsMenuRect(l)
+	pos := msg.Mouse()
+	row := pos.Y - (r.y + 1)
+	inside := r.contains(pos.X, pos.Y) && row >= 0 && row < len(configurable)
+	switch msg.(type) {
+	case tea.MouseMotionMsg:
+		if m.columnList.drag && row >= 0 && row < len(configurable) {
+			m.columnList.to = row
+		}
+	case tea.MouseReleaseMsg:
+		if m.columnList.drag {
+			m.moveColumn(m.columnList.from, m.columnList.to)
+			m.columnList.sel = m.columnList.to
+			m.columnList.drag = false
+		}
+	case tea.MouseClickMsg:
+		if !pointer.IsLeftClick(msg) {
+			break
+		}
+		switch {
+		case !r.contains(pos.X, pos.Y):
+			m.columnList.open = false
+		case inside && pos.X <= r.x+3:
+			m.columnList = columnsMenu{open: true, sel: row, drag: true, from: row, to: row}
+		case inside:
+			m.columnList.sel = row
+			m.toggleColumn(m.columnOrder()[row])
+		}
+	}
+
+	return m
 }

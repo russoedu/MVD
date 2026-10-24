@@ -34,6 +34,10 @@ func (m Model) render() string {
 	if m.inline.on {
 		screen = m.inlineView(screen)
 	}
+	if m.closing.on {
+		x, y := m.closeOrigin()
+		screen = dialog.Overlay(dialog.Dim(screen), m.closeView(), x, y)
+	}
 	if m.about {
 		x, y := m.aboutOrigin()
 		screen = dialog.Overlay(dialog.Dim(screen), m.aboutView(), x, y)

@@ -57,7 +57,7 @@ func (m Model) choiceButtons() []choiceButton {
 		buttons = []choiceButton{
 			{label: accepting, key: "d", disabled: accept == 0},
 			{label: rejecting, key: "x", disabled: reject == 0},
-			{label: "⇄ Swap video", key: "s", disabled: !swapEnabled || len(ids) != 1},
+			{label: "⇄ Swap video", key: "s", disabled: len(ids) != 1 || !swappable(m.state.Entry(ids[0]))},
 			{label: "↗ Open video", key: "o", disabled: len(ids) != 1},
 		}
 	default:

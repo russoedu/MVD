@@ -26,9 +26,9 @@ func (c *choosingRun) Release(entry int, video string) bool {
 
 	return true
 }
-func (c *choosingRun) ReleaseAll() int     { c.all++; return 3 }
+func (c *choosingRun) ReleaseAll() int                   { c.all++; return 3 }
 func (c *choosingRun) Swap(entry int, video string) bool { return c.Release(entry, video) }
-func (c *choosingRun) Skip(entry int) bool { c.skipped = append(c.skipped, entry); return true }
+func (c *choosingRun) Skip(entry int) bool               { c.skipped = append(c.skipped, entry); return true }
 
 // choosingModel has the fourth song of the sample waiting for the person.
 func choosingModel(t *testing.T) (Model, *choosingRun) {
@@ -67,11 +67,59 @@ func TestDSendsTheSelectedSongToDownloadAndXCancelsIt(t *testing.T) {
 	}
 }
 
-func TestSwappingTheVideoIsNotAvailableYet(t *testing.T) {
+func TestSwapAsksForAnotherVideoAndSendsTheSongWithIt(t *testing.T) {
 	m, run := choosingModel(t)
 	m = pressKey(m, "s")
-	if m.swapping || len(run.released) != 0 || !strings.Contains(m.status, "not available") {
-		t.Errorf("swapping %v, released %v, status %q", m.swapping, run.released, m.status)
+	if !m.swapping {
+		t.Fatal("the address of another video was not asked")
+	}
+	for _, r := range "https://www.youtube.com/watch?v=dQw4w9WgXcQ" {
+		m = pressKey(m, string(r))
+	}
+	m = pressKey(m, "enter")
+	if m.swapping || run.released[3] != "dQw4w9WgXcQ" {
+		t.Errorf("swapping %v, released %v", m.swapping, run.released)
+	}
+	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateDownloading, TargetID: "x"})
+	m = pressKey(m, "s")
+	if m.swapping {
+		t.Error("a song on its way was offered a swap")
+	}
+}
+
+func TestClickingASongAwayFromItsBoxChoosesThatSongAlone(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.state.Apply(engine.EvEntryState{Entry: 1, State: engine.StatePlanned, TargetID: "bbb12345678"})
+	m.width, m.height = 140, 30
+	l, _ := m.layout()
+	ix, iy, iw := m.tableInner(l)
+	var box, song columnSpan
+	for _, s := range m.columnSpans(iw) {
+		switch s.name {
+		case columnCheck:
+			box = s
+		case columnSong:
+			song = s
+		}
+	}
+	rowY := func(entry int) int { return iy + 1 + entry }
+	click := func(m Model, x, y int) Model {
+		next, _ := m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+
+		return next.(Model)
+	}
+	m = click(m, ix+box.x0+1, rowY(0)) // the box of the first song
+	m = click(m, ix+box.x0+1, rowY(1)) // the box of the second
+	if len(m.picked) != 2 {
+		t.Fatalf("picked %v", m.picked)
+	}
+	m = click(m, ix+song.x0+2, rowY(1)) // the second song itself: it alone
+	if len(m.picked) != 1 || !m.picked[1] {
+		t.Errorf("picked %v", m.picked)
+	}
+	m = click(m, ix+song.x0+2, rowY(1)) // again: the tick goes
+	if len(m.picked) != 0 {
+		t.Errorf("picked %v", m.picked)
 	}
 }
 
@@ -116,9 +164,12 @@ func TestTheChoicesOfAWaitingSongAreButtonsThatCanBeClicked(t *testing.T) {
 	if len(run.skipped) != 1 {
 		t.Errorf("skipped %v", run.skipped)
 	}
-	m = click(m, buttons[2]) // Swap video, which cannot be used yet
-	if m.swapping || !buttons[2].disabled {
-		t.Error("the swap button must be disabled")
+	if buttons[2].disabled {
+		t.Error("the swap button must be usable with one song")
+	}
+	m = click(m, buttons[2]) // Swap video
+	if !m.swapping {
+		t.Error("the swap did not ask for an address")
 	}
 }
 
@@ -203,5 +254,34 @@ func TestACarriedBorderResizesTheColumnAndTheListOfColumnsHidesOne(t *testing.T)
 	m = pressKey(m, "esc")
 	if names := namesOf(m.tableColumns(140)); strings.Contains(names, columnArtist) {
 		t.Errorf("the artist column is still there: %s", names)
+	}
+}
+
+func TestColumnsCanBeCarriedToAnotherPlaceInTheList(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	m = pressKey(m, "c")
+	m = pressKey(m, "shift+down") // Artist goes below Video name
+	if got := m.columnOrder(); got[0] != columnVideo || got[1] != columnArtist {
+		t.Errorf("order %v", got)
+	}
+	if names := namesOf(m.tableColumns(140)); strings.Index(names, columnArtist) < strings.Index(names, columnVideo) && strings.Contains(names, columnVideo) {
+		t.Errorf("the table does not follow the order: %s", names)
+	}
+
+	// With the mouse: the grip of the first row carried to the third.
+	m.columnList = columnsMenu{open: true}
+	l, _ := m.layout()
+	r := m.columnsMenuRect(l)
+	for _, msg := range []tea.MouseMsg{
+		tea.MouseClickMsg{X: r.x + 2, Y: r.y + 1, Button: tea.MouseLeft},
+		tea.MouseMotionMsg{X: r.x + 2, Y: r.y + 3, Button: tea.MouseLeft},
+		tea.MouseReleaseMsg{X: r.x + 2, Y: r.y + 3, Button: tea.MouseLeft},
+	} {
+		next, _ := m.Update(msg)
+		m = next.(Model)
+	}
+	if got := m.columnOrder(); got[2] != columnVideo {
+		t.Errorf("order after the drag %v", got)
 	}
 }

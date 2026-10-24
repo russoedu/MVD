@@ -109,6 +109,7 @@ type Model struct {
 	// colWidth are the widths the person gave to columns by carrying their borders, and hiddenCols
 	// the columns they hid. Both are replaced, never changed, so a copy of the screen keeps its own.
 	colWidth   map[string]int
+	colOrder   []string
 	hiddenCols map[string]bool
 	colDrag    columnDrag
 	columnList columnsMenu

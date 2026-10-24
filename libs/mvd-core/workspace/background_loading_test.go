@@ -1,6 +1,9 @@
 package workspace
 
 import (
+	"strings"
+
+	"github.com/charmbracelet/x/ansi"
 	"testing"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 
@@ -120,5 +123,42 @@ func TestALinkCanBeTakenOutWhileTheRunGoesOn(t *testing.T) {
 	}
 	if m.starting || !m.running() {
 		t.Error("taking a link out must not restart the run")
+	}
+}
+
+// busyRun is a fake run with songs that are downloading.
+type busyRun struct{ *addingRun }
+
+func (busyRun) Sources() []engine.PlaylistSource {
+	return []engine.PlaylistSource{{Index: 0, URL: "https://youtu.be/a"}}
+}
+
+func TestClosingAsksOnlyWhileSongsAreDownloading(t *testing.T) {
+	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
+	list := downloadlist.New([]string{"https://youtu.be/a"})
+	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
+	m = m.runStartedFor(t, run)
+	m.screen.State().Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1}}})
+
+	// Songs wait to be chosen: nothing downloads, so nothing is asked.
+	m.screen.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "abc12345678"})
+	next, cmd := m.Update(CloseRequestedMsg{})
+	if next.(Model).closing.on || cmd == nil {
+		t.Fatalf("a close with nothing downloading asked %v, cmd %v", next.(Model).closing.on, cmd != nil)
+	}
+
+	// A song downloads: the app asks, in its own screen.
+	m.screen.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading, TargetID: "abc12345678"})
+	next, cmd = m.Update(CloseRequestedMsg{})
+	m = next.(Model)
+	if !m.closing.on || cmd != nil {
+		t.Fatalf("a close while downloading did not ask")
+	}
+	if screen := ansi.Strip(m.render()); !strings.Contains(screen, "1 song is still downloading") || !strings.Contains(screen, "Keep downloading") {
+		t.Errorf("the question is not on the screen:\n%s", screen)
+	}
+	next, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if next.(Model).closing.on {
+		t.Error("esc did not keep the downloads")
 	}
 }

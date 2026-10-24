@@ -85,6 +85,8 @@ type Model struct {
 	loadedKey string
 
 	about bool
+	// closing is the question asked before the app closes while songs download.
+	closing closeAsk
 	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
 	// down its lines it is.
 	shortcuts       bool
@@ -289,9 +291,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case downloadpage.RunEndedMsg:
 		return m, nil
+
+	case CloseRequestedMsg:
+		return m.closeRequested()
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok {
+		if m.closing.on {
+			return m.closeKey(key)
+		}
 		if m.about {
 			if name := key.String(); name == "esc" || name == "enter" || name == "space" || name == "q" {
 				m.about = false
@@ -412,7 +420,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	case entryReport:
 		m.openAddress(m.reportAddress())
 	case entryQuit:
-		return m.stop(true)
+		return m.closeRequested()
 	}
 	return m, nil
 }

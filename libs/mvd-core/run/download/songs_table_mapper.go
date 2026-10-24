@@ -75,10 +75,10 @@ func (m Model) tableColumns(w int) []tableColumn {
 		}
 	}
 
-	all := []tableColumn{
-		{columnMark, "", widthMark}, {columnCheck, "", widthCheck}, {columnIdx, "#", widthIdx}, {columnSong, "Song", 0},
-		{columnArtist, "Artist", widths[columnArtist]}, {columnVideo, "Video", widths[columnVideo]}, {columnAlbum, "Album", widths[columnAlbum]},
-		{columnQuality, "Quality", widths[columnQuality]}, {columnProgress, "Progress", widths[columnProgress]}, {columnStatus, "Status", widths[columnStatus]},
+	titles := map[string]string{columnArtist: "Artist", columnVideo: "Video", columnAlbum: "Album", columnQuality: "Quality", columnProgress: "Progress", columnStatus: "Status"}
+	all := []tableColumn{{columnMark, "", widthMark}, {columnCheck, "", widthCheck}, {columnIdx, "#", widthIdx}, {columnSong, "Song", 0}}
+	for _, name := range m.columnOrder() {
+		all = append(all, tableColumn{name, titles[name], widths[name]})
 	}
 	var out []tableColumn
 	for _, c := range all {

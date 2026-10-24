@@ -35,15 +35,36 @@ type SourceRemover interface {
 	RemoveSource(playlist int) bool
 }
 
-// swapEnabled says whether the person can swap the video of a song for one they name. It is off for
-// now: it needs the address of a video, and the way to ask for it is still to be decided.
-const swapEnabled = false
-
 // OpenVideoMsg asks the app to show a video in the person's browser.
 type OpenVideoMsg struct{ URL string }
 
 // waiting says whether a song waits for the person to choose it.
 func waiting(en *runstate.Entry) bool { return en != nil && en.State == engine.StatePlanned }
+
+// swappable says whether the video of a song can be swapped now: it waits, was saved, failed or was
+// rejected, and is not on its way.
+func swappable(en *runstate.Entry) bool {
+	if en == nil {
+		return false
+	}
+	switch en.State {
+	case engine.StatePlanned, engine.StateDone, engine.StateDuplicate, engine.StateFailed, engine.StateNotFound, engine.StateSkipped:
+		return true
+	}
+
+	return false
+}
+
+// pickOnly is a click on a song, away from its box: it alone is ticked, or when it was the only one
+// ticked the click takes the tick away.
+func (m *Model) pickOnly(id int) {
+	if len(m.picked) == 1 && m.picked[id] {
+		m.picked = nil
+
+		return
+	}
+	m.picked = map[int]bool{id: true}
+}
 
 // acceptable says whether a song can be accepted now: it waits, or it was rejected.
 func acceptable(en *runstate.Entry) bool {
@@ -228,14 +249,14 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		}
 		m.picked = nil
 	case "s":
-		if !swapEnabled {
-			m.flash("swapping a video is not available yet")
+		en := m.state.Entry(ids[0])
+		switch {
+		case len(ids) != 1:
+			m.flash("swap the video of one song at a time")
 
 			return m, nil, true
-		}
-		en := m.state.Entry(ids[0])
-		if len(ids) != 1 || !acceptable(en) {
-			m.flash("swap one song that waits")
+		case !swappable(en):
+			m.flash("this song is on its way: swap it when it is saved")
 
 			return m, nil, true
 		}
