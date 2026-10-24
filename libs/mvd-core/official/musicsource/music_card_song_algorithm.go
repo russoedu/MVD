@@ -10,19 +10,27 @@ import (
 // the song it names. ok is false when the page has no such card or names several songs
 // (a compilation or a mix, where the card cannot say which one this upload is).
 func SongFromWatchPage(html []byte) (artist, title string, ok bool) {
+	artist, title, _, ok = SongCardFromWatchPage(html)
+
+	return artist, title, ok
+}
+
+// SongCardFromWatchPage is SongFromWatchPage with the album the card names the song under, which
+// is empty when it names none.
+func SongCardFromWatchPage(html []byte) (artist, title, album string, ok bool) {
 	raw := ExtractJSONAfter(html, "var ytInitialData = ")
 	if raw == nil {
 		raw = ExtractJSONAfter(html, `window["ytInitialData"] = `)
 	}
 	if raw == nil {
-		return "", "", false
+		return "", "", "", false
 	}
 	var root interface{}
 	if err := json.Unmarshal(raw, &root); err != nil {
-		return "", "", false
+		return "", "", "", false
 	}
 
-	type song struct{ artist, title string }
+	type song struct{ artist, title, album string }
 	var cards []song
 	var walk func(node interface{})
 	walk = func(node interface{}) {
@@ -31,8 +39,12 @@ func SongFromWatchPage(html []byte) (artist, title string, ok bool) {
 			if card, isCard := n["videoAttributeViewModel"].(map[string]interface{}); isCard {
 				name, _ := card["title"].(string)
 				by, _ := card["subtitle"].(string)
+				album := ""
+				if second, isMap := card["secondarySubtitle"].(map[string]interface{}); isMap {
+					album, _ = second["content"].(string)
+				}
 				if name = strings.TrimSpace(name); name != "" {
-					cards = append(cards, song{artist: strings.TrimSpace(by), title: name})
+					cards = append(cards, song{artist: strings.TrimSpace(by), title: name, album: strings.TrimSpace(album)})
 				}
 			}
 			for _, v := range n {
@@ -58,7 +70,7 @@ func SongFromWatchPage(html []byte) (artist, title string, ok bool) {
 		}
 	}
 	if len(distinct) != 1 || distinct[0].artist == "" {
-		return "", "", false
+		return "", "", "", false
 	}
-	return distinct[0].artist, distinct[0].title, true
+	return distinct[0].artist, distinct[0].title, distinct[0].album, true
 }

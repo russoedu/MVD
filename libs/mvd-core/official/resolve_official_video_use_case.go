@@ -121,6 +121,9 @@ type Identified struct {
 	still *Version
 }
 
+// Album is the album the music card of the video names the song under, "" when it names none.
+func (i Identified) Album() string { return i.song.Album }
+
 // Named returns the artist and the title a music database gave the song, when it did.
 func (i Identified) Named() (artist, title string, ok bool) {
 	if i.song.Title == "" || len(i.song.Artists) == 0 {

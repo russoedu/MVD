@@ -21,9 +21,9 @@ func (r *Resolver) songOfUpload(videoID, title, channel string, durationSec int,
 	// there no other source is asked.
 	if !artTrack {
 		if page, err := r.get(r.WatchBase + videoID); err == nil {
-			if artist, name, ok := musicsource.SongFromWatchPage(page); ok {
+			if artist, name, album, ok := musicsource.SongCardFromWatchPage(page); ok {
 				logf("[official] %s: the music card of the video names it %q by %q", videoID, name, artist)
-				song.Title, song.Artists = name, trackfind.ArtistNames(artist)
+				song.Title, song.Album, song.Artists = name, album, trackfind.ArtistNames(artist)
 				return song, true
 			}
 		}

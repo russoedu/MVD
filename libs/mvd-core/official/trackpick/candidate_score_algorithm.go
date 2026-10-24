@@ -12,6 +12,8 @@ import (
 // Song is what is known about the song to find a video for.
 type Song struct {
 	Title string
+	// Album is the album a music card names the song under, "" when none does.
+	Album string
 	// Artists are the names to accept in a video's title or channel; the first is
 	// the one searched for.
 	Artists []string

@@ -36,3 +36,14 @@ func TestSeveralSongsOrNoCardNameNothing(t *testing.T) {
 		t.Error("a card without an artist names nothing")
 	}
 }
+
+func TestTheMusicCardAlsoNamesTheAlbum(t *testing.T) {
+	artist, title, album, ok := SongCardFromWatchPage(page(oneCard))
+	if !ok || artist != "Bill Power" || title != "I Swear (Extended Club Mix)" || album != "I Swear" {
+		t.Errorf("got %q, %q, %q, %v", artist, title, album, ok)
+	}
+	noAlbum := `{"videoAttributeViewModel":{"title":"Song","subtitle":"Band"}}`
+	if _, _, album, ok := SongCardFromWatchPage(page(noAlbum)); !ok || album != "" {
+		t.Errorf("a card with no album gave %q, %v", album, ok)
+	}
+}
