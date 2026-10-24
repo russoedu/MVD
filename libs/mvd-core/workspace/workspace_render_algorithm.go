@@ -155,6 +155,11 @@ func (m Model) summaryLine() string {
 		plain += "  " + failed
 		line += "  " + look.Red.Render(failed)
 	}
+	if unread := m.unreadLinks(); unread > 0 {
+		said := fmt.Sprintf("✗ %d %s could not be read", unread, plural("link", unread))
+		plain += "  " + said
+		line += "  " + look.Red.Render(said)
+	}
 	const label = "  ·  Videos in "
 	hint := "  ·  " + menubar.ShortcutLabel("Ctrl+Shift+O") + " opens it"
 	room := m.width - ansi.StringWidth(plain) - ansi.StringWidth(label) - 2
@@ -168,4 +173,26 @@ func (m Model) summaryLine() string {
 	}
 
 	return line + look.Dim.Render(label) + look.Text.Render(cells.TruncateMiddle(m.cfg.OutputDir, room)) + look.Dim.Render(hint)
+}
+
+// unreadLinks is how many links of the run could not be read at all, a different thing from a song
+// that failed: nothing of them was listed.
+func (m Model) unreadLinks() int {
+	n := 0
+	for _, pl := range m.screen.State().Playlists {
+		if pl.Err != "" {
+			n++
+		}
+	}
+
+	return n
+}
+
+// plural is the noun, with an s when there is not exactly one.
+func plural(noun string, n int) string {
+	if n == 1 {
+		return noun
+	}
+
+	return noun + "s"
 }

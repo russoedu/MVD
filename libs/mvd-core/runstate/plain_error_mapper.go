@@ -28,7 +28,7 @@ var plainErrors = []struct {
 	{[]string{"not available in your country", "blocked it in your country", "blocked in your country", "geo restricted", "geo-restricted"},
 		"This video is not available in your country."},
 	{[]string{"video unavailable", "this video is unavailable", "video is no longer available", "has been removed", "been terminated", "does not exist", "this video has been"},
-		"This video is unavailable: it may be private, removed or not exist."},
+		"This video is unavailable: it may be private or removed, or the link may be wrong."},
 	{[]string{"http error 429", "too many requests", "rate limit"},
 		"YouTube is limiting requests for now. Wait a few minutes, then retry."},
 	{[]string{"getaddrinfo", "name resolution", "unable to download webpage", "timed out", "connection reset", "connection refused", "network is unreachable", "no route to host", "temporary failure", "ssl", "unable to connect"},

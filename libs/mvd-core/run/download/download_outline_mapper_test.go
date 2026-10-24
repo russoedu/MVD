@@ -14,7 +14,7 @@ func TestDownloadOutlineWindowsALongList(t *testing.T) {
 	if len(out.Items) != 6 || !out.Items[4].Selected {
 		t.Fatalf("items: %+v", out.Items)
 	}
-	if out.Items[4].Value != "downloading 34%" || out.Items[2].Value != "failed: This video is unavailable: it may be private, removed or not exist." {
+	if out.Items[4].Value != "downloading 34%" || out.Items[2].Value != "failed: This video is unavailable: it may be private or removed, or the link may be wrong." {
 		t.Errorf("values: %q, %q", out.Items[4].Value, out.Items[2].Value)
 	}
 	if len(out.Keys) == 0 {

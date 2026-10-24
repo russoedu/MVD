@@ -194,3 +194,18 @@ func TestWhenARunEndsWhatWasSaidAtItsStartMakesRoomForHowItWent(t *testing.T) {
 		t.Errorf("the summary is not shown: %s", screen)
 	}
 }
+
+func TestTheSummaryMentionsALinkThatCouldNotBeReadAtAll(t *testing.T) {
+	m, _ := started(t, false)
+	m = finishRun(t, m, 1, 0)
+	state := m.screen.State()
+	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(state.Playlists), URL: "https://bad"}})
+	state.Apply(engine.EvPlaylistFailed{Playlist: len(state.Playlists) - 1, Err: "not a valid URL"})
+	state.Apply(engine.EvIdle{})
+	if got := ansi.Strip(m.summaryLine()); !strings.Contains(got, "1 link could not be read") || !strings.Contains(got, "1 downloaded") {
+		t.Errorf("the summary says %q", got)
+	}
+	if plural("link", 2) != "links" || plural("link", 1) != "link" {
+		t.Error("the plural is wrong")
+	}
+}
