@@ -137,7 +137,7 @@ func (m Model) liveTitle() string {
 	if done > 0 {
 		parts = append(parts, fmt.Sprintf("%d downloaded", done))
 	}
-	return "MVD · Review  ·  " + strings.Join(parts, " · ")
+	return "MVD · Choose what to download  ·  " + strings.Join(parts, " · ")
 }
 
 // waiting is true for a song of a live review that has not been looked up yet.
@@ -394,8 +394,8 @@ func (m Model) hints() []keybar.Hint {
 	}
 	if m.live != nil {
 		return []keybar.Hint{
-			{Key: "o", Desc: "open"}, {Key: "c", Desc: "confirm"}, {Key: "r", Desc: "replace"}, {Key: "u", Desc: "original"}, {Key: "x", Desc: "skip"},
-			{Key: "a", Desc: "send all"}, {Key: "esc", Desc: "downloads"},
+			{Key: "o", Desc: "open"}, {Key: "c", Desc: "download"}, {Key: "r", Desc: "swap video"}, {Key: "u", Desc: "original"}, {Key: "x", Desc: "cancel song"},
+			{Key: "a", Desc: "download all"}, {Key: "esc", Desc: "progress"},
 		}
 	}
 	return []keybar.Hint{

@@ -24,10 +24,10 @@ func TestWhileTheToolsAreBeingFetchedStartCannotBeUsedAndSaysWhy(t *testing.T) {
 	state := &ToolsState{Message: "Getting the download tools (one time): yt-dlp, ffmpeg..."}
 	m := withTools(state, "https://a")
 	buttons := m.buttons()
-	if !buttons[0].disabled || !buttons[1].disabled {
-		t.Errorf("Start and Look up first should be disabled: %+v", buttons)
+	if !buttons[0].disabled {
+		t.Errorf("Load playlists should be disabled: %+v", buttons)
 	}
-	if buttons[2].disabled {
+	if buttons[1].disabled {
 		t.Error("Add link should still work while the tools come")
 	}
 	if screen := screenOf(m); !strings.Contains(screen, "Getting the download tools") {

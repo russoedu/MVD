@@ -14,8 +14,7 @@ const topRows = 1
 
 // The buttons of the toolbar, and the Run menu entries that do the same.
 const (
-	entryStart       = "Start"
-	entryReview      = "Look up songs first"
+	entryStart       = "Load playlists"
 	entryAddLink     = "Add link…"
 	entryPause       = "Pause"
 	entryResume      = "Resume"
@@ -37,7 +36,7 @@ func (m Model) buttons() []button {
 	busy := m.starting || m.stopping
 	if m.finished() {
 		// The work is over: show where it went, and offer what comes next.
-		out := []button{{"Open folder", entryOpenFolder, false}, {"► Start again", entryStart, busy}}
+		out := []button{{"Open folder", entryOpenFolder, false}, {"► Load playlists again", entryStart, busy}}
 		if m.screen.State().Tally().Failed > 0 {
 			out = append(out, button{"Retry failed", entryRetry, busy})
 		}
@@ -48,8 +47,7 @@ func (m Model) buttons() []button {
 		_, waiting := m.toolsWaiting()
 		nothing := busy || waiting || len(m.session.Sources()) == 0 // there is nothing to download, or no tool to do it with
 		return []button{
-			{"► Start", entryStart, nothing},
-			{"Look up first", entryReview, nothing},
+			{"► Load playlists", entryStart, nothing},
 			{"+ Add link", entryAddLink, busy},
 		}
 	}
@@ -131,7 +129,6 @@ func (m Model) refreshRunMenus() Model {
 	nothing := len(m.session.Sources()) == 0
 	_, waiting := m.toolsWaiting()
 	m.bar.SetEnabled(entryStart, !running && !busy && !nothing && !waiting)
-	m.bar.SetEnabled(entryReview, !running && !busy && !nothing && !waiting)
 	m.bar.SetEnabled(entryPause, running && !busy && !m.run.Paused())
 	m.bar.SetEnabled(entryResume, running && !busy && m.run.Paused())
 	m.bar.SetEnabled(entryStop, running && !busy)
@@ -145,9 +142,6 @@ func (m Model) refreshRunMenus() Model {
 func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 	switch name {
 	case entryStart:
-		next, cmd := m.start(false)
-		return next, cmd, true
-	case entryReview:
 		next, cmd := m.start(true)
 		return next, cmd, true
 	case entryPause, entryResume:

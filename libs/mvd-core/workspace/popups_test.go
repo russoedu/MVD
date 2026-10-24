@@ -236,9 +236,9 @@ func TestTheIconsOnARowChangeAndRemoveIt(t *testing.T) {
 	}
 }
 
-func TestTheButtonsStandUnderThePlaylistsAndStartIsTheFirst(t *testing.T) {
+func TestTheButtonsStandUnderThePlaylistsAndLoadIsTheFirst(t *testing.T) {
 	m := listOf("https://a")
-	x, y, w, ok := m.buttonRows()
+	_, y, _, ok := m.buttonRows()
 	if !ok {
 		t.Fatal("no buttons")
 	}
@@ -246,8 +246,6 @@ func TestTheButtonsStandUnderThePlaylistsAndStartIsTheFirst(t *testing.T) {
 	if !strings.Contains(screen[y], entryStart) {
 		t.Errorf("the first button row is %q", screen[y])
 	}
-	m = click(m, x+w/2, y+1) // Look up songs first
-	_ = m
 }
 
 type fakeClipboard struct{ text string }

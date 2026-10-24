@@ -415,7 +415,7 @@ func (m Model) emptyEntriesText() string {
 	case len(m.state.Playlists) == 0:
 		return "The songs of each link show here, once you add one."
 	case m.editable:
-		return "Not looked up yet. Press Start (Ctrl+R) to download, or Look up first (Ctrl+Shift+R) to choose which songs."
+		return "Nothing loaded yet. Press Load playlists (Ctrl+R) to see the songs of each playlist, then choose what to download."
 	}
 	return "No songs to show here."
 }

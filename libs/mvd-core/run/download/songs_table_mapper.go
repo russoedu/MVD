@@ -229,7 +229,7 @@ func entryStatus(en *runstate.Entry) (word, colour string) {
 	case engine.StateFailed:
 		return "failed", c.Error
 	case engine.StatePlanned:
-		return "chosen", c.Dim
+		return "to choose", c.Dim
 	case engine.StateDone:
 		switch {
 		case en.Official:

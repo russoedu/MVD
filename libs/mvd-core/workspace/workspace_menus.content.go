@@ -51,7 +51,6 @@ func menus() []menubar.Menu {
 		}},
 		{Name: "Run", Entries: []menubar.Entry{
 			{Name: entryStart, Shortcut: "Ctrl+R"},
-			{Name: entryReview, Shortcut: "Ctrl+Shift+R"},
 			{Separator: true},
 			{Name: entryPause, Shortcut: "Ctrl+P"},
 			{Name: entryResume, Shortcut: "Ctrl+P"},

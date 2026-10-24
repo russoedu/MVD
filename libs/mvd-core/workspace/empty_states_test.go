@@ -25,7 +25,7 @@ func TestAnEmptyListShowsItsHelpInsteadOfBlankBoxes(t *testing.T) {
 
 func TestALinkThatWasNotLookedUpYetSaysHowToGoOn(t *testing.T) {
 	screen := screenOf(listOf("https://www.youtube.com/watch?v=abc"))
-	if !strings.Contains(screen, "Not looked up yet") || !strings.Contains(screen, "Ctrl+R") {
+	if !strings.Contains(screen, "Nothing loaded yet") || !strings.Contains(screen, "Ctrl+R") {
 		t.Errorf("nothing says what to do after adding a link:\n%s", screen)
 	}
 	if strings.Contains(screen, "show here once you add one") {
@@ -71,7 +71,7 @@ func TestPointingAtAButtonThatCannotBeUsedSaysWhy(t *testing.T) {
 
 func TestWhileNothingRunsTheBottomLineListsTheKeysThatStartTheWork(t *testing.T) {
 	screen := screenOf(listOf("https://a"))
-	for _, want := range []string{"F1 shortcuts", "Ctrl+L add link", "Ctrl+R start", "Ctrl+O open list"} {
+	for _, want := range []string{"F1 shortcuts", "Ctrl+L add link", "Ctrl+R load playlists", "Ctrl+O open list"} {
 		if !strings.Contains(screen, want) {
 			t.Errorf("the key hints lack %q: %s", want, screen)
 		}

@@ -66,7 +66,7 @@ func TestAFinishedRunOffersTheIdleButtonsAndNotPauseOrStop(t *testing.T) {
 		t.Fatalf("finished %v active %v", m.finished(), m.active())
 	}
 	got := labels(m.buttons())
-	if got != "Open folder|► Start again|+ Add link" {
+	if got != "Open folder|► Load playlists again|+ Add link" {
 		t.Errorf("the buttons are %q", got)
 	}
 	if strings.Contains(got, "Pause") || strings.Contains(got, "Stop") {
@@ -77,7 +77,7 @@ func TestAFinishedRunOffersTheIdleButtonsAndNotPauseOrStop(t *testing.T) {
 func TestAFinishedRunWithFailuresOffersRetryToo(t *testing.T) {
 	m, _ := started(t, false)
 	m = finishRun(t, m, 1, 2)
-	if got := labels(m.buttons()); got != "Open folder|► Start again|Retry failed|+ Add link" {
+	if got := labels(m.buttons()); got != "Open folder|► Load playlists again|Retry failed|+ Add link" {
 		t.Errorf("the buttons are %q", got)
 	}
 }

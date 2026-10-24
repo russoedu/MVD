@@ -54,7 +54,7 @@ func TestASecondNewListGetsAnotherDraftName(t *testing.T) {
 func TestWithoutAFolderOfListsTheListIsAskedToBeSavedAsBefore(t *testing.T) {
 	m := sized(New(Host{Start: func(config.Config, []string, []engine.PlannedEntry, bool) (ListRun, error) { return newFakeRun(), nil }}, config.Config{OutputDir: t.TempDir()}, downloadlist.New([]string{"https://youtu.be/x"})))
 	m, _ = choose(m, entryStart)
-	if m.asking != askSaveThenStart {
+	if m.asking != askSaveThenReview {
 		t.Errorf("asking %v, want the question where to save", m.asking)
 	}
 }
