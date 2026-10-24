@@ -24,6 +24,13 @@ main.terminal-window {
   position: relative;
   flex: 1;
   min-height: 0;
+  background: var(--terminal-background, #000);
+}
+
+/* The terminal is whole cells, so a strip is left beside the last column and under the last
+   row. The page wears the colour the program drew there (see useFollowTerminalBackground). */
+main.terminal-window .xterm-viewport {
+  background-color: var(--terminal-background, #000) !important;
 }
 
 /* While a popup is open over the terminal, the page around it steps back too. */
