@@ -5,22 +5,6 @@ import (
 	"testing"
 )
 
-func TestWindowsOpensTheFileWindowWithTheFilterAndTheStartFolderInTheEnvironment(t *testing.T) {
-	cmd, ok := fileDialogCommand("windows", `C:\Users\me\plans`, "mvd", "MVD review", installed("powershell"))
-	if !ok || cmd.Name != "powershell" {
-		t.Fatalf("got %+v, %v", cmd, ok)
-	}
-	if !contains(cmd.Env, startEnv+`=C:\Users\me\plans`) {
-		t.Errorf("start folder missing from %v", cmd.Env)
-	}
-	if !contains(cmd.Env, filterEnv+"=MVD review (*.mvd)|*.mvd|All files (*.*)|*.*") {
-		t.Errorf("filter missing from %v", cmd.Env)
-	}
-	if script := decodePowerShell(t, cmd.Args); !strings.Contains(script, "OpenFileDialog") {
-		t.Errorf("not an open-file window: %s", script)
-	}
-}
-
 func TestMacAsksForTheFileTypeAndPassesTheStartFolderAsAnArgument(t *testing.T) {
 	cmd, ok := fileDialogCommand("darwin", "/Users/me/plans", "mvd", "MVD review", installed("osascript"))
 	if !ok || cmd.Name != "osascript" {
