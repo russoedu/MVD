@@ -179,7 +179,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.run, m.stopping, m.reviewing = nil, false, false
 		m.screen = m.screen.Detach().WithState(m.session.Preview())
 		if unfinished := left.Queued + left.Running; unfinished > 0 && !msg.quit {
-			m.done = fmt.Sprintf("Stopped: %d saved, %d not downloaded. Start again to carry on.", left.Done, unfinished)
+			m.done = fmt.Sprintf("Stopped: %d saved, %d not downloaded. Load the playlists again to carry on.", left.Done, unfinished)
 		}
 		if msg.quit {
 			return m, m.quit()
@@ -301,6 +301,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	if m.reviewing {
+		if !isInput(msg) {
+			// What is not a key or the pointer is the screen's own news too: the events of the run
+			// it shows. It keeps taking them while the review is in front, so it is up to date
+			// when the person leaves the review.
+			screen, screenCmd := m.screen.Update(msg)
+			m.screen = screen.(downloadpage.Model)
+			next, editorCmd := m.toEditor(msg)
+			return next, tea.Batch(screenCmd, editorCmd)
+		}
 		return m.toEditor(msg)
 	}
 	return m.toScreen(msg)
@@ -552,7 +561,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		}
 	}
 	if m.session.Path() == "" {
-		p := askSaveThenStart
+		p := askSaveThenReview
 		if review {
 			p = askSaveThenReview
 		}
@@ -682,16 +691,16 @@ func (m Model) View() tea.View {
 	return view
 }
 
-// finished says whether the run has nothing more to do: every playlist was read, and the queue
-// is empty with no worker busy. A run held for the person to review is not finished: it waits
-// for them.
+// finished says whether the run has nothing more to do: every playlist was read, the queue
+// is empty with no worker busy, and no song is left waiting for the person to choose it. A song
+// that is not wanted is dealt with by stopping the run.
 func (m Model) finished() bool {
-	if m.run == nil || m.starting || m.stopping || m.reviewing || m.editor.Live() {
+	if m.run == nil || m.starting || m.stopping || m.reviewing {
 		return false
 	}
 	state := m.screen.State()
 
-	return state != nil && state.Idle && state.AllListed()
+	return state != nil && state.Idle && state.AllListed() && state.Tally().Planned == 0
 }
 
 // active says whether a run is going on that has to be stopped before the list can change: one
@@ -716,7 +725,7 @@ func (m Model) settle() Model {
 // settles says whether an entry needs the list to be free, and so ends a finished run first.
 func settles(name string) bool {
 	switch name {
-	case entryNew, entryOpen, entryStart, entryReview, entryAddLink,
+	case entryNew, entryOpen, entryStart, entryAddLink,
 		entryUndo, entryRedo, entryCut, entryPaste, entryDelete, entryMoveUp, entryMoveDown:
 		return true
 	}
@@ -767,4 +776,15 @@ func (m Model) draftPath() string {
 	}
 
 	return ""
+}
+
+// isInput says whether a message is the person at the keys or the pointer, which only the screen in
+// front takes.
+func isInput(msg tea.Msg) bool {
+	switch msg.(type) {
+	case tea.KeyPressMsg, tea.KeyReleaseMsg, tea.MouseMsg, tea.PasteMsg:
+		return true
+	}
+
+	return false
 }

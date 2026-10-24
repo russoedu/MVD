@@ -26,7 +26,7 @@ func TestTheEntriesPaneSaysWhatIsMissingAndHowToGetIt(t *testing.T) {
 	}
 	m = sampleModel(t)
 	m.editable = true
-	if got := m.emptyEntriesText(); !strings.Contains(got, "Start (Ctrl+R)") || !strings.Contains(got, "Look up first (Ctrl+Shift+R)") {
+	if got := m.emptyEntriesText(); !strings.Contains(got, "Load playlists (Ctrl+R)") {
 		t.Errorf("a list not looked up says %q", got)
 	}
 	m.editable = false

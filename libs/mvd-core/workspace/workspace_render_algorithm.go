@@ -117,7 +117,7 @@ func (m Model) idleHints() string {
 	return strings.Join([]string{
 		menubar.ShortcutLabel("F1") + " shortcuts",
 		menubar.ShortcutLabel("Ctrl+L") + " add link",
-		menubar.ShortcutLabel("Ctrl+R") + " start",
+		menubar.ShortcutLabel("Ctrl+R") + " load playlists",
 		menubar.ShortcutLabel("Ctrl+O") + " open list",
 		menubar.ShortcutLabel("Ctrl+,") + " preferences",
 	}, "  ·  ")

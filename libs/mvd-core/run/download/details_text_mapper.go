@@ -126,7 +126,7 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 	case engine.StateFailed:
 		return "✗ " + cells.Display(runstate.PlainError(en.Err)) + " Press r to try again.", CellStyle{Fg: c.Error}
 	case engine.StatePlanned:
-		return "Chosen, and not downloaded yet.", CellStyle{Fg: c.Dim}
+		return "Found, and waiting for you to choose it.", CellStyle{Fg: c.Dim}
 	}
 	return "", CellStyle{Fg: c.Text}
 }

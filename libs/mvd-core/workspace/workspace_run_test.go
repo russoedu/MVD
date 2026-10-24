@@ -1,6 +1,9 @@
 package workspace
 
 import (
+	"time"
+
+	tea "charm.land/bubbletea/v2"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -51,21 +54,22 @@ func started(t *testing.T, review bool) (Model, *fakeRun) {
 	}
 	cfg := config.Config{OutputDir: t.TempDir()}
 	m := sized(New(host, cfg, list))
-	entry := entryStart
-	if review {
-		entry = entryReview
-	}
-	m, cmd := choose(m, entry)
+	m, cmd := choose(m, entryStart)
 	if cmd == nil || !m.starting {
 		t.Fatal("the run did not begin to start")
 	}
 	next, _ := m.Update(cmd())
-	return next.(Model), fake
+	m = next.(Model)
+	if !review {
+		// Loading the playlists opens the choosing of songs; this is the person leaving it for the progress.
+		m.reviewing = false
+	}
+	return m, fake
 }
 
 func TestStartingRunsTheListAndPauseAndRetryAllReachTheRun(t *testing.T) {
 	m, fake := started(t, false)
-	if !m.running() || fake.hold {
+	if !m.running() || !fake.hold {
 		t.Fatalf("running %v hold %v", m.running(), fake.hold)
 	}
 	m, _ = choose(m, entryPause)
@@ -82,7 +86,7 @@ func TestStartingRunsTheListAndPauseAndRetryAllReachTheRun(t *testing.T) {
 	}
 }
 
-func TestGettingDataForReviewHoldsTheSongs(t *testing.T) {
+func TestLoadingThePlaylistsHoldsTheSongsForChoosing(t *testing.T) {
 	m, fake := started(t, true)
 	if !fake.hold || !m.reviewing {
 		t.Errorf("hold %v reviewing %v", fake.hold, m.reviewing)
@@ -129,4 +133,48 @@ func TestAListDoubleClickedWhileTheAppIsOpenIsOpenedUnlessDownloadsAreGoing(t *t
 	if !strings.Contains(running.notice, "Stop the downloads") {
 		t.Errorf("notice %q", running.notice)
 	}
+}
+
+func TestTheProgressScreenKeepsTakingEventsWhileTheSongsAreBeingChosen(t *testing.T) {
+	fake := newFakeRun()
+	run := oneSourceRun{fake}
+	host := Host{ListDir: t.TempDir(), Start: func(config.Config, []string, []engine.PlannedEntry, bool) (ListRun, error) { return run, nil }}
+	list := downloadlist.New([]string{"https://youtu.be/x"})
+	if err := list.Save(filepath.Join(t.TempDir(), "a.mvd")); err != nil {
+		t.Fatal(err)
+	}
+	m := sized(New(host, config.Config{OutputDir: t.TempDir()}, list))
+	m, start := choose(m, entryStart)
+	next, begun := m.Update(start())
+	m = next.(Model)
+	if !m.reviewing {
+		t.Fatal("loading the playlists did not open the choosing of songs")
+	}
+
+	// Each command of the start waits for something; the screen's one waits for an event of the run.
+	got := make(chan tea.Msg, 4)
+	batch, _ := begun().(tea.BatchMsg)
+	for _, c := range batch {
+		if c != nil {
+			go func(c tea.Cmd) { got <- c() }(c)
+		}
+	}
+	fake.events <- engine.EvPlaylistListed{Playlist: 0, Title: "Songs", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, VideoID: "a", Title: "A"}}}
+	timeout := time.After(2 * time.Second)
+	for len(m.screen.State().Playlists) == 0 {
+		select {
+		case msg := <-got:
+			next, _ := m.Update(msg)
+			m = next.(Model)
+		case <-timeout:
+			t.Fatal("the screen did not take the event while the songs were being chosen")
+		}
+	}
+}
+
+// oneSourceRun is a fake run that has one playlist address, so its events have a playlist to land on.
+type oneSourceRun struct{ *fakeRun }
+
+func (oneSourceRun) Sources() []engine.PlaylistSource {
+	return []engine.PlaylistSource{{Index: 0, URL: "https://youtu.be/x"}}
 }
