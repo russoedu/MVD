@@ -110,6 +110,10 @@ func overlayMenu(screen, barView string) string {
 // idleHints is the line of keys at the bottom while nothing runs: the few that start the work,
 // and the one that lists them all.
 func (m Model) idleHints() string {
+	if _, _, _, drawn := m.buttonRows(); !drawn && !m.reviewing && m.width > 0 {
+		// The window is too narrow for the buttons: the Run menu has what they did.
+		return "No room for buttons at this width: use the Run menu  ·  " + menubar.ShortcutLabel("F1") + " shortcuts"
+	}
 	return strings.Join([]string{
 		menubar.ShortcutLabel("F1") + " shortcuts",
 		menubar.ShortcutLabel("Ctrl+L") + " add link",

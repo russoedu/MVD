@@ -180,3 +180,17 @@ func TestOpenFolderAsksTheHostAndSaysWhenThereIsNone(t *testing.T) {
 	}
 	_ = os.Remove(dir)
 }
+
+func TestWhenARunEndsWhatWasSaidAtItsStartMakesRoomForHowItWent(t *testing.T) {
+	m, _ := started(t, false)
+	m.done = "Kept this list as a draft: somewhere"
+	m = finishRun(t, m, 1, 0)
+	next, _ := m.Update(saveTickMsg{})
+	m = next.(Model)
+	if m.done != "" {
+		t.Errorf("the old message is still there: %q", m.done)
+	}
+	if screen := screenOf(m); !strings.Contains(screen, "1 downloaded") {
+		t.Errorf("the summary is not shown: %s", screen)
+	}
+}

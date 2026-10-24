@@ -37,7 +37,7 @@ func (m Model) downloadProps(w, h int) Props {
 	showOutput := m.fullLog || w >= minWideWidth
 	p.PlaylistCount = len(m.state.Playlists)
 
-	p.Counters, p.HeaderRight = m.headerTexts()
+	p.Counters, p.HeaderRight = m.headerTexts(w - 2)
 	p.Counters = cells.Truncate(p.Counters, w-2)
 
 	// The app has a footer under the output only when there is something for it.
@@ -124,7 +124,7 @@ func (m Model) downloadProps(w, h int) Props {
 }
 
 // headerTexts are the counters inside the header box and the label on its top edge.
-func (m Model) headerTexts() (counters, right string) {
+func (m Model) headerTexts(room int) (counters, right string) {
 	t := m.state.Tally()
 	elapsed := runstate.HumanDuration(m.state.Elapsed())
 
@@ -155,7 +155,30 @@ func (m Model) headerTexts() (counters, right string) {
 	if m.state.Idle {
 		parts[1] = look.Dim.Render(fmt.Sprintf("  Running %d", t.Running))
 	}
-	return strings.Join(parts, "   "), right
+	// In a narrow window the counters that say nothing go first (Dup, Better and Official, when
+	// they are zero), so what is left is whole and the one that matters, Failed, is not cut.
+	counts := map[int]int{3: t.Official, 4: t.Better, 5: t.Duplicate}
+	for _, at := range []int{5, 4, 3} {
+		if ansi.StringWidth(strings.Join(parts, "   ")) <= room {
+			break
+		}
+		if counts[at] == 0 {
+			parts[at] = ""
+		}
+	}
+	return strings.Join(keepNonEmpty(parts), "   "), right
+}
+
+// keepNonEmpty is the strings that are not empty, in order.
+func keepNonEmpty(parts []string) []string {
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+
+	return out
 }
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the

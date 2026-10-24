@@ -147,3 +147,28 @@ func TestLeavingPreferencesWithNothingChangedSaysNothing(t *testing.T) {
 		t.Errorf("closing an untouched popup said something:\n%s", screen)
 	}
 }
+
+func TestF1ShowsTheKeyboardShortcutsOverThePreferencesAndEscComesBackToThem(t *testing.T) {
+	a, _, _, _, _ := openedPreferences(t)
+	next, _ := a.Update(tea.KeyPressMsg{Code: tea.KeyF1})
+	a = next.(workspaceApp)
+	if !a.shortcutsOpen || !strings.Contains(ansi.Strip(a.View().Content), "Keyboard shortcuts") {
+		t.Fatalf("F1 did not open the shortcuts over the preferences")
+	}
+	next, _ = a.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	a = next.(workspaceApp)
+	if a.shortcutsOpen || !a.inPrefs {
+		t.Errorf("Esc should close the shortcuts and leave the preferences open: shortcuts %v, preferences %v", a.shortcutsOpen, a.inPrefs)
+	}
+	if !strings.Contains(ansi.Strip(a.View().Content), "Preferences") {
+		t.Error("the preferences are not showing again")
+	}
+}
+
+func TestClosingThePreferencesClosesTheShortcutsToo(t *testing.T) {
+	a, _, _, _, _ := openedPreferences(t)
+	a.shortcutsOpen = true
+	if a = a.closePrefs(false); a.shortcutsOpen {
+		t.Error("the shortcuts stayed open after the preferences closed")
+	}
+}

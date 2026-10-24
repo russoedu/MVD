@@ -110,6 +110,8 @@ type Model struct {
 	// done is what an action that worked says, and caution what it warns of; both go away at the
 	// next key or click, while an error stays until something replaces it.
 	done, caution string
+	// wasFinished is whether the run had finished when the screen was last drawn.
+	wasFinished bool
 	width, height int
 }
 
@@ -134,6 +136,13 @@ func (m Model) running() bool { return m.run != nil }
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if ws, ok := next.(Model); ok {
+		// When a run ends, what was said while it began (a draft was kept...) gives way to how it went.
+		if finished := ws.finished(); finished != ws.wasFinished {
+			ws.wasFinished = finished
+			if finished {
+				ws.done, ws.caution = "", ""
+			}
+		}
 		next = ws.refreshMenus().refreshRunMenus().keepRoomForButtons()
 	}
 	return next, cmd

@@ -334,7 +334,7 @@ func (m Model) hintLine() string {
 	case m.welcome:
 		return look.Yellow.Render("Welcome! Check where your videos go, then press s to save.")
 	}
-	return look.Dim.Render("↑↓ move  ←→ change  enter edit  tab page  s save  esc close")
+	return look.Dim.Render("↑↓ move  ←→ change  enter edit  tab page  s save  esc close  f1 all keys")
 }
 
 // swatchRow draws a row of colours, two cells each; a colour that is "" is left blank.
