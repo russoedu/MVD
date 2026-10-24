@@ -37,7 +37,7 @@ func (m Model) downloadProps(w, h int) Props {
 	showOutput := m.fullLog || w >= minWideWidth
 	p.PlaylistCount = len(m.state.Playlists)
 
-	p.Counters, p.HeaderRight = m.headerTexts(w - 2)
+	p.Counters, p.HeaderRight = m.headerTexts()
 	p.Counters = cells.Truncate(p.Counters, w-2)
 
 	// The app has a footer under the output only when there is something for it.
@@ -71,6 +71,9 @@ func (m Model) downloadProps(w, h int) Props {
 
 	// Output.
 	p.OutputRows = func(w, h int) ([]OutputRow, int) {
+		if !m.technical {
+			return m.detailRows(w), 0
+		}
 		lines, first := m.outputWindow(w, h)
 		if len(m.outputLines()) == 0 {
 			return emptyOutputRows(m.emptyOutputText(), w), 0
@@ -83,11 +86,11 @@ func (m Model) downloadProps(w, h int) Props {
 	}
 	p.OutputTitle = m.outputTitle()
 	p.OutputRight = ""
-	if m.follow {
-		p.OutputRight = "follow"
-	}
-	if m.outScroll > 0 {
-		p.OutputRight = fmt.Sprintf("↑%d", m.outScroll)
+	if m.technical {
+		p.OutputRight = "technical log"
+		if m.outScroll > 0 {
+			p.OutputRight = fmt.Sprintf("↑%d", m.outScroll)
+		}
 	}
 	p.OutputFocus = m.focus == paneOutput
 
@@ -124,61 +127,47 @@ func (m Model) downloadProps(w, h int) Props {
 }
 
 // headerTexts are the counters inside the header box and the label on its top edge.
-func (m Model) headerTexts(room int) (counters, right string) {
+func (m Model) headerTexts() (counters, right string) {
 	t := m.state.Tally()
 	elapsed := runstate.HumanDuration(m.state.Elapsed())
 
 	right = elapsed
 	if m.editable {
 		right = "" // nothing is running: there is no time to count
+	} else if m.paused {
+		right = "PAUSED · " + elapsed
 	} else if m.state.Idle {
 		right = "FINISHED · " + elapsed
 	} else if t.Downloading > 0 {
 		right = downloadingSummary(t) + " · " + elapsed
 	}
 
+	// What matters is always there, in everyday words; the rest only when it has something to say.
 	parts := []string{
-		look.Text.Render(fmt.Sprintf("Queue %d", t.Queued)),
-		look.Yellow.Render(fmt.Sprintf("%s Running %d", look.SpinnerFrames[m.spin], t.Running)),
+		look.Text.Render(fmt.Sprintf("Waiting %d", t.Queued)),
+		look.Yellow.Render(fmt.Sprintf("%s Downloading %d", look.SpinnerFrames[m.spin], t.Running)),
 		look.Green.Render(fmt.Sprintf("✓ Done %d", t.Done)),
-		look.Cyan.Render(fmt.Sprintf("⇄ Official %d", t.Official)),
-		look.Cyan.Render(fmt.Sprintf("↑ Better %d", t.Better)),
-		look.Dim.Render(fmt.Sprintf("≡ Dup %d", t.Duplicate)),
-		look.Red.Render(fmt.Sprintf("✗ Failed %d", t.Failed)),
+		look.Red.Render(fmt.Sprintf("✗ Failed %d", t.Failed+m.unreadableLinks())),
 	}
-	if t.NotFound > 0 {
-		parts = append(parts, look.Dim.Render(fmt.Sprintf("∅ Not found %d", t.NotFound)))
+	if m.state.Idle || m.paused {
+		parts[1] = look.Dim.Render(fmt.Sprintf("  Downloading %d", t.Running))
 	}
-	if t.Retried > 0 {
-		parts = append(parts, look.Cyan.Render(fmt.Sprintf("↻ Retried %d", t.Retried)))
-	}
-	if m.state.Idle {
-		parts[1] = look.Dim.Render(fmt.Sprintf("  Running %d", t.Running))
-	}
-	// In a narrow window the counters that say nothing go first (Dup, Better and Official, when
-	// they are zero), so what is left is whole and the one that matters, Failed, is not cut.
-	counts := map[int]int{3: t.Official, 4: t.Better, 5: t.Duplicate}
-	for _, at := range []int{5, 4, 3} {
-		if ansi.StringWidth(strings.Join(parts, "   ")) <= room {
-			break
-		}
-		if counts[at] == 0 {
-			parts[at] = ""
+	for _, extra := range []struct {
+		n     int
+		text  string
+		style func(...string) string
+	}{
+		{t.Official, "⇄ Official video", look.Cyan.Render},
+		{t.Better, "↑ Better quality", look.Cyan.Render},
+		{t.Duplicate, "≡ Already had", look.Dim.Render},
+		{t.NotFound, "∅ No official video", look.Dim.Render},
+		{t.Retried, "↻ Tried again", look.Cyan.Render},
+	} {
+		if extra.n > 0 {
+			parts = append(parts, extra.style(fmt.Sprintf("%s %d", extra.text, extra.n)))
 		}
 	}
-	return strings.Join(keepNonEmpty(parts), "   "), right
-}
-
-// keepNonEmpty is the strings that are not empty, in order.
-func keepNonEmpty(parts []string) []string {
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if p != "" {
-			out = append(out, p)
-		}
-	}
-
-	return out
+	return strings.Join(parts, "   "), right
 }
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the
@@ -192,12 +181,12 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 		finished, _, _ := m.state.PlaylistTally(pl)
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
 		if pl.Err != "" {
-			count = "error"
+			count = "can't read"
 		} else if !pl.Listed {
-			count = "listing"
+			count = "reading"
 		}
 		glyph, colour := m.playlistGlyph(pl)
-		title := cells.CellText(cells.Display(pl.Title))
+		title := cells.CellText(cells.Display(m.playlistName(pl)))
 		row := PlaylistsRow{
 			Mark: " ", Title: title, Count: count, Glyph: glyph,
 			GlyphStyle: CellStyle{Fg: colour},
@@ -256,9 +245,9 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 
 // entryHeader are the title and the label of the entries pane.
 func (m Model) entryHeader() (title, right string) {
-	title = "Entries"
+	title = "Songs"
 	if m.filterFailed {
-		title = "Entries (failed only)"
+		title = "Songs (failed only)"
 	}
 	if m.selPlaylist < len(m.state.Playlists) {
 		right = fmt.Sprintf("%d", len(m.visibleEntries()))
@@ -289,9 +278,9 @@ func (m Model) entryNotes(innerW int) []NotesRow {
 			notes = append(notes, NotesRow{Line: cells.CellText(l), LineStyle: CellStyle{Fg: look.Colours.Error}})
 		}
 	case !pl.Listed:
-		notes = []NotesRow{{Line: "listing playlist...", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
+		notes = []NotesRow{{Line: "reading this link...", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
 	case len(m.visibleEntries()) == 0 && m.filterFailed:
-		notes = []NotesRow{{Line: "no failed entries", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
+		notes = []NotesRow{{Line: "no failed songs", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
 	}
 	return notes
 }
@@ -315,9 +304,12 @@ func (m Model) outputFooter() outputFooter {
 	}
 	switch en.State {
 	case engine.StateDownloading, engine.StateMerging:
-		info := runstate.ProgressLine(en)
-		if en.State == engine.StateMerging {
-			info = "merging streams with ffmpeg"
+		info := progressText(en)
+		if m.technical {
+			info = runstate.ProgressLine(en)
+			if en.State == engine.StateMerging {
+				info = "merging streams with ffmpeg"
+			}
 		}
 		percent := en.Percent
 		if en.State == engine.StateMerging {
@@ -328,8 +320,13 @@ func (m Model) outputFooter() outputFooter {
 		f.bar = &barInfo{info: info, percent: percent}
 		f.lines = []string{"", look.Yellow.Render(info)}
 	case engine.StateFailed:
-		f.lines = []string{"", look.Red.Render("✗ " + cells.Display(runstate.PlainError(en.Err)))}
+		if m.technical {
+			f.lines = []string{"", look.Red.Render("✗ " + cells.Display(runstate.PlainError(en.Err)))}
+		}
 	case engine.StateDone:
+		if !m.technical {
+			break // the details say it
+		}
 		what := "original " + en.TargetID
 		if en.Official {
 			what = "official video " + en.TargetID
@@ -392,7 +389,7 @@ func (m Model) midWidth(w int) int {
 	if m.midW > 0 {
 		return max(minPane, min(m.midW, w-left-minPane))
 	}
-	return max(32, w*30/100)
+	return max(32, w*38/100)
 }
 
 // emptyPlaylistRows is what the playlists pane says while there is nothing in it: what to do
@@ -431,11 +428,11 @@ func (m Model) emptyEntriesText() string {
 func (m Model) emptyOutputText() string {
 	switch {
 	case m.selPlaylist < len(m.state.Playlists) && m.state.Playlists[m.selPlaylist].Err != "":
-		return "No output: this playlist could not be read."
+		return "Nothing to show: this link could not be read."
 	case m.editable || len(m.state.Playlists) == 0:
-		return "Nothing yet. What the downloader says shows here while it works."
+		return "Nothing yet. What happens to each song shows here while it downloads."
 	}
-	return "Nothing was written for this one."
+	return "Nothing to show for this one."
 }
 
 // emptyOutputRows is the text of the output pane, wrapped and dim, before anything has been written.
@@ -445,4 +442,17 @@ func emptyOutputRows(text string, w int) []OutputRow {
 		rows = append(rows, OutputRow{Line: cells.CellText(line), LineStyle: CellStyle{Fg: look.Colours.Dim}})
 	}
 	return rows
+}
+
+// unreadableLinks is how many links could not be read at all: no song of them is counted, and for
+// the person it is a failure all the same.
+func (m Model) unreadableLinks() int {
+	n := 0
+	for _, pl := range m.state.Playlists {
+		if pl.Err != "" {
+			n++
+		}
+	}
+
+	return n
 }

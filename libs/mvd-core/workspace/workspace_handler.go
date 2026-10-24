@@ -175,8 +175,12 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.runStarted(msg)
 
 	case runClosedMsg:
+		left := m.screen.State().Tally()
 		m.run, m.stopping, m.reviewing = nil, false, false
 		m.screen = m.screen.Detach().WithState(m.session.Preview())
+		if unfinished := left.Queued + left.Running; unfinished > 0 && !msg.quit {
+			m.done = fmt.Sprintf("Stopped: %d saved, %d not downloaded. Start again to carry on.", left.Done, unfinished)
+		}
 		if msg.quit {
 			return m, m.quit()
 		}
@@ -646,6 +650,8 @@ func (m Model) togglePause() Model {
 		m.run.Pause()
 		m.done = "Paused: the downloads under way finish, no new one starts"
 	}
+	m.screen = m.screen.WithPaused(m.run.Paused())
+
 	return m
 }
 

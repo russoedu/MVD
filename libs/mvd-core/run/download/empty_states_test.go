@@ -43,11 +43,11 @@ func TestTheOutputPaneSaysWhyItIsEmpty(t *testing.T) {
 	}
 	m.selPlaylist = 0
 	m.editable = true
-	if got := m.emptyOutputText(); !strings.Contains(got, "shows here while it works") {
+	if got := m.emptyOutputText(); !strings.Contains(got, "shows here while it downloads") {
 		t.Errorf("before a run it says %q", got)
 	}
 	m.editable = false
-	if got := m.emptyOutputText(); got != "Nothing was written for this one." {
+	if got := m.emptyOutputText(); got != "Nothing to show for this one." {
 		t.Errorf("during a run it says %q", got)
 	}
 }

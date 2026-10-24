@@ -209,3 +209,29 @@ func TestTheSummaryMentionsALinkThatCouldNotBeReadAtAll(t *testing.T) {
 		t.Error("the plural is wrong")
 	}
 }
+
+func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
+	m, _ := started(t, false)
+	state := m.screen.State()
+	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: 0, URL: "https://a"}})
+	state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "a", Entries: entriesOf(5)})
+	state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone})
+	state.Apply(engine.EvEntryState{Entry: 1, State: engine.StateDone})
+
+	next, _ := m.Update(runClosedMsg{})
+	if got := next.(Model).done; !strings.Contains(got, "Stopped: 2 saved, 3 not downloaded") {
+		t.Errorf("a stop says %q", got)
+	}
+}
+
+func TestPausingShowsInTheHeaderForAsLongAsTheDownloadsAreHeld(t *testing.T) {
+	m, run := started(t, false)
+	m = m.togglePause()
+	if !run.paused || !strings.Contains(screenOf(m), "PAUSED") {
+		t.Errorf("paused %v, screen:\n%s", run.paused, screenOf(m))
+	}
+	m = m.togglePause()
+	if strings.Contains(screenOf(m), "PAUSED") {
+		t.Error("it still says PAUSED after the downloads went on")
+	}
+}

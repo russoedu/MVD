@@ -43,7 +43,7 @@ func (m Model) renderLoading() string {
 	p := loading.Progress{Spin: m.spin, Detail: "Reading the songs of each playlist", Elapsed: runstate.HumanDuration(time.Since(m.state.Started))}
 	for _, pl := range m.state.Playlists {
 		p.Playlists = append(p.Playlists, loading.Playlist{
-			Name: pl.Title, Songs: len(pl.Entries), Listed: pl.Listed, Failed: pl.Err != "",
+			Name: m.playlistName(pl), Songs: len(pl.Entries), Listed: pl.Listed, Failed: pl.Err != "",
 		})
 	}
 	if m.confirmQuit {
@@ -64,15 +64,15 @@ func (m Model) outputLines() []string {
 }
 
 func (m Model) outputTitle() string {
-	if m.selPlaylist >= len(m.state.Playlists) {
-		return "Output"
+	if !m.technical || m.selPlaylist >= len(m.state.Playlists) {
+		return "Details"
 	}
 	pl := m.state.Playlists[m.selPlaylist]
 	if m.focus == paneLists || m.selectedEntry() == nil {
-		return cells.Display(pl.Title)
+		return cells.Display(m.playlistName(pl))
 	}
 	en := m.selectedEntry()
-	return fmt.Sprintf("%s › %02d %s", cells.Display(pl.Title), en.Index, entryTitle(en))
+	return fmt.Sprintf("%s › %02d %s", cells.Display(m.playlistName(pl)), en.Index, entryTitle(en))
 }
 
 // hints lists the keys the download screen offers now. The key bar and the
@@ -80,9 +80,9 @@ func (m Model) outputTitle() string {
 func (m Model) hints() []keybar.Hint {
 	var hints []keybar.Hint
 	if m.state.Idle {
-		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry failed"}, {Key: "l", Desc: "full log"}}
+		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry failed"}, {Key: "t", Desc: "technical log"}}
 	} else {
-		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "l", Desc: "full log"}}
+		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
 	if m.hosted {
 		return hints
@@ -104,10 +104,14 @@ func (m Model) renderHelp() string {
 	return helppage.Screen(m.width, m.height, helppage.Options{LogPath: logPath, Hosted: m.hosted})
 }
 
-// downloadingSummary is the speed of all the downloads together, and how many files and
-// how many parts of them are coming in now: "↓ 12.4MiB/s · 4 files · 9 parts".
+// downloadingSummary says how many songs are coming in now and how fast, all of them together:
+// "Downloading 4 songs · 12.4MiB/s". The speed is left out while it is not known.
 func downloadingSummary(t runstate.Tally) string {
-	return fmt.Sprintf("↓ %s · %s · %s", runstate.HumanSpeed(t.Speed), counted(t.Downloading, "file"), counted(t.Parts, "part"))
+	summary := "Downloading " + counted(t.Downloading, "song")
+	if t.Speed > 0 {
+		summary += " · " + runstate.HumanSpeed(t.Speed)
+	}
+	return summary
 }
 
 // counted writes a count with its noun: "1 file", "4 files".
@@ -167,27 +171,29 @@ func (m Model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 func (m Model) entryTag(en *runstate.Entry) (tag, colour string) {
 	c := look.Colours
 	switch en.State {
+	case engine.StateQueued:
+		return "waiting", c.Dim
 	case engine.StateResolving:
-		return "res.", c.Focus
+		return "finding", c.Focus
 	case engine.StateDownloading:
 		if en.Total > 0 {
 			return fmt.Sprintf("%3.0f%%", en.Percent), c.Highlight
 		}
-		return "dl", c.Highlight
+		return "starting", c.Highlight
 	case engine.StateMerging:
-		return "merge", c.Highlight
+		return "joining", c.Highlight
 	case engine.StateDuplicate:
-		return "dup", c.Dim
+		return "have it", c.Dim
 	case engine.StateNotFound:
-		return "n/f", c.Dim
+		return "no official", c.Dim
 	case engine.StateFailed:
-		return "ERR", c.Error
+		return "failed", c.Error
 	case engine.StateDone:
 		if en.Official {
-			return "⇄", c.Focus
+			return "official", c.Focus
 		}
 		if en.Better {
-			return "↑", c.Focus
+			return "better", c.Focus
 		}
 	}
 	return "", c.Text
