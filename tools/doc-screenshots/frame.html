@@ -1,0 +1,12 @@
+<!doctype html><meta charset=utf-8><link rel=stylesheet href=../../node_modules/@xterm/xterm/css/xterm.css>
+<style>html,body{margin:0;background:#888}#t{display:inline-block;padding:0}</style>
+<div id=t></div><script src=../../node_modules/@xterm/xterm/lib/xterm.js></script>
+<script>
+const f=new URLSearchParams(location.search).get('f');
+fetch('frames/'+f+'.ansi').then(r=>r.text()).then(txt=>{
+ const term=new Terminal({cols:120,rows:30,fontFamily:'Cascadia Mono, Consolas, monospace',fontSize:15,cursorBlink:false,allowProposedApi:true,
+  theme:{background:'#000000'}});
+ term.open(document.getElementById('t'));
+ term.write('\x1b[?25l'+txt.replace(/\n/g,'\r\n'),()=>{document.title='ready'});
+});
+</script>
