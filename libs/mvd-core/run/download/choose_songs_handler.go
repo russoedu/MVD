@@ -2,6 +2,7 @@ package download
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -13,14 +14,15 @@ import (
 )
 
 // Chooser is what a run offers when it holds each song for the person to choose: a song waits,
-// found and proposed, until it is sent to download, with the video it proposes or another, or
-// cancelled. The engine does when it is told to hold the songs.
+// found and proposed, until it is accepted, with the video it proposes or another, or rejected. A
+// song that was rejected can be accepted again. The engine does when it is told to hold the songs.
 type Chooser interface {
-	// Release sends song entry to download: as proposed when videoID is "", else that video.
+	// Release accepts song entry: it goes to download as proposed when videoID is "", else with that
+	// video.
 	Release(entry int, videoID string) bool
-	// ReleaseAll sends every song that waits, as proposed, and says how many.
+	// ReleaseAll accepts every song that waits, as proposed, and says how many.
 	ReleaseAll() int
-	// Skip cancels song entry: it is not downloaded.
+	// Skip rejects song entry: it is not downloaded.
 	Skip(entry int) bool
 	// Swap gives song entry another video to download, also when it was saved already: what it
 	// saved is then taken away. False when the song is on its way and cannot be swapped.
@@ -33,11 +35,20 @@ type SourceRemover interface {
 	RemoveSource(playlist int) bool
 }
 
+// swapEnabled says whether the person can swap the video of a song for one they name. It is off for
+// now: it needs the address of a video, and the way to ask for it is still to be decided.
+const swapEnabled = false
+
 // OpenVideoMsg asks the app to show a video in the person's browser.
 type OpenVideoMsg struct{ URL string }
 
 // waiting says whether a song waits for the person to choose it.
 func waiting(en *runstate.Entry) bool { return en != nil && en.State == engine.StatePlanned }
+
+// acceptable says whether a song can be accepted now: it waits, or it was rejected.
+func acceptable(en *runstate.Entry) bool {
+	return en != nil && (en.State == engine.StatePlanned || (en.State == engine.StateSkipped && en.TargetID != ""))
+}
 
 // chooser is the run as something that holds songs for choosing, when it is.
 func (m Model) chooser() (Chooser, bool) {
@@ -49,20 +60,6 @@ func (m Model) chooser() (Chooser, bool) {
 	return c, ok
 }
 
-// swappable says whether the video of a song can be swapped now: it waits, was saved, failed or was
-// cancelled, and is not on its way.
-func swappable(en *runstate.Entry) bool {
-	if en == nil {
-		return false
-	}
-	switch en.State {
-	case engine.StatePlanned, engine.StateDone, engine.StateDuplicate, engine.StateFailed, engine.StateNotFound, engine.StateSkipped:
-		return true
-	}
-
-	return false
-}
-
 // anyWaiting says whether some song waits for the person to choose it.
 func (m Model) anyWaiting() bool {
 	_, ok := m.chooser()
@@ -70,11 +67,88 @@ func (m Model) anyWaiting() bool {
 	return ok && m.state.Tally().Planned > 0
 }
 
-// chooseKey does what a key of the choosing says: d sends the song (or every waiting song of the
-// link) to download, D sends all of them, x cancels the song, s swaps its video and o opens it.
-// handled is false for any other key, and for a run that does not hold its songs.
+// targetIDs are the songs the actions work on: the ones ticked, else the one the cursor is on.
+func (m Model) targetIDs() []int {
+	if len(m.picked) > 0 {
+		var ids []int
+		for id := range m.picked {
+			if m.state.Entry(id) != nil {
+				ids = append(ids, id)
+			}
+		}
+		sort.Ints(ids)
+
+		return ids
+	}
+	if en := m.selectedEntry(); en != nil {
+		return []int{en.ID}
+	}
+
+	return nil
+}
+
+// togglePick ticks or unticks a song.
+func (m *Model) togglePick(id int) {
+	picked := make(map[int]bool, len(m.picked)+1)
+	for k := range m.picked {
+		picked[k] = true
+	}
+	if picked[id] {
+		delete(picked, id)
+	} else {
+		picked[id] = true
+	}
+	m.picked = picked
+}
+
+// togglePickAll ticks every song of the table, or unticks them all when they all are.
+func (m *Model) togglePickAll() {
+	ids := m.visibleEntries()
+	all := len(ids) > 0
+	for _, id := range ids {
+		if !m.picked[id] {
+			all = false
+		}
+	}
+	picked := make(map[int]bool, len(m.picked))
+	for k := range m.picked {
+		picked[k] = true
+	}
+	for _, id := range ids {
+		if all {
+			delete(picked, id)
+		} else {
+			picked[id] = true
+		}
+	}
+	m.picked = picked
+}
+
+// pickState is how ticked the songs of the table are: 0 none, 1 some, 2 all.
+func (m Model) pickState() int {
+	ids := m.visibleEntries()
+	n := 0
+	for _, id := range ids {
+		if m.picked[id] {
+			n++
+		}
+	}
+	switch {
+	case n == 0:
+		return 0
+	case n == len(ids):
+		return 2
+	}
+
+	return 1
+}
+
+// chooseKey does what a key of the choosing says: d accepts the songs, x rejects them, o opens the
+// video of one, space ticks the song the cursor is on and D accepts every song that waits. On a link
+// d accepts all its waiting songs. handled is false for any other key, and for a run that does not
+// hold its songs.
 func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
-	if key != "d" && key != "D" && key != "x" && key != "s" && key != "o" {
+	if key != "d" && key != "D" && key != "x" && key != "s" && key != "o" && key != "space" {
 		return m, nil, false
 	}
 	chooser, ok := m.chooser()
@@ -82,7 +156,8 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		return m, nil, false
 	}
 	if key == "D" {
-		m.flash(fmt.Sprintf("%s sent to download", counted(chooser.ReleaseAll(), "song")))
+		m.flash(fmt.Sprintf("%s accepted: they will download", counted(chooser.ReleaseAll(), "song")))
+		m.picked = nil
 
 		return m, nil, true
 	}
@@ -95,18 +170,31 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 				}
 			}
 		}
-		m.flash(fmt.Sprintf("%s of this link sent to download", counted(sent, "song")))
+		m.flash(fmt.Sprintf("%s of this link accepted: they will download", counted(sent, "song")))
 
 		return m, nil, true
 	}
-	en := m.selectedEntry()
-	if en == nil {
+	if key == "space" {
+		if en := m.selectedEntry(); en != nil && m.focus == paneEntries {
+			m.togglePick(en.ID)
+		}
+
+		return m, nil, true
+	}
+	ids := m.targetIDs()
+	if len(ids) == 0 {
 		m.flash("choose a song first")
 
 		return m, nil, true
 	}
 	switch key {
 	case "o":
+		if len(ids) != 1 {
+			m.flash("open one video at a time")
+
+			return m, nil, true
+		}
+		en := m.state.Entry(ids[0])
 		video := en.TargetID
 		if video == "" {
 			video = en.VideoID
@@ -114,23 +202,40 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 
 		return m, func() tea.Msg { return OpenVideoMsg{URL: "https://www.youtube.com/watch?v=" + video} }, true
 	case "d":
-		switch {
-		case !waiting(en):
-			m.flash("this song is not waiting for you")
-		case chooser.Release(en.ID, ""):
-			m.flash("sent to download")
-		default:
-			m.flash("nothing was found for this song: swap its video or cancel it")
+		done := 0
+		for _, id := range ids {
+			if acceptable(m.state.Entry(id)) && chooser.Release(id, "") {
+				done++
+			}
 		}
-	case "x":
-		if chooser.Skip(en.ID) {
-			m.flash("cancelled: it will not be downloaded")
+		if done == 0 {
+			m.flash("nothing to accept: the song is on its way, or has no video")
 		} else {
-			m.flash("this song cannot be cancelled now")
+			m.flash(fmt.Sprintf("%s accepted: they will download", counted(done, "song")))
 		}
+		m.picked = nil
+	case "x":
+		done := 0
+		for _, id := range ids {
+			if waiting(m.state.Entry(id)) && chooser.Skip(id) {
+				done++
+			}
+		}
+		if done == 0 {
+			m.flash("nothing to reject: only a song that waits can be rejected")
+		} else {
+			m.flash(fmt.Sprintf("%s rejected: they will not download. Accept brings them back", counted(done, "song")))
+		}
+		m.picked = nil
 	case "s":
-		if !swappable(en) {
-			m.flash("this song is on its way: swap it when it is saved")
+		if !swapEnabled {
+			m.flash("swapping a video is not available yet")
+
+			return m, nil, true
+		}
+		en := m.state.Entry(ids[0])
+		if len(ids) != 1 || !acceptable(en) {
+			m.flash("swap one song that waits")
 
 			return m, nil, true
 		}
@@ -167,7 +272,7 @@ func (m Model) updateSwapping(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		switch {
 		case !held:
 		case chooser.Swap(m.swapEntry, id):
-			m.flash("sent to download with the video you chose")
+			m.flash("accepted with the video you chose")
 		default:
 			m.flash("this song cannot be changed now")
 		}

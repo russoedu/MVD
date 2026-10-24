@@ -12,7 +12,7 @@ func (e *Engine) Release(entryID int, videoID string) bool {
 		return false
 	}
 	en := e.entries[entryID]
-	if e.removed[en.info.Playlist] || en.state != StatePlanned || (en.targetID == "" && videoID == "") {
+	if e.removed[en.info.Playlist] || (en.state != StatePlanned && en.state != StateSkipped) || (en.targetID == "" && videoID == "") {
 		e.mu.Unlock()
 		return false
 	}

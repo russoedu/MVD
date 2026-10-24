@@ -164,6 +164,14 @@ func (s *State) Apply(ev interface{}) int {
 			en.Percent = 100
 		}
 		return e.Entry
+	case engine.EvEntryRenamed:
+		en := s.Entry(e.Entry)
+		if en == nil {
+			return -1
+		}
+		en.Title, en.Channel = e.Title, e.Channel
+		en.NamedArtist, en.NamedTitle, en.NamedAlbum = "", "", ""
+		return e.Entry
 	case engine.EvQuality:
 		en := s.Entry(e.Entry)
 		if en == nil {

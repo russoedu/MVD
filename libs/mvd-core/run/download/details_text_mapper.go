@@ -46,7 +46,7 @@ func (m Model) detailRows(w int) []OutputRow {
 			say(m.linkSummary(pl), plain)
 			if m.waitingIn(pl) > 0 && m.anyWaiting() {
 				blank()
-				say("Download them all with the button below, or tab to the songs to choose one by one.", CellStyle{Fg: c.Highlight})
+				say("Accept them all with the button below, or tab to the songs to choose one by one.", CellStyle{Fg: c.Highlight})
 			}
 		}
 		return rows
@@ -102,7 +102,7 @@ func (m Model) linkSummary(pl *runstate.Playlist) string {
 	for _, p := range []struct {
 		n    int
 		text string
-	}{{saved, "saved"}, {working, "being downloaded"}, {toChoose, "waiting for you to choose"}, {waiting, "waiting"}, {had, "already in your folder"}, {cancelled, "cancelled"}, {failed, "failed"}} {
+	}{{saved, "saved"}, {working, "being downloaded"}, {toChoose, "waiting for you to choose"}, {waiting, "waiting"}, {had, "already in your folder"}, {cancelled, "rejected"}, {failed, "failed"}} {
 		if p.n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", p.n, p.text))
 		}
@@ -144,9 +144,9 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 		case en.Better:
 			what = "Found a better quality version."
 		}
-		return what + " Choose what to do with it: the buttons below, or the keys d, s, x and o.", CellStyle{Fg: c.Highlight}
+		return what + " Accept it to download it, or reject it. The buttons are below; the keys are d and x.", CellStyle{Fg: c.Highlight}
 	case engine.StateSkipped:
-		return "Cancelled: this song will not be downloaded.", CellStyle{Fg: c.Dim}
+		return "Rejected: this song will not be downloaded. Accept it to bring it back.", CellStyle{Fg: c.Dim}
 	}
 	return "", CellStyle{Fg: c.Text}
 }

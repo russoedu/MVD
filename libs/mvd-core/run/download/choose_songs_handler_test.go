@@ -67,24 +67,11 @@ func TestDSendsTheSelectedSongToDownloadAndXCancelsIt(t *testing.T) {
 	}
 }
 
-func TestSAsksForAnotherVideoAndSendsTheSongWithIt(t *testing.T) {
+func TestSwappingTheVideoIsNotAvailableYet(t *testing.T) {
 	m, run := choosingModel(t)
 	m = pressKey(m, "s")
-	if !m.swapping {
-		t.Fatal("the address of another video was not asked")
-	}
-	for _, r := range "https://www.youtube.com/watch?v=dQw4w9WgXcQ" {
-		m = pressKey(m, string(r))
-	}
-	m = pressKey(m, "enter")
-	if m.swapping || run.released[3] != "dQw4w9WgXcQ" {
-		t.Errorf("swapping %v, released %v", m.swapping, run.released)
-	}
-	m = pressKey(m, "s")
-	m = pressKey(m, "x") // typed into the address, not a cancel
-	m = pressKey(m, "esc")
-	if m.swapping || len(run.skipped) != 0 {
-		t.Errorf("swapping %v, skipped %v", m.swapping, run.skipped)
+	if m.swapping || len(run.released) != 0 || !strings.Contains(m.status, "not available") {
+		t.Errorf("swapping %v, released %v, status %q", m.swapping, run.released, m.status)
 	}
 }
 
@@ -101,11 +88,11 @@ func TestTheWaitingSongsAreSaidInWordsAndTheKeysAreOffered(t *testing.T) {
 	for _, h := range m.hints() {
 		keysOffered = append(keysOffered, h.Key)
 	}
-	if got := strings.Join(keysOffered, " "); !strings.HasPrefix(got, "d s x o D") {
+	if got := strings.Join(keysOffered, " "); !strings.HasPrefix(got, "space d x o D") {
 		t.Errorf("keys %q", got)
 	}
 	sentence, _ := m.songSentence(m.state.Entries[3])
-	if !strings.Contains(sentence, "official music video") || !strings.Contains(sentence, "Choose what to do") {
+	if !strings.Contains(sentence, "official music video") || !strings.Contains(sentence, "Accept it") {
 		t.Errorf("sentence %q", sentence)
 	}
 }
@@ -117,7 +104,7 @@ func TestTheChoicesOfAWaitingSongAreButtonsThatCanBeClicked(t *testing.T) {
 	if len(buttons) != 4 {
 		t.Fatalf("buttons %+v", buttons)
 	}
-	if screen := ansi.Strip(m.render()); !strings.Contains(screen, "Swap video") || !strings.Contains(screen, "Cancel song") {
+	if screen := ansi.Strip(m.render()); !strings.Contains(screen, "Swap video") || !strings.Contains(screen, "Reject") {
 		t.Errorf("the buttons are not drawn:\n%s", screen)
 	}
 	click := func(m Model, b choiceButton) Model {
@@ -125,33 +112,96 @@ func TestTheChoicesOfAWaitingSongAreButtonsThatCanBeClicked(t *testing.T) {
 
 		return next.(Model)
 	}
-	m = click(m, buttons[2]) // Cancel song
+	m = click(m, buttons[1]) // Reject
 	if len(run.skipped) != 1 {
 		t.Errorf("skipped %v", run.skipped)
 	}
-	m = click(m, buttons[1]) // Swap video
-	if !m.swapping {
-		t.Error("the swap did not ask for an address")
+	m = click(m, buttons[2]) // Swap video, which cannot be used yet
+	if m.swapping || !buttons[2].disabled {
+		t.Error("the swap button must be disabled")
 	}
 }
 
-func TestASavedSongCanBeSwappedForAnotherVideo(t *testing.T) {
+func TestSongsTickedWithTheBoxesAreAcceptedOrRejectedTogether(t *testing.T) {
 	m, run := choosingModel(t)
-	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateDone, TargetID: "abc12345678", Official: true})
-	m = pressKey(m, "s")
-	if !m.swapping {
-		t.Fatal("a saved song could not be swapped")
+	m.state.Apply(engine.EvEntryState{Entry: 1, State: engine.StatePlanned, TargetID: "bbb12345678"})
+	m.state.Apply(engine.EvEntryState{Entry: 2, State: engine.StatePlanned, TargetID: "ccc12345678"})
+	m.width, m.height = 120, 30
+	m.selEntry = 1
+	m = pressKey(m, "space")
+	m.selEntry = 2
+	m = pressKey(m, "space")
+	if len(m.picked) != 2 || m.pickState() != 1 {
+		t.Fatalf("picked %v, state %d", m.picked, m.pickState())
 	}
-	for _, r := range "dQw4w9WgXcQ" {
-		m = pressKey(m, string(r))
+	buttons := m.choiceButtons()
+	if buttons[0].label != "✓ Accept 2" || !buttons[3].disabled {
+		t.Errorf("buttons %+v", buttons)
 	}
-	m = pressKey(m, "enter")
-	if run.released[3] != "dQw4w9WgXcQ" {
-		t.Errorf("swapped %v", run.released)
+	m = pressKey(m, "o")
+	if !strings.Contains(m.status, "one video at a time") {
+		t.Errorf("opening many says %q", m.status)
 	}
-	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateDownloading, TargetID: "x"})
-	m = pressKey(m, "s")
-	if m.swapping {
-		t.Error("a song on its way was offered a swap")
+	m = pressKey(m, "x")
+	if len(run.skipped) != 2 || len(m.picked) != 0 {
+		t.Errorf("skipped %v, picked %v", run.skipped, m.picked)
+	}
+	m.togglePickAll()
+	if m.pickState() != 2 {
+		t.Errorf("select all gives state %d", m.pickState())
+	}
+	m.togglePickAll()
+	if m.pickState() != 0 {
+		t.Errorf("select all again gives state %d", m.pickState())
+	}
+}
+
+func TestARejectedSongCanBeAcceptedAgain(t *testing.T) {
+	m, run := choosingModel(t)
+	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateSkipped, TargetID: "abc12345678"})
+	if !acceptable(m.state.Entry(3)) {
+		t.Fatal("a rejected song is not offered to be accepted")
+	}
+	m = pressKey(m, "d")
+	if _, ok := run.released[3]; !ok {
+		t.Errorf("released %v", run.released)
+	}
+}
+
+func TestACarriedBorderResizesTheColumnAndTheListOfColumnsHidesOne(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	l, _ := m.layout()
+	ix, iy, iw := m.tableInner(l)
+	spans := m.columnSpans(iw)
+	var artist columnSpan
+	for _, s := range spans {
+		if s.name == columnArtist {
+			artist = s
+		}
+	}
+	before := artist.x1 - artist.x0
+	press := tea.MouseClickMsg{X: ix + artist.x1, Y: iy, Button: tea.MouseLeft}
+	next, _ := m.Update(press)
+	m = next.(Model)
+	if !m.colDrag.on {
+		t.Fatal("the border was not taken")
+	}
+	next, _ = m.Update(tea.MouseMotionMsg{X: ix + artist.x1 + 5, Y: iy, Button: tea.MouseLeft})
+	m = next.(Model)
+	next, _ = m.Update(tea.MouseReleaseMsg{X: ix + artist.x1 + 5, Y: iy, Button: tea.MouseLeft})
+	m = next.(Model)
+	if got := m.colWidth[columnArtist]; got != before+5 || m.colDrag.on {
+		t.Errorf("artist is %d wide (was %d), dragging %v", got, before, m.colDrag.on)
+	}
+
+	m = pressKey(m, "c")
+	if !m.columnList.open {
+		t.Fatal("the list of columns did not open")
+	}
+	m = pressKey(m, "space") // the first one: Artist
+	m = pressKey(m, "esc")
+	if names := namesOf(m.tableColumns(140)); strings.Contains(names, columnArtist) {
+		t.Errorf("the artist column is still there: %s", names)
 	}
 }

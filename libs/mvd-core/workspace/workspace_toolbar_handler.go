@@ -21,7 +21,7 @@ const (
 	entryResume      = "Resume"
 	entryStop        = "Stop"
 	entryRetry       = "Retry failed"
-	entryDownloadAll = "Download all songs"
+	entryDownloadAll = "Accept all songs"
 )
 
 // button is one button of the toolbar.
@@ -59,7 +59,7 @@ func (m Model) buttons() []button {
 	out := []button{pause, {"■ Stop", entryStop, busy}, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
 	if m.waiting() {
 		// Songs wait for the person to choose them: sending them all is what most will do first.
-		out = append([]button{{"► Download all songs", entryDownloadAll, busy}}, out...)
+		out = append([]button{{"► Accept all songs", entryDownloadAll, busy}}, out...)
 	}
 	return out
 }
@@ -166,9 +166,9 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 		if m.running() {
 			n := m.run.ReleaseAll()
 			if n == 1 {
-				m.done = "1 song sent to download"
+				m.done = "1 song accepted: it will download"
 			} else {
-				m.done = fmt.Sprintf("%d songs sent to download", n)
+				m.done = fmt.Sprintf("%d songs accepted: they will download", n)
 			}
 		}
 		return m, nil, true

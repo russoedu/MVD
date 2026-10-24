@@ -103,6 +103,15 @@ type Model struct {
 	embedded      bool // inside an app model: ends with FinishedMsg instead of quitting
 	hosted        bool // inside the workspace: it owns quitting and adding links, and the run comes and goes
 	adding        bool // the box for adding links is open
+	// picked are the songs ticked in the table: the actions work on them, else on the song the cursor
+	// is on.
+	picked map[int]bool
+	// colWidth are the widths the person gave to columns by carrying their borders, and hiddenCols
+	// the columns they hid. Both are replaced, never changed, so a copy of the screen keeps its own.
+	colWidth   map[string]int
+	hiddenCols map[string]bool
+	colDrag    columnDrag
+	columnList columnsMenu
 	// swapping is the address of another video being asked for the song swapEntry.
 	swapping  bool
 	swap      textinput.Model
@@ -234,6 +243,13 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.swapping {
 		return m.updateSwapping(msg)
+	}
+	if m.columnList.open {
+		return m.columnsKey(key), nil
+	}
+	if key == "c" && m.tableShown() {
+		m.columnList = columnsMenu{open: true}
+		return m, nil
 	}
 
 	if m.confirmQuit {

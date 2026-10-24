@@ -1,44 +1,65 @@
 package download
 
 import (
-	"charm.land/bubbletea/v2"
+	"fmt"
+
+	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/keybar"
 )
 
-// choiceButton is one button under the details of a song that waits to be chosen: what it says,
-// the key it stands for, and where it is on the screen.
+// choiceButton is one button under the details of the songs that are chosen: what it says, the key it
+// stands for, whether it can be used now, and where it is on the screen.
 type choiceButton struct {
 	label, key string
+	disabled   bool
 	x, y, w    int
 }
 
 // choiceButtonsHeight is the rows the details pane has for itself when buttons are under it.
 const choiceButtonsHeight = 9
 
-// choiceButtons are the buttons of what is selected, when a song waits for the person: the four
-// things that can be done to the song, or for a link the one that sends its songs on. They sit on
-// the last row of the details pane. None when there is nothing to choose or no room for them.
+// choiceButtons are the buttons of what is selected, when the run holds its songs: Accept (the main
+// one), Reject, Swap video and Open video for the song or the ticked songs, or for a link the one that
+// accepts its songs. They sit on the last row of the details pane. None when there is nothing to
+// choose or no room for them.
 func (m Model) choiceButtons() []choiceButton {
-	if _, held := m.chooser(); !held || m.technical || m.fullLog || m.adding || m.swapping || m.showHelp {
+	if _, held := m.chooser(); !held || m.technical || m.fullLog || m.adding || m.swapping || m.showHelp || m.columnList.open {
 		return nil
 	}
 	l, ok := m.layout()
 	if !ok || !l.hasOutput {
 		return nil
 	}
-	var labels [][2]string
+	var buttons []choiceButton
 	switch {
 	case m.focus == paneLists:
 		if m.selPlaylist >= len(m.state.Playlists) || m.waitingIn(m.state.Playlists[m.selPlaylist]) == 0 {
 			return nil
 		}
-		labels = [][2]string{{"► Download these songs", "d"}}
-	case waiting(m.selectedEntry()):
-		labels = [][2]string{{"► Download", "d"}, {"⇄ Swap video", "s"}, {"✗ Cancel song", "x"}, {"↗ Open video", "o"}}
-	case swappable(m.selectedEntry()):
-		labels = [][2]string{{"⇄ Swap video", "s"}, {"↗ Open video", "o"}}
+		buttons = []choiceButton{{label: "✓ Accept these songs", key: "d"}}
+	case m.focus == paneEntries && len(m.targetIDs()) > 0:
+		ids := m.targetIDs()
+		accept, reject := 0, 0
+		for _, id := range ids {
+			if acceptable(m.state.Entry(id)) {
+				accept++
+			}
+			if waiting(m.state.Entry(id)) {
+				reject++
+			}
+		}
+		accepting, rejecting := "✓ Accept", "✗ Reject"
+		if len(ids) > 1 {
+			accepting, rejecting = fmt.Sprintf("✓ Accept %d", accept), fmt.Sprintf("✗ Reject %d", reject)
+		}
+		buttons = []choiceButton{
+			{label: accepting, key: "d", disabled: accept == 0},
+			{label: rejecting, key: "x", disabled: reject == 0},
+			{label: "⇄ Swap video", key: "s", disabled: !swapEnabled || len(ids) != 1},
+			{label: "↗ Open video", key: "o", disabled: len(ids) != 1},
+		}
 	default:
 		return nil
 	}
@@ -46,24 +67,29 @@ func (m Model) choiceButtons() []choiceButton {
 	inner := l.output.rows()
 	x, y := inner.x+1, inner.y+inner.h-1
 	var out []choiceButton
-	for _, label := range labels {
-		w := len([]rune(label[0])) + 4
-		if x+w > inner.x+inner.w {
+	for _, b := range buttons {
+		b.w = len([]rune(b.label)) + 4
+		if x+b.w > inner.x+inner.w {
 			break
 		}
-		out = append(out, choiceButton{label: label[0], key: label[1], x: x, y: y, w: w})
-		x += w + 2
+		b.x, b.y = x, y
+		out = append(out, b)
+		x += b.w + 2
 	}
 
 	return out
 }
 
-// withChoiceButtons draws the buttons over the screen.
+// withChoiceButtons draws the buttons over the screen: the first that can be used is the main one.
 func (m Model) withChoiceButtons(screen string) string {
-	for i, b := range m.choiceButtons() {
+	primary := true
+	for _, b := range m.choiceButtons() {
 		kind := dialog.PillNormal
-		if i == 0 {
-			kind = dialog.PillPrimary
+		switch {
+		case b.disabled:
+			kind = dialog.PillDisabled
+		case primary:
+			kind, primary = dialog.PillPrimary, false
 		}
 		screen = dialog.Overlay(screen, dialog.WidePill(b.label, b.w, kind, false), b.x, b.y)
 	}
@@ -71,10 +97,13 @@ func (m Model) withChoiceButtons(screen string) string {
 	return screen
 }
 
-// clickChoice does what the button under (x, y) does, when there is one.
+// clickChoice does what the button under (x, y) does, when there is one that can be used.
 func (m Model) clickChoice(x, y int) (Model, tea.Cmd, bool) {
 	for _, b := range m.choiceButtons() {
 		if y == b.y && x >= b.x && x < b.x+b.w {
+			if b.disabled {
+				return m, nil, true
+			}
 			if key, ok := keybar.KeyMsg(b.key); ok {
 				next, cmd := m.handleKey(key)
 

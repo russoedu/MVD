@@ -90,13 +90,20 @@ func TestASkippedSongIsNotDownloadedAndDoesNotKeepTheRunOpen(t *testing.T) {
 	if !eng.Skip(0) {
 		t.Fatal("a held song could not be skipped")
 	}
-	if eng.Skip(0) || eng.Release(0, "") {
-		t.Error("a skipped song must not be skipped again or released")
+	if eng.Skip(0) {
+		t.Error("a skipped song must not be skipped again")
 	}
+	found := false
 	for _, snap := range eng.Snapshot() {
 		if snap.Upload.ID != "" && snap.State == StateSkipped {
-			return
+			found = true
 		}
 	}
-	t.Error("no song is in the skipped state")
+	if !found {
+		t.Error("no song is in the skipped state")
+	}
+	// A cancelled song can be taken back.
+	if !eng.Release(0, "") {
+		t.Error("a cancelled song could not be recovered")
+	}
 }

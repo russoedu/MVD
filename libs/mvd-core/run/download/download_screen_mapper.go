@@ -53,7 +53,8 @@ func (m Model) downloadProps(w, h int) Props {
 	p.PlaylistsRows = func(w, h int) ([]PlaylistsRow, int) {
 		return cuppa.Window(m.playlistRows(w), m.selPlaylist, h)
 	}
-	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
+	p.PlaylistsTitle = counted(len(m.state.Playlists), "link")
+	p.PlaylistsRight = ""
 	p.PlaylistsFocus = m.focus == paneLists
 
 	// Entries.
@@ -175,7 +176,7 @@ func (m Model) headerTexts() (counters, right string) {
 		{t.Better, "↑ Better quality", look.Cyan.Render},
 		{t.Duplicate, "≡ Already had", look.Dim.Render},
 		{t.NotFound, "∅ No official video", look.Dim.Render},
-		{t.Skipped, "– Cancelled", look.Dim.Render},
+		{t.Skipped, "– Rejected", look.Dim.Render},
 		{t.Retried, "↻ Tried again", look.Cyan.Render},
 	} {
 		if extra.n > 0 {
@@ -259,14 +260,16 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 
 // entryHeader are the title and the label of the entries pane.
 func (m Model) entryHeader() (title, right string) {
-	title = "Songs"
-	if m.filterFailed {
-		title = "Songs (failed only)"
-	}
+	n := 0
 	if m.selPlaylist < len(m.state.Playlists) {
-		right = fmt.Sprintf("%d", len(m.visibleEntries()))
+		n = len(m.visibleEntries())
 	}
-	return title, right
+	title = counted(n, "song")
+	if m.filterFailed {
+		title += " (failed only)"
+	}
+
+	return title, ""
 }
 
 // entryNotesShown is whether the entries pane has a note to show instead of rows: the

@@ -28,7 +28,7 @@ func (m Model) render() string {
 	}
 
 	view := screenview.Padded(View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
-	view = m.withChoiceButtons(view)
+	view = m.withTableControls(m.withChoiceButtons(view))
 
 	if m.adding {
 		return m.renderAddBox()
@@ -85,11 +85,8 @@ func (m Model) hints() []keybar.Hint {
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
-	switch _, held := m.chooser(); {
-	case m.anyWaiting():
-		hints = append([]keybar.Hint{{Key: "d", Desc: "download"}, {Key: "s", Desc: "swap video"}, {Key: "x", Desc: "cancel song"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "download all"}}, hints[:2]...)
-	case held && m.focus == paneEntries && swappable(m.selectedEntry()):
-		hints = append([]keybar.Hint{{Key: "s", Desc: "swap video"}, {Key: "o", Desc: "open video"}}, hints...)
+	if _, held := m.chooser(); held && m.focus == paneEntries && len(m.targetIDs()) > 0 {
+		hints = append([]keybar.Hint{{Key: "space", Desc: "select"}, {Key: "d", Desc: "accept"}, {Key: "x", Desc: "reject"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "accept all"}}, hints[:2]...)
 	}
 	if m.hosted {
 		return hints

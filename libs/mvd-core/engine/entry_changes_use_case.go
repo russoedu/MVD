@@ -1,6 +1,12 @@
 package engine
 
-import "os"
+import (
+	"context"
+	"os"
+	"time"
+
+	"youtube-downloader/libs/mvd-core/ytdlp"
+)
 
 // isRemoved says whether the person took a playlist out of the run.
 func (e *Engine) isRemoved(playlist int) bool {
@@ -85,6 +91,30 @@ func (e *Engine) Swap(entryID int, videoID string) bool {
 	e.emit(EvEntryState{Entry: entryID, State: StateQueued, TargetID: videoID, Reason: "chosen by you"})
 	e.log(en.info.Playlist, entryID, "swapped for %s by you", videoID)
 	e.queue.Push(entryID)
+	go e.rename(entryID, videoID)
 
 	return true
+}
+
+// rename gives a song that was swapped the name of its new video, as soon as yt-dlp says it.
+func (e *Engine) rename(entryID int, videoID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	title, channel, err := ytdlp.VideoDetails(ctx, e.opts.YtDlp, videoID)
+	if err != nil {
+		return
+	}
+	e.mu.Lock()
+	closed := e.closed
+	en := e.entries[entryID]
+	current := en.targetID == videoID
+	if current {
+		en.info.Title, en.info.Channel = title, channel
+		en.raw.Title, en.raw.Channel = title, channel
+		en.named = nil
+	}
+	e.mu.Unlock()
+	if current && !closed {
+		e.emit(EvEntryRenamed{Entry: entryID, Title: title, Channel: channel})
+	}
 }

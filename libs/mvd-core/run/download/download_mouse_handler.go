@@ -65,6 +65,9 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if next, handled := m.dragBorder(msg); handled {
 		return next, nil
 	}
+	if next, cmd, handled := m.tableMouse(l, msg); handled {
+		return next, cmd
+	}
 	if next, cmd, handled := m.editClick(l, msg); handled {
 		return next, cmd
 	}
