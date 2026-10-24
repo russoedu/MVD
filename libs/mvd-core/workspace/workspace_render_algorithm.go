@@ -8,6 +8,7 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/menubar"
 )
 
 // render draws the menu bar on the top row and, under it, the review or the download
@@ -76,6 +77,8 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Dim.Render("Paste or type a link, then press Enter. Esc cancels."), m.width)
 	case m.disabledReason() != "":
 		return cells.Fit(" "+look.Dim.Render(m.disabledReason()), m.width)
+	case m.editable() && !m.reviewing:
+		return cells.Fit(" "+look.Dim.Render(m.idleHints()), m.width)
 	}
 	return ""
 }
@@ -97,4 +100,16 @@ func overlayMenu(screen, barView string) string {
 		screen = dialog.Overlay(screen, ansi.Cut(rows[y], left, right), left, y)
 	}
 	return screen
+}
+
+// idleHints is the line of keys at the bottom while nothing runs: the few that start the work,
+// and the one that lists them all.
+func (m Model) idleHints() string {
+	return strings.Join([]string{
+		menubar.ShortcutLabel("F1") + " shortcuts",
+		menubar.ShortcutLabel("Ctrl+L") + " add link",
+		menubar.ShortcutLabel("Ctrl+R") + " start",
+		menubar.ShortcutLabel("Ctrl+O") + " open list",
+		menubar.ShortcutLabel("Ctrl+,") + " preferences",
+	}, "  ·  ")
 }

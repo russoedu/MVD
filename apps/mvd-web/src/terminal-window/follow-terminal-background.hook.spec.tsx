@@ -20,11 +20,15 @@ function drawnWith (background: string): HTMLElement {
 
 function paint (main: HTMLElement, background: string): void {
   const rows = main.querySelector('.xterm-rows')
-  const row = document.createElement('div')
-  const span = document.createElement('span')
-  span.style.backgroundColor = background
-  row.append(span)
-  rows?.replaceChildren(row)
+  const drawn = Array.from({ length: 6 }, () => {
+    const row = document.createElement('div')
+    const span = document.createElement('span')
+    span.style.backgroundColor = background
+    row.append(span)
+
+    return row
+  })
+  rows?.replaceChildren(...drawn)
 }
 
 describe('useFollowTerminalBackground', () => {

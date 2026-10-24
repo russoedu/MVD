@@ -68,3 +68,12 @@ func TestPointingAtAButtonThatCannotBeUsedSaysWhy(t *testing.T) {
 		t.Error("a button that works should not say it cannot")
 	}
 }
+
+func TestWhileNothingRunsTheBottomLineListsTheKeysThatStartTheWork(t *testing.T) {
+	screen := screenOf(listOf("https://a"))
+	for _, want := range []string{"F1 shortcuts", "Ctrl+L add link", "Ctrl+R start", "Ctrl+O open list"} {
+		if !strings.Contains(screen, want) {
+			t.Errorf("the key hints lack %q: %s", want, screen)
+		}
+	}
+}

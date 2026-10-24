@@ -22,27 +22,43 @@ function terminalWith (rows: string[][]): HTMLElement {
   return terminal
 }
 
-describe('terminalBackground', () => {
-  it('is the colour of the last cell of the lowest row', () => {
-    const terminal = terminalWith([['#111111'], ['#222222', '#2a2a2a'], ['#333333', '#444444']])
+const backgroundOf = (rows: string[][]): string | undefined => terminalBackground(terminalWith(rows))
 
-    expect(terminalBackground(terminal)).toBe('rgb(68, 68, 68)')
+const screen = '#2a2a2a'
+const rowsOf = (count: number, spans: string[]): string[][] => Array.from({ length: count }, () => spans)
+const blank = (count: number): string[][] => rowsOf(count, [])
+const painted = (count: number, colour = screen): string[][] => rowsOf(count, ['#111111', colour])
+
+describe('terminalBackground', () => {
+  it('is the colour most of the lower rows end in', () => {
+    expect(backgroundOf([...blank(2), ...painted(8)])).toBe('rgb(42, 42, 42)')
   })
 
-  it('passes over rows with nothing drawn in them', () => {
-    const terminal = terminalWith([['#2a2a2a'], [], []])
+  it('is not fooled by one highlighted cell, such as a menu that is lit', () => {
+    const rows = [['#222222', '#ff87d7'], ...blank(7), ['#222222', '#ff87d7']]
 
-    expect(terminalBackground(terminal)).toBe('rgb(42, 42, 42)')
+    expect(backgroundOf(rows)).toBeUndefined()
+  })
+
+  it('looks at the lower half, so a lit bar at the top does not count', () => {
+    const rows = [['#ff87d7'], ['#ff87d7'], ['#ff87d7'], ...blank(7)]
+
+    expect(backgroundOf(rows)).toBeUndefined()
   })
 
   it('passes over a cell with no colour of its own', () => {
-    const terminal = terminalWith([['#2a2a2a'], ['transparent']])
+    const rows = [...painted(3), ...rowsOf(2, ['transparent']), ...painted(3)]
 
-    expect(terminalBackground(terminal)).toBe('rgb(42, 42, 42)')
+    expect(backgroundOf(rows)).toBe('rgb(42, 42, 42)')
   })
 
-  it('is nothing before the terminal has drawn anything', () => {
+  it('takes the colour with the most rows when two are drawn', () => {
+    expect(backgroundOf([...painted(2), ...painted(8, '#101820')])).toBe('rgb(16, 24, 32)')
+  })
+
+  it('is nothing before the terminal has drawn anything, or with a theme that has no background', () => {
     expect(terminalBackground(document.createElement('div'))).toBeUndefined()
-    expect(terminalBackground(terminalWith([[], []]))).toBeUndefined()
+    expect(backgroundOf([[], []])).toBeUndefined()
+    expect(backgroundOf(rowsOf(10, ['transparent']))).toBeUndefined()
   })
 })
