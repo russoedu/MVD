@@ -159,7 +159,8 @@ func (m Model) headerTexts() (counters, right string) {
 		look.Green.Render(fmt.Sprintf("✓ Done %d", t.Done)),
 		look.Red.Render(fmt.Sprintf("✗ Failed %d", t.Failed+m.unreadableLinks())),
 	}
-	if m.state.Idle || m.paused {
+	if t.Running == 0 || m.state.Idle || m.paused {
+		// Nothing moves, so nothing spins.
 		parts[1] = look.Dim.Render(fmt.Sprintf("  Downloading %d", t.Running))
 	}
 	if t.Planned > 0 {
@@ -397,7 +398,13 @@ func (m Model) detailsHeight(h int) int {
 		return max(6, room/2)
 	}
 
-	return min(7, max(4, room/3))
+	base := min(7, max(4, room/3))
+	if m.anyWaiting() {
+		// The buttons of a song that waits to be chosen sit on the last row.
+		return min(max(base, choiceButtonsHeight), max(room-5, base))
+	}
+
+	return base
 }
 
 // emptyPlaylistRows is what the playlists pane says while there is nothing in it: what to do
@@ -426,6 +433,8 @@ func (m Model) emptyEntriesText() string {
 		return "The songs of each link show here, once you add one."
 	case m.editable:
 		return "Nothing loaded yet. Press Load playlists (Ctrl+R) to see the songs of each playlist, then choose what to download."
+	case m.selPlaylist < len(m.state.Playlists) && !m.state.Playlists[m.selPlaylist].Listed:
+		return "Reading the songs of this link…"
 	}
 	return "No songs to show here."
 }

@@ -157,7 +157,7 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 		m.openFolder()
 		return m, nil, true
 	case entryAddLink:
-		if m.editable() {
+		if m.editable() || m.addable() {
 			next, cmd := m.startAdd()
 			return next, cmd, true
 		}

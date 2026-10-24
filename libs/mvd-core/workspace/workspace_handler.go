@@ -80,6 +80,9 @@ type Model struct {
 	run      ListRun
 	starting bool
 	stopping bool
+	// loadedKey is the list of addresses the last run was started on (or taken in), so a list is
+	// loaded in the background only when it has changed since.
+	loadedKey string
 
 	about bool
 	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
@@ -128,6 +131,53 @@ func (m Model) Init() tea.Cmd { return tea.Batch(m.screen.Init(), m.toolsTick())
 
 func (m Model) running() bool { return m.run != nil }
 
+// sourcesKey is the addresses of the list, as one text that changes when the list does.
+func (m Model) sourcesKey() string { return strings.Join(m.session.Sources(), "\n") }
+
+// wantsLoading says whether the songs of the list are to be loaded now, in the background: the list
+// has addresses nobody has loaded, nothing is being written or asked, and the tools are there.
+func (m Model) wantsLoading() bool {
+	if !m.host.AutoLoad || m.host.Start == nil || m.running() || m.starting || m.stopping {
+		return false
+	}
+	if m.inline.on || m.asking != askNone || m.about || m.shortcuts || len(m.session.Sources()) == 0 {
+		return false
+	}
+	if _, waiting := m.toolsWaiting(); waiting {
+		return false
+	}
+
+	return m.sourcesKey() != m.loadedKey
+}
+
+// addable says whether links can be added to the run that is going on.
+func (m Model) addable() bool {
+	_, ok := m.run.(downloadpage.SourceAdder)
+
+	return ok && m.active() && !m.starting && !m.stopping
+}
+
+// addToRun gives the run more links, and keeps them in the list.
+func (m Model) addToRun(links []string) Model {
+	adder, ok := m.run.(downloadpage.SourceAdder)
+	if !ok || len(links) == 0 {
+		return m
+	}
+	m.session.SetSources(append(m.session.Sources(), links...))
+	for _, link := range links {
+		adder.AddSource(link)
+	}
+	m.loadedKey = m.sourcesKey()
+	m.syncFile()
+	if len(links) == 1 {
+		m.done = "Added: its songs are loading"
+	} else {
+		m.done = fmt.Sprintf("Added %d links: their songs are loading", len(links))
+	}
+
+	return m
+}
+
 // waiting says whether some song of the run waits for the person to choose it.
 func (m Model) waiting() bool { return m.run != nil && m.screen.State().Tally().Planned > 0 }
 
@@ -140,6 +190,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if finished {
 				ws.done, ws.caution = "", ""
 			}
+		}
+		if ws.wantsLoading() {
+			var load tea.Cmd
+			ws, load = ws.start(true)
+			cmd = tea.Batch(cmd, load)
 		}
 		next = ws.refreshMenus().refreshRunMenus().keepRoomForButtons()
 	}
@@ -460,10 +515,8 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 func (m Model) answeredLink(p purpose, text string) (tea.Model, tea.Cmd) {
 	switch p {
 	case askAddLink:
-		if adder, ok := m.run.(downloadpage.SourceAdder); ok && m.run != nil {
-			m.session.SetSources(append(m.session.Sources(), text))
-			adder.AddSource(text)
-			m.syncFile()
+		if m.addable() {
+			m = m.addToRun([]string{text})
 		} else {
 			m = m.addAddresses(text)
 		}
@@ -508,6 +561,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		m.caution, m.done = state.Message, ""
 		return m, nil
 	}
+	m.loadedKey = m.sourcesKey()
 	if m.session.Path() == "" {
 		// A new list is kept as a draft in the app's own folder, so a download starts at once and
 		// nothing is lost; File > Save as gives it a name of the person's own.

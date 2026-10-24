@@ -28,6 +28,9 @@ type Host struct {
 	Start func(cfg config.Config, sources []string, plan []engine.PlannedEntry, hold bool) (ListRun, error)
 	// Editor is what the review of a list needs.
 	Editor editorpage.EditorHost
+	// AutoLoad starts loading the songs of the list in the background as soon as it has a link
+	// that has not been loaded, so the person never presses a button for it.
+	AutoLoad bool
 	// ListDir is the folder lists are opened from and saved to by default.
 	ListDir string
 	// PickFile shows the operating system's own open-file window, starting in start, and

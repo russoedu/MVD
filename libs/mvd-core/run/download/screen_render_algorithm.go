@@ -23,11 +23,12 @@ func (m Model) render() string {
 		return look.Dim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
-	if !m.loaded && !m.adding && !m.showHelp {
+	if !m.loaded && !m.hosted && !m.adding && !m.showHelp {
 		return m.renderLoading()
 	}
 
 	view := screenview.Padded(View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
+	view = m.withChoiceButtons(view)
 
 	if m.adding {
 		return m.renderAddBox()

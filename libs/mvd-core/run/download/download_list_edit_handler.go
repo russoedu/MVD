@@ -30,6 +30,7 @@ func (m Model) SelectedPlaylist() int { return m.selPlaylist }
 // SelectPlaylist puts the cursor on playlist i, as far as there is one.
 func (m Model) SelectPlaylist(i int) Model {
 	m.selPlaylist = max(min(i, len(m.state.Playlists)-1), 0)
+	m.marquee = 0
 	return m
 }
 

@@ -46,7 +46,7 @@ func (m Model) detailRows(w int) []OutputRow {
 			say(m.linkSummary(pl), plain)
 			if m.waitingIn(pl) > 0 && m.anyWaiting() {
 				blank()
-				say("Press d to download them, or tab to the songs to choose one by one.", CellStyle{Fg: c.Highlight})
+				say("Download them all with the button below, or tab to the songs to choose one by one.", CellStyle{Fg: c.Highlight})
 			}
 		}
 		return rows
@@ -144,7 +144,7 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 		case en.Better:
 			what = "Found a better quality version."
 		}
-		return what + " Press d to download it, s to swap it for another video, x to cancel this song, o to look at it.", CellStyle{Fg: c.Highlight}
+		return what + " Choose what to do with it: the buttons below, or the keys d, s, x and o.", CellStyle{Fg: c.Highlight}
 	case engine.StateSkipped:
 		return "Cancelled: this song will not be downloaded.", CellStyle{Fg: c.Dim}
 	}

@@ -155,6 +155,18 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	before := [3]int{m.selPlaylist, m.selEntry, m.focus}
+	next, cmd := m.update(msg)
+	if now, ok := next.(Model); ok && [3]int{now.selPlaylist, now.selEntry, now.focus} != before {
+		// A row that was just chosen shows the start of its name, still, before it scrolls.
+		now.marquee = 0
+		next = now
+	}
+
+	return next, cmd
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height

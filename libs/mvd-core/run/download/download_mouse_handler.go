@@ -79,6 +79,9 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if next, cmd, handled := m.clickChoice(msg.Mouse().X, msg.Mouse().Y); handled {
+		return next, cmd
+	}
 	if l.hasLists && l.playlists.rows().contains(msg.Mouse().X, msg.Mouse().Y) {
 		m.clickPlaylist(msg.Mouse().Y)
 	} else if l.hasLists && l.entries.rows().contains(msg.Mouse().X, msg.Mouse().Y) {

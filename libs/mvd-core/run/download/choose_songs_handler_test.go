@@ -1,6 +1,8 @@
 package download
 
 import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"strings"
 	"testing"
 
@@ -102,7 +104,32 @@ func TestTheWaitingSongsAreSaidInWordsAndTheKeysAreOffered(t *testing.T) {
 		t.Errorf("keys %q", got)
 	}
 	sentence, _ := m.songSentence(m.state.Entries[3])
-	if !strings.Contains(sentence, "official music video") || !strings.Contains(sentence, "Press d") {
+	if !strings.Contains(sentence, "official music video") || !strings.Contains(sentence, "Choose what to do") {
 		t.Errorf("sentence %q", sentence)
+	}
+}
+
+func TestTheChoicesOfAWaitingSongAreButtonsThatCanBeClicked(t *testing.T) {
+	m, run := choosingModel(t)
+	m.width, m.height = 120, 30
+	buttons := m.choiceButtons()
+	if len(buttons) != 4 {
+		t.Fatalf("buttons %+v", buttons)
+	}
+	if screen := ansi.Strip(m.render()); !strings.Contains(screen, "Swap video") || !strings.Contains(screen, "Cancel song") {
+		t.Errorf("the buttons are not drawn:\n%s", screen)
+	}
+	click := func(m Model, b choiceButton) Model {
+		next, _ := m.Update(tea.MouseClickMsg{X: b.x + 1, Y: b.y, Button: tea.MouseLeft})
+
+		return next.(Model)
+	}
+	m = click(m, buttons[2]) // Cancel song
+	if len(run.skipped) != 1 {
+		t.Errorf("skipped %v", run.skipped)
+	}
+	m = click(m, buttons[1]) // Swap video
+	if !m.swapping {
+		t.Error("the swap did not ask for an address")
 	}
 }

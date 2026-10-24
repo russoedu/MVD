@@ -83,6 +83,10 @@ func (m Model) changeAddress(i int, address string) Model {
 // addAddresses adds one playlist for each non-empty line of text, after the one the cursor
 // is on (or at the end), and puts the cursor on the first one added.
 func (m Model) addAddresses(text string) Model {
+	if m.addable() {
+		links, _ := parseLinks(text)
+		return m.addToRun(links)
+	}
 	if !m.editable() {
 		return m
 	}

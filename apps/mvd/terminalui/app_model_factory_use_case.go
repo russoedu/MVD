@@ -103,6 +103,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 			Live:  runner.LiveSettings,
 			Modal: host.Modal,
 			Host: workspace.Host{
+				AutoLoad: true,
 				Start: host.StartList,
 				Editor: tui.EditorHost{
 					Open:        openurl.Open,
