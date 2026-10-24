@@ -12,50 +12,13 @@ const (
 	noticeTextLimit  = 255
 )
 
-const (
-	noticeTitleEnv = "MVD_NOTICE_TITLE"
-	noticeTextEnv  = "MVD_NOTICE_TEXT"
-	noticeIconEnv  = "MVD_NOTICE_ICON"
-)
-
-// windowsNoticeScript shows a balloon notification from a temporary notification-area
-// icon and keeps it alive long enough to be read. The words come from the environment,
-// so what they contain can never be read as code.
-const windowsNoticeScript = `$ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-$icon = New-Object System.Windows.Forms.NotifyIcon
-$icon.Icon = [System.Drawing.SystemIcons]::Information
-$icon.BalloonTipIcon = $env:MVD_NOTICE_ICON
-$icon.BalloonTipTitle = $env:MVD_NOTICE_TITLE
-$icon.BalloonTipText = $env:MVD_NOTICE_TEXT
-$icon.Visible = $true
-$icon.ShowBalloonTip(10000)
-Start-Sleep -Seconds 11
-$icon.Dispose()
-`
-
-// notificationCommand picks the way to show n on goos, using only the programs has
-// reports as installed. ok is false when there is none.
+// notificationCommand picks the program that shows n on goos, using only the programs has
+// reports as installed. ok is false when there is none, as on Windows, which needs no program.
 func notificationCommand(goos string, n Notice, has func(string) bool) (cmd oscommand.Command, ok bool) {
 	switch goos {
 	case "windows":
-		if !has("powershell") {
-			return oscommand.Command{}, false
-		}
-		icon := "Info"
-		if n.Failure {
-			icon = "Error"
-		}
-
-		return oscommand.Command{
-			Name: "powershell",
-			Args: []string{"-NoProfile", "-NonInteractive", "-EncodedCommand", oscommand.EncodePowerShell(windowsNoticeScript)},
-			Env: []string{
-				noticeTitleEnv + "=" + clip(n.Title, noticeTitleLimit),
-				noticeTextEnv + "=" + clip(n.Text, noticeTextLimit),
-				noticeIconEnv + "=" + icon,
-			},
-		}, true
+		// Windows shows its balloon through the system's own interface, not a program.
+		return oscommand.Command{}, false
 	case "darwin":
 		if !has("osascript") {
 			return oscommand.Command{}, false

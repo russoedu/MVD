@@ -2,7 +2,6 @@ package install
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -135,28 +134,6 @@ func TestTheMoveIsNotOfferedInEachOfTheCasesWhereItWouldBeWrong(t *testing.T) {
 
 		if shouldOfferMove(s) {
 			t.Errorf("offered although %s", name)
-		}
-	}
-}
-
-func TestTheShortcutCommandPassesPathsInTheEnvironmentNotTheScript(t *testing.T) {
-	hostile := `C:\x"; Remove-Item -Recurse C:\ #'$(calc)\mvd.exe`
-
-	cmd := shortcutCommand(`C:\Menu\MVD.lnk`, hostile)
-
-	if cmd.Name != "powershell" {
-		t.Fatalf("name = %q", cmd.Name)
-	}
-	if got := strings.Join(cmd.Args, " "); strings.Contains(got, "Remove-Item") {
-		t.Errorf("the path reached the arguments: %s", got)
-	}
-	if decodePowerShell(t, cmd.Args) != shortcutScript {
-		t.Error("the encoded script is not the fixed script")
-	}
-	env := strings.Join(cmd.Env, "\n")
-	for _, want := range []string{`MVD_SHORTCUT=C:\Menu\MVD.lnk`, "MVD_TARGET=" + hostile} {
-		if !strings.Contains(env, want) {
-			t.Errorf("env is missing %q: %v", want, cmd.Env)
 		}
 	}
 }

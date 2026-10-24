@@ -8,31 +8,13 @@ import (
 
 const hostileWords = `"; Remove-Item -Recurse C:\ #'$(calc) ` + "`n"
 
-func TestWindowsShowsABalloonWithTheWordsInTheEnvironmentNotTheScript(t *testing.T) {
-	notice := Notice{Title: hostileWords, Text: hostileWords}
-
-	cmd, ok := notificationCommand("windows", notice, installed("powershell"))
-
-	if !ok || cmd.Name != "powershell" {
-		t.Fatalf("ok=%v cmd=%+v", ok, cmd)
-	}
-	if got := strings.Join(cmd.Args, " "); strings.Contains(got, "Remove-Item") || strings.Contains(got, "calc") {
-		t.Errorf("the words reached the arguments: %s", got)
-	}
-	if decodePowerShell(t, cmd.Args) != windowsNoticeScript {
-		t.Error("the encoded script is not the fixed script")
-	}
-	env := strings.Join(cmd.Env, "\n")
-	if !strings.Contains(env, noticeTitleEnv+"=") || !strings.Contains(env, noticeTextEnv+"=") || !strings.Contains(env, noticeIconEnv+"=Info") {
-		t.Errorf("env = %v", cmd.Env)
+func TestWindowsStartsNoProgramToShowANotice(t *testing.T) {
+	if cmd, ok := notificationCommand("windows", Notice{Title: hostileWords, Text: hostileWords}, installed("powershell")); ok {
+		t.Errorf("a program is started: %+v", cmd)
 	}
 }
 
-func TestAFailureIsDrawnAsAnError(t *testing.T) {
-	win, _ := notificationCommand("windows", Notice{Title: "t", Text: "x", Failure: true}, installed("powershell"))
-	if !strings.Contains(strings.Join(win.Env, "\n"), noticeIconEnv+"=Error") {
-		t.Errorf("windows env = %v", win.Env)
-	}
+func TestAFailureIsUrgentOnLinux(t *testing.T) {
 	linux, _ := notificationCommand("linux", Notice{Title: "t", Text: "x", Failure: true}, installed("notify-send"))
 	if !contains(linux.Args, "--urgency=critical") {
 		t.Errorf("linux args = %v", linux.Args)
@@ -63,7 +45,7 @@ func TestMacAndLinuxPassTheWordsAsArgumentsAfterEverythingThatIsCode(t *testing.
 }
 
 func TestAMachineWithoutTheToolShowsNothing(t *testing.T) {
-	for _, goos := range []string{"windows", "darwin", "linux"} {
+	for _, goos := range []string{"darwin", "linux"} {
 		if _, ok := notificationCommand(goos, Notice{Title: "t", Text: "x"}, installed()); ok {
 			t.Errorf("%s: found a way to notify with nothing installed", goos)
 		}
@@ -73,19 +55,12 @@ func TestAMachineWithoutTheToolShowsNothing(t *testing.T) {
 func TestLongWordsAreCutToWhatABalloonCanShowWithoutBreakingACharacter(t *testing.T) {
 	long := strings.Repeat("é", 400)
 
-	cmd, _ := notificationCommand("windows", Notice{Title: long, Text: long}, installed("powershell"))
-
-	for _, kv := range cmd.Env {
-		name, value, _ := strings.Cut(kv, "=")
-		limit := map[string]int{noticeTitleEnv: noticeTitleLimit, noticeTextEnv: noticeTextLimit}[name]
-		if limit == 0 {
-			continue
+	for text, limit := range map[string]int{clip(long, noticeTitleLimit): noticeTitleLimit, clip(long, noticeTextLimit): noticeTextLimit} {
+		if got := utf8.RuneCountInString(text); got != limit {
+			t.Errorf("%d characters, want %d", got, limit)
 		}
-		if got := utf8.RuneCountInString(value); got != limit {
-			t.Errorf("%s has %d characters, want %d", name, got, limit)
-		}
-		if !strings.HasSuffix(value, "...") || !utf8.ValidString(value) {
-			t.Errorf("%s was not cut cleanly: %q", name, value)
+		if !strings.HasSuffix(text, "...") || !utf8.ValidString(text) {
+			t.Errorf("not cut cleanly: %q", text)
 		}
 	}
 }

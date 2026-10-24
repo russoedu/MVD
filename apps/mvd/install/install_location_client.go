@@ -2,7 +2,6 @@ package install
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 
 	"youtube-downloader/apps/mvd/console"
 	"youtube-downloader/apps/mvd/question"
-	"youtube-downloader/libs/mvd-core/procwindow"
 )
 
 // MoveResult is how a move that the person asked for went.
@@ -161,21 +159,13 @@ func CleanUpMovedProgram(path string) {
 	removeMovedProgram(path)
 }
 
-// makeShortcut creates a shortcut file with PowerShell, which is how Windows lets a
-// program make one without extra libraries.
+// makeShortcut creates a shortcut file, through the system's own interface.
 func makeShortcut(link, target string) error {
 	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
 		return err
 	}
-	command := shortcutCommand(link, target)
-	cmd := exec.Command(command.Name, command.Args...)
-	cmd.Env = append(os.Environ(), command.Env...)
-	procwindow.Hide(cmd)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("%w: %s", err, output)
-	}
 
-	return nil
+	return createShortcut(link, target)
 }
 
 // startInstalled starts the installed program, in its own folder, and does not wait for
