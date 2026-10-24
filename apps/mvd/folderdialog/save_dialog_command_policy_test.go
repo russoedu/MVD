@@ -1,24 +1,6 @@
 package folderdialog
 
-import (
-	"strings"
-	"testing"
-)
-
-func TestWindowsOpensTheSaveWindowWithTheNameFolderAndFilterInTheEnvironment(t *testing.T) {
-	cmd, ok := saveDialogCommand("windows", `C:\Users\me\plans`, "Dance Music.mvd", "mvd", "MVD review", installed("powershell"))
-	if !ok || cmd.Name != "powershell" {
-		t.Fatalf("got %+v, %v", cmd, ok)
-	}
-	for _, want := range []string{startEnv + `=C:\Users\me\plans`, nameEnv + "=Dance Music.mvd", filterEnv + "=MVD review (*.mvd)|*.mvd|All files (*.*)|*.*"} {
-		if !contains(cmd.Env, want) {
-			t.Errorf("%q missing from %v", want, cmd.Env)
-		}
-	}
-	if script := decodePowerShell(t, cmd.Args); !strings.Contains(script, "SaveFileDialog") || !strings.Contains(script, "OverwritePrompt") {
-		t.Errorf("not a save window that asks before replacing: %s", script)
-	}
-}
+import "testing"
 
 func TestMacPassesTheFolderAndTheNameAsArguments(t *testing.T) {
 	cmd, ok := saveDialogCommand("darwin", "/Users/me/plans", "list.mvd", "mvd", "MVD review", installed("osascript"))

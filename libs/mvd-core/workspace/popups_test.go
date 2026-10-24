@@ -32,7 +32,7 @@ func TestSaveAsHasItsOwnShortcutAndHelpHasNoOpenSource(t *testing.T) {
 			if e.Name == entrySaveAs {
 				saveAs = e.Shortcut
 			}
-			if mn.Name == "Help" {
+			if mn.Name == "Help" && !e.Separator {
 				help = append(help, e.Name)
 			}
 		}
@@ -40,8 +40,8 @@ func TestSaveAsHasItsOwnShortcutAndHelpHasNoOpenSource(t *testing.T) {
 	if saveAs != "Ctrl+Shift+S" {
 		t.Errorf("Save as has %q", saveAs)
 	}
-	if len(help) != 1 || help[0] != entryAbout {
-		t.Errorf("Help has %v", help)
+	if want := []string{entryShortcuts, entryDocs, entryReport, entryAbout}; strings.Join(help, "|") != strings.Join(want, "|") {
+		t.Errorf("Help has %v, want %v", help, want)
 	}
 }
 
@@ -246,7 +246,7 @@ func TestTheButtonsStandUnderThePlaylistsAndStartIsTheFirst(t *testing.T) {
 	if !strings.Contains(screen[y], entryStart) {
 		t.Errorf("the first button row is %q", screen[y])
 	}
-	m = click(m, x+w/2, y+1) // Get data for review
+	m = click(m, x+w/2, y+1) // Look up songs first
 	_ = m
 }
 

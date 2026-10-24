@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -102,11 +101,10 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// person can always write to, whatever folder the app was started from.
 	notify := notification.Notify
 	binDir := filepath.Join(appDir, "bin")
-	deps.EnsureIn(binDir, toolupdates.Reporter(logf, notify))
-	ytDlpPath, err := exec.LookPath("yt-dlp")
-	if err != nil {
-		return errors.New("'yt-dlp' could not be found or installed")
-	}
+	// Fetched in the background on the first start, so the window opens at once and says what is
+	// going on; the downloads wait for it (see Host.Tools).
+	tools := deps.PrepareIn(binDir, toolupdates.Reporter(logf, notify))
+	ytDlpPath := deps.ToolPath(binDir, "yt-dlp")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -158,6 +156,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 		Version:   version,
 		Clipboard: terminalui.SystemClipboard{},
 		Modal:     backdrop.Set,
+		Tools:     toolsState(tools),
 		Uninstall: terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: move,
@@ -172,7 +171,11 @@ func run(movedFrom string, askToMove bool, review string) error {
 	}
 
 	fmt.Printf("MVD %s\n", version)
-	updates.AtStart()
+	// Looking for newer tools waits for the first fetch, so the two never write the same file.
+	go func() {
+		_ = tools.Wait(ctx)
+		updates.AtStart()
+	}()
 
 	// The window runs on this goroutine (macOS needs the main thread) until it is closed,
 	// and closing it ends the app. A second start does not get past appwindow.Run: it
@@ -211,4 +214,19 @@ func runUninstall() error {
 	remove()
 
 	return nil
+}
+
+// toolsState is what the workspace asks about the tools: ready, being fetched, or one that
+// could not be had.
+func toolsState(tools *deps.Preparation) func() workspace.ToolsState {
+	return func() workspace.ToolsState {
+		if problem := tools.Problem(); problem != "" {
+			return workspace.ToolsState{Message: problem, Failed: true}
+		}
+		if tools.Ready() {
+			return workspace.ToolsState{Ready: true}
+		}
+
+		return workspace.ToolsState{Message: tools.Status()}
+	}
 }

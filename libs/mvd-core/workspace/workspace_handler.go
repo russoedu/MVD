@@ -39,6 +39,9 @@ type (
 	}
 	// saveTickMsg is the beat at which the list is brought up to date with the run.
 	saveTickMsg time.Time
+	// toolsTickMsg is the beat at which the state of the tools is looked at again, while they
+	// are being fetched.
+	toolsTickMsg time.Time
 )
 
 // PreferencesRequestedMsg asks the host to show the preferences; it gives the result back
@@ -83,6 +86,10 @@ type Model struct {
 	decided   int // the version of the decisions of the review the list has
 
 	about bool
+	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
+	// down its lines it is.
+	shortcuts       bool
+	shortcutsScroll int
 	// inline is the address being written in its row; clicked is the last click, for double clicks.
 	inline  inlineEdit
 	clicked lastClick
@@ -99,6 +106,9 @@ type Model struct {
 	input  textinput.Model
 
 	notice        string
+	// done is what an action that worked says, and caution what it warns of; both go away at the
+	// next key or click, while an error stays until something replaces it.
+	done, caution string
 	width, height int
 }
 
@@ -116,7 +126,7 @@ func New(host Host, cfg config.Config, list *downloadlist.Session) Model {
 // Session is the list that is open.
 func (m Model) Session() *downloadlist.Session { return m.session }
 
-func (m Model) Init() tea.Cmd { return m.screen.Init() }
+func (m Model) Init() tea.Cmd { return tea.Batch(m.screen.Init(), m.toolsTick()) }
 
 func (m Model) running() bool { return m.run != nil }
 
@@ -129,6 +139,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case tea.KeyPressMsg, tea.MouseClickMsg:
+		m.done, m.caution = "", ""
+	}
 	if mouse, ok := msg.(tea.MouseMsg); ok {
 		m.hoverX, m.hoverY = mouse.Mouse().X, mouse.Mouse().Y
 		if _, moved := msg.(tea.MouseMotionMsg); moved && m.bar.Open() < 0 {
@@ -158,6 +172,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case toolsTickMsg:
+		return m, m.toolsTick()
 	case saveTickMsg:
 		if m.run == nil {
 			return m, nil
@@ -218,6 +234,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.about = false
 			}
 			return m, nil
+		}
+		if m.shortcuts {
+			return m.shortcutsKey(key), nil
 		}
 		if m.asking != askNone {
 			return m.answer(key)
@@ -343,6 +362,12 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
 		m.about = true
+	case entryShortcuts:
+		m.shortcuts, m.shortcutsScroll = true, 0
+	case entryDocs:
+		m.openAddress(projectURL + "#readme")
+	case entryReport:
+		m.openAddress(m.reportAddress())
 	case entryQuit:
 		return m.stop(true)
 	}
@@ -374,7 +399,7 @@ func (m *Model) save(path string) {
 		m.notice = "Cannot save the list: " + err.Error()
 		return
 	}
-	m.notice = "Saved " + m.session.Path()
+	m.done = "Saved " + m.session.Path()
 }
 
 // ask opens the one-line question at the bottom of the screen.
@@ -417,7 +442,7 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 		}
 		m.session = list
 		m.screen = m.screen.WithState(list.Preview())
-		m.notice = "Opened " + list.Path()
+		m.done = "Opened " + list.Path()
 	case askSaveAs:
 		m.save(withExtension(text))
 	case askSaveThenStart, askSaveThenReview:
@@ -465,10 +490,14 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		m.notice = "The downloads are already going"
 		return m, nil
 	case len(m.session.Sources()) == 0:
-		m.notice = "The list is empty: add a link first (a)"
+		m.notice = "The list is empty: add a link first (Ctrl+L)"
 		return m, nil
 	case m.host.Start == nil:
 		m.notice = "Downloading is not available here"
+		return m, nil
+	}
+	if state, waiting := m.toolsWaiting(); waiting {
+		m.caution, m.done = state.Message, ""
 		return m, nil
 	}
 	if m.session.Path() == "" {
@@ -565,10 +594,10 @@ func (m Model) togglePause() Model {
 	}
 	if m.run.Paused() {
 		m.run.Resume()
-		m.notice = "Downloads go on"
+		m.done = "Downloads go on"
 	} else {
 		m.run.Pause()
-		m.notice = "Paused: the downloads under way finish, no new one starts"
+		m.done = "Paused: the downloads under way finish, no new one starts"
 	}
 	return m
 }
@@ -578,7 +607,7 @@ func (m Model) retryAll() Model {
 		m.notice = "Nothing is running"
 		return m
 	}
-	m.notice = fmt.Sprintf("%d songs queued again", m.run.RetryAll())
+	m.done = fmt.Sprintf("%d songs queued again", m.run.RetryAll())
 	return m
 }
 

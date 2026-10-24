@@ -54,6 +54,24 @@ func Wrap(s string, w int) []string {
 	return lines
 }
 
+// TruncateMiddle cuts s to at most w cells by taking out the middle, so both ends stay: the start
+// of a path says where it is, and its end says what it is. A third of the room goes to the start.
+func TruncateMiddle(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	sw := ansi.StringWidth(s)
+	if sw <= w {
+		return s
+	}
+	if w <= 3 {
+		return Truncate(s, w)
+	}
+	head := (w - 1) / 3
+	tail := w - 1 - head
+	return ansi.Truncate(s, head, "") + "…" + ansi.TruncateLeft(s, sw-tail, "")
+}
+
 // WrapLine breaks one line of text into rows of at most w cells, on word boundaries and in
 // the middle of a word that is longer than a row. Unlike Wrap it keeps the spaces and the
 // colours of the line, so a log line reads the same on two rows as on one.

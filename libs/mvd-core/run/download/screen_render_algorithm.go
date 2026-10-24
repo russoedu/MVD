@@ -101,7 +101,7 @@ func (m Model) renderHelp() string {
 	if m.ctrl != nil {
 		logPath = m.ctrl.LogPath()
 	}
-	return helppage.Screen(m.width, m.height, logPath)
+	return helppage.Screen(m.width, m.height, helppage.Options{LogPath: logPath, Hosted: m.hosted})
 }
 
 // downloadingSummary is the speed of all the downloads together, and how many files and

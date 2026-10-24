@@ -1,4 +1,5 @@
 import { PixelLogo } from './pixel-logo.component'
+import { Ticker } from './ticker.component'
 import { WindowControls } from './window-controls.component'
 import './page-header.style.css'
 
@@ -17,9 +18,7 @@ export function PageHeader ({ onAbout }: PageHeaderProps) {
       <PixelLogo />
       <div className='page-header-title'>
         <strong>Music Video Downloader</strong>
-        <div className='page-header-ticker'>
-          <span>*** I want my MTV... and I want it stored locally, total overload style! ***</span>
-        </div>
+        <Ticker text='*** I want my MTV... and I want it stored locally, total overload style! ***' />
       </div>
       <button type='button' className='page-header-button' onClick={onAbout}>
         About this app

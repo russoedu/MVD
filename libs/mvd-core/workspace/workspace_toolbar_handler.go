@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"time"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
@@ -13,7 +15,7 @@ const topRows = 1
 // The buttons of the toolbar, and the Run menu entries that do the same.
 const (
 	entryStart       = "Start"
-	entryReview      = "Get data for review"
+	entryReview      = "Look up songs first"
 	entryAddLink     = "Add link…"
 	entryPause       = "Pause"
 	entryResume      = "Resume"
@@ -34,10 +36,11 @@ type button struct {
 func (m Model) buttons() []button {
 	busy := m.starting || m.stopping
 	if !m.running() {
-		nothing := busy || len(m.session.Sources()) == 0 // there is nothing to download
+		_, waiting := m.toolsWaiting()
+		nothing := busy || waiting || len(m.session.Sources()) == 0 // there is nothing to download, or no tool to do it with
 		return []button{
 			{"► Start", entryStart, nothing},
-			{"Get data for review", entryReview, nothing},
+			{"Look up first", entryReview, nothing},
 			{"+ Add link", entryAddLink, busy},
 		}
 	}
@@ -117,8 +120,9 @@ func (m Model) refreshRunMenus() Model {
 	busy := m.starting || m.stopping
 	running := m.running()
 	nothing := len(m.session.Sources()) == 0
-	m.bar.SetEnabled(entryStart, !running && !busy && !nothing)
-	m.bar.SetEnabled(entryReview, !running && !busy && !nothing)
+	_, waiting := m.toolsWaiting()
+	m.bar.SetEnabled(entryStart, !running && !busy && !nothing && !waiting)
+	m.bar.SetEnabled(entryReview, !running && !busy && !nothing && !waiting)
 	m.bar.SetEnabled(entryPause, running && !busy && !m.run.Paused())
 	m.bar.SetEnabled(entryResume, running && !busy && m.run.Paused())
 	m.bar.SetEnabled(entryStop, running && !busy)
@@ -163,4 +167,49 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 func (m Model) keepRoomForButtons() Model {
 	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable())
 	return m
+}
+
+// disabledReason is why the button under the pointer cannot be used, or "" when the pointer is
+// not over a button that cannot.
+func (m Model) disabledReason() string {
+	x, y, w, ok := m.buttonRows()
+	if !ok {
+		return ""
+	}
+	for i, b := range m.buttons() {
+		if b.disabled && m.hoverY == y+i && m.hoverX >= x && m.hoverX < x+w {
+			if m.starting || m.stopping {
+				return "One moment..."
+			}
+			if state, waiting := m.toolsWaiting(); waiting {
+				return state.Message
+			}
+			return "Add a link first."
+		}
+	}
+	return ""
+}
+
+// toolsWaiting says whether the tools of the downloads are not ready, and what they are.
+func (m Model) toolsWaiting() (ToolsState, bool) {
+	if m.host.Tools == nil {
+		return ToolsState{}, false
+	}
+	state := m.host.Tools()
+
+	return state, !state.Ready
+}
+
+// toolsEvery is how often the state of the tools is looked at while they are being fetched.
+const toolsEvery = 400 * time.Millisecond
+
+// toolsTick asks to be woken to look at the tools again, as long as they are being fetched; it
+// is nothing once they are ready or when one could not be gotten, which does not change.
+func (m Model) toolsTick() tea.Cmd {
+	state, waiting := m.toolsWaiting()
+	if !waiting || state.Failed {
+		return nil
+	}
+
+	return tea.Tick(toolsEvery, func(t time.Time) tea.Msg { return toolsTickMsg(t) })
 }

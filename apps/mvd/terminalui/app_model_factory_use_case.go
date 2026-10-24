@@ -63,6 +63,9 @@ type Host struct {
 	Clipboard workspace.Clipboard
 	// Modal is told when a popup opens and closes over the screen; nil for none.
 	Modal func(open bool)
+	// Tools says whether the tools of the downloads are ready: on the first start they are
+	// fetched while the window is already open. nil means they are always there.
+	Tools func() workspace.ToolsState
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -71,10 +74,10 @@ type Host struct {
 func NewModelFactory(appDir string, files Files, host Host, logf func(string, ...interface{})) func() tea.Model {
 	review := files.Review // only the first window opens on it
 	return func() tea.Model {
-		cfg, created, err := config.LoadOrCreate(files.Config, appDir, appdir.DefaultDownloadsDir())
+		cfg, created, err := config.LoadOrCreate(files.Config, appDir, appdir.DefaultVideosDir())
 		if err != nil {
 			logf("cannot read the settings %s, starting from the defaults: %v", files.Config, err)
-			cfg, created = config.Default(appDir, appdir.DefaultDownloadsDir()), true
+			cfg, created = config.Default(appDir, appdir.DefaultVideosDir()), true
 		}
 		tui.ApplyTheme(cfg.Colors)
 		urls, _ := sourcelist.Load(files.List)
@@ -111,6 +114,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				SaveFile: host.SaveFile,
 				Open:     openurl.Open,
 				Quit:     host.Quit,
+				Tools:    host.Tools,
 				Version:  host.Version,
 				Clipboard: host.Clipboard,
 			},

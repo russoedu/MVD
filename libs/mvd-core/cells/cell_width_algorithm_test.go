@@ -73,3 +73,25 @@ func TestWrapLineKeepsTheColours(t *testing.T) {
 		t.Errorf("the colour was lost: %q", rows)
 	}
 }
+
+func TestTruncateMiddleKeepsBothEndsOfAPath(t *testing.T) {
+	path := `C:\Users\russo\AppData\Local\Temp\claude\sandbox\out`
+	for _, w := range []int{20, 30, 40} {
+		got := TruncateMiddle(path, w)
+		if ansi.StringWidth(got) > w {
+			t.Errorf("width %d: %q is %d cells", w, got, ansi.StringWidth(got))
+		}
+		if !strings.Contains(got, "…") || !strings.HasPrefix(got, "C:") || !strings.HasSuffix(got, `\out`) {
+			t.Errorf("width %d: both ends should stay: %q", w, got)
+		}
+	}
+	if got := TruncateMiddle("short", 20); got != "short" {
+		t.Errorf("a path that fits is kept, got %q", got)
+	}
+	if got := TruncateMiddle("abcdefgh", 3); ansi.StringWidth(got) > 3 {
+		t.Errorf("a tiny width still fits, got %q", got)
+	}
+	if got := TruncateMiddle("abc", 0); got != "" {
+		t.Errorf("no room gives nothing, got %q", got)
+	}
+}

@@ -44,11 +44,31 @@
   to { transform: translateX(-100%); }
 }
 
+/* It can be read still: paused under the pointer, and at rest after a few passes. */
+.page-header:hover .page-header-ticker span {
+  animation-play-state: paused;
+}
+
+.page-header-ticker[data-settled='true'] span {
+  padding-left: 0;
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-header-ticker span {
     padding-left: 0;
     animation: none;
   }
+}
+
+/* Read out by screen readers, not seen. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .page-header-button {
@@ -60,6 +80,15 @@
   border: 2px outset #fff;
   cursor: pointer;
   --wails-draggable: no-drag;
+}
+
+.page-header-button:hover {
+  background: #d8d8d8;
+}
+
+.page-header-button:focus-visible {
+  outline: 2px dotted #000;
+  outline-offset: -6px;
 }
 
 .page-header-button:active {

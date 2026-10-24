@@ -42,6 +42,10 @@ type Host struct {
 	// Clipboard is the machine's own clipboard, which the page around the terminal cannot
 	// reach; nil for none, and the terminal's own is then asked for.
 	Clipboard Clipboard
+	// Tools says whether what a download needs (the downloader and the video tools) is there.
+	// On the first start they are fetched while the window is already open, and until they are
+	// the downloads cannot start; nil means they are always there.
+	Tools func() ToolsState
 	// Version is the version of the app, which the About window tells; empty for a build
 	// that has none.
 	Version string
@@ -51,4 +55,13 @@ type Host struct {
 type Clipboard interface {
 	Read() (string, error)
 	Write(text string) error
+}
+
+// ToolsState is whether the tools of the downloads are ready, and what to tell the person when
+// they are not: that they are being fetched, or that one could not be.
+type ToolsState struct {
+	Ready   bool
+	Message string
+	// Failed is true when the message is about something that went wrong, not about waiting.
+	Failed bool
 }

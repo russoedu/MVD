@@ -52,7 +52,7 @@ func setCookieChoice(c *config.Config, v string) {
 	}
 }
 
-var cookieOptions = []string{"all", "off", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari"}
+var cookieOptions = []string{"off", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari", "all"}
 
 // colourField is a theme colour; slot points at it inside the config.
 func colourField(label string, slot func(*config.ThemeColors) *string) field {
@@ -89,15 +89,15 @@ func themeField() field {
 // pages are the tabs, in the order they are shown.
 func pages(host Host) []page {
 	advanced := []field{
-		{label: "Parallel Fragments Per Video", hint: "Each video is fetched in pieces; this is how many pieces come at once. More can be faster.", kind: kindStepper, min: 0, max: 16, step: 1, off: "off",
+		{label: "Parts downloaded at once", hint: "Each video is fetched in pieces; this is how many come at once. More can be faster.", kind: kindStepper, min: 0, max: 16, step: 1, off: "off",
 			get: func(c config.Config) string { return intText(c.ConcurrentFragments) },
 			set: func(c *config.Config, v string) { c.ConcurrentFragments = parseInt(v) }},
-		{label: "Start Timeout Seconds", kind: kindStepper, hint: "How long a download may take to start before it is stopped", min: 10, max: 3600, step: 10,
+		{label: "Give up on a slow start after (seconds)", kind: kindStepper, hint: "How long a download may take to start before it is stopped.", min: 10, max: 3600, step: 10,
 			get: func(c config.Config) string { return intText(c.StartTimeoutSeconds) },
 			set: func(c *config.Config, v string) { c.StartTimeoutSeconds = parseInt(v) }},
-		{label: "Cookies from Browser", hint: "Lets downloads use the YouTube login of your browser, for age-restricted or private videos. All tries each browser; Off uses none.", kind: kindChoice, options: cookieOptions,
+		{label: "Use my browser's YouTube login", hint: "Off reads nothing from your browsers. Pick one to use its login for age-restricted or private videos; All tries each installed browser.", kind: kindChoice, options: cookieOptions,
 			get: cookieChoice, set: setCookieChoice},
-		{label: "Save Songs Without Official Video (CSV)", hint: "With Official Music Video set to Only: keep a list (a CSV file) of the songs no official video was found for.", kind: kindChoice, options: yesNo,
+		{label: "List songs with no official video (CSV)", hint: "Only matters when Download Official Music Video is set to Only: keeps a CSV list of the songs no official video was found for.", kind: kindChoice, options: yesNo,
 			get: func(c config.Config) string { return boolText(c.SaveNotFound) },
 			set: func(c *config.Config, v string) { c.SaveNotFound = v == "yes" }},
 		{label: "Create Log File", hint: "Write a log of what the app did, which helps to find out what went wrong.", kind: kindChoice, options: yesNo,
@@ -144,7 +144,7 @@ func pages(host Host) []page {
 			{label: "Retry Attempts", hint: "How many times a failed download is tried again before it is given up.", kind: kindStepper, min: 1, max: 999, step: 1,
 				get: func(c config.Config) string { return intText(c.RetryCycles) },
 				set: func(c *config.Config, v string) { c.RetryCycles = parseInt(v) }},
-			{label: "Retry Attempts Wait Seconds", kind: kindStepper, hint: "The wait before the first retry, times the number of the attempt", min: 1, max: 3600, step: 5,
+			{label: "Wait before retrying (seconds)", kind: kindStepper, hint: "The wait before the first retry, times the number of the attempt.", min: 1, max: 3600, step: 5,
 				get: func(c config.Config) string { return intText(c.RetryWaitSeconds) },
 				set: func(c *config.Config, v string) { c.RetryWaitSeconds = parseInt(v) }},
 		}},

@@ -34,6 +34,7 @@ func NewWorkspaceApp(in WorkspaceInput) tea.Model {
 	a := workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg, hoverX: -1, hoverY: -1}
 	if in.Setup.OpenConfig {
 		a = a.openPrefs() // the first run: the settings have never been looked at
+		a.prefs = a.prefs.WithWelcome()
 	}
 	return a
 }
@@ -60,7 +61,7 @@ func (a workspaceApp) Init() tea.Cmd {
 func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := a.update(msg)
 	if app, ok := next.(workspaceApp); ok && app.in.Modal != nil {
-		open := app.inPrefs || app.ws.AboutOpen()
+		open := app.inPrefs || app.ws.WindowOpen()
 		if app.modal == nil || *app.modal != open {
 			app.in.Modal(open)
 			app.modal = &open
@@ -91,6 +92,11 @@ func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if mouse, ok := msg.(tea.MouseMsg); ok {
 		a.hoverX, a.hoverY = mouse.Mouse().X, mouse.Mouse().Y
+	}
+	if workspace.Background(msg) {
+		next, cmd := a.ws.Update(msg) // the workspace's own beat goes on under a popup
+		a.ws = next.(workspace.Model)
+		return a, cmd
 	}
 	if a.inPrefs {
 		if mouse, ok := msg.(tea.MouseMsg); ok {
@@ -127,12 +133,25 @@ func (a workspaceApp) openPrefs() workspaceApp {
 // closePrefs takes the preferences away; with confirm, the places the files go to and the
 // pattern of their names are kept too.
 func (a workspaceApp) closePrefs(confirm bool) workspaceApp {
-	if confirm {
-		a = a.apply(a.prefs.Config(), true)
+	chosen := a.prefs.Config()
+	switch {
+	case confirm:
+		a = a.apply(chosen, true)
+		a.ws = a.ws.Confirm("Preferences saved")
+	case a.waitsForSave(chosen):
+		a.ws = a.ws.Caution("The folder or file names you changed were not kept. Press s in Preferences to save them.")
 	}
 	a.inPrefs = false
 	ApplyTheme(a.cfg.Colors)
 	return a
+}
+
+// waitsForSave says whether the preferences chosen differ from the ones in use in the settings
+// that are only kept when the person saves: where the files go and how they are named.
+func (a workspaceApp) waitsForSave(chosen config.Config) bool {
+	return chosen.OutputDir != a.cfg.OutputDir ||
+		chosen.OutputTemplate != a.cfg.OutputTemplate ||
+		chosen.LogDir != a.cfg.LogDir
 }
 
 // popupHost is what the preferences ask of the machine: a folder chooser, and moving and

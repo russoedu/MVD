@@ -5,10 +5,13 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
+	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/lineedit"
+	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/pointer"
 )
@@ -122,7 +125,13 @@ func (m Model) inlineView(screen string) string {
 		return screen
 	}
 	m.inline.line = m.inline.line.SetWidth(max(w-gripCells, 1))
-	return dialog.Overlay(screen, "≡ "+m.inline.line.View(), x, y)
+	screen = dialog.Overlay(screen, "≡ "+m.inline.line.View(), x, y)
+	if m.inline.line.Value() == "" && w-gripCells > 2 {
+		// An empty row says what it is for, after the cursor.
+		hint := cells.Truncate("Paste a link here", w-gripCells-1)
+		screen = dialog.Overlay(screen, lipgloss.NewStyle().Background(lipgloss.Color(look.Colours.Selected)).Foreground(lipgloss.Color(look.Colours.Dim)).Render(hint), x+gripCells+1, y)
+	}
+	return screen
 }
 
 // inlineKey gives a key to the editor: enter keeps what was written, esc drops it.

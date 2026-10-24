@@ -49,7 +49,8 @@ type Config struct {
 
 	// CookiesFromBrowser pins one yt-dlp browser spec; empty means none pinned.
 	CookiesFromBrowser string
-	// AutoCookies tries every installed browser. Ignored when a browser is pinned.
+	// AutoCookies tries every installed browser. Ignored when a browser is pinned. It is off for
+	// a new install: reading the logins of every browser is something the person opts into.
 	AutoCookies bool
 	// CookiesFile is where cookies are stored/read. Empty disables cookies.
 	CookiesFile string
@@ -88,7 +89,7 @@ func Default(appDir, downloadsDir string) Config {
 		RetryWaitSeconds:       30,
 		StartTimeoutSeconds:    120,
 		CookiesFromBrowser:     "",
-		AutoCookies:            true,
+		AutoCookies:            false,
 		CookiesFile:            filepath.Join(appDir, "cookies.txt"),
 		CreateLogFile:          true,
 		LogDir:                 appDir,

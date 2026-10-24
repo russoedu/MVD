@@ -55,7 +55,7 @@ func main() {
 	cfgPath := filepath.Join(appDir, "config.conf")
 	listPath := filepath.Join(appDir, "list.txt")
 
-	cfg, created, err := config.LoadOrCreate(cfgPath, appDir, appdir.DefaultDownloadsDir())
+	cfg, created, err := config.LoadOrCreate(cfgPath, appDir, appdir.DefaultVideosDir())
 	if err != nil {
 		fmt.Printf("Error reading config %s: %v\n", cfgPath, err)
 		os.Exit(1)

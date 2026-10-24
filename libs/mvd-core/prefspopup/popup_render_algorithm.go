@@ -188,6 +188,10 @@ func (m Model) layout() pageLayout {
 		case kindText, kindFolder:
 			add(focused, look.Title.Render(f.label))
 			shown := look.Text.Render(cells.Display(value))
+			if f.kind == kindFolder {
+				// A long path keeps its end, which says which folder it is.
+				shown = look.Text.Render(cells.TruncateMiddle(cells.Display(value), max(w-gutterWidth, 8)))
+			}
 			switch {
 			case editingHere(i):
 				shown = m.input.View()
@@ -302,12 +306,17 @@ func (m Model) View() string {
 	l := m.layout()
 	edge := look.BorderOn.Render("│")
 	rows := m.bodyRows()
+	thumb := scrollbarThumb(len(l.lines), rows, m.scroll)
 	for i := 0; i < rows; i++ {
 		line := strings.Repeat(" ", w-2)
 		if at := m.scroll + i; at < len(l.lines) {
 			line = l.lines[at]
 		}
-		out = append(out, edge+line+edge)
+		right := edge
+		if thumb[i] {
+			right = look.Key.Render("┃") // there is more of the page than shows: this is where
+		}
+		out = append(out, edge+line+right)
 	}
 	out = append(out, look.BorderOn.Render("╰"+strings.Repeat("─", w-2)+"╯"))
 	return strings.Join(append(out, cells.Fit(" "+m.hintLine(), w)), "\n")
@@ -322,6 +331,8 @@ func (m Model) hintLine() string {
 		return look.Dim.Render(m.status)
 	case m.editing:
 		return look.Dim.Render("enter apply  esc cancel")
+	case m.welcome:
+		return look.Yellow.Render("Welcome! Check where your videos go, then press s to save.")
 	}
 	return look.Dim.Render("↑↓ move  ←→ change  enter edit  tab page  s save  esc close")
 }

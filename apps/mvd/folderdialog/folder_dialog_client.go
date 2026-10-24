@@ -21,6 +21,9 @@ type Dialog struct{}
 // Pick runs the chooser and waits. Cancelling the context (the page went away)
 // closes it.
 func (Dialog) Pick(ctx context.Context, start string) (string, bool, error) {
+	if hasNativeDialog {
+		return nativeDialog(ctx, dialogRequest{kind: pickFolder, start: start})
+	}
 	command, ok := folderDialogCommand(runtime.GOOS, start, oscommand.HasProgram)
 	if !ok {
 		return "", false, ErrNoDialog
@@ -32,6 +35,9 @@ func (Dialog) Pick(ctx context.Context, start string) (string, bool, error) {
 // PickFile runs the system's open-file window and waits. extension (without its dot)
 // and label describe the files it shows first, such as "mvd" and "MVD review".
 func (Dialog) PickFile(ctx context.Context, start, extension, label string) (string, bool, error) {
+	if hasNativeDialog {
+		return nativeDialog(ctx, dialogRequest{kind: openFile, start: start, extension: extension, label: label})
+	}
 	command, ok := fileDialogCommand(runtime.GOOS, start, extension, label, oscommand.HasProgram)
 	if !ok {
 		return "", false, ErrNoDialog
@@ -44,6 +50,11 @@ func (Dialog) PickFile(ctx context.Context, start, extension, label string) (str
 // in and name the file name offered; extension (without its dot) and label describe the
 // file type, and the extension is added when the person typed a name without one.
 func (Dialog) SaveFile(ctx context.Context, start, name, extension, label string) (string, bool, error) {
+	if hasNativeDialog {
+		path, chosen, err := nativeDialog(ctx, dialogRequest{kind: saveFile, start: start, name: name, extension: extension, label: label})
+
+		return withExtension(path, extension), chosen, err
+	}
 	command, ok := saveDialogCommand(runtime.GOOS, start, name, extension, label, oscommand.HasProgram)
 	if !ok {
 		return "", false, ErrNoDialog

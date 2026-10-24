@@ -8,6 +8,7 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/menubar"
 )
 
 // render draws the menu bar on the top row and, under it, the review or the download
@@ -39,6 +40,10 @@ func (m Model) render() string {
 		x, y := m.aboutOrigin()
 		screen = dialog.Overlay(dialog.Dim(screen), m.aboutView(), x, y)
 	}
+	if m.shortcuts {
+		x, y := m.shortcutsOrigin()
+		screen = dialog.Overlay(dialog.Dim(screen), m.shortcutsView(), x, y)
+	}
 	if m.bar.Open() >= 0 {
 		screen = overlayMenu(screen, m.bar.View())
 	}
@@ -64,6 +69,18 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Dim.Render("Stopping the downloads..."), m.width)
 	case m.notice != "":
 		return cells.Fit(" "+look.Red.Render(m.notice), m.width)
+	case m.caution != "":
+		return cells.Fit(" "+look.Yellow.Render(m.caution), m.width)
+	case m.done != "":
+		return cells.Fit(" "+look.Green.Render("✓ "+m.done), m.width)
+	case m.toolsMessage() != "":
+		return cells.Fit(" "+m.toolsLine(), m.width)
+	case m.inline.on:
+		return cells.Fit(" "+look.Dim.Render("Paste or type a link, then press Enter. Esc cancels."), m.width)
+	case m.disabledReason() != "":
+		return cells.Fit(" "+look.Dim.Render(m.disabledReason()), m.width)
+	case m.editable() && !m.reviewing:
+		return cells.Fit(" "+look.Dim.Render(m.idleHints()), m.width)
 	}
 	return ""
 }
@@ -85,4 +102,36 @@ func overlayMenu(screen, barView string) string {
 		screen = dialog.Overlay(screen, ansi.Cut(rows[y], left, right), left, y)
 	}
 	return screen
+}
+
+// idleHints is the line of keys at the bottom while nothing runs: the few that start the work,
+// and the one that lists them all.
+func (m Model) idleHints() string {
+	return strings.Join([]string{
+		menubar.ShortcutLabel("F1") + " shortcuts",
+		menubar.ShortcutLabel("Ctrl+L") + " add link",
+		menubar.ShortcutLabel("Ctrl+R") + " start",
+		menubar.ShortcutLabel("Ctrl+O") + " open list",
+		menubar.ShortcutLabel("Ctrl+,") + " preferences",
+	}, "  ·  ")
+}
+
+// toolsMessage is what to say about the tools while they are not ready, or "".
+func (m Model) toolsMessage() string {
+	state, waiting := m.toolsWaiting()
+	if !waiting {
+		return ""
+	}
+
+	return state.Message
+}
+
+// toolsLine is that message dressed for the bottom line: calm while it is a wait, red when it is
+// a failure.
+func (m Model) toolsLine() string {
+	if state, _ := m.toolsWaiting(); state.Failed {
+		return look.Red.Render(state.Message)
+	}
+
+	return look.Yellow.Render(m.toolsMessage())
 }
