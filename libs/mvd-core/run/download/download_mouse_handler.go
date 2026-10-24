@@ -97,17 +97,18 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 // wheel scrolls the pane under the pointer.
 func (m Model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, tea.Cmd) {
+	// The wheel scrolls what is under the pointer and nothing else: the selection and the focus stay.
 	switch {
 	case l.hasLists && l.playlists.contains(msg.Mouse().X, msg.Mouse().Y):
-		m.focus = paneLists
+		m.scrollPane(false, dir*pointer.WheelStep)
 	case l.hasLists && l.entries.contains(msg.Mouse().X, msg.Mouse().Y):
-		m.focus = paneEntries
+		m.scrollPane(true, dir*pointer.WheelStep)
 	case l.hasOutput && l.output.contains(msg.Mouse().X, msg.Mouse().Y):
+		focus := m.focus
 		m.focus = paneOutput
-	default:
-		return m, nil
+		m.move(dir * pointer.WheelStep)
+		m.focus = focus
 	}
-	m.move(dir * pointer.WheelStep)
 	return m, nil
 }
 

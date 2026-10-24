@@ -106,6 +106,8 @@ type Model struct {
 	// picked are the songs ticked in the table: the actions work on them, else on the song the cursor
 	// is on.
 	picked map[int]bool
+	// playlistsTop and entriesTop are how many rows the links and the songs are scrolled down.
+	playlistsTop, entriesTop int
 	// colWidth are the widths the person gave to columns by carrying their borders, and hiddenCols
 	// the columns they hid. Both are replaced, never changed, so a copy of the screen keeps its own.
 	colWidth   map[string]int
@@ -171,6 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if now, ok := next.(Model); ok && [3]int{now.selPlaylist, now.selEntry, now.focus} != before {
 		// A row that was just chosen shows the start of its name, still, before it scrolls.
 		now.marquee = 0
+		now.keepSelectionVisible()
 		next = now
 	}
 

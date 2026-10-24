@@ -11,7 +11,6 @@ import (
 
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/engine"
-	"youtube-downloader/libs/mvd-core/internal/cuppa"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/runstate"
 	"youtube-downloader/libs/mvd-core/viewport"
@@ -51,7 +50,7 @@ func (m Model) downloadProps(w, h int) Props {
 
 	// Playlists.
 	p.PlaylistsRows = func(w, h int) ([]PlaylistsRow, int) {
-		return cuppa.Window(m.playlistRows(w), m.selPlaylist, h)
+		return scrolled(m.playlistRows(w), m.playlistsTop, h)
 	}
 	p.PlaylistsTitle = counted(len(m.state.Playlists), "link")
 	p.PlaylistsRight = ""
@@ -60,8 +59,8 @@ func (m Model) downloadProps(w, h int) Props {
 	// Entries.
 	p.EntriesTitle, p.EntriesRight = m.entryHeader()
 	p.EntriesRows = func(w, h int) ([]EntriesRow, int) {
-		rows, sel := m.entryRows(w)
-		return cuppa.Window(rows, sel, h)
+		rows, _ := m.entryRows(w)
+		return scrolled(rows, m.entriesTop, h)
 	}
 	// The songs are a table, with a row of headings, whenever there are songs to show.
 	p.EntriesTable = m.songsTable
