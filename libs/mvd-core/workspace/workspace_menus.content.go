@@ -19,6 +19,9 @@ const (
 	entryMoveUp      = "Move up"
 	entryMoveDown    = "Move down"
 	entryAbout       = "About MVD"
+	entryShortcuts   = "Keyboard shortcuts"
+	entryDocs        = "Documentation"
+	entryReport      = "Report a problem…"
 )
 
 func menus() []menubar.Menu {
@@ -46,18 +49,22 @@ func menus() []menubar.Menu {
 			{Name: entryMoveDown, Shortcut: "Shift+Down"},
 		}},
 		{Name: "Run", Entries: []menubar.Entry{
-			{Name: entryStart},
-			{Name: entryReview},
+			{Name: entryStart, Shortcut: "Ctrl+R"},
+			{Name: entryReview, Shortcut: "Ctrl+Shift+R"},
 			{Separator: true},
-			{Name: entryPause},
-			{Name: entryResume},
-			{Name: entryStop},
-			{Name: entryRetry},
+			{Name: entryPause, Shortcut: "Ctrl+P"},
+			{Name: entryResume, Shortcut: "Ctrl+P"},
+			{Name: entryStop, Shortcut: "Ctrl+."},
+			{Name: entryRetry, Shortcut: "Ctrl+T"},
 			{Separator: true},
-			{Name: entryAddLink},
-			{Name: entryReviewSongs},
+			{Name: entryAddLink, Shortcut: "Ctrl+L"},
+			{Name: entryReviewSongs, Shortcut: "Ctrl+E"},
 		}},
 		{Name: "Help", Entries: []menubar.Entry{
+			{Name: entryShortcuts, Shortcut: "F1 / Ctrl+K"},
+			{Name: entryDocs},
+			{Name: entryReport},
+			{Separator: true},
 			{Name: entryAbout},
 		}},
 	}

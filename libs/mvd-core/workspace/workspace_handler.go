@@ -83,6 +83,10 @@ type Model struct {
 	decided   int // the version of the decisions of the review the list has
 
 	about bool
+	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
+	// down its lines it is.
+	shortcuts       bool
+	shortcutsScroll int
 	// inline is the address being written in its row; clicked is the last click, for double clicks.
 	inline  inlineEdit
 	clicked lastClick
@@ -219,6 +223,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		if m.shortcuts {
+			return m.shortcutsKey(key), nil
+		}
 		if m.asking != askNone {
 			return m.answer(key)
 		}
@@ -343,6 +350,12 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
 		m.about = true
+	case entryShortcuts:
+		m.shortcuts, m.shortcutsScroll = true, 0
+	case entryDocs:
+		m.openAddress(projectURL + "#readme")
+	case entryReport:
+		m.openAddress(m.reportAddress())
 	case entryQuit:
 		return m.stop(true)
 	}
@@ -465,7 +478,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		m.notice = "The downloads are already going"
 		return m, nil
 	case len(m.session.Sources()) == 0:
-		m.notice = "The list is empty: add a link first (a)"
+		m.notice = "The list is empty: add a link first (Ctrl+L)"
 		return m, nil
 	case m.host.Start == nil:
 		m.notice = "Downloading is not available here"

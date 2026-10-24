@@ -189,8 +189,17 @@ func TestKeyHandling(t *testing.T) {
 		t.Fatal("? should show help")
 	}
 	press("x")
+	if !m.showHelp {
+		t.Fatal("a stray key should not close help")
+	}
+	press("esc")
 	if m.showHelp {
-		t.Fatal("any key should close help")
+		t.Fatal("esc should close help")
+	}
+	press("?")
+	press("?")
+	if m.showHelp {
+		t.Fatal("? again should close help")
 	}
 
 	m.follow = true

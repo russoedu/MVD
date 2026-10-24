@@ -39,6 +39,10 @@ func (m Model) render() string {
 		x, y := m.aboutOrigin()
 		screen = dialog.Overlay(dialog.Dim(screen), m.aboutView(), x, y)
 	}
+	if m.shortcuts {
+		x, y := m.shortcutsOrigin()
+		screen = dialog.Overlay(dialog.Dim(screen), m.shortcutsView(), x, y)
+	}
 	if m.bar.Open() >= 0 {
 		screen = overlayMenu(screen, m.bar.View())
 	}

@@ -13,7 +13,7 @@ const topRows = 1
 // The buttons of the toolbar, and the Run menu entries that do the same.
 const (
 	entryStart       = "Start"
-	entryReview      = "Get data for review"
+	entryReview      = "Look up songs first"
 	entryAddLink     = "Add link…"
 	entryPause       = "Pause"
 	entryResume      = "Resume"
@@ -37,7 +37,7 @@ func (m Model) buttons() []button {
 		nothing := busy || len(m.session.Sources()) == 0 // there is nothing to download
 		return []button{
 			{"► Start", entryStart, nothing},
-			{"Get data for review", entryReview, nothing},
+			{"Look up first", entryReview, nothing},
 			{"+ Add link", entryAddLink, busy},
 		}
 	}

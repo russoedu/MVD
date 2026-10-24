@@ -60,7 +60,7 @@ func (a workspaceApp) Init() tea.Cmd {
 func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := a.update(msg)
 	if app, ok := next.(workspaceApp); ok && app.in.Modal != nil {
-		open := app.inPrefs || app.ws.AboutOpen()
+		open := app.inPrefs || app.ws.WindowOpen()
 		if app.modal == nil || *app.modal != open {
 			app.in.Modal(open)
 			app.modal = &open

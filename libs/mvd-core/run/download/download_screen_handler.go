@@ -221,7 +221,11 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.showHelp {
-		m.showHelp = false
+		// A stray key does not close it; the ones that mean "done" do.
+		switch key {
+		case "esc", "?", "enter", "space", "q":
+			m.showHelp = false
+		}
 		return m, nil
 	}
 

@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"net/url"
+
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
@@ -8,6 +10,78 @@ import (
 
 // AboutOpen reports whether the About window is showing.
 func (m Model) AboutOpen() bool { return m.about }
+
+// WindowOpen reports whether a window of the workspace (About, Keyboard shortcuts) is showing
+// over the screen, which the page around the terminal dims itself for.
+func (m Model) WindowOpen() bool { return m.about || m.shortcuts }
+
+// shortcutsKey works a key press while the Keyboard shortcuts window is showing: it scrolls,
+// or it closes.
+func (m Model) shortcutsKey(key tea.KeyPressMsg) Model {
+	l := m.shortcutsLayout()
+	page := max(l.height-4, 1)
+	switch key.String() {
+	case "esc", "enter", "space", "q", "f1", "ctrl+k":
+		m.shortcuts = false
+	case "up", "k":
+		m.shortcutsScroll = max(m.shortcutsScroll-1, 0)
+	case "down", "j":
+		m.shortcutsScroll = min(m.shortcutsScroll+1, l.maxScroll)
+	case "pgup":
+		m.shortcutsScroll = max(m.shortcutsScroll-page, 0)
+	case "pgdown":
+		m.shortcutsScroll = min(m.shortcutsScroll+page, l.maxScroll)
+	}
+	return m
+}
+
+// shortcutsOrigin is the cell of the screen where the Keyboard shortcuts window begins.
+func (m Model) shortcutsOrigin() (int, int) {
+	l := m.shortcutsLayout()
+	return dialog.Centre(m.width, m.height, l.width, l.height)
+}
+
+// shortcutsMouse works out a click on the Keyboard shortcuts window: its close mark closes it,
+// and the wheel scrolls it.
+func (m Model) shortcutsMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
+	l := m.shortcutsLayout()
+	switch ev := msg.(type) {
+	case tea.MouseWheelMsg:
+		switch ev.Button {
+		case tea.MouseWheelUp:
+			m.shortcutsScroll = max(m.shortcutsScroll-2, 0)
+		case tea.MouseWheelDown:
+			m.shortcutsScroll = min(m.shortcutsScroll+2, l.maxScroll)
+		}
+	case tea.MouseClickMsg:
+		x0, y0 := m.shortcutsOrigin()
+		if ev.Button == tea.MouseLeft && ev.Y-y0 == 0 && dialog.CloseSpan(l.width).Contains(ev.X-x0) {
+			m.shortcuts = false
+		}
+	}
+	return m, nil, true
+}
+
+// openAddress opens an address in the person's browser, or says it when there is none.
+func (m *Model) openAddress(address string) {
+	if m.host.Open == nil {
+		m.notice = "Open " + address + " in your browser"
+		return
+	}
+	if err := m.host.Open(address); err != nil {
+		m.notice = "Cannot open the browser: " + err.Error()
+	}
+}
+
+// reportAddress is the page for a new issue of the project, with the version already in it.
+func (m Model) reportAddress() string {
+	version := m.host.Version
+	if version == "" {
+		version = "dev"
+	}
+	body := "MVD " + version + "\n\nWhat I did:\n\nWhat I expected:\n\nWhat happened instead:\n"
+	return projectURL + "/issues/new?body=" + url.QueryEscape(body)
+}
 
 // aboutOrigin is the cell of the screen where the About window begins.
 func (m Model) aboutOrigin() (int, int) {
@@ -25,6 +99,8 @@ func (m Model) popupMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 	switch {
 	case m.about:
 		return m.aboutMouse(msg)
+	case m.shortcuts:
+		return m.shortcutsMouse(msg)
 	}
 	return m, nil, false
 }
