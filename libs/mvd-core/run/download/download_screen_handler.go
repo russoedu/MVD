@@ -111,6 +111,9 @@ type Model struct {
 	// picked are the songs ticked in the table: the actions work on them, else on the song the cursor
 	// is on.
 	picked map[int]bool
+	// anchor is the song the last tick was on, where a range with Shift begins.
+	anchor    int
+	anchorSet bool
 	// playlistsTop and entriesTop are how many rows the links and the songs are scrolled down.
 	playlistsTop, entriesTop int
 	// colWidth are the widths the person gave to columns by carrying their borders, and hiddenCols
@@ -326,6 +329,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.move(-1)
 	case "down", "j":
 		m.move(1)
+	case "shift+up", "shift+down":
+		if _, held := m.chooser(); held && m.focus == paneEntries {
+			m.extendPick(map[string]int{"shift+up": -1, "shift+down": 1}[key])
+		}
 	case "pgup":
 		m.move(-10)
 	case "pgdown":

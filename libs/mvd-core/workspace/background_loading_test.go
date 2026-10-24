@@ -162,3 +162,26 @@ func TestClosingAsksOnlyWhileSongsAreDownloading(t *testing.T) {
 		t.Error("esc did not keep the downloads")
 	}
 }
+
+func TestShiftAndTheArrowsTickSongsEvenThoughTheMenuHasThemForMovingLinks(t *testing.T) {
+	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
+	list := downloadlist.New([]string{"https://youtu.be/a"})
+	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
+	m = m.runStartedFor(t, run)
+	entries := []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "one"}, {ID: 1, Playlist: 0, Index: 2, Title: "two"}, {ID: 2, Playlist: 0, Index: 3, Title: "three"}}
+	m.screen.State().Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: entries})
+	for i := range entries {
+		m.screen.State().Apply(engine.EvEntryState{Entry: i, State: engine.StatePlanned, TargetID: "abc12345678"})
+	}
+	press := func(m Model, key tea.KeyPressMsg) Model {
+		next, _ := m.Update(key)
+
+		return next.(Model)
+	}
+	m = press(m, tea.KeyPressMsg{Code: tea.KeyTab})
+	m = press(m, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift})
+	m = press(m, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift})
+	if got := strings.Count(ansi.Strip(m.render()), "[x]"); got != 4 { // the three songs and the box of the heading
+		t.Errorf("%d boxes are ticked, want 4:\n%s", got, ansi.Strip(m.render()))
+	}
+}

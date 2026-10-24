@@ -319,14 +319,15 @@ func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, b
 			if en == nil {
 				return m, nil, true
 			}
+			shift := pos.Mod.Contains(tea.ModShift)
 			for _, s := range spans {
 				if s.name == columnCheck && pos.X >= ix+s.x0 && pos.X < ix+s.x1 {
-					m.togglePick(en.ID) // the box of a song ticks or unticks that song
+					m.tickSong(en.ID, shift) // the box of a song ticks or unticks that song, or the range with Shift
 
 					return m, nil, true
 				}
 			}
-			m.pickOnly(en.ID) // anywhere else on the row chooses that song alone
+			m.chooseSong(en.ID, shift) // anywhere else on the row chooses that song alone
 
 			return m, nil, true
 		}

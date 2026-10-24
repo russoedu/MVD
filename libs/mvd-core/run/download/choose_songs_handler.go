@@ -160,6 +160,79 @@ func (m *Model) togglePickAll() {
 	m.picked = picked
 }
 
+// pickRange ticks, or unticks, the songs from one song to another, in the order they are shown.
+func (m *Model) pickRange(from, to int, on bool) {
+	ids := m.visibleEntries()
+	a, b := -1, -1
+	for i, id := range ids {
+		if id == from {
+			a = i
+		}
+		if id == to {
+			b = i
+		}
+	}
+	if a < 0 || b < 0 {
+		return
+	}
+	if a > b {
+		a, b = b, a
+	}
+	picked := make(map[int]bool, len(m.picked)+b-a+1)
+	for k := range m.picked {
+		picked[k] = true
+	}
+	for _, id := range ids[a : b+1] {
+		if on {
+			picked[id] = true
+		} else {
+			delete(picked, id)
+		}
+	}
+	m.picked = picked
+}
+
+// tickSong is a click on the box of a song: it ticks or unticks that song, and with Shift all the songs
+// from the one ticked last, as a list of mail does.
+func (m *Model) tickSong(id int, shift bool) {
+	on := !m.picked[id]
+	if shift && m.anchorSet {
+		m.pickRange(m.anchor, id, on)
+	} else {
+		m.togglePick(id)
+	}
+	m.anchor, m.anchorSet = id, true
+}
+
+// chooseSong is a click on a song away from its box: it alone is ticked, and with Shift every song
+// from the one ticked last to it.
+func (m *Model) chooseSong(id int, shift bool) {
+	if shift && m.anchorSet {
+		m.pickRange(m.anchor, id, true)
+
+		return
+	}
+	m.pickOnly(id)
+	m.anchor, m.anchorSet = id, true
+}
+
+// extendPick moves the cursor by delta songs with Shift held, and ticks every song from where the
+// range began to the one the cursor is on.
+func (m *Model) extendPick(delta int) {
+	en := m.selectedEntry()
+	if en == nil {
+		return
+	}
+	if !m.anchorSet {
+		m.anchor, m.anchorSet = en.ID, true
+	}
+	m.move(delta)
+	if now := m.selectedEntry(); now != nil {
+		m.picked = nil
+		m.pickRange(m.anchor, now.ID, true)
+	}
+}
+
 // pickState is how ticked the songs of the table are: 0 none, 1 some, 2 all.
 func (m Model) pickState() int {
 	ids := m.visibleEntries()
@@ -212,7 +285,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 	}
 	if key == "space" {
 		if en := m.selectedEntry(); en != nil && m.focus == paneEntries {
-			m.togglePick(en.ID)
+			m.tickSong(en.ID, false)
 		}
 
 		return m, nil, true

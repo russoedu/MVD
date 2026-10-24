@@ -481,3 +481,49 @@ func TestALinkThatWasJustAddedIsTheOneSelected(t *testing.T) {
 		t.Errorf("a new run moved the cursor from 1 to %d", attached.selPlaylist)
 	}
 }
+
+func TestShiftTicksTheSongsBetweenTwoClicksAsAListOfMailDoes(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	l, _ := m.layout()
+	ix, iy, iw := m.tableInner(l)
+	var box columnSpan
+	for _, s := range m.columnSpans(iw) {
+		if s.name == columnCheck {
+			box = s
+		}
+	}
+	click := func(m Model, row int, mod tea.KeyMod) Model {
+		next, _ := m.Update(tea.MouseClickMsg{X: ix + box.x0 + 1, Y: iy + 1 + row, Button: tea.MouseLeft, Mod: mod})
+
+		return next.(Model)
+	}
+	m = click(m, 1, 0)
+	m = click(m, 4, tea.ModShift)
+	if len(m.picked) != 4 || !m.picked[1] || !m.picked[4] {
+		t.Fatalf("shift did not tick the range: %v", m.picked)
+	}
+	m = click(m, 2, 0) // a click on one box of the range unticks that one alone
+	if len(m.picked) != 3 || m.picked[2] {
+		t.Errorf("picked %v", m.picked)
+	}
+	m = click(m, 0, tea.ModShift) // from the box clicked last (2) up to the first: ticks them
+	if !m.picked[0] || !m.picked[1] || !m.picked[2] {
+		t.Errorf("picked %v", m.picked)
+	}
+}
+
+func TestShiftAndTheArrowsExtendTheTicks(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	m.selEntry = 1
+	m = pressKey(m, "shift+down")
+	m = pressKey(m, "shift+down")
+	if len(m.picked) != 3 || !m.picked[1] || !m.picked[3] {
+		t.Fatalf("picked %v", m.picked)
+	}
+	m = pressKey(m, "shift+up")
+	if len(m.picked) != 2 || m.picked[3] {
+		t.Errorf("going back did not take the last tick away: %v", m.picked)
+	}
+}
