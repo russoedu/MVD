@@ -72,6 +72,10 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Yellow.Render(m.caution), m.width)
 	case m.done != "":
 		return cells.Fit(" "+look.Green.Render("✓ "+m.done), m.width)
+	case m.inline.on:
+		return cells.Fit(" "+look.Dim.Render("Paste or type a link, then press Enter. Esc cancels."), m.width)
+	case m.disabledReason() != "":
+		return cells.Fit(" "+look.Dim.Render(m.disabledReason()), m.width)
 	}
 	return ""
 }

@@ -37,3 +37,19 @@ func DefaultDownloadsDir() string {
 	}
 	return home
 }
+
+// DefaultVideosDir is where a new install puts its videos: a folder of its own, MVD, in the
+// person's Videos folder (Movies on a Mac), so they do not mix with everything else in
+// Downloads. Without either folder it is MVD in Downloads. The folder is made when the first
+// download starts.
+func DefaultVideosDir() string {
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		for _, name := range []string{"Videos", "Movies"} {
+			dir := filepath.Join(home, name)
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				return filepath.Join(dir, "MVD")
+			}
+		}
+	}
+	return filepath.Join(DefaultDownloadsDir(), "MVD")
+}

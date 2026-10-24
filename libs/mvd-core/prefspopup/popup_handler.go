@@ -20,6 +20,7 @@ type Model struct {
 	tab     int
 	cursor  int // the field of the page
 	scroll  int // the first line of the page that shows
+	welcome bool // the first start: the bottom line says what to do
 	editing bool
 	input   textinput.Model
 	// before is the text of the field when typing in it began, for esc to put back.
@@ -73,6 +74,9 @@ func (m Model) show(tab int) Model {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	if _, pressed := msg.(tea.KeyPressMsg); pressed {
+		m.welcome = false // the person has started to use it
+	}
 	next, cmd := m.update(msg)
 	if look.Colours != next.cfg.Colors {
 		look.Apply(next.cfg.Colors) // the screen shows a theme as soon as it is picked
@@ -489,5 +493,12 @@ func (m Model) hit(h hit) (Model, tea.Cmd) {
 // WithConfig replaces the settings being edited.
 func (m Model) WithConfig(cfg config.Config) Model {
 	m.cfg = cfg
+	return m
+}
+
+// WithWelcome makes the popup of the first start: its bottom line tells the person what to do
+// until they have pressed a key of their own.
+func (m Model) WithWelcome() Model {
+	m.welcome = true
 	return m
 }

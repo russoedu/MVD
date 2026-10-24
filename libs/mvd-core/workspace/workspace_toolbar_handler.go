@@ -164,3 +164,21 @@ func (m Model) keepRoomForButtons() Model {
 	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable())
 	return m
 }
+
+// disabledReason is why the button under the pointer cannot be used, or "" when the pointer is
+// not over a button that cannot.
+func (m Model) disabledReason() string {
+	x, y, w, ok := m.buttonRows()
+	if !ok {
+		return ""
+	}
+	for i, b := range m.buttons() {
+		if b.disabled && m.hoverY == y+i && m.hoverX >= x && m.hoverX < x+w {
+			if m.starting || m.stopping {
+				return "One moment..."
+			}
+			return "Add a link first."
+		}
+	}
+	return ""
+}

@@ -9,11 +9,11 @@ import (
 // files: the Downloads folder, and the output and log folders in the settings. It reads
 // the settings when called, so a change made after the app started is respected.
 func keptFolders(configPath, appDir string) func() []string {
-	downloads := appdir.DefaultDownloadsDir()
+	downloads, videos := appdir.DefaultDownloadsDir(), appdir.DefaultVideosDir()
 
 	return func() []string {
-		keep := []string{downloads}
-		if cfg, _, err := config.LoadOrCreate(configPath, appDir, downloads); err == nil {
+		keep := []string{downloads, videos}
+		if cfg, _, err := config.LoadOrCreate(configPath, appDir, videos); err == nil {
 			keep = append(keep, cfg.OutputDir, cfg.LogDir)
 		}
 

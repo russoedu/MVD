@@ -26,7 +26,7 @@ func TestEveryRunEntryHasItsOwnShortcutAndOnlyPauseAndResumeShareOne(t *testing.
 			if e.Shortcut == "" {
 				t.Errorf("%q has no shortcut", e.Name)
 			}
-			if other, ok := seen[e.Shortcut]; ok && !(e.Name == entryResume && other == entryPause) {
+			if other, ok := seen[e.Shortcut]; ok && (e.Name != entryResume || other != entryPause) {
 				t.Errorf("%q and %q share %s", other, e.Name, e.Shortcut)
 			}
 			seen[e.Shortcut] = e.Name
@@ -41,7 +41,7 @@ func TestNoShortcutIsGivenToTwoDifferentThingsAnywhere(t *testing.T) {
 			if e.Separator || e.Shortcut == "" {
 				continue
 			}
-			if other, ok := seen[e.Shortcut]; ok && !(e.Name == entryResume && other == entryPause) {
+			if other, ok := seen[e.Shortcut]; ok && (e.Name != entryResume || other != entryPause) {
 				t.Errorf("%q and %q share %s", other, e.Name, e.Shortcut)
 			}
 			seen[e.Shortcut] = e.Name
@@ -113,7 +113,7 @@ func TestDocumentationAndReportAProblemOpenTheBrowser(t *testing.T) {
 	m := New(Host{Version: "1.2.3", Open: func(u string) error { opened = append(opened, u); return nil }}, config.Config{}, downloadlist.New([]string{"a"}))
 	m = sized(m)
 	next, _ := m.Update(menubar.SelectedMsg{Name: entryDocs})
-	next, _ = next.(Model).Update(menubar.SelectedMsg{Name: entryReport})
+	_, _ = next.(Model).Update(menubar.SelectedMsg{Name: entryReport})
 	if len(opened) != 2 {
 		t.Fatalf("opened %v", opened)
 	}

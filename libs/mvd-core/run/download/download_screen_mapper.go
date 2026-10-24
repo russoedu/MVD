@@ -72,6 +72,9 @@ func (m Model) downloadProps(w, h int) Props {
 	// Output.
 	p.OutputRows = func(w, h int) ([]OutputRow, int) {
 		lines, first := m.outputWindow(w, h)
+		if len(m.outputLines()) == 0 {
+			return emptyOutputRows(m.emptyOutputText(), w), 0
+		}
 		rows := make([]OutputRow, 0, len(lines))
 		for _, line := range lines {
 			rows = append(rows, OutputRow{Line: cells.CellText(line)})
@@ -159,11 +162,7 @@ func (m Model) headerTexts() (counters, right string) {
 // title, the count and the glyph; the app says what each says and the colour of the glyph.
 func (m Model) playlistRows(w int) []PlaylistsRow {
 	if len(m.state.Playlists) == 0 {
-		var rows []PlaylistsRow
-		for _, line := range wrapText("Add music: playlists or videos, with the Add link button or by pasting links", w-6) {
-			rows = append(rows, PlaylistsRow{Mark: " ", Sp: " ", Title: line, TitleStyle: CellStyle{Fg: look.Colours.Dim}})
-		}
-		return rows
+		return emptyPlaylistRows(w)
 	}
 	rows := make([]PlaylistsRow, 0, len(m.state.Playlists))
 	for i, pl := range m.state.Playlists {
@@ -206,7 +205,7 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 	ids := m.visibleEntries()
 	if len(ids) == 0 {
 		var rows []EntriesRow
-		for _, line := range wrapText("The songs of the selected playlist show here", w-6) {
+		for _, line := range wrapText(m.emptyEntriesText(), w-6) {
 			rows = append(rows, EntriesRow{Glyph: " ", Sp: " ", Title: line, TitleStyle: CellStyle{Fg: look.Colours.Dim}})
 		}
 		return rows, 0
@@ -369,4 +368,56 @@ func (m Model) midWidth(w int) int {
 		return max(minPane, min(m.midW, w-left-minPane))
 	}
 	return max(32, w*30/100)
+}
+
+// emptyPlaylistRows is what the playlists pane says while there is nothing in it: what to do
+// first, how, and what works.
+func emptyPlaylistRows(w int) []PlaylistsRow {
+	var rows []PlaylistsRow
+	say := func(text string, style CellStyle) {
+		for _, line := range wrapText(text, w-6) {
+			rows = append(rows, PlaylistsRow{Mark: " ", Sp: " ", Title: line, TitleStyle: style})
+		}
+	}
+	blank := func() { rows = append(rows, PlaylistsRow{Mark: " ", Sp: " ", Title: " "}) }
+	say("Add the songs you want as music videos.", CellStyle{Fg: look.Colours.Text, Bold: true})
+	blank()
+	say("Click + Add link below, press Ctrl+L, or paste links with Ctrl+V.", CellStyle{Fg: look.Colours.Text})
+	blank()
+	say("Works with YouTube videos and playlists, and with Spotify and Apple Music playlists.", CellStyle{Fg: look.Colours.Dim})
+	return rows
+}
+
+// emptyEntriesText is what the entries pane says while it has no songs to show: that there is
+// nothing yet, or that a list has been made and not looked up, and how to do it.
+func (m Model) emptyEntriesText() string {
+	switch {
+	case len(m.state.Playlists) == 0:
+		return "The songs of each link show here, once you add one."
+	case m.editable:
+		return "Not looked up yet. Press Start (Ctrl+R) to download, or Look up first (Ctrl+Shift+R) to choose which songs."
+	}
+	return "No songs to show here."
+}
+
+// emptyOutputText is what the output pane says when nothing was written for what is selected:
+// before the run it says what will show; for a playlist that could not be read, why there is
+// none; otherwise that this one wrote nothing.
+func (m Model) emptyOutputText() string {
+	switch {
+	case m.selPlaylist < len(m.state.Playlists) && m.state.Playlists[m.selPlaylist].Err != "":
+		return "No output: this playlist could not be read."
+	case m.editable || len(m.state.Playlists) == 0:
+		return "Nothing yet. What the downloader says shows here while it works."
+	}
+	return "Nothing was written for this one."
+}
+
+// emptyOutputRows is the text of the output pane, wrapped and dim, before anything has been written.
+func emptyOutputRows(text string, w int) []OutputRow {
+	var rows []OutputRow
+	for _, line := range wrapText(text, w-2) {
+		rows = append(rows, OutputRow{Line: cells.CellText(line), LineStyle: CellStyle{Fg: look.Colours.Dim}})
+	}
+	return rows
 }

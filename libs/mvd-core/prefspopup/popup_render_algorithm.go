@@ -331,6 +331,8 @@ func (m Model) hintLine() string {
 		return look.Dim.Render(m.status)
 	case m.editing:
 		return look.Dim.Render("enter apply  esc cancel")
+	case m.welcome:
+		return look.Yellow.Render("Welcome! Check where your videos go, then press s to save.")
 	}
 	return look.Dim.Render("↑↓ move  ←→ change  enter edit  tab page  s save  esc close")
 }

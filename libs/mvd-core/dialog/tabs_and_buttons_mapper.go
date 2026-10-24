@@ -80,20 +80,13 @@ const (
 // colour for the main one, darker when it cannot be used, lighter and underlined under the
 // pointer.
 func WidePill(label string, w int, kind PillKind, hover bool) string {
-	style := lipgloss.NewStyle().Background(lipgloss.Color("#3a3a3a")).Foreground(lipgloss.Color(look.Colours.Text)).Bold(true)
-	switch kind {
-	case PillPrimary:
-		style = lipgloss.NewStyle().Background(lipgloss.Color(look.Colours.Accent)).Foreground(lipgloss.Color("#000000")).Bold(true)
-	case PillDisabled:
-		style = lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color(look.Colours.Dim)).Faint(true)
+	ground, text := pillColours(kind, hover)
+	style := lipgloss.NewStyle().Background(lipgloss.Color(ground)).Foreground(lipgloss.Color(text))
+	if kind != PillDisabled {
+		style = style.Bold(true)
 	}
 	if hover && kind != PillDisabled {
 		style = style.Underline(true)
-		if kind == PillPrimary {
-			style = style.Background(lipgloss.Color("#ff5aa5"))
-		} else {
-			style = style.Background(lipgloss.Color("#5a5a5a"))
-		}
 	}
 	room := max(w-ansi.StringWidth(label), 0)
 	left := room / 2

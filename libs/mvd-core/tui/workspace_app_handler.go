@@ -34,6 +34,7 @@ func NewWorkspaceApp(in WorkspaceInput) tea.Model {
 	a := workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg, hoverX: -1, hoverY: -1}
 	if in.Setup.OpenConfig {
 		a = a.openPrefs() // the first run: the settings have never been looked at
+		a.prefs = a.prefs.WithWelcome()
 	}
 	return a
 }
