@@ -4,6 +4,7 @@ import { AboutThisApp } from '../about-this-app'
 import { PageHeader } from '../page-header'
 import { useCaptureBrowserShortcuts } from './capture-browser-shortcuts.hook'
 import { useDimWhileModal } from './dim-while-modal.hook'
+import { useFocusTerminal } from './focus-terminal.hook'
 import { useFollowTerminalBackground } from './follow-terminal-background.hook'
 import { useOpenLinksInBrowser } from './open-links-in-browser.hook'
 import { terminalSocket } from './terminal-socket.client'
@@ -20,6 +21,7 @@ export function TerminalWindow () {
   useDimWhileModal()
   useOpenLinksInBrowser()
   useFollowTerminalBackground(terminalRef)
+  useFocusTerminal(terminalRef)
 
   return (
     <>
