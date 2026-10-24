@@ -262,7 +262,7 @@ func (m Model) entryNotes(innerW int) []NotesRow {
 	var notes []NotesRow
 	switch {
 	case pl.Err != "":
-		for _, l := range cells.Wrap("✗ "+cells.Display(pl.Err), innerW) {
+		for _, l := range cells.Wrap("✗ "+cells.Display(runstate.PlainError(pl.Err)), innerW) {
 			notes = append(notes, NotesRow{Line: cells.CellText(l), LineStyle: CellStyle{Fg: look.Colours.Error}})
 		}
 	case !pl.Listed:
@@ -297,13 +297,15 @@ func (m Model) outputFooter() outputFooter {
 			info = "merging streams with ffmpeg"
 		}
 		percent := en.Percent
-		if en.State == engine.StateMerging || en.Total == 0 {
-			percent = 100
+		if en.State == engine.StateMerging {
+			percent = 100 // the parts are all in: the files are being joined
+		} else if en.Total == 0 {
+			percent = 0 // the size is not known yet: an empty bar, not a full one
 		}
 		f.bar = &barInfo{info: info, percent: percent}
 		f.lines = []string{"", look.Yellow.Render(info)}
 	case engine.StateFailed:
-		f.lines = []string{"", look.Red.Render("✗ " + cells.Display(en.Err))}
+		f.lines = []string{"", look.Red.Render("✗ " + cells.Display(runstate.PlainError(en.Err)))}
 	case engine.StateDone:
 		what := "original " + en.TargetID
 		if en.Official {

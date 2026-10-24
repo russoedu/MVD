@@ -58,7 +58,7 @@ func entryOutlineValue(en *runstate.Entry) string {
 		return fmt.Sprintf("downloading %.0f%%", en.Percent)
 	case engine.StateFailed:
 		if en.Err != "" {
-			return "failed: " + en.Err
+			return "failed: " + runstate.PlainError(en.Err)
 		}
 	}
 	return en.State.String()
