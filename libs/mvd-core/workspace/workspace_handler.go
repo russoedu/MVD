@@ -39,6 +39,9 @@ type (
 	}
 	// saveTickMsg is the beat at which the list is brought up to date with the run.
 	saveTickMsg time.Time
+	// toolsTickMsg is the beat at which the state of the tools is looked at again, while they
+	// are being fetched.
+	toolsTickMsg time.Time
 )
 
 // PreferencesRequestedMsg asks the host to show the preferences; it gives the result back
@@ -123,7 +126,7 @@ func New(host Host, cfg config.Config, list *downloadlist.Session) Model {
 // Session is the list that is open.
 func (m Model) Session() *downloadlist.Session { return m.session }
 
-func (m Model) Init() tea.Cmd { return m.screen.Init() }
+func (m Model) Init() tea.Cmd { return tea.Batch(m.screen.Init(), m.toolsTick()) }
 
 func (m Model) running() bool { return m.run != nil }
 
@@ -169,6 +172,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case toolsTickMsg:
+		return m, m.toolsTick()
 	case saveTickMsg:
 		if m.run == nil {
 			return m, nil
@@ -489,6 +494,10 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		return m, nil
 	case m.host.Start == nil:
 		m.notice = "Downloading is not available here"
+		return m, nil
+	}
+	if state, waiting := m.toolsWaiting(); waiting {
+		m.caution, m.done = state.Message, ""
 		return m, nil
 	}
 	if m.session.Path() == "" {

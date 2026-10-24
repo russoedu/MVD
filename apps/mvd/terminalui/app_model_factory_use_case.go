@@ -63,6 +63,9 @@ type Host struct {
 	Clipboard workspace.Clipboard
 	// Modal is told when a popup opens and closes over the screen; nil for none.
 	Modal func(open bool)
+	// Tools says whether the tools of the downloads are ready: on the first start they are
+	// fetched while the window is already open. nil means they are always there.
+	Tools func() workspace.ToolsState
 }
 
 // NewModelFactory returns what the server calls when the first window connects
@@ -111,6 +114,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				SaveFile: host.SaveFile,
 				Open:     openurl.Open,
 				Quit:     host.Quit,
+				Tools:    host.Tools,
 				Version:  host.Version,
 				Clipboard: host.Clipboard,
 			},

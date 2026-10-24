@@ -86,17 +86,7 @@ func (i *installer) ensure() {
 	removeLeftovers(dir)
 	known := loadManifest(dir)
 
-	var missing []string
-	for _, name := range managedTools {
-		if i.needsInstall(i.available[name], dir, known) {
-			missing = append(missing, name)
-		}
-	}
-	_, denoErr := i.lookPath("deno")
-	_, nodeErr := i.lookPath("node")
-	if denoErr != nil && nodeErr != nil {
-		missing = append(missing, "deno")
-	}
+	missing := i.missing()
 	if len(missing) == 0 {
 		return
 	}

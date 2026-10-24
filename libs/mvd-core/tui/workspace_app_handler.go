@@ -93,6 +93,11 @@ func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if mouse, ok := msg.(tea.MouseMsg); ok {
 		a.hoverX, a.hoverY = mouse.Mouse().X, mouse.Mouse().Y
 	}
+	if workspace.Background(msg) {
+		next, cmd := a.ws.Update(msg) // the workspace's own beat goes on under a popup
+		a.ws = next.(workspace.Model)
+		return a, cmd
+	}
 	if a.inPrefs {
 		if mouse, ok := msg.(tea.MouseMsg); ok {
 			if a.onClose(mouse) {

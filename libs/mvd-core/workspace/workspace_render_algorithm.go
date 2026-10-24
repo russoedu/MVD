@@ -73,6 +73,8 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Yellow.Render(m.caution), m.width)
 	case m.done != "":
 		return cells.Fit(" "+look.Green.Render("✓ "+m.done), m.width)
+	case m.toolsMessage() != "":
+		return cells.Fit(" "+m.toolsLine(), m.width)
 	case m.inline.on:
 		return cells.Fit(" "+look.Dim.Render("Paste or type a link, then press Enter. Esc cancels."), m.width)
 	case m.disabledReason() != "":
@@ -112,4 +114,24 @@ func (m Model) idleHints() string {
 		menubar.ShortcutLabel("Ctrl+O") + " open list",
 		menubar.ShortcutLabel("Ctrl+,") + " preferences",
 	}, "  ·  ")
+}
+
+// toolsMessage is what to say about the tools while they are not ready, or "".
+func (m Model) toolsMessage() string {
+	state, waiting := m.toolsWaiting()
+	if !waiting {
+		return ""
+	}
+
+	return state.Message
+}
+
+// toolsLine is that message dressed for the bottom line: calm while it is a wait, red when it is
+// a failure.
+func (m Model) toolsLine() string {
+	if state, _ := m.toolsWaiting(); state.Failed {
+		return look.Red.Render(state.Message)
+	}
+
+	return look.Yellow.Render(m.toolsMessage())
 }

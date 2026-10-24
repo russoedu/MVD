@@ -160,3 +160,15 @@ func (m Model) refreshMenus() Model {
 	m.bar.SetEnabled(entryMoveDown, free && !writing && has && i < n-1)
 	return m
 }
+
+// Background says whether a message is the workspace's own beat, which it must get whatever popup
+// is open over it: the one that keeps the list up to date with a run, and the one that looks at
+// the tools again while they are being fetched.
+func Background(msg tea.Msg) bool {
+	switch msg.(type) {
+	case saveTickMsg, toolsTickMsg:
+		return true
+	}
+
+	return false
+}
