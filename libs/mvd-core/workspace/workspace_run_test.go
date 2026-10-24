@@ -77,8 +77,8 @@ func TestStartingRunsTheListAndPauseAndRetryAllReachTheRun(t *testing.T) {
 		t.Error("not resumed")
 	}
 	m, _ = choose(m, entryRetry)
-	if fake.retried != 1 || m.notice != "2 songs queued again" {
-		t.Errorf("retried %d, notice %q", fake.retried, m.notice)
+	if fake.retried != 1 || m.done != "2 songs queued again" {
+		t.Errorf("retried %d, confirmation %q", fake.retried, m.done)
 	}
 }
 

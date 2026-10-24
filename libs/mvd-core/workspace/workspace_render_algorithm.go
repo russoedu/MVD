@@ -68,6 +68,10 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Dim.Render("Stopping the downloads..."), m.width)
 	case m.notice != "":
 		return cells.Fit(" "+look.Red.Render(m.notice), m.width)
+	case m.caution != "":
+		return cells.Fit(" "+look.Yellow.Render(m.caution), m.width)
+	case m.done != "":
+		return cells.Fit(" "+look.Green.Render("✓ "+m.done), m.width)
 	}
 	return ""
 }

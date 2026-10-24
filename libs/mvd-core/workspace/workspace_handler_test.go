@@ -46,8 +46,8 @@ func TestSavingAsWritesTheListAndKeepsItsFile(t *testing.T) {
 	if got := m.session.Path(); got != path+".mvd" {
 		t.Errorf("path %q", got)
 	}
-	if !strings.HasPrefix(m.notice, "Saved") {
-		t.Errorf("notice %q", m.notice)
+	if !strings.HasPrefix(m.done, "Saved") {
+		t.Errorf("confirmation %q", m.done)
 	}
 }
 

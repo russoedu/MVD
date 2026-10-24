@@ -188,6 +188,10 @@ func (m Model) layout() pageLayout {
 		case kindText, kindFolder:
 			add(focused, look.Title.Render(f.label))
 			shown := look.Text.Render(cells.Display(value))
+			if f.kind == kindFolder {
+				// A long path keeps its end, which says which folder it is.
+				shown = look.Text.Render(cells.TruncateMiddle(cells.Display(value), max(w-gutterWidth, 8)))
+			}
 			switch {
 			case editingHere(i):
 				shown = m.input.View()

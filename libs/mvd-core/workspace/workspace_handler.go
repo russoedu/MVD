@@ -103,6 +103,9 @@ type Model struct {
 	input  textinput.Model
 
 	notice        string
+	// done is what an action that worked says, and caution what it warns of; both go away at the
+	// next key or click, while an error stays until something replaces it.
+	done, caution string
 	width, height int
 }
 
@@ -133,6 +136,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case tea.KeyPressMsg, tea.MouseClickMsg:
+		m.done, m.caution = "", ""
+	}
 	if mouse, ok := msg.(tea.MouseMsg); ok {
 		m.hoverX, m.hoverY = mouse.Mouse().X, mouse.Mouse().Y
 		if _, moved := msg.(tea.MouseMotionMsg); moved && m.bar.Open() < 0 {
@@ -387,7 +394,7 @@ func (m *Model) save(path string) {
 		m.notice = "Cannot save the list: " + err.Error()
 		return
 	}
-	m.notice = "Saved " + m.session.Path()
+	m.done = "Saved " + m.session.Path()
 }
 
 // ask opens the one-line question at the bottom of the screen.
@@ -430,7 +437,7 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 		}
 		m.session = list
 		m.screen = m.screen.WithState(list.Preview())
-		m.notice = "Opened " + list.Path()
+		m.done = "Opened " + list.Path()
 	case askSaveAs:
 		m.save(withExtension(text))
 	case askSaveThenStart, askSaveThenReview:
@@ -578,10 +585,10 @@ func (m Model) togglePause() Model {
 	}
 	if m.run.Paused() {
 		m.run.Resume()
-		m.notice = "Downloads go on"
+		m.done = "Downloads go on"
 	} else {
 		m.run.Pause()
-		m.notice = "Paused: the downloads under way finish, no new one starts"
+		m.done = "Paused: the downloads under way finish, no new one starts"
 	}
 	return m
 }
@@ -591,7 +598,7 @@ func (m Model) retryAll() Model {
 		m.notice = "Nothing is running"
 		return m
 	}
-	m.notice = fmt.Sprintf("%d songs queued again", m.run.RetryAll())
+	m.done = fmt.Sprintf("%d songs queued again", m.run.RetryAll())
 	return m
 }
 

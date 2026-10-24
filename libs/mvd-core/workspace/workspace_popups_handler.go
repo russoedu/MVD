@@ -11,6 +11,18 @@ import (
 // AboutOpen reports whether the About window is showing.
 func (m Model) AboutOpen() bool { return m.about }
 
+// Confirm shows, in green at the bottom of the screen, that what the person asked for was done.
+func (m Model) Confirm(text string) Model {
+	m.done, m.caution = text, ""
+	return m
+}
+
+// Caution shows, in yellow, something the person should know about what they just did.
+func (m Model) Caution(text string) Model {
+	m.caution, m.done = text, ""
+	return m
+}
+
 // WindowOpen reports whether a window of the workspace (About, Keyboard shortcuts) is showing
 // over the screen, which the page around the terminal dims itself for.
 func (m Model) WindowOpen() bool { return m.about || m.shortcuts }

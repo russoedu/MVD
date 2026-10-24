@@ -118,3 +118,32 @@ func TestTheWorkspaceBehindThePreferencesOfTheFirstStartIsDrawn(t *testing.T) {
 		t.Errorf("the first start shows\n%s", screen)
 	}
 }
+
+func TestSavingPreferencesSaysSo(t *testing.T) {
+	a, _, _, _, _ := openedPreferences(t)
+	a.prefs = a.prefs.WithConfig(config.Config{OutputDir: "/elsewhere", MaxConcurrentDownloads: 2})
+	next, _ := a.Update(prefspopup.SaveMsg{})
+	screen := ansi.Strip(next.View().Content)
+	if !strings.Contains(screen, "Preferences saved") {
+		t.Errorf("saving says nothing:\n%s", screen)
+	}
+}
+
+func TestLeavingPreferencesWithAChangedFolderWarnsThatItWasNotKept(t *testing.T) {
+	a, _, _, _, _ := openedPreferences(t)
+	a.prefs = a.prefs.WithConfig(config.Config{OutputDir: "/elsewhere", MaxConcurrentDownloads: 2})
+	next, _ := a.Update(prefspopup.CloseMsg{})
+	screen := ansi.Strip(next.View().Content)
+	if !strings.Contains(screen, "were not kept") {
+		t.Errorf("a dropped folder change is not warned of:\n%s", screen)
+	}
+}
+
+func TestLeavingPreferencesWithNothingChangedSaysNothing(t *testing.T) {
+	a, _, _, _, _ := openedPreferences(t)
+	next, _ := a.Update(prefspopup.CloseMsg{})
+	screen := ansi.Strip(next.View().Content)
+	if strings.Contains(screen, "were not kept") || strings.Contains(screen, "Preferences saved") {
+		t.Errorf("closing an untouched popup said something:\n%s", screen)
+	}
+}
