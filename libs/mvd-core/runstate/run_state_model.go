@@ -61,6 +61,8 @@ type State struct {
 	Entries   []*Entry
 	Idle      bool
 	Started   time.Time
+	// IdleAt is when the run last went idle: the clock of a finished run stops there.
+	IdleAt time.Time
 	retried   int // cumulative failed -> queued transitions
 }
 
@@ -118,6 +120,9 @@ func (s *State) Apply(ev interface{}) int {
 			s.retried++
 		}
 		en.State = e.State
+		if e.State == engine.StateQueued || e.State == engine.StateResolving || e.State == engine.StateDownloading || e.State == engine.StateMerging {
+			s.Idle = false // there is work again, such as songs tried again
+		}
 		en.TargetID = e.TargetID
 		en.Official = e.Official
 		en.Better = e.Better
@@ -156,7 +161,7 @@ func (s *State) Apply(ev interface{}) int {
 		}
 		return e.Entry
 	case engine.EvIdle:
-		s.Idle = true
+		s.Idle, s.IdleAt = true, time.Now()
 	}
 	return -1
 }
@@ -234,4 +239,14 @@ func (s *State) PlaylistTally(pl *Playlist) (finished, failed, active int) {
 		}
 	}
 	return
+}
+
+// Elapsed is how long the run has been going: up to now while it works, and up to the moment it
+// went idle once it has finished, so the time of a finished run does not keep growing.
+func (s *State) Elapsed() time.Duration {
+	if s.Idle && !s.IdleAt.IsZero() {
+		return s.IdleAt.Sub(s.Started)
+	}
+
+	return time.Since(s.Started)
 }

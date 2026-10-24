@@ -1,5 +1,6 @@
 import type { SocketLike } from '@treactui/tty'
 import { createWailsSocket } from '@treactui/tty'
+import { withHiddenCursor } from './hidden-cursor-socket.client'
 
 const wails = createWailsSocket()
 
@@ -13,7 +14,7 @@ let current: SocketLike | undefined
 export const terminalSocket = (url?: string): SocketLike => {
   current = wails(url)
 
-  return current
+  return withHiddenCursor(current)
 }
 
 /** Sends bytes to the program as if they were typed in the terminal. */

@@ -10,6 +10,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
@@ -109,6 +110,8 @@ type Model struct {
 	// done is what an action that worked says, and caution what it warns of; both go away at the
 	// next key or click, while an error stays until something replaces it.
 	done, caution string
+	// wasFinished is whether the run had finished when the screen was last drawn.
+	wasFinished bool
 	width, height int
 }
 
@@ -133,6 +136,13 @@ func (m Model) running() bool { return m.run != nil }
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if ws, ok := next.(Model); ok {
+		// When a run ends, what was said while it began (a draft was kept...) gives way to how it went.
+		if finished := ws.finished(); finished != ws.wasFinished {
+			ws.wasFinished = finished
+			if finished {
+				ws.done, ws.caution = "", ""
+			}
+		}
 		next = ws.refreshMenus().refreshRunMenus().keepRoomForButtons()
 	}
 	return next, cmd
@@ -141,7 +151,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case tea.KeyPressMsg, tea.MouseClickMsg:
-		m.done, m.caution = "", ""
+		m.done, m.caution, m.notice = "", "", ""
 	}
 	if mouse, ok := msg.(tea.MouseMsg); ok {
 		m.hoverX, m.hoverY = mouse.Mouse().X, mouse.Mouse().Y
@@ -182,6 +192,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, saveTick()
 
 	case OpenListMsg:
+		m = m.settle()
 		if m.running() || m.starting || m.stopping {
 			m.notice = "Stop the downloads before opening " + filepath.Base(msg.Path)
 			return m, nil
@@ -323,6 +334,9 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	if m.stopping || m.starting {
 		return m, nil
 	}
+	if settles(name) {
+		m = m.settle() // a run that has finished is over: nothing has to be stopped
+	}
 	if next, cmd, handled := m.runChoice(name); handled {
 		return next, cmd
 	}
@@ -362,6 +376,8 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
 		m.about = true
+	case entryOpenFolder:
+		m.openFolder()
 	case entryShortcuts:
 		m.shortcuts, m.shortcutsScroll = true, 0
 	case entryDocs:
@@ -399,7 +415,7 @@ func (m *Model) save(path string) {
 		m.notice = "Cannot save the list: " + err.Error()
 		return
 	}
-	m.done = "Saved " + m.session.Path()
+	m.done = "Saved " + cells.TruncateMiddle(m.session.Path(), max(m.width-14, 20))
 }
 
 // ask opens the one-line question at the bottom of the screen.
@@ -442,7 +458,7 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 		}
 		m.session = list
 		m.screen = m.screen.WithState(list.Preview())
-		m.done = "Opened " + list.Path()
+		m.done = "Opened " + cells.TruncateMiddle(list.Path(), max(m.width-14, 20))
 	case askSaveAs:
 		m.save(withExtension(text))
 	case askSaveThenStart, askSaveThenReview:
@@ -451,6 +467,26 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.start(p == askSaveThenReview)
+	case askAddLink, askChangeLink:
+		if reason := notALink(text); reason != "" {
+			m.notice = reason
+			prompt := "Add a playlist or video link"
+			if p == askChangeLink {
+				prompt = "Change the link"
+			}
+
+			return m.ask(p, prompt, text), textinput.Blink // asked again, with what was typed
+		}
+		links, _ := parseLinks(text)
+		return m.answeredLink(p, strings.Join(links, "\n"))
+	}
+	return m, nil
+}
+
+// answeredLink does what a link written on the bottom line says: it adds the link to the
+// run, or to the list, or changes the one being changed.
+func (m Model) answeredLink(p purpose, text string) (tea.Model, tea.Cmd) {
+	switch p {
 	case askAddLink:
 		if adder, ok := m.run.(downloadpage.SourceAdder); ok && m.run != nil {
 			m.session.SetSources(append(m.session.Sources(), text))
@@ -499,6 +535,17 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 	if state, waiting := m.toolsWaiting(); waiting {
 		m.caution, m.done = state.Message, ""
 		return m, nil
+	}
+	if m.session.Path() == "" {
+		// A new list is kept as a draft in the app's own folder, so a download starts at once and
+		// nothing is lost; File > Save as gives it a name of the person's own.
+		if draft := m.draftPath(); draft != "" {
+			if err := m.session.Save(draft); err != nil {
+				m.notice = "Cannot save the list: " + err.Error()
+				return m, nil
+			}
+			m.done = "Kept this list as a draft: " + cells.TruncateMiddle(draft, max(m.width-34, 20))
+		}
 	}
 	if m.session.Path() == "" {
 		p := askSaveThenStart
@@ -627,4 +674,91 @@ func (m Model) View() tea.View {
 	view := screenview.Of(m.render())
 	view.MouseMode = tea.MouseModeAllMotion // the buttons light up under the pointer
 	return view
+}
+
+// finished says whether the run has nothing more to do: every playlist was read, and the queue
+// is empty with no worker busy. A run held for the person to review is not finished: it waits
+// for them.
+func (m Model) finished() bool {
+	if m.run == nil || m.starting || m.stopping || m.reviewing || m.editor.Live() {
+		return false
+	}
+	state := m.screen.State()
+
+	return state != nil && state.Idle && state.AllListed()
+}
+
+// active says whether a run is going on that has to be stopped before the list can change: one
+// that has finished does not.
+func (m Model) active() bool { return m.running() && !m.finished() }
+
+// settle ends a run that has finished, so the list can be changed or another run started: what
+// each song got to is written to the list, the run is closed (it has nothing to wind down, so this
+// is quick) and the screen goes back to the list. A run that has not finished is left alone.
+func (m Model) settle() Model {
+	if !m.finished() {
+		return m
+	}
+	m.syncList()
+	m.run.Close()
+	m.run, m.reviewing = nil, false
+	m.screen = m.screen.Detach().WithState(m.session.Preview())
+
+	return m
+}
+
+// settles says whether an entry needs the list to be free, and so ends a finished run first.
+func settles(name string) bool {
+	switch name {
+	case entryNew, entryOpen, entryStart, entryReview, entryAddLink,
+		entryUndo, entryRedo, entryCut, entryPaste, entryDelete, entryMoveUp, entryMoveDown:
+		return true
+	}
+
+	return false
+}
+
+// openFolder shows the folder of the videos in the system's file manager.
+func (m *Model) openFolder() {
+	dir := m.cfg.OutputDir
+	switch {
+	case dir == "":
+		m.notice = "No folder is chosen for the videos yet: choose one in File > Preferences"
+	case m.host.OpenFolder == nil:
+		m.caution = "The videos are in " + cells.TruncateMiddle(dir, max(m.width-24, 20))
+	default:
+		if _, err := os.Stat(dir); err != nil {
+			m.caution = "The folder is made when the first download starts: " + cells.TruncateMiddle(dir, max(m.width-60, 20))
+
+			return
+		}
+		if err := m.host.OpenFolder(dir); err != nil {
+			m.notice = "Cannot open the folder: " + err.Error()
+		}
+	}
+}
+
+// draftPath is where a list that has no file yet is kept when it starts: "Untitled list.mvd" in
+// the app's folder of lists, or "Untitled list 2.mvd" and so on when that is taken. It is "" when
+// the host has no such folder, and the person is asked where to save the list then.
+func (m Model) draftPath() string {
+	dir := m.host.ListDir
+	if dir == "" {
+		return ""
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ""
+	}
+	for n := 1; n < 1000; n++ {
+		name := "Untitled list"
+		if n > 1 {
+			name = fmt.Sprintf("Untitled list %d", n)
+		}
+		path := filepath.Join(dir, name+playlistfile.Extension)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return path
+		}
+	}
+
+	return ""
 }

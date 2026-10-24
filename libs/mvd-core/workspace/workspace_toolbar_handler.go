@@ -35,6 +35,15 @@ type button struct {
 // or edited while nothing runs; a run can be paused, stopped, retried and reviewed.
 func (m Model) buttons() []button {
 	busy := m.starting || m.stopping
+	if m.finished() {
+		// The work is over: show where it went, and offer what comes next.
+		out := []button{{"Open folder", entryOpenFolder, false}, {"► Start again", entryStart, busy}}
+		if m.screen.State().Tally().Failed > 0 {
+			out = append(out, button{"Retry failed", entryRetry, busy})
+		}
+
+		return append(out, button{"+ Add link", entryAddLink, busy})
+	}
 	if !m.running() {
 		_, waiting := m.toolsWaiting()
 		nothing := busy || waiting || len(m.session.Sources()) == 0 // there is nothing to download, or no tool to do it with
@@ -118,7 +127,7 @@ func (m Model) toolbarClick(x, y int) (tea.Model, tea.Cmd, bool) {
 // refreshRunMenus greys out what the Run menu offers and the workspace cannot do now.
 func (m Model) refreshRunMenus() Model {
 	busy := m.starting || m.stopping
-	running := m.running()
+	running := m.active()
 	nothing := len(m.session.Sources()) == 0
 	_, waiting := m.toolsWaiting()
 	m.bar.SetEnabled(entryStart, !running && !busy && !nothing && !waiting)
@@ -126,7 +135,8 @@ func (m Model) refreshRunMenus() Model {
 	m.bar.SetEnabled(entryPause, running && !busy && !m.run.Paused())
 	m.bar.SetEnabled(entryResume, running && !busy && m.run.Paused())
 	m.bar.SetEnabled(entryStop, running && !busy)
-	m.bar.SetEnabled(entryRetry, running && !busy)
+	m.bar.SetEnabled(entryRetry, m.running() && !busy)
+	m.bar.SetEnabled(entryOpenFolder, m.host.OpenFolder != nil)
 	m.bar.SetEnabled(entryReviewSongs, running && !busy && m.editor.Live())
 	return m
 }
@@ -147,6 +157,9 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 		return next, cmd, true
 	case entryRetry:
 		return m.retryAll(), nil, true
+	case entryOpenFolder:
+		m.openFolder()
+		return m, nil, true
 	case entryAddLink:
 		if m.editable() {
 			next, cmd := m.startAdd()

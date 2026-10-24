@@ -102,8 +102,13 @@ func (m Model) stopInline(keep bool) Model {
 	text := strings.TrimSpace(e.line.Value())
 	switch {
 	case keep && text != "" && e.adding:
+		links, _ := parseLinks(text)
+		added := make([]playlistfile.Item, 0, len(links))
+		for _, link := range links {
+			added = append(added, playlistfile.Item{Source: link})
+		}
 		items := cloneItems(m.session.File().Items)
-		out := append(append(append([]playlistfile.Item(nil), items[:e.index]...), playlistfile.Item{Source: text}), items[e.index:]...)
+		out := append(append(append([]playlistfile.Item(nil), items[:e.index]...), added...), items[e.index:]...)
 		return m.setItems(out, e.index)
 	case keep && text != "":
 		return m.changeAddress(e.index, text)
@@ -140,6 +145,10 @@ func (m Model) inlineKey(k tea.KeyPressMsg) (Model, tea.Cmd) {
 	case "esc":
 		return m.stopInline(false), nil
 	case "enter":
+		if reason := notALink(m.inline.line.Value()); reason != "" {
+			m.notice = reason // the row stays open: the person fixes it where it is
+			return m, nil
+		}
 		return m.stopInline(true), nil
 	case "ctrl+c", "ctrl+x", "ctrl+v":
 		if m.host.Clipboard != nil {

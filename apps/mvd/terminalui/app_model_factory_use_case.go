@@ -63,6 +63,8 @@ type Host struct {
 	Clipboard workspace.Clipboard
 	// Modal is told when a popup opens and closes over the screen; nil for none.
 	Modal func(open bool)
+	// OpenFolder shows a folder in the system's file manager; nil for none.
+	OpenFolder func(path string) error
 	// Tools says whether the tools of the downloads are ready: on the first start they are
 	// fetched while the window is already open. nil means they are always there.
 	Tools func() workspace.ToolsState
@@ -109,14 +111,15 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 					SaveDir:     filepath.Join(appDir, "plans"),
 					DecisionLog: filepath.Join(appDir, "editor-decisions.jsonl"),
 				},
-				ListDir:  filepath.Join(appDir, "lists"),
-				PickFile: host.PickFile,
-				SaveFile: host.SaveFile,
-				Open:     openurl.Open,
-				Quit:     host.Quit,
-				Tools:    host.Tools,
-				Version:  host.Version,
-				Clipboard: host.Clipboard,
+				ListDir:    filepath.Join(appDir, "lists"),
+				PickFile:   host.PickFile,
+				SaveFile:   host.SaveFile,
+				Open:       openurl.Open,
+				Quit:       host.Quit,
+				Tools:      host.Tools,
+				OpenFolder: host.OpenFolder,
+				Version:    host.Version,
+				Clipboard:  host.Clipboard,
 			},
 		})}
 	}

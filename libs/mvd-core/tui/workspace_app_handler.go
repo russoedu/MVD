@@ -45,6 +45,10 @@ type workspaceApp struct {
 	cfg           config.Config
 	prefs         prefspopup.Model
 	inPrefs       bool
+	// shortcutsOpen is whether the Keyboard shortcuts window is open over the preferences, and
+	// shortcutsScroll how far down its lines it is.
+	shortcutsOpen   bool
+	shortcutsScroll int
 	width, height int
 	hoverX, hoverY int
 	// modal is whether a popup was last reported open to Modal.
@@ -92,6 +96,18 @@ func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if mouse, ok := msg.(tea.MouseMsg); ok {
 		a.hoverX, a.hoverY = mouse.Mouse().X, mouse.Mouse().Y
+	}
+	if key, ok := msg.(tea.KeyPressMsg); ok && a.inPrefs {
+		switch {
+		case a.shortcutsOpen:
+			a.shortcutsScroll, a.shortcutsOpen = a.ws.ShortcutsKey(a.shortcutsScroll, key)
+
+			return a, nil
+		case key.String() == "f1":
+			a.shortcutsOpen, a.shortcutsScroll = true, 0
+
+			return a, nil
+		}
 	}
 	if workspace.Background(msg) {
 		next, cmd := a.ws.Update(msg) // the workspace's own beat goes on under a popup
@@ -141,7 +157,7 @@ func (a workspaceApp) closePrefs(confirm bool) workspaceApp {
 	case a.waitsForSave(chosen):
 		a.ws = a.ws.Caution("The folder or file names you changed were not kept. Press s in Preferences to save them.")
 	}
-	a.inPrefs = false
+	a.inPrefs, a.shortcutsOpen = false, false
 	ApplyTheme(a.cfg.Colors)
 	return a
 }
@@ -220,7 +236,13 @@ func (a workspaceApp) View() tea.View {
 	}
 	w, h := a.popupSize()
 	x, y := dialog.Centre(a.width, a.height, w, h)
-	return screenview.Of(dialog.Overlay(dialog.Dim(a.ws.Render()), dialog.ClosableFrame("Preferences", a.popupLines(), w, h), x, y))
+	screen := dialog.Overlay(dialog.Dim(a.ws.Render()), dialog.ClosableFrame("Preferences", a.popupLines(), w, h), x, y)
+	if a.shortcutsOpen {
+		view, sx, sy := a.ws.ShortcutsWindow(a.shortcutsScroll)
+		screen = dialog.Overlay(dialog.Dim(screen), view, sx, sy)
+	}
+
+	return screenview.Of(screen)
 }
 
 // RunWorkspace runs the workspace app until the person quits it or ctx ends.

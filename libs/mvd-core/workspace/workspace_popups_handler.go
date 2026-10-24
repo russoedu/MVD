@@ -172,3 +172,23 @@ func Background(msg tea.Msg) bool {
 
 	return false
 }
+
+// ShortcutsWindow is the Keyboard shortcuts window for a host that draws it over something of its
+// own, such as the Preferences popup: the window, the cell it begins at, and how far down its lines
+// it is (scroll) to start with.
+func (m Model) ShortcutsWindow(scroll int) (view string, x, y int) {
+	m.shortcutsScroll = scroll
+	l := m.shortcutsLayout()
+	x, y = dialog.Centre(m.width, m.height, l.width, l.height)
+
+	return dialog.ClosableFrame("Keyboard shortcuts", l.lines, l.width, l.height), x, y
+}
+
+// ShortcutsKey works a key press in that window: how far down it is now, and whether it is
+// still open.
+func (m Model) ShortcutsKey(scroll int, key tea.KeyPressMsg) (newScroll int, open bool) {
+	m.shortcuts, m.shortcutsScroll = true, scroll
+	m = m.shortcutsKey(key)
+
+	return m.shortcutsScroll, m.shortcuts
+}

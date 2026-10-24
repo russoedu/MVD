@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -79,6 +80,8 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Dim.Render("Paste or type a link, then press Enter. Esc cancels."), m.width)
 	case m.disabledReason() != "":
 		return cells.Fit(" "+look.Dim.Render(m.disabledReason()), m.width)
+	case m.finished():
+		return cells.Fit(" "+m.summaryLine(), m.width)
 	case m.editable() && !m.reviewing:
 		return cells.Fit(" "+look.Dim.Render(m.idleHints()), m.width)
 	}
@@ -107,6 +110,10 @@ func overlayMenu(screen, barView string) string {
 // idleHints is the line of keys at the bottom while nothing runs: the few that start the work,
 // and the one that lists them all.
 func (m Model) idleHints() string {
+	if _, _, _, drawn := m.buttonRows(); !drawn && !m.reviewing && m.width > 0 {
+		// The window is too narrow for the buttons: the Run menu has what they did.
+		return "No room for buttons at this width: use the Run menu  ·  " + menubar.ShortcutLabel("F1") + " shortcuts"
+	}
 	return strings.Join([]string{
 		menubar.ShortcutLabel("F1") + " shortcuts",
 		menubar.ShortcutLabel("Ctrl+L") + " add link",
@@ -134,4 +141,58 @@ func (m Model) toolsLine() string {
 	}
 
 	return look.Yellow.Render(m.toolsMessage())
+}
+
+// summaryLine is how a finished run went and where its videos are, in a line the width of the
+// screen: the folder is shortened in the middle, so its end, which names it, stays.
+func (m Model) summaryLine() string {
+	t := m.screen.State().Tally()
+	head := fmt.Sprintf("✓ %d downloaded", t.Done)
+	plain := head
+	line := look.Green.Render(head)
+	if t.Failed > 0 {
+		failed := fmt.Sprintf("✗ %d failed", t.Failed)
+		plain += "  " + failed
+		line += "  " + look.Red.Render(failed)
+	}
+	if unread := m.unreadLinks(); unread > 0 {
+		said := fmt.Sprintf("✗ %d %s could not be read", unread, plural("link", unread))
+		plain += "  " + said
+		line += "  " + look.Red.Render(said)
+	}
+	const label = "  ·  Videos in "
+	hint := "  ·  " + menubar.ShortcutLabel("Ctrl+Shift+O") + " opens it"
+	room := m.width - ansi.StringWidth(plain) - ansi.StringWidth(label) - 2
+	if room < 30 {
+		return line // too narrow for the folder: the counts say it
+	}
+	if room-ansi.StringWidth(hint) >= ansi.StringWidth(m.cfg.OutputDir) || room-ansi.StringWidth(hint) >= 24 {
+		room -= ansi.StringWidth(hint)
+	} else {
+		hint = ""
+	}
+
+	return line + look.Dim.Render(label) + look.Text.Render(cells.TruncateMiddle(m.cfg.OutputDir, room)) + look.Dim.Render(hint)
+}
+
+// unreadLinks is how many links of the run could not be read at all, a different thing from a song
+// that failed: nothing of them was listed.
+func (m Model) unreadLinks() int {
+	n := 0
+	for _, pl := range m.screen.State().Playlists {
+		if pl.Err != "" {
+			n++
+		}
+	}
+
+	return n
+}
+
+// plural is the noun, with an s when there is not exactly one.
+func plural(noun string, n int) string {
+	if n == 1 {
+		return noun
+	}
+
+	return noun + "s"
 }

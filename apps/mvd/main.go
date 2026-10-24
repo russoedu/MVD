@@ -21,6 +21,7 @@ import (
 	"youtube-downloader/apps/mvd/folderdialog"
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/notification"
+	"youtube-downloader/apps/mvd/openfolder"
 	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
 	"youtube-downloader/apps/mvd/uninstall"
@@ -152,12 +153,13 @@ func run(movedFrom string, askToMove bool, review string) error {
 		},
 		// Quitting from the screens ends the program that runs them, and the window would
 		// otherwise stay open on a page with nothing behind it.
-		Quit:      stop,
-		Version:   version,
-		Clipboard: terminalui.SystemClipboard{},
-		Modal:     backdrop.Set,
-		Tools:     toolsState(tools),
-		Uninstall: terminalui.Uninstall(removal),
+		Quit:       stop,
+		Version:    version,
+		Clipboard:  terminalui.SystemClipboard{},
+		Modal:      backdrop.Set,
+		Tools:      toolsState(tools),
+		OpenFolder: openfolder.Open,
+		Uninstall:  terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: move,
 	}, logf))

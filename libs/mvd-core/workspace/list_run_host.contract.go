@@ -36,6 +36,8 @@ type Host struct {
 	SaveFile func(dir, name string) (path string, chosen bool, err error)
 	// Open opens an address in the person's browser; nil for none.
 	Open func(url string) error
+	// OpenFolder shows a folder in the system's file manager; nil for none.
+	OpenFolder func(path string) error
 	// Quit is called when the person quits, so a host that shows the program in a window
 	// can close it; nil for none.
 	Quit func()
