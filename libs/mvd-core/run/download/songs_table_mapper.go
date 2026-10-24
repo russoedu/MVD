@@ -18,6 +18,8 @@ const (
 	columnSong     = "song"
 	columnArtist   = "artist"
 	columnVideo    = "video"
+	columnAlbum    = "album"
+	columnQuality  = "quality"
 	columnProgress = "progress"
 	columnStatus   = "status"
 
@@ -27,6 +29,8 @@ const (
 	widthProgress = 13 // a bar of 8, a space and "100%"
 	widthArtist   = 16
 	widthVideo    = 22
+	widthAlbum    = 16
+	widthQuality  = 7
 	minSongWidth  = 12
 	progressBar   = 8
 )
@@ -43,11 +47,12 @@ type tableColumn struct {
 func (m Model) tableColumns(w int) []tableColumn {
 	widths := map[string]int{
 		columnStatus: widthStatus, columnProgress: widthProgress, columnArtist: widthArtist, columnVideo: widthVideo,
+		columnAlbum: widthAlbum, columnQuality: widthQuality,
 	}
 	used := widthMark + widthIdx + minSongWidth + 2 // and the gaps between these three
 	include := map[string]bool{}
-	for _, name := range []string{columnStatus, columnProgress, columnArtist, columnVideo} {
-		if (name == columnArtist || name == columnVideo) && !m.tableHas(name) {
+	for _, name := range []string{columnStatus, columnProgress, columnQuality, columnArtist, columnAlbum, columnVideo} {
+		if name != columnStatus && name != columnProgress && !m.tableHas(name) {
 			continue
 		}
 		if used+widths[name]+1 <= w {
@@ -58,8 +63,8 @@ func (m Model) tableColumns(w int) []tableColumn {
 
 	all := []tableColumn{
 		{columnMark, "", widthMark}, {columnIdx, "#", widthIdx}, {columnSong, "Song", 0},
-		{columnArtist, "Artist", widthArtist}, {columnVideo, "Video", widthVideo},
-		{columnProgress, "Progress", widthProgress}, {columnStatus, "Status", widthStatus},
+		{columnArtist, "Artist", widthArtist}, {columnVideo, "Video", widthVideo}, {columnAlbum, "Album", widthAlbum},
+		{columnQuality, "Quality", widthQuality}, {columnProgress, "Progress", widthProgress}, {columnStatus, "Status", widthStatus},
 	}
 	var out []tableColumn
 	for _, c := range all {
@@ -80,7 +85,7 @@ func (m Model) tableColumns(w int) []tableColumn {
 	return out
 }
 
-// tableHas says whether any song shown has something for the artist or the video column.
+// tableHas says whether any song shown has something for the artist, video, album or quality column.
 func (m Model) tableHas(column string) bool {
 	for _, id := range m.visibleEntries() {
 		en := m.state.Entries[id]
@@ -91,6 +96,14 @@ func (m Model) tableHas(column string) bool {
 			}
 		case columnVideo:
 			if songName(en) != entryTitle(en) {
+				return true
+			}
+		case columnAlbum:
+			if en.NamedAlbum != "" {
+				return true
+			}
+		case columnQuality:
+			if qualityText(en) != "" {
 				return true
 			}
 		}
@@ -176,6 +189,10 @@ func (m Model) songCells(en *runstate.Entry, cols []tableColumn, selected bool) 
 				text = entryTitle(en)
 			}
 			style = plain(look.Colours.Dim)
+		case columnAlbum:
+			text, style = en.NamedAlbum, plain(look.Colours.Dim)
+		case columnQuality:
+			text, style = qualityText(en), plain(look.Colours.Text)
 		case columnProgress:
 			text, style = progress, plain(progressColour)
 		case columnStatus:
@@ -249,4 +266,17 @@ func bar(percent float64) string {
 	filled := min(max(int(percent/100*progressBar+0.5), 0), progressBar)
 
 	return strings.Repeat("█", filled) + strings.Repeat("░", progressBar-filled)
+}
+
+// qualityText is how good the version of a song is: the height of its picture ("1080p"), or for
+// one with sound only the bitrate ("160k"); empty until yt-dlp has said.
+func qualityText(en *runstate.Entry) string {
+	switch {
+	case en.Height > 0:
+		return fmt.Sprintf("%dp", en.Height)
+	case en.AudioKbps > 0:
+		return fmt.Sprintf("%dk", en.AudioKbps)
+	}
+
+	return ""
 }

@@ -89,3 +89,30 @@ func TestWithNoSongsThePaneKeepsItsText(t *testing.T) {
 		t.Errorf("a table with no songs: %q", table.Columns)
 	}
 }
+
+func TestTheAlbumAndTheQualityAppearOnceTheyAreKnown(t *testing.T) {
+	m := sampleModel(t)
+	if names := namesOf(m.tableColumns(200)); strings.Contains(names, columnAlbum) || strings.Contains(names, columnQuality) {
+		t.Fatalf("columns with nothing to say are shown: %s", names)
+	}
+	en := m.state.Entries[0]
+	en.NamedAlbum, en.Height = "Whenever You Need Somebody", 1080
+	names := namesOf(m.tableColumns(200))
+	if !strings.Contains(names, columnAlbum) || !strings.Contains(names, columnQuality) {
+		t.Fatalf("the album and the quality are missing: %s", names)
+	}
+	texts := strings.Join(firstOf(m.songCells(en, m.tableColumns(200), false)), "|")
+	if !strings.Contains(texts, "Whenever You Need Somebody") || !strings.Contains(texts, "1080p") {
+		t.Errorf("the cells are %q", texts)
+	}
+	en.Height, en.AudioKbps = 0, 160
+	if got := qualityText(en); got != "160k" {
+		t.Errorf("a sound with no picture says %q", got)
+	}
+	// In a narrow pane the quality is kept before the artist and the album.
+	if got := namesOf(m.tableColumns(60)); !strings.Contains(got, columnQuality) {
+		t.Errorf("a pane of 60 cells lost the quality: %s", got)
+	}
+}
+
+func firstOf(texts, _ []string) []string { return texts }

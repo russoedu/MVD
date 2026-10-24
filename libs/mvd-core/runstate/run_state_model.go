@@ -34,6 +34,10 @@ type Entry struct {
 	Reason      string
 	// NamedArtist and NamedTitle are the song as a music database named it ("" when none did).
 	NamedArtist, NamedTitle string
+	// NamedAlbum is the album the song was named under, "" when it is not known.
+	NamedAlbum string
+	// Height and AudioKbps are how good the version being downloaded is, 0 until it is known.
+	Height, AudioKbps int
 	Err                     string
 	Percent                 float64
 	Downloaded int64
@@ -131,15 +135,23 @@ func (s *State) Apply(ev interface{}) int {
 			en.Reason = e.Reason
 		}
 		if e.Artist != "" {
-			en.NamedArtist, en.NamedTitle = e.Artist, e.Title
+			en.NamedArtist, en.NamedTitle, en.NamedAlbum = e.Artist, e.Title, e.Album
 		}
 		en.Err = e.Err
 		if e.State == engine.StateQueued {
 			en.Percent, en.Downloaded, en.Total, en.Speed, en.ETA = 0, 0, 0, 0, -1
+			en.Height, en.AudioKbps = 0, 0
 		}
 		if e.State == engine.StateDone {
 			en.Percent = 100
 		}
+		return e.Entry
+	case engine.EvQuality:
+		en := s.Entry(e.Entry)
+		if en == nil {
+			return -1
+		}
+		en.Height, en.AudioKbps = e.Height, e.AudioKbps
 		return e.Entry
 	case engine.EvProgress:
 		en := s.Entry(e.Entry)

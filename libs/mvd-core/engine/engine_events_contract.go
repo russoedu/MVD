@@ -54,6 +54,15 @@ type (
 		// are the song as a music database named it. Each is empty when not known.
 		Reason        string
 		Artist, Title string
+		// Album is the album the song was named under, "" when it is not known.
+		Album string
+	}
+	// EvQuality says how good the version being downloaded is: the height of its picture, in
+	// pixels, and the bitrate of its sound, in kilobits a second. Each is 0 when not known.
+	EvQuality struct {
+		Entry     int
+		Height    int
+		AudioKbps int
 	}
 	// EvProgress carries a download progress tick.
 	EvProgress struct {

@@ -31,6 +31,8 @@ type Identification struct {
 	Resolution Resolution
 	// Artist and Title are the song as a music database named it, when it did.
 	Artist, Title string
+	// Album is the album the song was named under, "" when it is not known.
+	Album string
 	// State is the resolver's own notes for Pick; the engine only carries it.
 	State any
 }

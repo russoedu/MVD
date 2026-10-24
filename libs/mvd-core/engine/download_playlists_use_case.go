@@ -121,7 +121,7 @@ type engineEntry struct {
 }
 
 // namedSong is a song as a music database named it.
-type namedSong struct{ artist, title string }
+type namedSong struct{ artist, title, album string }
 
 // notFoundRow is a song with no official video, as the CSV file lists it.
 type notFoundRow struct{ playlist, artist, title, url string }
@@ -535,7 +535,7 @@ func (e *Engine) setState(en *engineEntry, st EntryState, err string) {
 	en.err = err
 	ev := EvEntryState{Entry: en.info.ID, State: st, TargetID: en.targetID, Official: en.official, Better: en.better, Err: err, OwnOfficial: en.ownOfficial, Reason: en.reason}
 	if en.named != nil {
-		ev.Artist, ev.Title = en.named.artist, en.named.title
+		ev.Artist, ev.Title, ev.Album = en.named.artist, en.named.title, en.named.album
 	}
 	e.mu.Unlock()
 	e.emit(ev)
@@ -601,7 +601,7 @@ func (e *Engine) nameStage(ctx context.Context, id int) {
 		e.mu.Lock()
 		en.identified = &identification
 		if identification.Artist != "" && identification.Title != "" {
-			en.named = &namedSong{artist: identification.Artist, title: identification.Title}
+			en.named = &namedSong{artist: identification.Artist, title: identification.Title, album: identification.Album}
 		}
 		e.mu.Unlock()
 		e.pickQueue.Push(id)
@@ -908,10 +908,28 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 			trailing = append(trailing, "--print-to-file", "after_move:filepath", pathsFile)
 		}
 	}
+	// yt-dlp says how good the chosen version is in a file of its own, as it begins: it is read at
+	// the first progress tick, so what yt-dlp prints stays what it was.
+	qualityFile := ""
+	if f, err := os.CreateTemp("", "mvd-quality-*.txt"); err == nil {
+		qualityFile = f.Name()
+		_ = f.Close()
+		defer func() { _ = os.Remove(qualityFile) }()
+		trailing = append(trailing, "--print-to-file", fetch.QualityPrint, qualityFile)
+	}
 	args := fetch.DownloadArgs(options, append(trailing, "https://www.youtube.com/watch?v="+target)...)
 
+	qualityKnown := false
 	err := fetch.DownloadWithStartTimeout(ctx, e.opts.YtDlp, args, live.StartTimeout, func(line string) {
 		if p, ok := fetch.ParseProgressLine(line); ok {
+			if !qualityKnown && qualityFile != "" {
+				if data, err := os.ReadFile(qualityFile); err == nil {
+					if height, kbps, found := fetch.ParseQualityLine(string(data)); found {
+						qualityKnown = true
+						e.emit(EvQuality{Entry: eid, Height: height, AudioKbps: kbps})
+					}
+				}
+			}
 			e.emit(EvProgress{Entry: eid, Percent: p.Percent, Downloaded: p.Downloaded, Total: p.Total, Speed: p.Speed, ETA: p.ETA, Parts: partsInFlight(p, live.ConcurrentFragments)})
 			return
 		}

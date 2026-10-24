@@ -119,3 +119,18 @@ func TestTheTallyAddsUpWhatIsComingInNow(t *testing.T) {
 		t.Errorf("downloading %d, parts %d, speed %v: a merging file is not coming in", tally.Downloading, tally.Parts, tally.Speed)
 	}
 }
+
+func TestAnEntryKnowsItsAlbumAndHowGoodItsVersionIs(t *testing.T) {
+	s := New([]engine.PlaylistSource{{Index: 0, URL: "https://a"}})
+	s.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "a", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, VideoID: "v", Title: "t"}}})
+	s.Apply(engine.EvEntryState{Entry: 0, State: engine.StateResolving, Artist: "Band", Title: "Song", Album: "The Album"})
+	s.Apply(engine.EvQuality{Entry: 0, Height: 1080, AudioKbps: 160})
+	en := s.Entries[0]
+	if en.NamedAlbum != "The Album" || en.Height != 1080 || en.AudioKbps != 160 {
+		t.Errorf("album %q, height %d, audio %d", en.NamedAlbum, en.Height, en.AudioKbps)
+	}
+	s.Apply(engine.EvEntryState{Entry: 0, State: engine.StateQueued})
+	if en.Height != 0 || en.AudioKbps != 0 {
+		t.Error("the quality of an earlier try was kept when the song was queued again")
+	}
+}
