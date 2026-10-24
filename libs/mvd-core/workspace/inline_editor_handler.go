@@ -82,7 +82,7 @@ func (m Model) startAddToRun() Model {
 	m = m.stopInline(false)
 	state := m.screen.State()
 	before := m.screen.SelectedPlaylist()
-	state.Playlists = append(state.Playlists, &runstate.Playlist{Index: len(state.Playlists), Listed: true})
+	state.Playlists = append(state.Playlists, &runstate.Playlist{Index: -1, Listed: true})
 	at := len(state.Playlists) - 1
 	m.screen = m.screen.SelectPlaylist(at)
 	m.inline = inlineEdit{on: true, adding: true, running: true, index: at, before: before}
@@ -121,6 +121,18 @@ func (m Model) stopInline(keep bool) Model {
 	e := m.inline
 	m.inline = inlineEdit{}
 	text := strings.TrimSpace(e.line.Value())
+	if e.running && !e.adding {
+		// Another address for a link of the run: the old one is taken out, the new one loaded.
+		m.screen = m.screen.SelectPlaylist(e.before)
+		if keep && text != "" {
+			if old, ok := m.runLinkAt(e.index); !ok || old != text {
+				links, _ := parseLinks(text)
+				m = m.removeFromRun(e.index).addToRun(links)
+			}
+		}
+
+		return m
+	}
 	if e.running {
 		state := m.screen.State()
 		if n := len(state.Playlists); n > 0 && n-1 == e.index {

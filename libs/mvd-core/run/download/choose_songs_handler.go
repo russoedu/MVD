@@ -22,6 +22,15 @@ type Chooser interface {
 	ReleaseAll() int
 	// Skip cancels song entry: it is not downloaded.
 	Skip(entry int) bool
+	// Swap gives song entry another video to download, also when it was saved already: what it
+	// saved is then taken away. False when the song is on its way and cannot be swapped.
+	Swap(entry int, videoID string) bool
+}
+
+// SourceRemover is what a run offers when it takes a link out while it goes on.
+type SourceRemover interface {
+	// RemoveSource takes playlist (the engine's number for it) out of the run.
+	RemoveSource(playlist int) bool
 }
 
 // OpenVideoMsg asks the app to show a video in the person's browser.
@@ -38,6 +47,20 @@ func (m Model) chooser() (Chooser, bool) {
 	c, ok := m.ctrl.(Chooser)
 
 	return c, ok
+}
+
+// swappable says whether the video of a song can be swapped now: it waits, was saved, failed or was
+// cancelled, and is not on its way.
+func swappable(en *runstate.Entry) bool {
+	if en == nil {
+		return false
+	}
+	switch en.State {
+	case engine.StatePlanned, engine.StateDone, engine.StateDuplicate, engine.StateFailed, engine.StateNotFound, engine.StateSkipped:
+		return true
+	}
+
+	return false
 }
 
 // anyWaiting says whether some song waits for the person to choose it.
@@ -106,8 +129,8 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 			m.flash("this song cannot be cancelled now")
 		}
 	case "s":
-		if !waiting(en) && en.State != engine.StateFailed && en.State != engine.StateNotFound {
-			m.flash("this song is already on its way")
+		if !swappable(en) {
+			m.flash("this song is on its way: swap it when it is saved")
 
 			return m, nil, true
 		}
@@ -143,7 +166,7 @@ func (m Model) updateSwapping(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		chooser, held := m.chooser()
 		switch {
 		case !held:
-		case chooser.Release(m.swapEntry, id):
+		case chooser.Swap(m.swapEntry, id):
 			m.flash("sent to download with the video you chose")
 		default:
 			m.flash("this song cannot be changed now")

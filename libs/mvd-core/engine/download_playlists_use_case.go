@@ -118,6 +118,8 @@ type engineEntry struct {
 	err       string
 	deferred  bool // failed with an error a later retry may fix, eligible for a cycle
 	sweeps    int  // retry cycles already spent
+	// saved are the files the last successful download wrote, so a swap can take them away.
+	saved []string
 }
 
 // namedSong is a song as a music database named it.
@@ -158,6 +160,7 @@ type Engine struct {
 	wake        chan struct{} // pinged when AddSource gives a waiting producer work
 	closed      bool          // Run has finished: no more events will be sent
 
+	removed        map[int]bool   // playlists the person took out of the run
 	playlistTitles map[int]string // the titles of the playlists listed, by index
 	notFound       []notFoundRow  // songs with no official video, when only those are wanted
 }
@@ -179,6 +182,7 @@ func New(opts Options) (*Engine, error) {
 		wake:           make(chan struct{}, 1),
 		claims:         make(map[int]map[string]int),
 		playlistTitles: make(map[int]string),
+		removed:        make(map[int]bool),
 		throttle:       newDownloadThrottle(opts.Workers),
 		live:           liveOf(opts),
 	}
@@ -424,7 +428,7 @@ func (e *Engine) Retry(entryID int) bool {
 		return false
 	}
 	en := e.entries[entryID]
-	if en.state != StateFailed {
+	if en.state != StateFailed || e.removed[en.info.Playlist] {
 		e.mu.Unlock()
 		return false
 	}
@@ -475,6 +479,10 @@ func (e *Engine) listPlaylist(ctx context.Context, src PlaylistSource) {
 	e.log(src.Index, -1, "listing %s", src.URL)
 
 	entries, tracks, err := e.listEntries(ctx, src)
+	if e.isRemoved(src.Index) {
+		e.log(src.Index, -1, "removed while it was being listed")
+		return
+	}
 	if err != nil {
 		e.log(src.Index, -1, "listing failed: %v", err)
 		e.emit(EvPlaylistFailed{Playlist: src.Index, Err: err.Error()})
@@ -563,6 +571,11 @@ func (e *Engine) claimTarget(playlist int, target string, entryID int) bool {
 func (e *Engine) nameStage(ctx context.Context, id int) {
 	e.mu.Lock()
 	en := e.entries[id]
+	if e.removed[en.info.Playlist] {
+		e.mu.Unlock()
+		e.dropRemoved(en)
+		return
+	}
 	if en.fixed {
 		// The version came from a plan, and stays whatever the lookup would say now.
 		e.mu.Unlock()
@@ -621,7 +634,12 @@ func (e *Engine) pickStage(ctx context.Context, id int) {
 	e.mu.Lock()
 	en := e.entries[id]
 	identification := en.identified
+	gone := e.removed[en.info.Playlist]
 	e.mu.Unlock()
+	if gone {
+		e.dropRemoved(en)
+		return
+	}
 
 	pl, eid := en.info.Playlist, en.info.ID
 	if ctx.Err() != nil {
@@ -761,6 +779,10 @@ func (e *Engine) process(ctx context.Context, id int) {
 
 	pl, eid := en.info.Playlist, en.info.ID
 
+	if e.isRemoved(pl) {
+		e.setState(en, StateSkipped, "")
+		return
+	}
 	if ctx.Err() != nil {
 		e.setState(en, StateFailed, "cancelled")
 		return
@@ -899,14 +921,14 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 	trailing := []string{"--newline", "--progress-template", fetch.ProgressTemplate, "--no-playlist"}
 	// yt-dlp writes the path of every finished file here, for CheckDownload. Only a
 	// replacement is checked: the playlist's own upload is what there is to fall back to.
+	// It is also how the files are known, so a swap of the video can take them away.
+	check := e.opts.CheckDownload != nil && target != en.info.VideoID && en.info.VideoID != "" && !en.userChose
 	pathsFile := ""
-	if e.opts.CheckDownload != nil && target != en.info.VideoID && en.info.VideoID != "" && !en.userChose {
-		if f, err := os.CreateTemp("", "mvd-paths-*.txt"); err == nil {
-			pathsFile = f.Name()
-			_ = f.Close()
-			defer func() { _ = os.Remove(pathsFile) }()
-			trailing = append(trailing, "--print-to-file", "after_move:filepath", pathsFile)
-		}
+	if f, err := os.CreateTemp("", "mvd-paths-*.txt"); err == nil {
+		pathsFile = f.Name()
+		_ = f.Close()
+		defer func() { _ = os.Remove(pathsFile) }()
+		trailing = append(trailing, "--print-to-file", "after_move:filepath", pathsFile)
 	}
 	// yt-dlp says how good the chosen version is in a file of its own, as it begins: it is read at
 	// the first progress tick, so what yt-dlp prints stays what it was.
@@ -946,7 +968,20 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 		e.log(pl, eid, "%s", line)
 	})
 	if err == nil && pathsFile != "" {
-		return e.checkDownloaded(ctx, pl, eid, target, pathsFile)
+		if data, readErr := os.ReadFile(pathsFile); readErr == nil {
+			var files []string
+			for _, path := range strings.Split(string(data), "\n") {
+				if path = strings.TrimSpace(path); path != "" {
+					files = append(files, path)
+				}
+			}
+			e.mu.Lock()
+			en.saved = files
+			e.mu.Unlock()
+		}
+		if check {
+			return e.checkDownloaded(ctx, pl, eid, target, pathsFile)
+		}
 	}
 	return err
 }
@@ -1064,7 +1099,7 @@ func (e *Engine) sweepCandidates() ([]int, int) {
 	var ids []int
 	cycle := 0
 	for _, en := range e.entries {
-		if en.deferred && en.state == StateFailed && en.sweeps < e.retryCycles() {
+		if en.deferred && en.state == StateFailed && en.sweeps < e.retryCycles() && !e.removed[en.info.Playlist] {
 			ids = append(ids, en.info.ID)
 			if cycle == 0 || en.sweeps+1 < cycle {
 				cycle = en.sweeps + 1

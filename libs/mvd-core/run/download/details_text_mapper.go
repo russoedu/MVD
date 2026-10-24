@@ -125,11 +125,11 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 	case engine.StateDone:
 		switch {
 		case en.Official:
-			return "✓ Saved in your videos folder. It was replaced with the official music video.", CellStyle{Fg: c.Success}
+			return "✓ Saved in your videos folder. It was replaced with the official music video. Not the right one? Swap the video.", CellStyle{Fg: c.Success}
 		case en.Better:
 			return "✓ Saved in your videos folder. A better quality version was found and used.", CellStyle{Fg: c.Success}
 		}
-		return "✓ Saved in your videos folder.", CellStyle{Fg: c.Success}
+		return "✓ Saved in your videos folder. Not the right video? Swap it.", CellStyle{Fg: c.Success}
 	case engine.StateDuplicate:
 		return "Skipped: you already have this song.", CellStyle{Fg: c.Dim}
 	case engine.StateNotFound:

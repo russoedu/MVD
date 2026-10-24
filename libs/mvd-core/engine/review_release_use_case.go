@@ -12,7 +12,7 @@ func (e *Engine) Release(entryID int, videoID string) bool {
 		return false
 	}
 	en := e.entries[entryID]
-	if en.state != StatePlanned || (en.targetID == "" && videoID == "") {
+	if e.removed[en.info.Playlist] || en.state != StatePlanned || (en.targetID == "" && videoID == "") {
 		e.mu.Unlock()
 		return false
 	}
@@ -41,7 +41,7 @@ func (e *Engine) ReleaseAll() int {
 	e.mu.Lock()
 	var ids []int
 	for _, en := range e.entries {
-		if en.state == StatePlanned {
+		if en.state == StatePlanned && !e.removed[en.info.Playlist] {
 			ids = append(ids, en.info.ID)
 		}
 	}

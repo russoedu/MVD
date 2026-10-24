@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"testing"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -86,4 +87,38 @@ func (m Model) runStartedFor(t *testing.T, run ListRun) Model {
 	next, _ := m.Update(runStartedMsg{run: run})
 
 	return next.(Model)
+}
+
+// twoLinkRun is a fake run with two links, that remembers which was taken out.
+type twoLinkRun struct {
+	*addingRun
+	removed []int
+}
+
+func (r *twoLinkRun) Sources() []engine.PlaylistSource {
+	return []engine.PlaylistSource{{Index: 0, URL: "https://youtu.be/a"}, {Index: 1, URL: "https://youtu.be/b"}}
+}
+
+func (r *twoLinkRun) RemoveSource(playlist int) bool {
+	r.removed = append(r.removed, playlist)
+	return true
+}
+
+func TestALinkCanBeTakenOutWhileTheRunGoesOn(t *testing.T) {
+	run := &twoLinkRun{addingRun: &addingRun{fakeRun: newFakeRun()}}
+	list := downloadlist.New([]string{"https://youtu.be/a", "https://youtu.be/b"})
+	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
+	m = m.runStartedFor(t, run)
+
+	next, _ := m.Update(downloadpage.ListEditMsg{Op: "remove", Index: 1})
+	m = next.(Model)
+	if len(run.removed) != 1 || run.removed[0] != 1 {
+		t.Errorf("the run was told to remove %v", run.removed)
+	}
+	if got := addressesOf(m); len(got) != 1 || got[0] != "https://youtu.be/a" {
+		t.Errorf("the list has %v", got)
+	}
+	if m.starting || !m.running() {
+		t.Error("taking a link out must not restart the run")
+	}
 }

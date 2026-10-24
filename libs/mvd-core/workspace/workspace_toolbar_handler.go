@@ -179,7 +179,7 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 // keepRoomForButtons tells the screen how many rows under the playlists the buttons take, and
 // whether the list can be changed on it.
 func (m Model) keepRoomForButtons() Model {
-	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable())
+	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable()).WithLinkEditing(m.addable())
 	return m
 }
 

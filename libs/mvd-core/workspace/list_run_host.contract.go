@@ -12,6 +12,7 @@ import (
 type ListRun interface {
 	downloadpage.Run
 	downloadpage.Chooser
+	downloadpage.SourceRemover
 	// Snapshot is every song the run has listed, with the version each is to download and its state.
 	Snapshot() []engine.EntrySnapshot
 	Pause()

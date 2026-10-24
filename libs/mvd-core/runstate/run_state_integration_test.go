@@ -134,3 +134,21 @@ func TestAnEntryKnowsItsAlbumAndHowGoodItsVersionIs(t *testing.T) {
 		t.Error("the quality of an earlier try was kept when the song was queued again")
 	}
 }
+
+func TestARemovedPlaylistLeavesTheOthersWhereTheEngineCountedThem(t *testing.T) {
+	s := New([]engine.PlaylistSource{{Index: 0, URL: "a"}, {Index: 1, URL: "b"}})
+	s.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0}}})
+	s.Apply(engine.EvPlaylistRemoved{Playlist: 0})
+	if len(s.Playlists) != 1 || s.Playlists[0].Index != 1 || s.Entry(0) != nil {
+		t.Fatalf("playlists %v, entry %v", s.Playlists, s.Entry(0))
+	}
+	s.Apply(engine.EvPlaylistListed{Playlist: 1, Title: "B", Entries: []engine.EntryInfo{{ID: 1, Playlist: 1}}})
+	if s.Playlists[0].Title != "B" || s.PlaylistPos(1) != 0 || s.PlaylistPos(0) != -1 {
+		t.Errorf("title %q, pos %d", s.Playlists[0].Title, s.PlaylistPos(1))
+	}
+	s.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: 2, URL: "c"}})
+	if len(s.Playlists) != 2 || s.Playlists[1].Index != 2 {
+		t.Errorf("a link added after one was taken out: %v", s.Playlists)
+	}
+	s.Apply(engine.EvPlaylistListed{Playlist: 0}) // listed after it was removed: ignored
+}

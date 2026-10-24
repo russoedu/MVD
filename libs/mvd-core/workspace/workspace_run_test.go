@@ -29,6 +29,8 @@ func (f *fakeRun) Close()                           { f.closed = true; close(f.e
 func (f *fakeRun) Snapshot() []engine.EntrySnapshot { return nil }
 func (f *fakeRun) Release(int, string) bool         { return true }
 func (f *fakeRun) ReleaseAll() int                  { return 0 }
+func (f *fakeRun) Swap(int, string) bool { return true }
+func (f *fakeRun) RemoveSource(int) bool { return true }
 func (f *fakeRun) Skip(int) bool                    { return true }
 func (f *fakeRun) Pause()                           { f.paused = true }
 func (f *fakeRun) Resume()                          { f.paused = false }

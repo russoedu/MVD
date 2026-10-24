@@ -9,7 +9,7 @@ func (e *Engine) Skip(entryID int) bool {
 		return false
 	}
 	en := e.entries[entryID]
-	if en.state != StatePlanned && en.state != StateNotFound && en.state != StateFailed {
+	if e.removed[en.info.Playlist] || en.state != StatePlanned && en.state != StateNotFound && en.state != StateFailed {
 		e.mu.Unlock()
 		return false
 	}

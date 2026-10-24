@@ -147,15 +147,19 @@ func (m Model) aboutMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 // on the playlist the cursor is on, and wait for the downloads to stop.
 func (m Model) refreshMenus() Model {
 	free := m.editable()
-	writing := free && m.inline.on
+	live := m.addable()
+	writing := (free || live) && m.inline.on
 	i, has := m.selected()
 	n := len(m.session.File().Items)
 	m.bar.SetEnabled(entryCut, writing && m.inline.line.HasSelection())
 	m.bar.SetEnabled(entryCopy, writing && m.inline.line.HasSelection())
-	m.bar.SetEnabled(entryPaste, free)
+	m.bar.SetEnabled(entryPaste, free || live)
+	m.bar.SetEnabled(entryDelete, live && !writing && m.screen.SelectedPlaylist() >= 0)
 	m.bar.SetEnabled(entryUndo, free && !writing && len(m.undone) > 0)
 	m.bar.SetEnabled(entryRedo, free && !writing && len(m.redone) > 0)
-	m.bar.SetEnabled(entryDelete, free && !writing && has)
+	if free {
+		m.bar.SetEnabled(entryDelete, !writing && has)
+	}
 	m.bar.SetEnabled(entryMoveUp, free && !writing && has && i > 0)
 	m.bar.SetEnabled(entryMoveDown, free && !writing && has && i < n-1)
 	return m

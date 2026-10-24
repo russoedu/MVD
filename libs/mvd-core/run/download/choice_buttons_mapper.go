@@ -21,7 +21,7 @@ const choiceButtonsHeight = 9
 // things that can be done to the song, or for a link the one that sends its songs on. They sit on
 // the last row of the details pane. None when there is nothing to choose or no room for them.
 func (m Model) choiceButtons() []choiceButton {
-	if !m.anyWaiting() || m.technical || m.fullLog || m.adding || m.swapping || m.showHelp {
+	if _, held := m.chooser(); !held || m.technical || m.fullLog || m.adding || m.swapping || m.showHelp {
 		return nil
 	}
 	l, ok := m.layout()
@@ -37,6 +37,8 @@ func (m Model) choiceButtons() []choiceButton {
 		labels = [][2]string{{"► Download these songs", "d"}}
 	case waiting(m.selectedEntry()):
 		labels = [][2]string{{"► Download", "d"}, {"⇄ Swap video", "s"}, {"✗ Cancel song", "x"}, {"↗ Open video", "o"}}
+	case swappable(m.selectedEntry()):
+		labels = [][2]string{{"⇄ Swap video", "s"}, {"↗ Open video", "o"}}
 	default:
 		return nil
 	}

@@ -90,6 +90,7 @@ type Model struct {
 	// carry it by, and icons to change and to remove it. dragRow is the playlist being
 	// carried, dropRow the one it is over; dragging a row is on while dragRowOn.
 	editable          bool
+	linkEditing       bool // the links of a run that goes on can be changed or taken out
 	dragRowOn         bool
 	dragRow, dropRow  int
 	// marquee counts the ticks, for the text of the selected row that is wider than its column.
@@ -179,6 +180,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case evMsg:
 		id := m.state.Apply(msg.ev)
+		m.selPlaylist = max(min(m.selPlaylist, len(m.state.Playlists)-1), 0)
 		if !m.loaded && (m.state.Idle || m.state.AllListed()) {
 			m.loaded = true
 		}
@@ -381,7 +383,7 @@ func (m *Model) retry() {
 		}
 	default:
 		if m.selPlaylist < len(m.state.Playlists) {
-			n := m.ctrl.RetryPlaylist(m.selPlaylist)
+			n := m.ctrl.RetryPlaylist(m.state.Playlists[m.selPlaylist].Index)
 			m.flash(fmt.Sprintf("re-queued %d failed entries", n))
 		}
 	}
@@ -429,7 +431,7 @@ func (m *Model) jumpTo(id int) {
 	if en == nil {
 		return
 	}
-	m.selPlaylist = en.Playlist
+	m.selPlaylist = max(m.state.PlaylistPos(en.Playlist), 0)
 	for i, eid := range m.visibleEntries() {
 		if eid == id {
 			m.selEntry = i

@@ -24,6 +24,10 @@ type (
 	EvPlaylistAdded struct {
 		Source PlaylistSource
 	}
+	// EvPlaylistRemoved is sent when RemoveSource takes a playlist out of the run.
+	EvPlaylistRemoved struct {
+		Playlist int
+	}
 	// EvPlaylistListing is sent when the listing of a playlist starts.
 	EvPlaylistListing struct {
 		Playlist int

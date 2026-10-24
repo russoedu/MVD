@@ -27,6 +27,7 @@ func (c *choosingRun) Release(entry int, video string) bool {
 	return true
 }
 func (c *choosingRun) ReleaseAll() int     { c.all++; return 3 }
+func (c *choosingRun) Swap(entry int, video string) bool { return c.Release(entry, video) }
 func (c *choosingRun) Skip(entry int) bool { c.skipped = append(c.skipped, entry); return true }
 
 // choosingModel has the fourth song of the sample waiting for the person.
@@ -131,5 +132,26 @@ func TestTheChoicesOfAWaitingSongAreButtonsThatCanBeClicked(t *testing.T) {
 	m = click(m, buttons[1]) // Swap video
 	if !m.swapping {
 		t.Error("the swap did not ask for an address")
+	}
+}
+
+func TestASavedSongCanBeSwappedForAnotherVideo(t *testing.T) {
+	m, run := choosingModel(t)
+	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateDone, TargetID: "abc12345678", Official: true})
+	m = pressKey(m, "s")
+	if !m.swapping {
+		t.Fatal("a saved song could not be swapped")
+	}
+	for _, r := range "dQw4w9WgXcQ" {
+		m = pressKey(m, string(r))
+	}
+	m = pressKey(m, "enter")
+	if run.released[3] != "dQw4w9WgXcQ" {
+		t.Errorf("swapped %v", run.released)
+	}
+	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateDownloading, TargetID: "x"})
+	m = pressKey(m, "s")
+	if m.swapping {
+		t.Error("a song on its way was offered a swap")
 	}
 }

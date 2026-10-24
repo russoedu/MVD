@@ -68,11 +68,15 @@ type State struct {
 	// IdleAt is when the run last went idle: the clock of a finished run stops there.
 	IdleAt time.Time
 	retried   int // cumulative failed -> queued transitions
+	// known is how many playlists the engine has told of, the ones taken out included: the
+	// index its next one will have. A playlist of Playlists is found by its Index, which is the
+	// engine's, since a removed one leaves the others where they were counted.
+	known int
 }
 
 // New prepares a state with one playlist per source.
 func New(sources []engine.PlaylistSource) *State {
-	s := &State{Started: time.Now()}
+	s := &State{Started: time.Now(), known: len(sources)}
 	for _, src := range sources {
 		s.Playlists = append(s.Playlists, &Playlist{Index: src.Index, URL: src.URL, Title: src.URL})
 	}
@@ -95,13 +99,24 @@ func (s *State) Apply(ev interface{}) int {
 		// New knows the sources the engine was built with; later ones arrive here.
 		// The engine gives each the next free index, so anything else is an event
 		// already folded in, and is ignored rather than duplicated.
-		if e.Source.Index == len(s.Playlists) {
+		if e.Source.Index == s.known {
 			s.Playlists = append(s.Playlists, &Playlist{Index: e.Source.Index, URL: e.Source.URL, Title: e.Source.URL})
+			s.known++
 		}
 		// There is work again, so a finished run is not finished any more.
 		s.Idle = false
+	case engine.EvPlaylistRemoved:
+		if at := s.PlaylistPos(e.Playlist); at >= 0 {
+			for _, id := range s.Playlists[at].Entries {
+				s.Entries[id] = nil
+			}
+			s.Playlists = append(s.Playlists[:at], s.Playlists[at+1:]...)
+		}
 	case engine.EvPlaylistListed:
-		pl := s.Playlists[e.Playlist]
+		pl := s.playlistOf(e.Playlist)
+		if pl == nil {
+			return -1 // taken out while it was being listed
+		}
 		pl.Title = e.Title
 		pl.Listed = true
 		for _, info := range e.Entries {
@@ -112,7 +127,10 @@ func (s *State) Apply(ev interface{}) int {
 			pl.Entries = append(pl.Entries, info.ID)
 		}
 	case engine.EvPlaylistFailed:
-		pl := s.Playlists[e.Playlist]
+		pl := s.playlistOf(e.Playlist)
+		if pl == nil {
+			return -1
+		}
 		pl.Listed = true
 		pl.Err = e.Err
 	case engine.EvEntryState:
@@ -162,8 +180,7 @@ func (s *State) Apply(ev interface{}) int {
 		en.Parts = e.Parts
 		return e.Entry
 	case engine.EvLog:
-		if e.Playlist >= 0 && e.Playlist < len(s.Playlists) {
-			pl := s.Playlists[e.Playlist]
+		if pl := s.playlistOf(e.Playlist); pl != nil {
 			line := e.Line
 			if en := s.Entry(e.Entry); en != nil {
 				line = fmt.Sprintf("[%02d] %s", en.Index, e.Line)
@@ -176,6 +193,26 @@ func (s *State) Apply(ev interface{}) int {
 		s.Idle, s.IdleAt = true, time.Now()
 	}
 	return -1
+}
+
+// PlaylistPos is where the playlist the engine counts as index is, in Playlists, or -1 when it was
+// taken out.
+func (s *State) PlaylistPos(index int) int {
+	for i, pl := range s.Playlists {
+		if pl.Index == index {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func (s *State) playlistOf(index int) *Playlist {
+	if at := s.PlaylistPos(index); at >= 0 {
+		return s.Playlists[at]
+	}
+
+	return nil
 }
 
 // AllListed reports whether every playlist known so far has been listed, or failed to be.

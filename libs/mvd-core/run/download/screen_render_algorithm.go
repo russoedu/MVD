@@ -85,8 +85,11 @@ func (m Model) hints() []keybar.Hint {
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
-	if m.anyWaiting() {
+	switch _, held := m.chooser(); {
+	case m.anyWaiting():
 		hints = append([]keybar.Hint{{Key: "d", Desc: "download"}, {Key: "s", Desc: "swap video"}, {Key: "x", Desc: "cancel song"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "download all"}}, hints[:2]...)
+	case held && m.focus == paneEntries && swappable(m.selectedEntry()):
+		hints = append([]keybar.Hint{{Key: "s", Desc: "swap video"}, {Key: "o", Desc: "open video"}}, hints...)
 	}
 	if m.hosted {
 		return hints

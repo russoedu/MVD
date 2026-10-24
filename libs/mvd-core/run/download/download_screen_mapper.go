@@ -211,6 +211,10 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 			row.Mark, row.Count, row.Glyph = "≡", "✎", "×"
 			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
 		}
+		if !m.editable && m.linkEditing && i == m.selPlaylist {
+			row.Count, row.Glyph = "✎", "×"
+			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
+		}
 		if m.dragRowOn && i == m.dropRow {
 			row.Mark = "▶"
 		}

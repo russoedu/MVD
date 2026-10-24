@@ -17,6 +17,9 @@ func (e *Engine) Snapshot() []EntrySnapshot {
 	defer e.mu.Unlock()
 	out := make([]EntrySnapshot, 0, len(e.entries))
 	for _, en := range e.entries {
+		if e.removed[en.info.Playlist] {
+			continue
+		}
 		p := PlannedEntry{
 			Playlist: e.playlistTitles[en.info.Playlist],
 			Upload:   en.raw,
