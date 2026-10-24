@@ -44,6 +44,10 @@ func (m Model) detailRows(w int) []OutputRow {
 			say("Reading the songs of this link…", dim)
 		default:
 			say(m.linkSummary(pl), plain)
+			if m.waitingIn(pl) > 0 && m.anyWaiting() {
+				blank()
+				say("Press d to download them, or tab to the songs to choose one by one.", CellStyle{Fg: c.Highlight})
+			}
 		}
 		return rows
 	}
@@ -55,6 +59,9 @@ func (m Model) detailRows(w int) []OutputRow {
 	blank()
 	sentence, style := m.songSentence(en)
 	say(sentence, style)
+	if waiting(en) && en.TargetID != "" {
+		say(shortAddress("https://www.youtube.com/watch?v="+en.TargetID), dim)
+	}
 	return rows
 }
 
@@ -72,7 +79,7 @@ func (m Model) whoSings(en *runstate.Entry) string {
 
 // linkSummary says how the songs of a link are doing, counting only what is not zero.
 func (m Model) linkSummary(pl *runstate.Playlist) string {
-	var saved, failed, waiting, working, had int
+	var saved, failed, waiting, working, had, toChoose, cancelled int
 	for _, id := range pl.Entries {
 		switch m.state.Entries[id].State {
 		case engine.StateDone:
@@ -83,6 +90,10 @@ func (m Model) linkSummary(pl *runstate.Playlist) string {
 			waiting++
 		case engine.StateDuplicate:
 			had++
+		case engine.StatePlanned:
+			toChoose++
+		case engine.StateSkipped:
+			cancelled++
 		case engine.StateResolving, engine.StateDownloading, engine.StateMerging:
 			working++
 		}
@@ -91,7 +102,7 @@ func (m Model) linkSummary(pl *runstate.Playlist) string {
 	for _, p := range []struct {
 		n    int
 		text string
-	}{{saved, "saved"}, {working, "being downloaded"}, {waiting, "waiting"}, {had, "already in your folder"}, {failed, "failed"}} {
+	}{{saved, "saved"}, {working, "being downloaded"}, {toChoose, "waiting for you to choose"}, {waiting, "waiting"}, {had, "already in your folder"}, {cancelled, "cancelled"}, {failed, "failed"}} {
 		if p.n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", p.n, p.text))
 		}
@@ -126,7 +137,16 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 	case engine.StateFailed:
 		return "✗ " + cells.Display(runstate.PlainError(en.Err)) + " Press r to try again.", CellStyle{Fg: c.Error}
 	case engine.StatePlanned:
-		return "Found, and waiting for you to choose it.", CellStyle{Fg: c.Dim}
+		what := "The video from your playlist will be used."
+		switch {
+		case en.Official:
+			what = "Found the official music video."
+		case en.Better:
+			what = "Found a better quality version."
+		}
+		return what + " Press d to download it, s to swap it for another video, x to cancel this song, o to look at it.", CellStyle{Fg: c.Highlight}
+	case engine.StateSkipped:
+		return "Cancelled: this song will not be downloaded.", CellStyle{Fg: c.Dim}
 	}
 	return "", CellStyle{Fg: c.Text}
 }

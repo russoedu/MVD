@@ -219,7 +219,7 @@ func (m Model) listMouse(msg tea.MouseMsg) (Model, tea.Cmd, bool) {
 		}
 		m = next
 	}
-	if !double || m.reviewing || !m.editable() || pos.Y == 0 {
+	if !double || !m.editable() || pos.Y == 0 {
 		return m, nil, false
 	}
 	index, inside := m.screen.PlaylistAt(pos.X, pos.Y-topRows)

@@ -121,6 +121,9 @@ func (m Model) downloadProps(w, h int) Props {
 	case m.confirmQuit:
 		p.ConfirmQuit = true
 		p.Confirm = look.Red.Render(" Downloads are still running. Quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
+	case m.swapping:
+		p.ShowStatus = true
+		p.Status = " " + m.swap.View()
 	case m.status != "" && time.Now().Before(m.statusUntil):
 		p.ShowStatus = true
 		p.Status = " " + m.status
@@ -141,6 +144,8 @@ func (m Model) headerTexts() (counters, right string) {
 		right = "" // nothing is running: there is no time to count
 	} else if m.paused {
 		right = "PAUSED · " + elapsed
+	} else if m.state.Idle && t.Planned > 0 {
+		right = "CHOOSE WHAT TO DOWNLOAD · " + elapsed
 	} else if m.state.Idle {
 		right = "FINISHED · " + elapsed
 	} else if t.Downloading > 0 {
@@ -157,6 +162,9 @@ func (m Model) headerTexts() (counters, right string) {
 	if m.state.Idle || m.paused {
 		parts[1] = look.Dim.Render(fmt.Sprintf("  Downloading %d", t.Running))
 	}
+	if t.Planned > 0 {
+		parts = append(parts, look.Yellow.Render(fmt.Sprintf("? To choose %d", t.Planned)))
+	}
 	for _, extra := range []struct {
 		n     int
 		text  string
@@ -166,6 +174,7 @@ func (m Model) headerTexts() (counters, right string) {
 		{t.Better, "↑ Better quality", look.Cyan.Render},
 		{t.Duplicate, "≡ Already had", look.Dim.Render},
 		{t.NotFound, "∅ No official video", look.Dim.Render},
+		{t.Skipped, "– Cancelled", look.Dim.Render},
 		{t.Retried, "↻ Tried again", look.Cyan.Render},
 	} {
 		if extra.n > 0 {
@@ -184,6 +193,7 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 	rows := make([]PlaylistsRow, 0, len(m.state.Playlists))
 	for i, pl := range m.state.Playlists {
 		finished, _, _ := m.state.PlaylistTally(pl)
+		finished -= m.waitingIn(pl) // a song that waits to be chosen is not done
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
 		if pl.Err != "" {
 			count = "can't read"

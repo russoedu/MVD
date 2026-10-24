@@ -12,8 +12,6 @@ func (m Model) Outline() outline.ScreenOutline {
 	switch {
 	case m.stopping:
 		return outline.ScreenOutline{Title: "MVD · Stopping the downloads"}
-	case m.reviewing:
-		out = m.editor.Outline()
 	default:
 		out = m.screen.Outline()
 		if !m.running() {

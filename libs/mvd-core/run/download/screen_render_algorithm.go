@@ -84,6 +84,9 @@ func (m Model) hints() []keybar.Hint {
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
+	if m.anyWaiting() {
+		hints = append([]keybar.Hint{{Key: "d", Desc: "download"}, {Key: "s", Desc: "swap video"}, {Key: "x", Desc: "cancel song"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "download all"}}, hints[:2]...)
+	}
 	if m.hosted {
 		return hints
 	}
@@ -122,6 +125,18 @@ func counted(n int, word string) string {
 	return fmt.Sprintf("%d %ss", n, word)
 }
 
+// waitingIn is how many songs of a link wait for the person to choose them.
+func (m Model) waitingIn(pl *runstate.Playlist) int {
+	n := 0
+	for _, id := range pl.Entries {
+		if waiting(m.state.Entries[id]) {
+			n++
+		}
+	}
+
+	return n
+}
+
 // playlistGlyph is the mark at the end of a playlist row and its colour.
 func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	c := look.Colours
@@ -135,6 +150,8 @@ func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	switch {
 	case active > 0:
 		return look.SpinnerFrames[m.spin], c.Highlight
+	case m.waitingIn(pl) > 0:
+		return "?", c.Highlight
 	case finished == len(pl.Entries) && failed > 0:
 		return "✗", c.Error
 	case finished == len(pl.Entries):
@@ -163,6 +180,10 @@ func (m Model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 		return "∅", c.Dim
 	case engine.StateFailed:
 		return "✗", c.Error
+	case engine.StatePlanned:
+		return "?", c.Highlight
+	case engine.StateSkipped:
+		return "–", c.Dim
 	}
 	return " ", c.Text
 }

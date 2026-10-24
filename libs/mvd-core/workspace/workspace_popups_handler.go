@@ -146,7 +146,7 @@ func (m Model) aboutMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 // for the address being written, and Copy needs something selected; the other commands work
 // on the playlist the cursor is on, and wait for the downloads to stop.
 func (m Model) refreshMenus() Model {
-	free := m.editable() && !m.reviewing
+	free := m.editable()
 	writing := free && m.inline.on
 	i, has := m.selected()
 	n := len(m.session.File().Items)

@@ -68,3 +68,35 @@ func TestHeldSongsDownloadOnlyWhenReleased(t *testing.T) {
 	}
 	<-done
 }
+
+func TestASkippedSongIsNotDownloadedAndDoesNotKeepTheRunOpen(t *testing.T) {
+	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A")
+	eng.opts.HoldForReview = true
+	eng.live = liveOf(eng.opts)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go eng.Run(ctx)
+
+	deadline := time.After(20 * time.Second)
+	for idle := false; !idle; {
+		select {
+		case ev := <-eng.Events():
+			_, idle = ev.(EvIdle)
+		case <-deadline:
+			t.Fatal("the engine never went quiet")
+		}
+	}
+	if !eng.Skip(0) {
+		t.Fatal("a held song could not be skipped")
+	}
+	if eng.Skip(0) || eng.Release(0, "") {
+		t.Error("a skipped song must not be skipped again or released")
+	}
+	for _, snap := range eng.Snapshot() {
+		if snap.Upload.ID != "" && snap.State == StateSkipped {
+			return
+		}
+	}
+	t.Error("no song is in the skipped state")
+}

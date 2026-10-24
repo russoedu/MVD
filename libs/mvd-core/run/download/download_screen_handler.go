@@ -10,6 +10,7 @@ import (
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"golang.org/x/term"
 
@@ -101,6 +102,10 @@ type Model struct {
 	embedded      bool // inside an app model: ends with FinishedMsg instead of quitting
 	hosted        bool // inside the workspace: it owns quitting and adding links, and the run comes and goes
 	adding        bool // the box for adding links is open
+	// swapping is the address of another video being asked for the song swapEntry.
+	swapping  bool
+	swap      textinput.Model
+	swapEntry int
 	links         textarea.Model
 }
 
@@ -213,6 +218,9 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.adding {
 		return m.updateAdding(msg)
 	}
+	if m.swapping {
+		return m.updateSwapping(msg)
+	}
 
 	if m.confirmQuit {
 		switch key {
@@ -231,6 +239,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.showHelp = false
 		}
 		return m, nil
+	}
+
+	if next, cmd, handled := m.chooseKey(key); handled {
+		return next, cmd
 	}
 
 	if m.hosted && (key == "q" || key == "esc" || key == "a") {

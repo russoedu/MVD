@@ -1,9 +1,6 @@
 package workspace
 
 import (
-	"time"
-
-	tea "charm.land/bubbletea/v2"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,13 +29,14 @@ func (f *fakeRun) Close()                           { f.closed = true; close(f.e
 func (f *fakeRun) Snapshot() []engine.EntrySnapshot { return nil }
 func (f *fakeRun) Release(int, string) bool         { return true }
 func (f *fakeRun) ReleaseAll() int                  { return 0 }
+func (f *fakeRun) Skip(int) bool                    { return true }
 func (f *fakeRun) Pause()                           { f.paused = true }
 func (f *fakeRun) Resume()                          { f.paused = false }
 func (f *fakeRun) Paused() bool                     { return f.paused }
 func (f *fakeRun) RetryAll() int                    { f.retried++; return 2 }
 func (f *fakeRun) Reconfigure(engine.LiveSettings)  {}
 
-func started(t *testing.T, review bool) (Model, *fakeRun) {
+func started(t *testing.T) (Model, *fakeRun) {
 	t.Helper()
 	fake := newFakeRun()
 	host := Host{
@@ -59,16 +57,11 @@ func started(t *testing.T, review bool) (Model, *fakeRun) {
 		t.Fatal("the run did not begin to start")
 	}
 	next, _ := m.Update(cmd())
-	m = next.(Model)
-	if !review {
-		// Loading the playlists opens the choosing of songs; this is the person leaving it for the progress.
-		m.reviewing = false
-	}
-	return m, fake
+	return next.(Model), fake
 }
 
 func TestStartingRunsTheListAndPauseAndRetryAllReachTheRun(t *testing.T) {
-	m, fake := started(t, false)
+	m, fake := started(t)
 	if !m.running() || !fake.hold {
 		t.Fatalf("running %v hold %v", m.running(), fake.hold)
 	}
@@ -87,14 +80,14 @@ func TestStartingRunsTheListAndPauseAndRetryAllReachTheRun(t *testing.T) {
 }
 
 func TestLoadingThePlaylistsHoldsTheSongsForChoosing(t *testing.T) {
-	m, fake := started(t, true)
-	if !fake.hold || !m.reviewing {
-		t.Errorf("hold %v reviewing %v", fake.hold, m.reviewing)
+	m, fake := started(t)
+	if !fake.hold || !m.running() {
+		t.Errorf("hold %v running %v", fake.hold, m.running())
 	}
 }
 
 func TestStoppingClosesTheRunAndKeepsTheList(t *testing.T) {
-	m, fake := started(t, false)
+	m, fake := started(t)
 	m, cmd := choose(m, entryStop)
 	if !m.stopping || cmd == nil {
 		t.Fatal("not stopping")
@@ -124,7 +117,7 @@ func TestAListDoubleClickedWhileTheAppIsOpenIsOpenedUnlessDownloadsAreGoing(t *t
 		t.Errorf("the list was not opened: %q (%s)", m.session.Path(), m.notice)
 	}
 
-	running, _ := started(t, false)
+	running, _ := started(t)
 	next, _ = running.Update(OpenListMsg{Path: path})
 	running = next.(Model)
 	if running.session.Path() == path {
@@ -133,48 +126,4 @@ func TestAListDoubleClickedWhileTheAppIsOpenIsOpenedUnlessDownloadsAreGoing(t *t
 	if !strings.Contains(running.notice, "Stop the downloads") {
 		t.Errorf("notice %q", running.notice)
 	}
-}
-
-func TestTheProgressScreenKeepsTakingEventsWhileTheSongsAreBeingChosen(t *testing.T) {
-	fake := newFakeRun()
-	run := oneSourceRun{fake}
-	host := Host{ListDir: t.TempDir(), Start: func(config.Config, []string, []engine.PlannedEntry, bool) (ListRun, error) { return run, nil }}
-	list := downloadlist.New([]string{"https://youtu.be/x"})
-	if err := list.Save(filepath.Join(t.TempDir(), "a.mvd")); err != nil {
-		t.Fatal(err)
-	}
-	m := sized(New(host, config.Config{OutputDir: t.TempDir()}, list))
-	m, start := choose(m, entryStart)
-	next, begun := m.Update(start())
-	m = next.(Model)
-	if !m.reviewing {
-		t.Fatal("loading the playlists did not open the choosing of songs")
-	}
-
-	// Each command of the start waits for something; the screen's one waits for an event of the run.
-	got := make(chan tea.Msg, 4)
-	batch, _ := begun().(tea.BatchMsg)
-	for _, c := range batch {
-		if c != nil {
-			go func(c tea.Cmd) { got <- c() }(c)
-		}
-	}
-	fake.events <- engine.EvPlaylistListed{Playlist: 0, Title: "Songs", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, VideoID: "a", Title: "A"}}}
-	timeout := time.After(2 * time.Second)
-	for len(m.screen.State().Playlists) == 0 {
-		select {
-		case msg := <-got:
-			next, _ := m.Update(msg)
-			m = next.(Model)
-		case <-timeout:
-			t.Fatal("the screen did not take the event while the songs were being chosen")
-		}
-	}
-}
-
-// oneSourceRun is a fake run that has one playlist address, so its events have a playlist to land on.
-type oneSourceRun struct{ *fakeRun }
-
-func (oneSourceRun) Sources() []engine.PlaylistSource {
-	return []engine.PlaylistSource{{Index: 0, URL: "https://youtu.be/x"}}
 }

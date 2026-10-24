@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
@@ -20,7 +21,7 @@ const (
 	entryResume      = "Resume"
 	entryStop        = "Stop"
 	entryRetry       = "Retry failed"
-	entryReviewSongs = "Review songs"
+	entryDownloadAll = "Download all songs"
 )
 
 // button is one button of the toolbar.
@@ -56,8 +57,9 @@ func (m Model) buttons() []button {
 		pause = button{"► Resume", entryResume, busy}
 	}
 	out := []button{pause, {"■ Stop", entryStop, busy}, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
-	if m.editor.Live() {
-		out = append(out, button{"Review songs", entryReviewSongs, busy})
+	if m.waiting() {
+		// Songs wait for the person to choose them: sending them all is what most will do first.
+		out = append([]button{{"► Download all songs", entryDownloadAll, busy}}, out...)
 	}
 	return out
 }
@@ -67,7 +69,7 @@ func (m Model) buttons() []button {
 // when the screen has no such column (a narrow window), and the Run menu is the way then.
 func (m Model) buttonRows() (x, y, w int, ok bool) {
 	cx, cy, cw, ch, reserve, drawn := m.screen.LeftColumn()
-	if !drawn || reserve == 0 || m.reviewing {
+	if !drawn || reserve == 0 {
 		return 0, 0, 0, false
 	}
 	return cx, cy + (ch - reserve) + topRows, cw, true
@@ -134,7 +136,7 @@ func (m Model) refreshRunMenus() Model {
 	m.bar.SetEnabled(entryStop, running && !busy)
 	m.bar.SetEnabled(entryRetry, m.running() && !busy)
 	m.bar.SetEnabled(entryOpenFolder, m.host.OpenFolder != nil)
-	m.bar.SetEnabled(entryReviewSongs, running && !busy && m.editor.Live())
+	m.bar.SetEnabled(entryDownloadAll, running && !busy && m.waiting())
 	return m
 }
 
@@ -160,9 +162,14 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 			return next, cmd, true
 		}
 		return m.ask(askAddLink, "Add a playlist or video link", ""), textinput.Blink, true
-	case entryReviewSongs:
-		if m.running() && m.editor.Live() {
-			m.reviewing = true
+	case entryDownloadAll:
+		if m.running() {
+			n := m.run.ReleaseAll()
+			if n == 1 {
+				m.done = "1 song sent to download"
+			} else {
+				m.done = fmt.Sprintf("%d songs sent to download", n)
+			}
 		}
 		return m, nil, true
 	}

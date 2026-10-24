@@ -11,7 +11,9 @@ import (
 // tried again, and when it holds songs for review each can be released.
 type ListRun interface {
 	downloadpage.Run
-	editorpage.Live
+	downloadpage.Chooser
+	// Snapshot is every song the run has listed, with the version each is to download and its state.
+	Snapshot() []engine.EntrySnapshot
 	Pause()
 	Resume()
 	Paused() bool
