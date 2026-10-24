@@ -24,7 +24,7 @@ export function WindowControls () {
     <div className='window-controls'>
       <button type='button' className='window-control' aria-label='Minimise' title='Minimise' onClick={() => ask('minimise')}>_</button>
       <button type='button' className='window-control' aria-label='Maximise' title='Maximise' onClick={() => ask('maximise')}>□</button>
-      <button type='button' className='window-control window-control-close' aria-label='Close' title='Close' onClick={() => ask('close')}>x</button>
+      <button type='button' className='window-control window-control-close' aria-label='Close' title='Close' onClick={() => ask('close')}>×</button>
     </div>
   )
 }
