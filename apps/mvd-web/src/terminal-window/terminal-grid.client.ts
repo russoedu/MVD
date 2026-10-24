@@ -12,7 +12,9 @@ export function readGrid (host: ParentNode): CellGrid | null {
   const rows = host.querySelectorAll(rowElements)
   const length = measure?.textContent?.length ?? 0
 
-  if (rows.length === 0 || length === 0 || screen === null || measure === null) return null
+  const empty = rows.length === 0
+
+  if (empty || length === 0 || screen === null || measure === null) return null
 
   const box = screen.getBoundingClientRect()
   const cellWidth = measure.getBoundingClientRect().width / length
