@@ -126,7 +126,7 @@ func (m Model) downloadProps(w, h int) Props {
 // headerTexts are the counters inside the header box and the label on its top edge.
 func (m Model) headerTexts() (counters, right string) {
 	t := m.state.Tally()
-	elapsed := runstate.HumanDuration(time.Since(m.state.Started))
+	elapsed := runstate.HumanDuration(m.state.Elapsed())
 
 	right = elapsed
 	if m.editable {
