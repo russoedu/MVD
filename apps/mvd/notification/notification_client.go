@@ -12,6 +12,9 @@ import (
 // Notify shows n through the operating system and returns at once. It is best
 // effort: where nothing can show a notification, nothing happens.
 func Notify(n Notice) {
+	if showBalloon(n) {
+		return
+	}
 	command, ok := notificationCommand(runtime.GOOS, n, oscommand.HasProgram)
 	if !ok {
 		return
