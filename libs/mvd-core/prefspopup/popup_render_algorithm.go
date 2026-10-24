@@ -302,12 +302,17 @@ func (m Model) View() string {
 	l := m.layout()
 	edge := look.BorderOn.Render("│")
 	rows := m.bodyRows()
+	thumb := scrollbarThumb(len(l.lines), rows, m.scroll)
 	for i := 0; i < rows; i++ {
 		line := strings.Repeat(" ", w-2)
 		if at := m.scroll + i; at < len(l.lines) {
 			line = l.lines[at]
 		}
-		out = append(out, edge+line+edge)
+		right := edge
+		if thumb[i] {
+			right = look.Key.Render("┃") // there is more of the page than shows: this is where
+		}
+		out = append(out, edge+line+right)
 	}
 	out = append(out, look.BorderOn.Render("╰"+strings.Repeat("─", w-2)+"╯"))
 	return strings.Join(append(out, cells.Fit(" "+m.hintLine(), w)), "\n")

@@ -6,7 +6,7 @@
 [38;2;255;0;127m  [mOutput Template                          [38;2;0;240;255m%(playlist_title,playlist)s/%(playlist_index)02d - %(t…[m
 [38;2;255;0;127m  [mMax Concurrent Downloads                 [38;2;0;240;255m4[m
 [38;2;255;0;127m  [mDownload Official Music Video            [38;2;0;240;255myes[m
-[38;2;255;0;127m  [mCookies from Browser                     [38;2;0;240;255mall (try every browser)[m
+[38;2;255;0;127m  [mCookies from Browser                     [38;2;0;240;255moff[m
 [38;2;255;0;127m  [mCreate Log File                          [38;2;0;240;255myes[m
 [38;2;255;0;127m  [mLog File Location                        [38;2;0;240;255mC:\Music[m
 [38;2;255;0;127m  [mSave Songs Without Official Video (CSV)  [38;2;0;240;255myes (used when Download Official is only)[m

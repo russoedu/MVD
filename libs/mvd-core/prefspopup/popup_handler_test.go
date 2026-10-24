@@ -301,7 +301,7 @@ func TestALongDescriptionWrapsInsteadOfBeingCut(t *testing.T) {
 			t.Errorf("a line was cut: %q", ansi.Strip(line))
 		}
 	}
-	all := ansi.Strip(strings.Join(l.lines, " "))
+	all := strings.Join(strings.Fields(ansi.Strip(strings.Join(l.lines, " "))), " ")
 	if !strings.Contains(all, "no official video was found for.") {
 		t.Errorf("the end of the description is missing")
 	}
