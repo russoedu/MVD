@@ -11,6 +11,7 @@ import (
 	"errors"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 
 	ttygo "github.com/meta-ui-labs/treactui/packages/tty-go"
 	"github.com/wailsapp/wails/v2"
@@ -48,7 +49,8 @@ type Options struct {
 // open a second window: it raises the first one and ends. Cancelling ctx closes the window.
 func Run(ctx context.Context, opts Options) error {
 	var windowCtx context.Context
-	var unbind func()
+	var unbind, stopWindowEvents func()
+	var quitting atomic.Bool // the close button has asked, and been answered
 
 	err := wails.Run(&options.App{
 		Title:            "MVD",
@@ -56,6 +58,8 @@ func Run(ctx context.Context, opts Options) error {
 		Height:           760,
 		MinWidth:         640,
 		MinHeight:        400,
+		// The page draws the title bar and the buttons of the window (see the page header).
+		Frameless:        true,
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 255},
 		AssetServer:      &assetserver.Options{Assets: pageAssets()},
 		SingleInstanceLock: &options.SingleInstanceLock{
@@ -73,6 +77,13 @@ func Run(ctx context.Context, opts Options) error {
 		},
 		OnStartup: func(c context.Context) {
 			windowCtx = c
+			stopWindowEvents = wailsruntime.EventsOn(c, windowEvent, func(data ...interface{}) {
+				if len(data) > 0 {
+					if action, ok := data[0].(string); ok {
+						doWindowAction(c, action, opts.Busy, &quitting)
+					}
+				}
+			})
 			if opts.Backdrop != nil {
 				opts.Backdrop.attach(c)
 			}
@@ -83,11 +94,17 @@ func Run(ctx context.Context, opts Options) error {
 			}()
 		},
 		OnShutdown: func(context.Context) {
+			if stopWindowEvents != nil {
+				stopWindowEvents()
+			}
 			if unbind != nil {
 				unbind()
 			}
 		},
 		OnBeforeClose: func(c context.Context) bool {
+			if quitting.Load() {
+				return false
+			}
 			return keepOpen(opts.Busy, func() bool { return askToQuit(c) })
 		},
 		Menu: appMenu(),
