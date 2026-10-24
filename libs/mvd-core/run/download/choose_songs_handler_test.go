@@ -527,3 +527,27 @@ func TestShiftAndTheArrowsExtendTheTicks(t *testing.T) {
 		t.Errorf("going back did not take the last tick away: %v", m.picked)
 	}
 }
+
+func TestTheKeyForTheTechnicalLogIsAlwaysOnTheBar(t *testing.T) {
+	m, _ := choosingModel(t)
+	has := func(m Model, desc string) bool {
+		for _, h := range m.hints() {
+			if h.Key == "t" && h.Desc == desc {
+				return true
+			}
+		}
+
+		return false
+	}
+	if !has(m, "technical log") {
+		t.Errorf("with a song chosen the bar lacks the technical log: %v", m.hints())
+	}
+	m.focus = paneLists
+	if !has(m, "technical log") {
+		t.Errorf("with the links chosen the bar lacks the technical log: %v", m.hints())
+	}
+	m.technical = true
+	if !has(m, "back to the details") {
+		t.Errorf("in the log the bar lacks the way back: %v", m.hints())
+	}
+}

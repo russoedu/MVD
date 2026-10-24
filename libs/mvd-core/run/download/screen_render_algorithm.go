@@ -86,7 +86,7 @@ func (m Model) hints() []keybar.Hint {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
 	if _, held := m.chooser(); held && (m.focus == paneEntries || len(m.picked) > 0) && len(m.targetIDs()) > 0 {
-		hints = append([]keybar.Hint{{Key: "space", Desc: "select"}, {Key: "d", Desc: "accept"}, {Key: "x", Desc: "reject"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "accept all"}}, hints[:2]...)
+		hints = append([]keybar.Hint{{Key: "space", Desc: "select"}, {Key: "d", Desc: "accept"}, {Key: "x", Desc: "reject"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "accept all"}}, append(hints[:2:2], keybar.Hint{Key: "t", Desc: "technical log"})...)
 	}
 	if m.technical {
 		// The log of the tool is not the screen people expect: the way back is always on the bar.
