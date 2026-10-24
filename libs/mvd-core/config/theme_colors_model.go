@@ -32,7 +32,7 @@ func DefaultThemeColors() ThemeColors {
 		Highlight: "#ffe600",
 		Success:   "#3ddc84",
 		Error:     "#ff4d4d",
-		Dim:       "#6b7280",
+		Dim:       "#7b8290",
 		Text:      "#e5e7eb",
 		Selected:  "#3b0f2a",
 	}

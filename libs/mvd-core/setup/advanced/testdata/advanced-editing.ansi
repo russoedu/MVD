@@ -6,13 +6,11 @@
 [38;2;255;0;127m  [mRetry wait (s x attempt)      [38;2;0;240;255m30  (30s, 60s, 90s, ...)[m
 [38;2;255;0;127m  [mStart timeout (s)             [38;2;0;240;255m120[m
 
-[38;2;107;114;128mThese are passed straight to yt-dlp. Parallel fragments and the cookie[m
-[38;2;107;114;128mflags are already handled; only add things you understand.[m
+[38;2;123;130;144mThese are passed straight to yt-dlp. Parallel fragments and the cookie[m
+[38;2;123;130;144mflags are already handled; only add things you understand.[m
 
-[38;2;107;114;128mRetry wait is multiplied by the attempt: with 10 seconds the first retry[m
-[38;2;107;114;128mwaits 10 s, the second 20 s, the third 30 s, and so on, up to the cycles.[m
-
-
+[38;2;123;130;144mRetry wait is multiplied by the attempt: with 10 seconds the first retry[m
+[38;2;123;130;144mwaits 10 s, the second 20 s, the third 30 s, and so on, up to the cycles.[m
 
 
 
@@ -27,4 +25,6 @@
 
 
 
- [38;2;255;230;0;1menter[m [38;2;107;114;128mapply[m  [38;2;255;230;0;1mesc[m [38;2;107;114;128mcancel[m
+
+
+ [38;2;255;230;0;1menter[m [38;2;123;130;144mapply[m  [38;2;255;230;0;1mesc[m [38;2;123;130;144mcancel[m

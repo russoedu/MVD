@@ -1,30 +1,30 @@
-[1;38;2;255;0;127m MVD · Preferences[m                                                                                  
-  Output Folder                            [38;2;0;240;255mC:\Music\logs[m                                            
-  Video Quality                            [38;2;0;240;255mbest[m                                                     
-  Audio Quality                            [38;2;0;240;255mbest[m                                                     
-  Merge Format                             [38;2;0;240;255mmp4[m                                                      
-[38;2;255;0;127m▸ [m[1;38;2;229;231;235;48;2;59;15;42mOutput Template                        [m  [38;2;0;240;255m%(playlist_title,playlist)s/%(playlist_index)02d - %(t…[m  
-  Max Concurrent Downloads                 [38;2;0;240;255m4[m                                                        
-  Download Official Music Video            [38;2;0;240;255myes[m                                                      
-  Cookies from Browser                     [38;2;0;240;255mall (try every browser)[m                                  
-  Create Log File                          [38;2;0;240;255myes[m                                                      
-  Log File Location                        [38;2;0;240;255mC:\Music[m                                                 
-  Save Songs Without Official Video (CSV)  [38;2;0;240;255myes (used when Download Official is only)[m                
-                                                                                                    
-[38;2;107;114;128mTemplate uses yt-dlp fields, e.g. %(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s[m       
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
- [1;38;2;255;230;0m↑↓[m [38;2;107;114;128mmove[m  [1;38;2;255;230;0menter[m [38;2;107;114;128medit[m  [1;38;2;255;230;0ma[m [38;2;107;114;128madvanced[m  [1;38;2;255;230;0mc[m [38;2;107;114;128mcolours[m  [1;38;2;255;230;0ms[m [38;2;107;114;128msave[m  [1;38;2;255;230;0mesc[m [38;2;107;114;128mcancel[m                                     
+[38;2;255;0;127;1m MVD · Preferences[m
+[38;2;255;0;127m  [mOutput Folder                            [38;2;0;240;255mC:\Music\logs[m
+[38;2;255;0;127m  [mVideo Quality                            [38;2;0;240;255mbest[m
+[38;2;255;0;127m  [mAudio Quality                            [38;2;0;240;255mbest[m
+[38;2;255;0;127m  [mMerge Format                             [38;2;0;240;255mmp4[m
+[38;2;255;0;127m▸ [38;2;229;231;235;48;2;59;15;42;1mOutput Template[39;22m                        [m  [38;2;0;240;255m%(playlist_title,playlist)s/%(playlist_index)02d - %(t…[m
+[38;2;255;0;127m  [mMax Concurrent Downloads                 [38;2;0;240;255m4[m
+[38;2;255;0;127m  [mDownload Official Music Video            [38;2;0;240;255myes[m
+[38;2;255;0;127m  [mCookies from Browser                     [38;2;0;240;255mall (try every browser)[m
+[38;2;255;0;127m  [mCreate Log File                          [38;2;0;240;255myes[m
+[38;2;255;0;127m  [mLog File Location                        [38;2;0;240;255mC:\Music[m
+[38;2;255;0;127m  [mSave Songs Without Official Video (CSV)  [38;2;0;240;255myes (used when Download Official is only)[m
+
+[38;2;123;130;144mTemplate uses yt-dlp fields, e.g. %(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s[m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ [38;2;255;230;0;1m↑↓[m [38;2;123;130;144mmove[m  [38;2;255;230;0;1menter[m [38;2;123;130;144medit[m  [38;2;255;230;0;1ma[m [38;2;123;130;144madvanced[m  [38;2;255;230;0;1mc[m [38;2;123;130;144mcolours[m  [38;2;255;230;0;1ms[m [38;2;123;130;144msave[m  [38;2;255;230;0;1mesc[m [38;2;123;130;144mcancel[m
