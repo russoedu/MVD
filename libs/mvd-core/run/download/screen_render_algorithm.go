@@ -85,7 +85,7 @@ func (m Model) hints() []keybar.Hint {
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
-	if _, held := m.chooser(); held && m.focus == paneEntries && len(m.targetIDs()) > 0 {
+	if _, held := m.chooser(); held && (m.focus == paneEntries || len(m.picked) > 0) && len(m.targetIDs()) > 0 {
 		hints = append([]keybar.Hint{{Key: "space", Desc: "select"}, {Key: "d", Desc: "accept"}, {Key: "x", Desc: "reject"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "accept all"}}, hints[:2]...)
 	}
 	if m.hosted {

@@ -198,6 +198,13 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case evMsg:
 		id := m.state.Apply(msg.ev)
+		if added, ok := msg.ev.(engine.EvPlaylistAdded); ok {
+			// A link that was just added is the one the person looks at: its songs come in under it.
+			if at := m.state.PlaylistPos(added.Source.Index); at >= 0 {
+				m.selPlaylist, m.selEntry, m.entriesTop = at, 0, 0
+				m.keepSelectionVisible()
+			}
+		}
 		m.selPlaylist = max(min(m.selPlaylist, len(m.state.Playlists)-1), 0)
 		if !m.loaded && (m.state.Idle || m.state.AllListed()) {
 			m.loaded = true
@@ -508,7 +515,9 @@ func (m Model) Attach(c Controller) (Model, tea.Cmd) {
 	m.state = runstate.New(c.Sources())
 	m.loaded = len(m.state.Playlists) == 0
 	m.follow = true
-	m.selPlaylist, m.selEntry, m.outScroll = 0, 0, 0
+	// The link the cursor was on stays the one, when the run has it: a link was just added there.
+	m.selPlaylist = max(min(m.selPlaylist, len(m.state.Playlists)-1), 0)
+	m.selEntry, m.outScroll, m.entriesTop, m.playlistsTop = 0, 0, 0, 0
 	return m, waitEvent(m.events)
 }
 

@@ -197,7 +197,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 
 		return m, nil, true
 	}
-	if key == "d" && m.focus == paneLists {
+	if key == "d" && m.focus == paneLists && len(m.picked) == 0 {
 		sent := 0
 		if m.selPlaylist < len(m.state.Playlists) {
 			for _, id := range m.state.Playlists[m.selPlaylist].Entries {

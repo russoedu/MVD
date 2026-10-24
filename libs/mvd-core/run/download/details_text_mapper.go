@@ -2,6 +2,7 @@ package download
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/cells"
@@ -29,7 +30,38 @@ func (m Model) detailRows(w int) []OutputRow {
 	}
 	pl := m.state.Playlists[m.selPlaylist]
 	en := m.selectedEntry()
-	if m.focus == paneLists || en == nil {
+	picks := len(m.picked)
+	if picks > 1 {
+		say(counted(picks, "song")+" selected", bold)
+		blank()
+		counts := map[string]int{}
+		for id := range m.picked {
+			if p := m.state.Entry(id); p != nil {
+				word, _ := entryStatus(p)
+				counts[word]++
+			}
+		}
+		words := make([]string, 0, len(counts))
+		for word := range counts {
+			words = append(words, word)
+		}
+		sort.Strings(words)
+		for _, word := range words {
+			say(fmt.Sprintf("%d %s", counts[word], word), plain)
+		}
+		blank()
+		say("Accept them or reject them with the buttons below.", CellStyle{Fg: c.Highlight})
+
+		return rows
+	}
+	if picks == 1 {
+		for id := range m.picked {
+			if p := m.state.Entry(id); p != nil {
+				en = p // the one song that is ticked is the one the details are about
+			}
+		}
+	}
+	if (m.focus == paneLists && picks == 0) || en == nil {
 		say(m.playlistName(pl), bold)
 		if address := shortAddress(pl.URL); address != m.playlistName(pl) {
 			say(address, dim)

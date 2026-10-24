@@ -444,3 +444,40 @@ func TestTheSongsAreSortedByTheNumberFromTheStart(t *testing.T) {
 		t.Errorf("another click says %q", m.sortMark(columnIdx))
 	}
 }
+
+func TestATickedSongBringsItsButtonsEvenWhileTheLinksHaveTheFocus(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	m.focus = paneLists
+	if buttons := m.choiceButtons(); len(buttons) != 1 || !strings.Contains(buttons[0].label, "link") {
+		t.Fatalf("with nothing ticked the link's button is there: %+v", buttons)
+	}
+	m.togglePick(3)
+	buttons := m.choiceButtons()
+	if len(buttons) != 4 || buttons[0].label != "✓ Accept" {
+		t.Fatalf("a ticked song did not bring its buttons: %+v", buttons)
+	}
+	if rows := m.detailRows(60); len(rows) == 0 || !strings.Contains(rows[0].Line, "Bob Sinclar") {
+		t.Errorf("the details are not about the ticked song: %+v", rows)
+	}
+	m.togglePick(2)
+	if rows := m.detailRows(60); !strings.Contains(rows[0].Line, "2 songs selected") {
+		t.Errorf("many ticked songs are not summed up: %+v", rows[0])
+	}
+}
+
+func TestALinkThatWasJustAddedIsTheOneSelected(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	next, _ := m.Update(evMsg{ev: engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(m.state.Playlists), URL: "https://new"}}})
+	m = next.(Model)
+	if m.selPlaylist != len(m.state.Playlists)-1 || m.state.Playlists[m.selPlaylist].URL != "https://new" {
+		t.Errorf("selected %d of %d", m.selPlaylist, len(m.state.Playlists))
+	}
+
+	m.selPlaylist = 1
+	attached, _ := m.Attach(m.ctrl)
+	if attached.selPlaylist != 1 {
+		t.Errorf("a new run moved the cursor from 1 to %d", attached.selPlaylist)
+	}
+}

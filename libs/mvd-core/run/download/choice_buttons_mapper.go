@@ -34,12 +34,12 @@ func (m Model) choiceButtons() []choiceButton {
 	}
 	var buttons []choiceButton
 	switch {
-	case m.focus == paneLists:
+	case m.focus == paneLists && len(m.picked) == 0:
 		if m.selPlaylist >= len(m.state.Playlists) || m.waitingIn(m.state.Playlists[m.selPlaylist]) == 0 {
 			return nil
 		}
 		buttons = []choiceButton{{label: "✓ Accept this link's songs", key: "d"}}
-	case m.focus == paneEntries && len(m.targetIDs()) > 0:
+	case (m.focus == paneEntries || len(m.picked) > 0) && len(m.targetIDs()) > 0:
 		ids := m.targetIDs()
 		accept, reject := 0, 0
 		for _, id := range ids {
