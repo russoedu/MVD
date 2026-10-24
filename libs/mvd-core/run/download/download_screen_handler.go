@@ -77,6 +77,10 @@ type Model struct {
 	loaded        bool // every playlist has been listed; until then the loading screen is shown
 	filterFailed  bool
 	fullLog       bool
+	// technical shows the log of the tool in the details pane instead of the plain account.
+	technical bool
+	// paused is whether the downloads are held: the header says so for as long as they are.
+	paused bool
 	// leftW and midW are the widths the person gave the columns by dragging their borders;
 	// 0 is the default. dragging is the border being dragged: 1 after the playlists, 2 after
 	// the entries, 0 for none. reserve is the rows kept under the playlists for buttons.
@@ -280,13 +284,22 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.filterFailed = !m.filterFailed
 		m.selEntry = 0
 		if m.filterFailed {
-			m.flash("showing failed entries only")
+			m.flash("showing failed songs only")
 		} else {
-			m.flash("showing all entries")
+			m.flash("showing all songs")
+		}
+	case "t":
+		m.technical = !m.technical
+		m.outScroll = 0
+		if m.technical {
+			m.flash("technical log on: t goes back to the plain details")
+		} else {
+			m.flash("plain details on")
 		}
 	case "l":
 		m.fullLog = !m.fullLog
 		if m.fullLog {
+			m.technical = true // the full screen is for reading the log
 			m.focus = paneOutput
 		} else if m.focus == paneOutput && !m.outputVisible() {
 			m.focus = paneEntries
@@ -444,7 +457,13 @@ func (m Model) Attach(c Controller) (Model, tea.Cmd) {
 
 // Detach lets the run go, keeping what it reported on the screen.
 func (m Model) Detach() Model {
-	m.ctrl, m.events = nil, nil
+	m.ctrl, m.events, m.paused = nil, nil, false
+	return m
+}
+
+// WithPaused says whether the downloads are held, which the header shows.
+func (m Model) WithPaused(paused bool) Model {
+	m.paused = paused
 	return m
 }
 

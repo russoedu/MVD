@@ -119,7 +119,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		},
 	},
 	{
-		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Playlists box", X: 0, Y: 3, W: 45, H: 8, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "false", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Playlists", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Playlists box", X: 0, Y: 3, W: 45, H: 8, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "false", "gradient": "", "right": "0", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Links", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
 			if e.In("Columns") > 0.0 {
@@ -807,14 +807,14 @@ func Default() Props {
 		PlaylistsRows:  nil,
 		EntriesFocus:   true,
 		EntriesRight:   "0",
-		EntriesTitle:   "Entries",
+		EntriesTitle:   "Songs",
 		Entries:        []EntriesRow{{Glyph: "✓", Sp: " ", Idx: "01", Sp2: " ", Title: "You Don't Know Me", Sp3: " ", Tag: "⇄", Style: cuppa.RowNormal}},
 		EntriesRows:    nil,
 		Notes:          []NotesRow{{Line: "note", Style: cuppa.RowNormal}},
 		NotesRows:      nil,
 		OutputFocus:    false,
 		OutputRight:    "follow",
-		OutputTitle:    "Output",
+		OutputTitle:    "Details",
 		Output:         []OutputRow{{Line: "line", Style: cuppa.RowNormal}},
 		OutputRows:     nil,
 		BarWidth:       32,
