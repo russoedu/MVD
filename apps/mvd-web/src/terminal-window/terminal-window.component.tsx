@@ -1,9 +1,10 @@
 import { TTY as Terminal } from '@treactui/tty'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { AboutThisApp } from '../about-this-app'
 import { PageHeader } from '../page-header'
 import { useCaptureBrowserShortcuts } from './capture-browser-shortcuts.hook'
 import { useDimWhileModal } from './dim-while-modal.hook'
+import { useFollowTerminalBackground } from './follow-terminal-background.hook'
 import { useOpenLinksInBrowser } from './open-links-in-browser.hook'
 import { terminalSocket } from './terminal-socket.client'
 
@@ -14,14 +15,16 @@ import { terminalSocket } from './terminal-socket.client'
  */
 export function TerminalWindow () {
   const [aboutOpen, setAboutOpen] = useState(false)
+  const terminalRef = useRef<HTMLElement>(null)
   useCaptureBrowserShortcuts()
   useDimWhileModal()
   useOpenLinksInBrowser()
+  useFollowTerminalBackground(terminalRef)
 
   return (
     <>
       <PageHeader onAbout={() => setAboutOpen(true)} />
-      <main className='terminal-window'>
+      <main ref={terminalRef} className='terminal-window'>
         <Terminal createSocket={terminalSocket} label='MVD' />
       </main>
       <AboutThisApp open={aboutOpen} onClose={() => setAboutOpen(false)} />

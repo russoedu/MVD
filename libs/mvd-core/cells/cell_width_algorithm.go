@@ -54,6 +54,19 @@ func Wrap(s string, w int) []string {
 	return lines
 }
 
+// WrapLine breaks one line of text into rows of at most w cells, on word boundaries and in
+// the middle of a word that is longer than a row. Unlike Wrap it keeps the spaces and the
+// colours of the line, so a log line reads the same on two rows as on one.
+func WrapLine(s string, w int) []string {
+	if w <= 0 {
+		return nil
+	}
+	if ansi.StringWidth(s) <= w {
+		return []string{s}
+	}
+	return strings.Split(ansi.Wrap(s, w, ""), "\n")
+}
+
 // Fit pads or truncates s to exactly w cells.
 func Fit(s string, w int) string {
 	return PadRight(Truncate(s, w), w)

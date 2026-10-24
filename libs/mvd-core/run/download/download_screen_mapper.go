@@ -2,6 +2,7 @@ package download
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"youtube-downloader/libs/mvd-core/keybar"
@@ -69,8 +70,8 @@ func (m Model) downloadProps(w, h int) Props {
 	p.EntriesFocus = m.focus == paneEntries
 
 	// Output.
-	p.OutputRows = func(_, h int) ([]OutputRow, int) {
-		lines, first := m.outputWindow(h)
+	p.OutputRows = func(w, h int) ([]OutputRow, int) {
+		lines, first := m.outputWindow(w, h)
 		rows := make([]OutputRow, 0, len(lines))
 		for _, line := range lines {
 			rows = append(rows, OutputRow{Line: cells.CellText(line)})
@@ -316,17 +317,30 @@ func (m Model) outputFooter() outputFooter {
 	return f
 }
 
-// outputWindow are the lines of the output pane, the last h of them above the scroll, and
-// the index of the first of them among all the lines.
-func (m Model) outputWindow(h int) ([]string, int) {
+// outputWindow are the rows of the output pane, w cells wide and h high: the last h rows
+// above the scroll, with a long log line wrapped onto several rows instead of cut. The scroll
+// still counts log lines, so a line is never half scrolled away; the second value is the
+// index of the log line the first row belongs to.
+func (m Model) outputWindow(w, h int) ([]string, int) {
 	lines := m.outputLines()
 	end := max(0, len(lines)-m.outScroll)
-	start := max(0, end-max(h, 1))
-	out := make([]string, 0, h)
-	for _, l := range lines[start:end] {
-		out = append(out, cells.Display(l))
+	h = max(h, 1)
+
+	// Built from the bottom up, so only the lines that show are wrapped however long the log is.
+	rows := make([]string, 0, h)
+	start := end
+	for i := end - 1; i >= 0 && len(rows) < h; i-- {
+		start = i
+		wrapped := cells.WrapLine(cells.Display(lines[i]), w)
+		if len(wrapped) == 0 {
+			wrapped = []string{""}
+		}
+		for j := len(wrapped) - 1; j >= 0 && len(rows) < h; j-- {
+			rows = append(rows, wrapped[j])
+		}
 	}
-	return out, start
+	slices.Reverse(rows)
+	return rows, start
 }
 
 // leftWidth is how wide the column of lists is in a window w cells wide: all of it when
