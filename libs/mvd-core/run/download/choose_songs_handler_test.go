@@ -126,11 +126,11 @@ func TestClickingASongAwayFromItsBoxChoosesThatSongAlone(t *testing.T) {
 
 func TestTheWaitingSongsAreSaidInWordsAndTheKeysAreOffered(t *testing.T) {
 	m, _ := choosingModel(t)
-	if status, _ := entryStatus(m.state.Entries[3]); status != "to choose" {
+	if status, _ := entryStatus(m.state.Entries[3]); status != "official found" {
 		t.Errorf("status %q", status)
 	}
 	counters, _ := m.headerTexts()
-	if !strings.Contains(counters, "To choose 1") {
+	if !strings.Contains(counters, "Official found 1") {
 		t.Errorf("header %q", counters)
 	}
 	var keysOffered []string
@@ -398,5 +398,49 @@ func TestACarriedBorderFollowsThePointerAndTheOtherSideGivesTheRoom(t *testing.T
 				t.Errorf("the song changed: %+v", s)
 			}
 		}
+	}
+}
+
+func TestTheStatusSaysWhetherAnOfficialVideoWasFound(t *testing.T) {
+	m, _ := choosingModel(t)
+	word := func(en engine.EvEntryState) string {
+		m.state.Apply(en)
+		w, _ := entryStatus(m.state.Entries[3])
+
+		return w
+	}
+	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a", Official: true}); got != "official found" {
+		t.Errorf("an official video says %q", got)
+	}
+	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a", OwnOfficial: true}); got != "is official" {
+		t.Errorf("an own official video says %q", got)
+	}
+	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a", Better: true}); got != "better found" {
+		t.Errorf("a better video says %q", got)
+	}
+	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a"}); got != "original only" {
+		t.Errorf("the original says %q", got)
+	}
+	if got := word(engine.EvEntryState{Entry: 3, State: engine.StateAccepted, TargetID: "a"}); got != "accepted" {
+		t.Errorf("an accepted song says %q", got)
+	}
+	if got := statusGroup(m.state.Entries[3]); got != groupAccepted {
+		t.Errorf("an accepted song is in the group %q", got)
+	}
+}
+
+func TestTheSongsAreSortedByTheNumberFromTheStart(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	if m.sortMark(columnIdx) != "▲" {
+		t.Errorf("the # heading says %q", m.sortMark(columnIdx))
+	}
+	m.sortOn(columnIdx)
+	if m.sortMark(columnIdx) != "▼" {
+		t.Errorf("a click on the # heading says %q", m.sortMark(columnIdx))
+	}
+	m.sortOn(columnIdx)
+	if m.sortMark(columnIdx) != "▲" {
+		t.Errorf("another click says %q", m.sortMark(columnIdx))
 	}
 }

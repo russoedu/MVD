@@ -38,7 +38,7 @@ func (m Model) choiceButtons() []choiceButton {
 		if m.selPlaylist >= len(m.state.Playlists) || m.waitingIn(m.state.Playlists[m.selPlaylist]) == 0 {
 			return nil
 		}
-		buttons = []choiceButton{{label: "✓ Accept these songs", key: "d"}}
+		buttons = []choiceButton{{label: "✓ Accept this link's songs", key: "d"}}
 	case m.focus == paneEntries && len(m.targetIDs()) > 0:
 		ids := m.targetIDs()
 		accept, reject := 0, 0
@@ -46,7 +46,7 @@ func (m Model) choiceButtons() []choiceButton {
 			if acceptable(m.state.Entry(id)) {
 				accept++
 			}
-			if waiting(m.state.Entry(id)) {
+			if rejectable(m.state.Entry(id)) {
 				reject++
 			}
 		}

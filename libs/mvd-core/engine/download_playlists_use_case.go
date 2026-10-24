@@ -783,6 +783,12 @@ func (e *Engine) process(ctx context.Context, id int) {
 		e.setState(en, StateSkipped, "")
 		return
 	}
+	e.mu.Lock()
+	rejected := en.state == StateSkipped
+	e.mu.Unlock()
+	if rejected {
+		return // accepted, and then rejected before its turn came
+	}
 	if ctx.Err() != nil {
 		e.setState(en, StateFailed, "cancelled")
 		return

@@ -182,7 +182,13 @@ func (m Model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 	case engine.StateFailed:
 		return "✗", c.Error
 	case engine.StatePlanned:
+		if foundOfficial(en) {
+			return "✓", c.Success
+		}
+
 		return "?", c.Highlight
+	case engine.StateAccepted:
+		return "▸", c.Focus
 	case engine.StateSkipped:
 		return "–", c.Dim
 	}

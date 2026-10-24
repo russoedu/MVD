@@ -66,6 +66,21 @@ func (m *Model) pickOnly(id int) {
 	m.picked = map[int]bool{id: true}
 }
 
+// rejectable says whether a song can be rejected now: it waits, or it was accepted and has not begun.
+func rejectable(en *runstate.Entry) bool {
+	return en != nil && (en.State == engine.StatePlanned || en.State == engine.StateAccepted)
+}
+
+// accepted is what the screen says after songs were accepted: they wait for the Download button, or
+// they go on at once.
+func (m Model) accepted(n int) string {
+	if m.paused {
+		return counted(n, "song") + " accepted. Press Download to start them"
+	}
+
+	return counted(n, "song") + " accepted: they will download"
+}
+
 // acceptable says whether a song can be accepted now: it waits, or it was rejected.
 func acceptable(en *runstate.Entry) bool {
 	return en != nil && (en.State == engine.StatePlanned || (en.State == engine.StateSkipped && en.TargetID != ""))
@@ -177,7 +192,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		return m, nil, false
 	}
 	if key == "D" {
-		m.flash(fmt.Sprintf("%s accepted: they will download", counted(chooser.ReleaseAll(), "song")))
+		m.flash(m.accepted(chooser.ReleaseAll()))
 		m.picked = nil
 
 		return m, nil, true
@@ -191,7 +206,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 				}
 			}
 		}
-		m.flash(fmt.Sprintf("%s of this link accepted: they will download", counted(sent, "song")))
+		m.flash(m.accepted(sent))
 
 		return m, nil, true
 	}
@@ -232,18 +247,18 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		if done == 0 {
 			m.flash("nothing to accept: the song is on its way, or has no video")
 		} else {
-			m.flash(fmt.Sprintf("%s accepted: they will download", counted(done, "song")))
+			m.flash(m.accepted(done))
 		}
 		m.picked = nil
 	case "x":
 		done := 0
 		for _, id := range ids {
-			if waiting(m.state.Entry(id)) && chooser.Skip(id) {
+			if rejectable(m.state.Entry(id)) && chooser.Skip(id) {
 				done++
 			}
 		}
 		if done == 0 {
-			m.flash("nothing to reject: only a song that waits can be rejected")
+			m.flash("nothing to reject: the song is on its way or done")
 		} else {
 			m.flash(fmt.Sprintf("%s rejected: they will not download. Accept brings them back", counted(done, "song")))
 		}

@@ -17,7 +17,9 @@ import (
 // The groups of statuses the songs can be filtered by: what the person sees of a song, not every
 // state of the engine.
 const (
-	groupChoose      = "choose"
+	groupOfficial    = "official"
+	groupOriginal    = "original"
+	groupAccepted    = "accepted"
 	groupWaiting     = "waiting"
 	groupDownloading = "downloading"
 	groupSaved       = "saved"
@@ -28,7 +30,7 @@ const (
 )
 
 var statusGroups = []struct{ key, label string }{
-	{groupChoose, "To choose"}, {groupWaiting, "Waiting"}, {groupDownloading, "Downloading"}, {groupSaved, "Saved"},
+	{groupOfficial, "Official found"}, {groupOriginal, "Original only"}, {groupAccepted, "Accepted"}, {groupWaiting, "Waiting"}, {groupDownloading, "Downloading"}, {groupSaved, "Saved"},
 	{groupHad, "Already had"}, {groupMissing, "No official video"}, {groupRejected, "Rejected"}, {groupFailed, "Failed"},
 }
 
@@ -36,7 +38,13 @@ var statusGroups = []struct{ key, label string }{
 func statusGroup(en *runstate.Entry) string {
 	switch en.State {
 	case engine.StatePlanned:
-		return groupChoose
+		if foundOfficial(en) {
+			return groupOfficial
+		}
+
+		return groupOriginal
+	case engine.StateAccepted:
+		return groupAccepted
 	case engine.StateQueued:
 		return groupWaiting
 	case engine.StateResolving, engine.StateDownloading, engine.StateMerging:
@@ -167,8 +175,12 @@ func (m *Model) sortOn(column string) {
 	if en := m.selectedEntry(); en != nil {
 		keep = en.ID
 	}
-	if m.sortBy == column {
-		m.sortDesc = !m.sortDesc
+	current := m.sortBy
+	if current == "" {
+		current = columnIdx // the songs are in the order of the # column to begin with
+	}
+	if current == column {
+		m.sortBy, m.sortDesc = column, !m.sortDesc
 	} else {
 		m.sortBy, m.sortDesc = column, false
 	}
@@ -182,8 +194,12 @@ func (m *Model) sortOn(column string) {
 
 // sortMark is what a heading shows when it is the one that sorts.
 func (m Model) sortMark(column string) string {
+	current := m.sortBy
+	if current == "" {
+		current = columnIdx
+	}
 	switch {
-	case m.sortBy != column:
+	case current != column:
 		return ""
 	case m.sortDesc:
 		return "▼"

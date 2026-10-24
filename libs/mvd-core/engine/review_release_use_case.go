@@ -23,13 +23,13 @@ func (e *Engine) Release(entryID int, videoID string) bool {
 		en.reason = "chosen by you"
 	}
 	en.fixed = true
-	en.state = StateQueued
+	en.state = StateAccepted
 	en.err = ""
 	e.pending++
 	e.idleSent = false
 	e.mu.Unlock()
 
-	e.emit(EvEntryState{Entry: entryID, State: StateQueued, TargetID: en.targetID, Official: en.official, Better: en.better, OwnOfficial: en.ownOfficial, Reason: en.reason})
+	e.emit(EvEntryState{Entry: entryID, State: StateAccepted, TargetID: en.targetID, Official: en.official, Better: en.better, OwnOfficial: en.ownOfficial, Reason: en.reason})
 	e.log(en.info.Playlist, entryID, "released for download")
 	e.queue.Push(entryID)
 	return true

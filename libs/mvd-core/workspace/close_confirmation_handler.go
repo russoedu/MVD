@@ -28,8 +28,11 @@ func (m Model) downloading() int {
 		return 0
 	}
 	t := m.screen.State().Tally()
+	if m.run.Paused() {
+		return t.Running // what was accepted waits for the Download button: nothing is lost by quitting
+	}
 
-	return t.Queued + t.Running
+	return t.Accepted + t.Running
 }
 
 // closeRequested closes the app, after asking when songs are being downloaded.

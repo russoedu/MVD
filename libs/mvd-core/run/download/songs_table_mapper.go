@@ -27,7 +27,7 @@ const (
 	widthMark     = 1
 	widthCheck    = 3
 	widthIdx      = 2
-	widthStatus   = 11
+	widthStatus   = 14
 	widthProgress = 13 // a bar of 8, a space and "100%"
 	widthArtist   = 16
 	widthVideo    = 22
@@ -268,7 +268,9 @@ func entryStatus(en *runstate.Entry) (word, colour string) {
 	case engine.StateFailed:
 		return "failed", c.Error
 	case engine.StatePlanned:
-		return "to choose", c.Highlight
+		return plannedWord(en)
+	case engine.StateAccepted:
+		return "accepted", c.Focus
 	case engine.StateSkipped:
 		return "rejected", c.Dim
 	case engine.StateDone:
@@ -282,6 +284,26 @@ func entryStatus(en *runstate.Entry) (word, colour string) {
 	}
 
 	return "", c.Text
+}
+
+// foundOfficial says whether what was found for a song that waits is an official video: the one
+// found for it, or its own upload when that is the official one.
+func foundOfficial(en *runstate.Entry) bool { return en.Official || en.OwnOfficial }
+
+// plannedWord is what the status of a song that waits says of what was found: whether there is an
+// official video, so the person knows whether they can accept it without a look.
+func plannedWord(en *runstate.Entry) (word, colour string) {
+	c := look.Colours
+	switch {
+	case en.Official:
+		return "official found", c.Success
+	case en.OwnOfficial:
+		return "is official", c.Success
+	case en.Better:
+		return "better found", c.Focus
+	}
+
+	return "original only", c.Highlight
 }
 
 // progressCell is a bar and a percentage while a song comes in, a full bar once it is saved, and

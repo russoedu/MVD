@@ -17,6 +17,13 @@ var downloadKeys = []screenKey{
 	{"↑ ↓  j k", "Move the selection, scroll the output"},
 	{"Tab", "Move between the lists, the songs and the output"},
 	{"Enter", "Follow the download that is running"},
+	{"Space", "Tick or untick the song"},
+	{"D", "Accept the songs that are ticked (or all, with a capital)"},
+	{"X", "Reject the songs that are ticked"},
+	{"O", "Open the video of the song"},
+	{"S", "Swap the video of the song for another"},
+	{"C", "Choose the columns, and their order"},
+	{"Shift+F", "Choose which statuses to show"},
 	{"F", "Show only the songs that failed"},
 	{"R", "Retry the failed song, or all of a list"},
 	{"L", "Show the output on the whole screen"},
@@ -34,7 +41,7 @@ func shortcutRow(keys, does string) string {
 
 // shortcutLines are the lines of the Keyboard shortcuts window: every shortcut of every menu,
 // read from the menus themselves so the window cannot say anything the menus do not, then the
-// keys of the download screen. Two entries that share a key (Pause and Resume) are said once.
+// keys of the download screen. Two entries that share a key (Download and Stop downloads) are said once.
 func shortcutLines() []string {
 	var lines []string
 	for _, menu := range menus() {

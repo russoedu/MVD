@@ -143,7 +143,13 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 	}
 	opts.Tracks = newPlaylistTrackSource(searcher, resolver.Sources)
 
-	return engine.New(opts)
+	eng, err := engine.New(opts)
+	if err == nil && opts.HoldForReview {
+		// What the person accepts waits until they press Download.
+		eng.Pause()
+	}
+
+	return eng, err
 }
 
 // checkOneSidedSound is what runs on every replacement video that was downloaded: a file

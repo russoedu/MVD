@@ -17,8 +17,8 @@ const topRows = 1
 const (
 	entryStart       = "Load playlists"
 	entryAddLink     = "Add link…"
-	entryPause       = "Pause"
-	entryResume      = "Resume"
+	entryPause       = "Stop downloads"
+	entryResume      = "Download"
 	entryStop        = "Stop"
 	entryRetry       = "Retry failed"
 	entryDownloadAll = "Accept all songs"
@@ -52,15 +52,13 @@ func (m Model) buttons() []button {
 			{"+ Add link", entryAddLink, busy},
 		}
 	}
-	pause := button{"Pause", entryPause, busy}
-	if m.run.Paused() {
-		pause = button{"► Resume", entryResume, busy}
+	// Download starts the downloads of what was accepted, and Stop downloads holds them again: the
+	// songs that are on their way finish, and nothing else begins.
+	download := button{"► Download", entryResume, busy}
+	if !m.run.Paused() {
+		download = button{"■ Stop downloads", entryPause, busy}
 	}
-	out := []button{pause, {"■ Stop", entryStop, busy}, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
-	if m.waiting() {
-		// Songs wait for the person to choose them: sending them all is what most will do first.
-		out = append([]button{{"► Accept all songs", entryDownloadAll, busy}}, out...)
-	}
+	out := []button{download, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
 	return out
 }
 

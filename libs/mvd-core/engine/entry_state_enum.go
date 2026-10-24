@@ -23,6 +23,9 @@ const (
 	// StateSkipped is a song the person cancelled while it waited for their choice: it is not
 	// downloaded.
 	StateSkipped
+	// StateAccepted is a song the person accepted: it waits in the queue for the downloads to start,
+	// and shows as downloading once a downloader takes it.
+	StateAccepted
 )
 
 func (s EntryState) String() string {
@@ -47,6 +50,8 @@ func (s EntryState) String() string {
 		return "planned"
 	case StateSkipped:
 		return "skipped"
+	case StateAccepted:
+		return "accepted"
 	}
 	return "unknown"
 }

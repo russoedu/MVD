@@ -612,7 +612,7 @@ func (m Model) runStarted(msg runStartedMsg) (tea.Model, tea.Cmd) {
 	}
 	m.run = msg.run
 	screen, cmd := m.screen.Attach(msg.run)
-	m.screen = screen
+	m.screen = screen.WithPaused(msg.run.Paused())
 	cmds := []tea.Cmd{cmd, saveTick()}
 	return m, tea.Batch(cmds...)
 }
@@ -668,10 +668,10 @@ func (m Model) togglePause() Model {
 	}
 	if m.run.Paused() {
 		m.run.Resume()
-		m.done = "Downloads go on"
+		m.done = "Downloading: what you accept goes on from here"
 	} else {
 		m.run.Pause()
-		m.done = "Paused: the downloads under way finish, no new one starts"
+		m.done = "Stopped: the songs on their way finish, and nothing else begins"
 	}
 	m.screen = m.screen.WithPaused(m.run.Paused())
 

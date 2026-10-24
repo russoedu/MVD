@@ -80,7 +80,7 @@ func (e *Engine) Swap(entryID int, videoID string) bool {
 	en.reason = "chosen by you"
 	en.err = ""
 	en.deferred = false
-	en.state = StateQueued
+	en.state = StateAccepted
 	e.pending++
 	e.idleSent = false
 	e.mu.Unlock()
@@ -88,7 +88,7 @@ func (e *Engine) Swap(entryID int, videoID string) bool {
 	for _, path := range old {
 		_ = os.Remove(path)
 	}
-	e.emit(EvEntryState{Entry: entryID, State: StateQueued, TargetID: videoID, Reason: "chosen by you"})
+	e.emit(EvEntryState{Entry: entryID, State: StateAccepted, TargetID: videoID, Reason: "chosen by you"})
 	e.log(en.info.Playlist, entryID, "swapped for %s by you", videoID)
 	e.queue.Push(entryID)
 	go e.rename(entryID, videoID)

@@ -142,10 +142,12 @@ func (m Model) headerTexts() (counters, right string) {
 	right = elapsed
 	if m.editable {
 		right = "" // nothing is running: there is no time to count
-	} else if m.paused {
-		right = "PAUSED · " + elapsed
+	} else if m.paused && t.Accepted > 0 {
+		right = "ACCEPTED · press Download to start · " + elapsed
 	} else if m.state.Idle && t.Planned > 0 {
 		right = "CHOOSE WHAT TO DOWNLOAD · " + elapsed
+	} else if m.paused {
+		right = "STOPPED · " + elapsed
 	} else if m.state.Idle {
 		right = "FINISHED · " + elapsed
 	} else if t.Downloading > 0 {
@@ -163,8 +165,15 @@ func (m Model) headerTexts() (counters, right string) {
 		// Nothing moves, so nothing spins.
 		parts[1] = look.Dim.Render(fmt.Sprintf("  Downloading %d", t.Running))
 	}
-	if t.Planned > 0 {
-		parts = append(parts, look.Yellow.Render(fmt.Sprintf("? To choose %d", t.Planned)))
+	official, original := m.plannedCounts()
+	if official > 0 {
+		parts = append(parts, look.Green.Render(fmt.Sprintf("✓ Official found %d", official)))
+	}
+	if original > 0 {
+		parts = append(parts, look.Yellow.Render(fmt.Sprintf("? Original only %d", original)))
+	}
+	if t.Accepted > 0 {
+		parts = append(parts, look.Cyan.Render(fmt.Sprintf("▸ Accepted %d", t.Accepted)))
 	}
 	for _, extra := range []struct {
 		n     int
@@ -183,6 +192,23 @@ func (m Model) headerTexts() (counters, right string) {
 		}
 	}
 	return strings.Join(parts, "   "), right
+}
+
+// plannedCounts are how many songs wait for the person: with an official video found for them, and
+// with only the original.
+func (m Model) plannedCounts() (official, original int) {
+	for _, en := range m.state.Entries {
+		if en == nil || en.State != engine.StatePlanned {
+			continue
+		}
+		if foundOfficial(en) {
+			official++
+		} else {
+			original++
+		}
+	}
+
+	return official, original
 }
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the

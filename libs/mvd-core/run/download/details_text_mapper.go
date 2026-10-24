@@ -79,7 +79,7 @@ func (m Model) whoSings(en *runstate.Entry) string {
 
 // linkSummary says how the songs of a link are doing, counting only what is not zero.
 func (m Model) linkSummary(pl *runstate.Playlist) string {
-	var saved, failed, waiting, working, had, toChoose, cancelled int
+	var saved, failed, waiting, working, had, toChoose, cancelled, accepted int
 	for _, id := range pl.Entries {
 		switch m.state.Entries[id].State {
 		case engine.StateDone:
@@ -92,6 +92,8 @@ func (m Model) linkSummary(pl *runstate.Playlist) string {
 			had++
 		case engine.StatePlanned:
 			toChoose++
+		case engine.StateAccepted:
+			accepted++
 		case engine.StateSkipped:
 			cancelled++
 		case engine.StateResolving, engine.StateDownloading, engine.StateMerging:
@@ -102,7 +104,7 @@ func (m Model) linkSummary(pl *runstate.Playlist) string {
 	for _, p := range []struct {
 		n    int
 		text string
-	}{{saved, "saved"}, {working, "being downloaded"}, {toChoose, "waiting for you to choose"}, {waiting, "waiting"}, {had, "already in your folder"}, {cancelled, "rejected"}, {failed, "failed"}} {
+	}{{saved, "saved"}, {working, "being downloaded"}, {toChoose, "waiting for you to choose"}, {accepted, "accepted"}, {waiting, "waiting"}, {had, "already in your folder"}, {cancelled, "rejected"}, {failed, "failed"}} {
 		if p.n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", p.n, p.text))
 		}
@@ -136,15 +138,23 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 		return "Skipped: no official video was found for it.", CellStyle{Fg: c.Dim}
 	case engine.StateFailed:
 		return "✗ " + cells.Display(runstate.PlainError(en.Err)) + " Press r to try again.", CellStyle{Fg: c.Error}
+	case engine.StateAccepted:
+		if m.paused {
+			return "Accepted. It downloads when you press Download.", CellStyle{Fg: c.Focus}
+		}
+
+		return "Accepted: it downloads when its turn comes.", CellStyle{Fg: c.Focus}
 	case engine.StatePlanned:
-		what := "The video from your playlist will be used."
+		what, style := "No official video was found: the video from your playlist is what you would get.", CellStyle{Fg: c.Highlight}
 		switch {
 		case en.Official:
-			what = "Found the official music video."
+			what, style = "Found the official music video.", CellStyle{Fg: c.Success}
+		case en.OwnOfficial:
+			what, style = "The video in your playlist is the official one.", CellStyle{Fg: c.Success}
 		case en.Better:
-			what = "Found a better quality version."
+			what, style = "Found a better quality version of it.", CellStyle{Fg: c.Focus}
 		}
-		return what + " Accept it to download it, or reject it. The buttons are below; the keys are d and x.", CellStyle{Fg: c.Highlight}
+		return what + " Accept it to put it in the downloads, or reject it.", style
 	case engine.StateSkipped:
 		return "Rejected: this song will not be downloaded. Accept it to bring it back.", CellStyle{Fg: c.Dim}
 	}

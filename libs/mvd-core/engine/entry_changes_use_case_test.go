@@ -40,7 +40,7 @@ func TestASavedSongCanBeSwappedForAnotherVideo(t *testing.T) {
 	}
 	var chosen string
 	untilNext(t, eng, func(ev interface{}) bool {
-		if e, ok := ev.(EvEntryState); ok && e.Entry == 0 && e.State == StateQueued {
+		if e, ok := ev.(EvEntryState); ok && e.Entry == 0 && e.State == StateAccepted {
 			chosen = e.TargetID
 		}
 		_, idle := ev.(EvIdle)
@@ -48,7 +48,7 @@ func TestASavedSongCanBeSwappedForAnotherVideo(t *testing.T) {
 		return idle
 	})
 	if chosen != "swapped12345" {
-		t.Errorf("the song was queued with %q", chosen)
+		t.Errorf("the song was accepted with %q", chosen)
 	}
 	for _, snap := range eng.Snapshot() {
 		if snap.Upload.ID != "" && snap.TargetID == "swapped12345" && snap.State == StateDone && snap.Kind == KindChosen {
@@ -80,4 +80,34 @@ func TestARemovedLinkIsDroppedAndLeftOutOfTheSnapshot(t *testing.T) {
 		t.Errorf("the snapshot still has %d songs of the removed link", got)
 	}
 	untilNext(t, eng, func(ev interface{}) bool { r, ok := ev.(EvPlaylistRemoved); return ok && r.Playlist == 0 })
+}
+
+func TestAnAcceptedSongWaitsForTheDownloadsToStartAndCanBeRejectedBefore(t *testing.T) {
+	eng := stubEngine(t, false, "https://youtube.com/playlist?list=A")
+	eng.opts.HoldForReview = true
+	eng.live = liveOf(eng.opts)
+	eng.Pause()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go eng.Run(ctx)
+	untilNext(t, eng, func(ev interface{}) bool { _, idle := ev.(EvIdle); return idle })
+
+	if !eng.Release(0, "") || !eng.Release(1, "") {
+		t.Fatal("two songs could not be accepted")
+	}
+	if !eng.Skip(1) {
+		t.Error("an accepted song could not be rejected before its turn")
+	}
+	time.Sleep(300 * time.Millisecond)
+	for _, snap := range eng.Snapshot() {
+		if snap.State == StateDownloading || snap.State == StateDone {
+			t.Fatalf("a song went on while the downloads were stopped: %v", snap.State)
+		}
+	}
+	eng.Resume()
+	untilNext(t, eng, func(ev interface{}) bool {
+		e, ok := ev.(EvEntryState)
+
+		return ok && e.Entry == 0 && e.State == StateDone
+	})
 }

@@ -20,9 +20,9 @@ func TestTheTableKeepsTheMostImportantColumnsWhenThePaneIsNarrow(t *testing.T) {
 	m := sampleModel(t)
 	cases := map[int]string{
 		90: "mark,idx,song,artist,progress,status",
-		60: "mark,idx,song,artist,progress,status",
-		45: "mark,idx,song,progress,status",
-		30: "mark,idx,song,status",
+		60: "mark,idx,song,progress,status",
+		45: "mark,idx,song,status",
+		30: "mark,idx,song",
 		18: "mark,idx,song",
 	}
 	for w, want := range cases {

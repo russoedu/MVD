@@ -27,7 +27,7 @@ func finishRun(t *testing.T, m Model, done, failed int) Model {
 	}
 	state.Apply(engine.EvIdle{})
 
-	return m
+	return m.keepRoomForButtons() // what the next Update of the app does
 }
 
 func entriesOf(n int) []engine.EntryInfo {
@@ -224,14 +224,14 @@ func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
 	}
 }
 
-func TestPausingShowsInTheHeaderForAsLongAsTheDownloadsAreHeld(t *testing.T) {
+func TestStoppingShowsInTheHeaderForAsLongAsTheDownloadsAreHeld(t *testing.T) {
 	m, run := started(t)
 	m = m.togglePause()
-	if !run.paused || !strings.Contains(screenOf(m), "PAUSED") {
+	if !run.paused || !strings.Contains(screenOf(m), "STOPPED") {
 		t.Errorf("paused %v, screen:\n%s", run.paused, screenOf(m))
 	}
 	m = m.togglePause()
-	if strings.Contains(screenOf(m), "PAUSED") {
-		t.Error("it still says PAUSED after the downloads went on")
+	if strings.Contains(screenOf(m), "STOPPED") {
+		t.Error("it still says STOPPED after the downloads went on")
 	}
 }

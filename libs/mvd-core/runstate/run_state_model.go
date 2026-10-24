@@ -51,7 +51,7 @@ type Entry struct {
 
 // Tally holds the global counters shown in the header.
 type Tally struct {
-	Total, Queued, Running, Done, Official, Better, Duplicate, NotFound, Planned, Skipped, Failed, Retried int
+	Total, Queued, Running, Done, Official, Better, Duplicate, NotFound, Planned, Skipped, Accepted, Failed, Retried int
 	// Downloading is how many files are coming in now, Parts how many parts of them
 	// at once, and Speed how fast, all of them together, in bytes per second.
 	Downloading, Parts int
@@ -142,7 +142,7 @@ func (s *State) Apply(ev interface{}) int {
 			s.retried++
 		}
 		en.State = e.State
-		if e.State == engine.StateQueued || e.State == engine.StateResolving || e.State == engine.StateDownloading || e.State == engine.StateMerging {
+		if e.State == engine.StateQueued || e.State == engine.StateAccepted || e.State == engine.StateResolving || e.State == engine.StateDownloading || e.State == engine.StateMerging {
 			s.Idle = false // there is work again, such as songs tried again
 		}
 		en.TargetID = e.TargetID
@@ -275,6 +275,8 @@ func (s *State) Tally() Tally {
 			t.Planned++
 		case engine.StateSkipped:
 			t.Skipped++
+		case engine.StateAccepted:
+			t.Accepted++
 		case engine.StateFailed:
 			t.Failed++
 		}
@@ -293,7 +295,7 @@ func (s *State) PlaylistTally(pl *Playlist) (finished, failed, active int) {
 			finished++
 		case en.State.Finished():
 			finished++
-		case en.State != engine.StateQueued:
+		case en.State != engine.StateQueued && en.State != engine.StateAccepted:
 			active++
 		}
 	}
