@@ -91,7 +91,7 @@ func TestViewLayouts(t *testing.T) {
 		checkFrame(t, "fulllog", m.View().Content, sz[0], sz[1])
 
 		m.fullLog = false
-		m.filterFailed = true
+		m.statusHidden = onlyFailed()
 		m.focus = paneEntries
 		checkFrame(t, "filter", m.View().Content, sz[0], sz[1])
 
@@ -163,7 +163,7 @@ func TestKeyHandling(t *testing.T) {
 		t.Fatalf("r on a failed entry should retry it, got %v", got)
 	}
 	press("f")
-	if !m.filterFailed || len(m.visibleEntries()) != 1 {
+	if !m.filterActive() || len(m.visibleEntries()) != 1 {
 		t.Fatalf("filter should show the single failed entry, got %d", len(m.visibleEntries()))
 	}
 	press("f")
@@ -214,4 +214,16 @@ func TestKeyHandling(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("q when idle should quit")
 	}
+}
+
+// onlyFailed is the filter that hides every group of statuses but the failed ones.
+func onlyFailed() map[string]bool {
+	hidden := map[string]bool{}
+	for _, g := range statusGroups {
+		if g.key != groupFailed {
+			hidden[g.key] = true
+		}
+	}
+
+	return hidden
 }

@@ -264,8 +264,8 @@ func (m Model) entryHeader() (title, right string) {
 		n = len(m.visibleEntries())
 	}
 	title = counted(n, "song")
-	if m.filterFailed {
-		title += " (failed only)"
+	if m.filterActive() && m.selPlaylist < len(m.state.Playlists) {
+		title = fmt.Sprintf("%d of %s", n, counted(len(m.state.Playlists[m.selPlaylist].Entries), "song"))
 	}
 
 	return title, ""
@@ -278,7 +278,7 @@ func (m Model) entryNotesShown() bool {
 		return false
 	}
 	pl := m.state.Playlists[m.selPlaylist]
-	return pl.Err != "" || !pl.Listed || (m.filterFailed && len(m.visibleEntries()) == 0)
+	return pl.Err != "" || !pl.Listed || (m.filterActive() && len(m.visibleEntries()) == 0)
 }
 
 // entryNotes are the lines of that note, wrapped to innerW cells.
@@ -295,8 +295,8 @@ func (m Model) entryNotes(innerW int) []NotesRow {
 		}
 	case !pl.Listed:
 		notes = []NotesRow{{Line: "reading this link...", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
-	case len(m.visibleEntries()) == 0 && m.filterFailed:
-		notes = []NotesRow{{Line: "no failed songs", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
+	case len(m.visibleEntries()) == 0 && m.filterActive():
+		notes = []NotesRow{{Line: "no songs with these statuses: change the filter above", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
 	}
 	return notes
 }

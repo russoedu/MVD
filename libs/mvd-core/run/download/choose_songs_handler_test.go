@@ -3,6 +3,7 @@ package download
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"sort"
 	"strings"
 	"testing"
 
@@ -283,5 +284,119 @@ func TestColumnsCanBeCarriedToAnotherPlaceInTheList(t *testing.T) {
 	}
 	if got := m.columnOrder(); got[2] != columnVideo {
 		t.Errorf("order after the drag %v", got)
+	}
+}
+
+func TestAClickOnAHeadingSortsAndAnotherClickTurnsTheOrderRound(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	l, _ := m.layout()
+	ix, iy, iw := m.tableInner(l)
+	var song columnSpan
+	for _, s := range m.columnSpans(iw) {
+		if s.name == columnSong {
+			song = s
+		}
+	}
+	click := func(m Model) Model {
+		next, _ := m.Update(tea.MouseClickMsg{X: ix + song.x0 + 1, Y: iy, Button: tea.MouseLeft})
+
+		return next.(Model)
+	}
+	names := func(m Model) []string {
+		var out []string
+		for _, id := range m.visibleEntries() {
+			out = append(out, strings.ToLower(songName(m.state.Entries[id])))
+		}
+
+		return out
+	}
+	selected := m.selectedEntry().ID
+	m = click(m)
+	asc := names(m)
+	if m.sortBy != columnSong || m.sortDesc || !sort.StringsAreSorted(asc) {
+		t.Fatalf("sorted by %q desc %v: %v", m.sortBy, m.sortDesc, asc)
+	}
+	if m.selectedEntry().ID != selected {
+		t.Error("the song the cursor was on changed with the sort")
+	}
+	m = click(m)
+	desc := names(m)
+	if !m.sortDesc || desc[0] != asc[len(asc)-1] {
+		t.Errorf("the second click did not turn the order round: %v", desc)
+	}
+	if !strings.Contains(ansi.Strip(m.render()), "Song ▼") {
+		t.Error("the heading does not show the direction")
+	}
+}
+
+func TestTheFilterHidesTheStatusesTheListHides(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	all := len(m.visibleEntries())
+	m = pressKey(m, "F")
+	if !m.filterList.open {
+		t.Fatal("the filter did not open")
+	}
+	for i, g := range statusGroups {
+		if g.key == groupSaved {
+			m.filterList.sel = i
+		}
+	}
+	m = pressKey(m, "space")
+	m = pressKey(m, "esc")
+	if got := len(m.visibleEntries()); got != all-1 || !m.filterActive() {
+		t.Errorf("%d of %d songs show with the saved ones hidden", got, all)
+	}
+	if title, _ := m.entryHeader(); !strings.Contains(title, " of ") {
+		t.Errorf("the title does not say it is filtered: %q", title)
+	}
+	m = pressKey(m, "f") // failed only
+	for _, id := range m.visibleEntries() {
+		if m.state.Entries[id].State != engine.StateFailed {
+			t.Errorf("song %d is not failed", id)
+		}
+	}
+	m = pressKey(m, "f")
+	if m.filterActive() {
+		t.Error("f did not show every song again")
+	}
+}
+
+func TestACarriedBorderFollowsThePointerAndTheOtherSideGivesTheRoom(t *testing.T) {
+	m, _ := choosingModel(t)
+	m.width, m.height = 140, 30
+	l, _ := m.layout()
+	ix, iy, iw := m.tableInner(l)
+	spans := m.columnSpans(iw)
+	var artist, progress columnSpan
+	for _, s := range spans {
+		switch s.name {
+		case columnArtist:
+			artist = s
+		case columnProgress:
+			progress = s
+		}
+	}
+	at := func(msg tea.MouseMsg) { next, _ := m.Update(msg); m = next.(Model) }
+	at(tea.MouseClickMsg{X: ix + artist.x1, Y: iy, Button: tea.MouseLeft})
+	at(tea.MouseMotionMsg{X: ix + artist.x1 + 3, Y: iy, Button: tea.MouseLeft})
+	at(tea.MouseReleaseMsg{X: ix + artist.x1 + 3, Y: iy, Button: tea.MouseLeft})
+	after := m.columnSpans(iw)
+	for _, s := range after {
+		switch s.name {
+		case columnArtist:
+			if s.x1-s.x0 != artist.x1-artist.x0+3 || s.x1 != artist.x1+3 {
+				t.Errorf("artist %+v, was %+v: the border did not follow the pointer", s, artist)
+			}
+		case columnProgress:
+			if s.x1 != progress.x1 || s.x1-s.x0 != progress.x1-progress.x0-3 {
+				t.Errorf("progress %+v, was %+v", s, progress)
+			}
+		case columnSong:
+			if s.x1 != spans[3].x1 {
+				t.Errorf("the song changed: %+v", s)
+			}
+		}
 	}
 }

@@ -14,14 +14,15 @@ import (
 // minColumnWidth is the narrowest the person can make a column.
 const minColumnWidth = 4
 
-// columnDrag is the border between two columns of the table being carried: the column that takes the
-// change, how wide it was, where the pointer was, and which way a move makes it grow.
+// columnDrag is the border between two columns of the table being carried: the columns on its two sides
+// and how wide each was, and where the pointer was. The border follows the pointer: what one column
+// gains the other loses, and the song, which takes what is left, takes what the first of them gives.
 type columnDrag struct {
-	on     bool
-	column string
-	x      int
-	width  int
-	sign   int
+	on          bool
+	left, right string
+	x           int
+	leftW       int
+	rightW      int
 }
 
 // columnsMenu is the list of columns the person can show or hide, when it is open.
@@ -99,6 +100,17 @@ func (m Model) columnSpans(w int) []columnSpan {
 	return out
 }
 
+// controlsShown says whether the buttons of the table are there: the playlist has songs, also when the
+// filter hides them all.
+func (m Model) controlsShown() bool {
+	if m.selPlaylist >= len(m.state.Playlists) {
+		return false
+	}
+	pl := m.state.Playlists[m.selPlaylist]
+
+	return pl.Err == "" && pl.Listed && len(pl.Entries) > 0
+}
+
 // tableShown says whether the songs are drawn as a table with a row of headings.
 func (m Model) tableShown() bool {
 	return len(m.visibleEntries()) > 0 && !m.entryNotesShown()
@@ -115,8 +127,9 @@ func (m Model) tableInner(l downloadLayout) (x, y, w int) {
 func (m Model) columnsButton(l downloadLayout) (x, y, w int) {
 	const label = "Columns ▾"
 	w = len([]rune(label)) + 4
+	fx, _, _ := m.filterButton(l)
 
-	return l.entries.x + l.entries.w - 2 - w, l.entries.y, w
+	return fx - 1 - w, l.entries.y, w
 }
 
 // columnsMenuRect is where the list of columns is drawn, under its button.
@@ -127,10 +140,10 @@ func (m Model) columnsMenuRect(l downloadLayout) rect {
 	return rect{l.entries.x + l.entries.w - w - 1, l.entries.y + 1, w, h}
 }
 
-// withTableControls draws what sits over the table: the button for the columns, and their list when
-// it is open.
+// withTableControls draws what sits over the table: the buttons for the columns and the filter, and
+// the list that is open.
 func (m Model) withTableControls(screen string) string {
-	if !m.tableShown() || m.showHelp || m.adding || m.swapping {
+	if !m.controlsShown() || m.showHelp || m.adding || m.swapping {
 		return screen
 	}
 	l, ok := m.layout()
@@ -139,6 +152,13 @@ func (m Model) withTableControls(screen string) string {
 	}
 	x, y, w := m.columnsButton(l)
 	screen = dialog.Overlay(screen, dialog.WidePill("Columns ▾", w, dialog.PillNormal, false), x, y)
+	fx, fy, fw := m.filterButton(l)
+	kind := dialog.PillNormal
+	if m.filterActive() {
+		kind = dialog.PillPrimary
+	}
+	screen = dialog.Overlay(screen, dialog.WidePill(m.filterLabel(), fw, kind, false), fx, fy)
+	screen = m.withFilterMenu(screen, l)
 	if !m.columnList.open {
 		return screen
 	}
@@ -196,27 +216,34 @@ func (m Model) columnsKey(key string) Model {
 	return m
 }
 
-// resizeTo carries the column being dragged to where the pointer is now. The song takes what is left,
-// and keeps what it needs, so the column cannot grow past that.
+// resizeTo carries the border being dragged to where the pointer is now, so that it follows the pointer
+// as far as the columns allow.
 func (m Model) resizeTo(x int) Model {
 	d := m.colDrag
 	_, _, w := m.tableInnerFor()
-	current, song := 0, 0
-	for _, col := range m.tableColumns(w) {
-		switch col.name {
-		case d.column:
-			current = col.width
-		case columnSong:
-			song = col.width
-		}
-	}
-	limit := min(current+max(song-minSongWidth, 0), 80)
-	width := min(max(d.width+d.sign*(x-d.x), minColumnWidth), limit)
-	sizes := make(map[string]int, len(m.colWidth)+1)
+	dx := x - d.x
+	sizes := make(map[string]int, len(m.colWidth)+2)
 	for k, v := range m.colWidth {
 		sizes[k] = v
 	}
-	sizes[d.column] = width
+	if d.left == columnSong {
+		// The columns right of the song are fixed from the right edge: the one on the right of the
+		// border grows or shrinks, and the song gives or takes the room.
+		song, current := 0, 0
+		for _, col := range m.tableColumns(w) {
+			switch col.name {
+			case columnSong:
+				song = col.width
+			case d.right:
+				current = col.width
+			}
+		}
+		limit := min(current+max(song-minSongWidth, 0), 80)
+		sizes[d.right] = min(max(d.rightW-dx, minColumnWidth), limit)
+	} else {
+		dx = min(max(dx, minColumnWidth-d.leftW), d.rightW-minColumnWidth)
+		sizes[d.left], sizes[d.right] = d.leftW+dx, d.rightW-dx
+	}
 	m.colWidth = sizes
 
 	return m
@@ -236,10 +263,13 @@ func (m Model) tableInnerFor() (x, y, w int) {
 // list, the boxes to tick songs, and the borders between the headings, which are carried to resize.
 // It says whether the event was for them.
 func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, bool) {
-	if !l.hasLists || !m.tableShown() {
+	if !l.hasLists || !m.controlsShown() {
 		return m, nil, false
 	}
 	pos := msg.Mouse()
+	if m.filterList.open {
+		return m.filterMouse(l, msg), nil, true
+	}
 
 	if m.columnList.open {
 		return m.columnsMouse(l, msg), nil, true
@@ -262,9 +292,18 @@ func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, b
 		}
 		bx, by, bw := m.columnsButton(l)
 		if pos.Y == by && pos.X >= bx && pos.X < bx+bw {
-			m.columnList = columnsMenu{open: true}
+			m.columnList, m.filterList = columnsMenu{open: true}, filterMenu{}
 
 			return m, nil, true
+		}
+		fx, fy, fw := m.filterButton(l)
+		if pos.Y == fy && pos.X >= fx && pos.X < fx+fw {
+			m.filterList, m.columnList = filterMenu{open: true}, columnsMenu{}
+
+			return m, nil, true
+		}
+		if !m.tableShown() {
+			return m, nil, false
 		}
 		ix, iy, iw := m.tableInner(l)
 		spans := m.columnSpans(iw)
@@ -305,20 +344,21 @@ func (m Model) headingClick(spans []columnSpan, ix, x int) (Model, tea.Cmd, bool
 
 			return m, nil, true
 		}
+		if x >= ix+s.x0 && x < ix+s.x1 {
+			if sortable(s.name) {
+				m.sortOn(s.name) // a click on a heading sorts by it, and again turns the order round
+			}
+
+			return m, nil, true
+		}
 		if x != ix+s.x1 || i+1 >= len(spans) {
 			continue
 		}
 		left, right := s, spans[i+1]
-		drag := columnDrag{on: true, x: x}
-		if left.name == columnSong {
-			drag.column, drag.width, drag.sign = right.name, right.x1-right.x0, -1
-		} else {
-			drag.column, drag.width, drag.sign = left.name, left.x1-left.x0, 1
-		}
-		if !resizable(drag.column) {
+		if !resizable(right.name) || (left.name != columnSong && !resizable(left.name)) {
 			return m, nil, true
 		}
-		m.colDrag = drag
+		m.colDrag = columnDrag{on: true, left: left.name, right: right.name, x: x, leftW: left.x1 - left.x0, rightW: right.x1 - right.x0}
 
 		return m, nil, true
 	}

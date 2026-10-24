@@ -76,7 +76,12 @@ type Model struct {
 	outScroll     int // lines scrolled up from the bottom of the output pane
 	follow        bool
 	loaded        bool // every playlist has been listed; until then the loading screen is shown
-	filterFailed  bool
+	// sortBy is the column the songs are sorted by (a click on its heading), "" for the order they came in.
+	sortBy   string
+	sortDesc bool
+	// statusHidden are the groups of statuses the person hid with the filter.
+	statusHidden map[string]bool
+	filterList   filterMenu
 	fullLog       bool
 	// technical shows the log of the tool in the details pane instead of the plain account.
 	technical bool
@@ -251,8 +256,15 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.columnList.open {
 		return m.columnsKey(key), nil
 	}
-	if key == "c" && m.tableShown() {
-		m.columnList = columnsMenu{open: true}
+	if m.filterList.open {
+		return m.filterKey(key), nil
+	}
+	if key == "c" && m.controlsShown() {
+		m.columnList, m.filterList = columnsMenu{open: true}, filterMenu{}
+		return m, nil
+	}
+	if key == "F" && m.controlsShown() {
+		m.filterList, m.columnList = filterMenu{open: true}, columnsMenu{}
 		return m, nil
 	}
 
@@ -327,9 +339,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.flash("follow off")
 		}
 	case "f":
-		m.filterFailed = !m.filterFailed
-		m.selEntry = 0
-		if m.filterFailed {
+		m.showOnly(groupFailed)
+		if m.filterActive() {
 			m.flash("showing failed songs only")
 		} else {
 			m.flash("showing all songs")
@@ -415,16 +426,16 @@ func (m *Model) visibleEntries() []int {
 		return nil
 	}
 	pl := m.state.Playlists[m.selPlaylist]
-	if !m.filterFailed {
-		return pl.Entries
-	}
-	var out []int
-	for _, id := range pl.Entries {
-		if m.state.Entries[id].State == engine.StateFailed {
-			out = append(out, id)
+	ids := pl.Entries
+	if m.filterActive() {
+		ids = nil
+		for _, id := range pl.Entries {
+			if m.matchesFilter(m.state.Entries[id]) {
+				ids = append(ids, id)
+			}
 		}
 	}
-	return out
+	return m.sorted(ids)
 }
 
 func (m *Model) selectedEntry() *runstate.Entry {

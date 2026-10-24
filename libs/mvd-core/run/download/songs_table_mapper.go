@@ -182,6 +182,12 @@ func (m Model) songsTable(w int) Table {
 		if c.name == columnCheck {
 			title = [3]string{"[ ]", "[-]", "[x]"}[m.pickState()]
 		}
+		if mark := m.sortMark(c.name); mark != "" {
+			title += mark
+			if c.width > 3 {
+				title = c.title + " " + mark
+			}
+		}
 		header, styles = append(header, title), append(styles, dim)
 	}
 
