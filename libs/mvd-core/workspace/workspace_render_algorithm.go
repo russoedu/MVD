@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -79,6 +80,8 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Dim.Render("Paste or type a link, then press Enter. Esc cancels."), m.width)
 	case m.disabledReason() != "":
 		return cells.Fit(" "+look.Dim.Render(m.disabledReason()), m.width)
+	case m.finished():
+		return cells.Fit(" "+m.summaryLine(), m.width)
 	case m.editable() && !m.reviewing:
 		return cells.Fit(" "+look.Dim.Render(m.idleHints()), m.width)
 	}
@@ -134,4 +137,31 @@ func (m Model) toolsLine() string {
 	}
 
 	return look.Yellow.Render(m.toolsMessage())
+}
+
+// summaryLine is how a finished run went and where its videos are, in a line the width of the
+// screen: the folder is shortened in the middle, so its end, which names it, stays.
+func (m Model) summaryLine() string {
+	t := m.screen.State().Tally()
+	head := fmt.Sprintf("✓ %d downloaded", t.Done)
+	plain := head
+	line := look.Green.Render(head)
+	if t.Failed > 0 {
+		failed := fmt.Sprintf("✗ %d failed", t.Failed)
+		plain += "  " + failed
+		line += "  " + look.Red.Render(failed)
+	}
+	const label = "  ·  Videos in "
+	hint := "  ·  " + menubar.ShortcutLabel("Ctrl+Shift+O") + " opens it"
+	room := m.width - ansi.StringWidth(plain) - ansi.StringWidth(label) - 2
+	if room < 30 {
+		return line // too narrow for the folder: the counts say it
+	}
+	if room-ansi.StringWidth(hint) >= ansi.StringWidth(m.cfg.OutputDir) || room-ansi.StringWidth(hint) >= 24 {
+		room -= ansi.StringWidth(hint)
+	} else {
+		hint = ""
+	}
+
+	return line + look.Dim.Render(label) + look.Text.Render(cells.TruncateMiddle(m.cfg.OutputDir, room)) + look.Dim.Render(hint)
 }

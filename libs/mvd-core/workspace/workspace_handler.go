@@ -10,6 +10,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
@@ -182,6 +183,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, saveTick()
 
 	case OpenListMsg:
+		m = m.settle()
 		if m.running() || m.starting || m.stopping {
 			m.notice = "Stop the downloads before opening " + filepath.Base(msg.Path)
 			return m, nil
@@ -323,6 +325,9 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	if m.stopping || m.starting {
 		return m, nil
 	}
+	if settles(name) {
+		m = m.settle() // a run that has finished is over: nothing has to be stopped
+	}
 	if next, cmd, handled := m.runChoice(name); handled {
 		return next, cmd
 	}
@@ -362,6 +367,8 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
 		m.about = true
+	case entryOpenFolder:
+		m.openFolder()
 	case entryShortcuts:
 		m.shortcuts, m.shortcutsScroll = true, 0
 	case entryDocs:
@@ -627,4 +634,66 @@ func (m Model) View() tea.View {
 	view := screenview.Of(m.render())
 	view.MouseMode = tea.MouseModeAllMotion // the buttons light up under the pointer
 	return view
+}
+
+// finished says whether the run has nothing more to do: every playlist was read, and the queue
+// is empty with no worker busy. A run held for the person to review is not finished: it waits
+// for them.
+func (m Model) finished() bool {
+	if m.run == nil || m.starting || m.stopping || m.reviewing || m.editor.Live() {
+		return false
+	}
+	state := m.screen.State()
+
+	return state != nil && state.Idle && state.AllListed()
+}
+
+// active says whether a run is going on that has to be stopped before the list can change: one
+// that has finished does not.
+func (m Model) active() bool { return m.running() && !m.finished() }
+
+// settle ends a run that has finished, so the list can be changed or another run started: what
+// each song got to is written to the list, the run is closed (it has nothing to wind down, so this
+// is quick) and the screen goes back to the list. A run that has not finished is left alone.
+func (m Model) settle() Model {
+	if !m.finished() {
+		return m
+	}
+	m.syncList()
+	m.run.Close()
+	m.run, m.reviewing = nil, false
+	m.screen = m.screen.Detach().WithState(m.session.Preview())
+
+	return m
+}
+
+// settles says whether an entry needs the list to be free, and so ends a finished run first.
+func settles(name string) bool {
+	switch name {
+	case entryNew, entryOpen, entryStart, entryReview, entryAddLink,
+		entryUndo, entryRedo, entryCut, entryPaste, entryDelete, entryMoveUp, entryMoveDown:
+		return true
+	}
+
+	return false
+}
+
+// openFolder shows the folder of the videos in the system's file manager.
+func (m *Model) openFolder() {
+	dir := m.cfg.OutputDir
+	switch {
+	case dir == "":
+		m.notice = "No folder is chosen for the videos yet: choose one in File > Preferences"
+	case m.host.OpenFolder == nil:
+		m.caution = "The videos are in " + cells.TruncateMiddle(dir, max(m.width-24, 20))
+	default:
+		if _, err := os.Stat(dir); err != nil {
+			m.caution = "The folder is made when the first download starts: " + cells.TruncateMiddle(dir, max(m.width-60, 20))
+
+			return
+		}
+		if err := m.host.OpenFolder(dir); err != nil {
+			m.notice = "Cannot open the folder: " + err.Error()
+		}
+	}
 }
