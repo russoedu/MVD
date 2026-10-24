@@ -64,7 +64,8 @@ func (m Model) whoSings(en *runstate.Entry) string {
 	case en.NamedArtist != "":
 		return en.NamedArtist
 	case en.Channel != "":
-		return en.Channel
+		// A channel of the music service is named after the artist, with this added.
+		return strings.TrimSuffix(en.Channel, " - Topic")
 	}
 	return ""
 }
@@ -107,7 +108,7 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 	case engine.StateResolving:
 		return "Looking for the best version of this song…", CellStyle{Fg: c.Focus}
 	case engine.StateDownloading:
-		return "Downloading…", CellStyle{Fg: c.Highlight}
+		return "Downloading: " + progressText(en), CellStyle{Fg: c.Highlight}
 	case engine.StateMerging:
 		return "Putting the picture and the sound together…", CellStyle{Fg: c.Highlight}
 	case engine.StateDone:

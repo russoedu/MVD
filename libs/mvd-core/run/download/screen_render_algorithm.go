@@ -167,34 +167,3 @@ func (m Model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 	return " ", c.Text
 }
 
-// entryTag is what is said at the end of an entry row and its colour.
-func (m Model) entryTag(en *runstate.Entry) (tag, colour string) {
-	c := look.Colours
-	switch en.State {
-	case engine.StateQueued:
-		return "waiting", c.Dim
-	case engine.StateResolving:
-		return "finding", c.Focus
-	case engine.StateDownloading:
-		if en.Total > 0 {
-			return fmt.Sprintf("%3.0f%%", en.Percent), c.Highlight
-		}
-		return "starting", c.Highlight
-	case engine.StateMerging:
-		return "joining", c.Highlight
-	case engine.StateDuplicate:
-		return "have it", c.Dim
-	case engine.StateNotFound:
-		return "no official", c.Dim
-	case engine.StateFailed:
-		return "failed", c.Error
-	case engine.StateDone:
-		if en.Official {
-			return "official", c.Focus
-		}
-		if en.Better {
-			return "better", c.Focus
-		}
-	}
-	return "", c.Text
-}

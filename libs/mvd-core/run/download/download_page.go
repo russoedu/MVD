@@ -70,6 +70,10 @@ func env(p Props, w, h int) cuppa.FitEnv {
 			return float64(p.LeftWidth)
 		case "MidWidth":
 			return float64(p.MidWidth)
+		case "DetailsHeight":
+			return float64(p.DetailsHeight)
+		case "TableHeader":
+			return float64(p.TableHeader)
 		case "Columns":
 			return float64(p.Columns)
 		case "LeftReserve":
@@ -198,7 +202,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			w, h := e.W, e.H
 			_, _ = w, h
 			if e.In("Columns") > 0.0 {
-				return cuppa.Cells(e.In("LeftWidth")), 3, cuppa.Cells(e.In("MidWidth")), cuppa.Cells(float64(h) - 4.0)
+				return cuppa.Cells(e.In("LeftWidth")), 3, cuppa.Cells(float64(w) - e.In("LeftWidth")), cuppa.Cells((float64(h) - 4.0) - e.In("DetailsHeight"))
 			}
 			return 0, cuppa.Cells(e.Rect("Playlists box", "bottom")), cuppa.Cells(e.In("LeftWidth")), cuppa.Cells((((float64(h) * 100.0 / 100.0) - e.Rect("Playlists box", "bottom")) - 1.0))
 		}},
@@ -226,7 +230,7 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entries rows", X: 1, Y: 12, W: 43, H: 23, Props: map[string]string{"blurColor": "#ff007f", "cellstyles": "", "color": "#3b0f2a", "columns": "Glyph:1,Sp:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Idx:2:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp2:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Title:fill:ellipsis:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Sp3:1:fg=@Text:selbg=@Selected:selfg=@Text:selbold,Tag:auto", "focused": "true", "gap": "0", "rows": "✓, ,01, ,You Don't Know Me, ,⇄", "styles": "normal", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a"}, MinW: 8, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
-			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0))
+			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0 + e.In("TableHeader"))), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), cuppa.Cells((e.Rect("Entries box", "h") - 2.0 - e.In("TableHeader")))
 		}},
 		Event: "PickEntry",
 		Late: func(p Props, v map[string]string, w, h int) {
@@ -236,8 +240,18 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 					rows := make([][]string, len(rs))
 					cellStyles := make([][]string, len(rs))
 					styles := make([]string, len(rs))
+					if p.EntriesTable != nil {
+						if columns := p.EntriesTable(w).Columns; columns != "" {
+							v["columns"] = columns
+						}
+					}
 					for i, r := range rs {
 						rows[i] = []string{r.Glyph, r.Sp, r.Idx, r.Sp2, r.Title, r.Sp3, r.Tag}
+						if r.Cells != nil {
+							rows[i] = r.Cells
+							cellStyles[i], styles[i] = r.CellStyles, cuppa.RowStyleName(r.Style)
+							continue
+						}
 						cellStyles[i] = []string{cuppa.CellStyleCode(r.GlyphStyle), cuppa.CellStyleCode(r.SpStyle), cuppa.CellStyleCode(r.IdxStyle), cuppa.CellStyleCode(r.Sp2Style), cuppa.CellStyleCode(r.TitleStyle), cuppa.CellStyleCode(r.Sp3Style), cuppa.CellStyleCode(r.TagStyle)}
 						styles[i] = cuppa.RowStyleName(r.Style)
 					}
@@ -271,6 +285,24 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			}
 			e := env(p, w, h)
 			return ((e.In("LeftWidth") > 0.0) && (e.In("HasNotes") == 0.0))
+		},
+	},
+	{
+		Placed: cuppa.Placed{Kind: "lipgloss.rows", Name: "Entries header", X: 1, Y: 12, W: 43, H: 1, Props: map[string]string{"blurColor": "", "cellstyles": "", "color": "#3b0f2a", "columns": "Title:fill:ellipsis:fg=@Text", "focused": "true", "gap": "0", "rows": "", "styles": "", "theme.muted": "", "theme.palette": ""}, MinW: 1, MinH: 1, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
+			return cuppa.Cells((e.Rect("Entries box", "x") + 1.0)), cuppa.Cells((e.Rect("Entries box", "y") + 1.0)), cuppa.Cells((e.Rect("Entries box", "w") - 2.0)), 1
+		}},
+		Late: func(p Props, v map[string]string, w, h int) {
+			if p.EntriesTable != nil {
+				t := p.EntriesTable(w)
+				v["columns"] = t.Columns
+				v["rows"] = cuppa.JoinRows([][]string{t.Header})
+				v["cellstyles"] = cuppa.JoinRows([][]string{t.HeaderStyles})
+			}
+		},
+		Apply: func(p Props, v map[string]string, w, h int) bool {
+			v["theme.palette"] = cuppa.PaletteCode("Accent", p.Palette.Accent, "#ff007f", "Focus", p.Palette.Focus, "#00f0ff", "Highlight", p.Palette.Highlight, "#ffe600", "Success", p.Palette.Success, "#3ddc84", "Error", p.Palette.Error, "#ff4d4d", "Dim", p.Palette.Dim, "#6b7280", "Text", p.Palette.Text, "#e5e7eb", "Selected", p.Palette.Selected, "#3b0f2a")
+			e := env(p, w, h)
+			return ((e.In("LeftWidth") > 0.0) && (e.In("TableHeader") > 0.0) && (e.In("HasNotes") == 0.0))
 		},
 	},
 	{
@@ -323,7 +355,10 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 		Placed: cuppa.Placed{Kind: "lipgloss.box", Name: "Output box", X: 45, Y: 3, W: 75, H: 32, Props: map[string]string{"blurColor": "#6b7280", "border": "rounded", "color": "#00f0ff", "focused": "false", "gradient": "", "right": "follow", "rightColor": "#6b7280", "theme.muted": "", "theme.palette": "Accent=#ff007f;Focus=#00f0ff;Highlight=#ffe600;Success=#3ddc84;Error=#ff4d4d;Dim=#6b7280;Text=#e5e7eb;Selected=#3b0f2a", "title": "Output", "titleBold": "true", "titleColor": "#ff007f"}, MinW: 3, MinH: 3, FitEnv: func(e cuppa.FitEnv) (x, y, cw, ch int) {
 			w, h := e.W, e.H
 			_, _ = w, h
-			return cuppa.Cells(e.In("LeftWidth") + e.In("MidWidth")), cuppa.Cells(3.0), cuppa.Cells(((float64(w) * 100.0 / 100.0) - e.In("LeftWidth") - e.In("MidWidth"))), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 4.0))
+			if e.In("Columns") > 0.0 {
+				return cuppa.Cells(e.In("LeftWidth")), cuppa.Cells(3.0 + (float64(h) - 4.0) - e.In("DetailsHeight")), cuppa.Cells(float64(w) - e.In("LeftWidth")), cuppa.Cells(e.In("DetailsHeight"))
+			}
+			return 0, cuppa.Cells(3.0), cuppa.Cells(float64(w)), cuppa.Cells(((float64(h) * 100.0 / 100.0) - 4.0))
 		}},
 		Apply: func(p Props, v map[string]string, w, h int) bool {
 			if p.Palette.Dim != "" {
@@ -559,6 +594,12 @@ type Props struct {
 	LeftWidth int
 	// MidWidth is how wide the entries column is when the screen is in columns, else 0.
 	MidWidth int
+	// DetailsHeight is how tall the details pane is, under the songs, when the screen is in columns.
+	DetailsHeight int
+	// TableHeader is 1 when the songs are a table with a row of headings above it, else 0.
+	TableHeader int
+	// EntriesTable lays the songs out as a table in a pane w cells wide; nil keeps the design's rows.
+	EntriesTable func(w int) Table
 	// Columns is 1 when the playlists, the entries and the output are side by side.
 	Columns int
 	// LeftReserve is the rows the app keeps under the playlists, for its own buttons.
@@ -650,8 +691,20 @@ type PlaylistsRow struct {
 	Style cuppa.RowStyle
 }
 
+// Table is how the songs are laid out in a pane: the columns the rows widget draws, the heading
+// of each and its style (as codes).
+type Table struct {
+	Columns      string
+	Header       []string
+	HeaderStyles []string
+}
+
 // DownloadEntriesRow is one row of Entries. Style says how the row is drawn.
 type EntriesRow struct {
+	// Cells, when there are any, are the cells of the row in the columns of the table, and
+	// CellStyles their styles as codes; the fields below are then not used.
+	Cells      []string
+	CellStyles []string
 	// Glyph is a cell.
 	Glyph string
 	// Sp is a cell.
@@ -890,6 +943,8 @@ func Inputs(p Props) map[string]any {
 		"Show status":     p.ShowStatus,
 		"LeftWidth":       p.LeftWidth,
 		"MidWidth":        p.MidWidth,
+		"DetailsHeight":   p.DetailsHeight,
+		"TableHeader":     p.TableHeader,
 		"Columns":         p.Columns,
 		"LeftReserve":     p.LeftReserve,
 		"PlaylistCount":   p.PlaylistCount,
