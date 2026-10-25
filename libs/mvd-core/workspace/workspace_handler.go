@@ -1,6 +1,9 @@
 package workspace
 
 import (
+	"youtube-downloader/libs/mvd-core/workspace/listhistory"
+	"youtube-downloader/libs/mvd-core/workspace/closequestion"
+	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -89,7 +92,7 @@ type Model struct {
 
 	about bool
 	// closing is the question asked before the app closes while songs download.
-	closing closeAsk
+	closing closequestion.State
 	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
 	// down its lines it is.
 	shortcuts       bool
@@ -100,9 +103,8 @@ type Model struct {
 	// hoverX and hoverY are where the pointer last was, for the buttons to light up.
 	hoverX, hoverY int
 
-	// undone and redone are the lists as they were before the changes made to it, and the
-	// ones taken back, most recent last.
-	undone, redone [][]playlistfile.Item
+	// history is the lists as they were before the changes made to it, for undo and redo.
+	history listhistory.History
 	// changing is the playlist whose address the question at the bottom is asking for.
 	changing int
 
@@ -155,12 +157,22 @@ func (m Model) wantsLoading() bool {
 	return m.sourcesKey() != m.loadedKey
 }
 
-// addable says whether links can be added to the run that is going on.
-func (m Model) addable() bool {
-	_, ok := m.run.(downloadpage.SourceAdder)
+// facts are what the run is doing, for the decisions of package runcontrol.
+func (m Model) facts() runcontrol.Facts {
+	f := runcontrol.Facts{HasRun: m.run != nil, Starting: m.starting, Stopping: m.stopping}
+	if m.run != nil {
+		f.Paused = m.run.Paused()
+		_, f.CanAddLinks = m.run.(downloadpage.SourceAdder)
+	}
+	if state := m.screen.State(); state != nil {
+		f.Idle, f.AllListed, f.Tally = state.Idle, state.AllListed(), state.Tally()
+	}
 
-	return ok && m.active() && !m.starting && !m.stopping
+	return f
 }
+
+// addable says whether links can be added to the run that is going on.
+func (m Model) addable() bool { return m.facts().Addable() }
 
 // addToRun gives the run more links, and keeps them in the list.
 func (m Model) addToRun(links []string) Model {
@@ -184,7 +196,7 @@ func (m Model) addToRun(links []string) Model {
 }
 
 // waiting says whether some song of the run waits for the person to choose it.
-func (m Model) waiting() bool { return m.run != nil && m.screen.State().Tally().Planned > 0 }
+func (m Model) waiting() bool { return m.facts().Waiting() }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
@@ -311,7 +323,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok {
-		if m.closing.on {
+		if m.closing.On {
 			return m.closeKey(key)
 		}
 		if m.about {
@@ -725,21 +737,12 @@ func (m Model) View() tea.View {
 	return view
 }
 
-// finished says whether the run has nothing more to do: every playlist was read, the queue
-// is empty with no worker busy, and no song is left waiting for the person to choose it. A song
-// that is not wanted is dealt with by stopping the run.
-func (m Model) finished() bool {
-	if m.run == nil || m.starting || m.stopping {
-		return false
-	}
-	state := m.screen.State()
-
-	return state != nil && state.Idle && state.AllListed() && state.Tally().Planned == 0
-}
+// finished says whether the run has nothing more to do (see runcontrol).
+func (m Model) finished() bool { return m.facts().Finished() }
 
 // active says whether a run is going on that has to be stopped before the list can change: one
 // that has finished does not.
-func (m Model) active() bool { return m.running() && !m.finished() }
+func (m Model) active() bool { return m.facts().Active() }
 
 // settle ends a run that has finished, so the list can be changed or another run started: what
 // each song got to is written to the list, the run is closed (it has nothing to wind down, so this
@@ -756,16 +759,8 @@ func (m Model) settle() Model {
 	return m
 }
 
-// holdsOnlyTheList says whether the run does nothing that stopping it would lose: it is stopped, or
-// no song is coming in. Such a run is only the list loaded, and what the person asks for next
-// does not have to wait for them to stop it.
-func (m Model) holdsOnlyTheList() bool {
-	if !m.running() || m.starting || m.stopping {
-		return false
-	}
-
-	return m.run.Paused() || m.screen.State().Tally().Running == 0
-}
+// holdsOnlyTheList says whether the run does nothing that stopping it would lose (see runcontrol).
+func (m Model) holdsOnlyTheList() bool { return m.facts().HoldsOnlyTheList() }
 
 // stopThen stops the run, and does what msg asks once it has wound down.
 func (m Model) stopThen(msg tea.Msg) (tea.Model, tea.Cmd) {

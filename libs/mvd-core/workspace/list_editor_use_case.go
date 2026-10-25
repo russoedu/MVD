@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"youtube-downloader/libs/mvd-core/workspace/listhistory"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -10,21 +11,14 @@ import (
 )
 
 // editable reports whether the list can be changed now: not while a run has its own copy.
-func (m Model) editable() bool { return !m.running() && !m.starting && !m.stopping }
+func (m Model) editable() bool { return m.facts().Editable() }
 
-func cloneItems(items []playlistfile.Item) []playlistfile.Item {
-	out := make([]playlistfile.Item, len(items))
-	for i, it := range items {
-		out[i] = playlistfile.Item{Source: it.Source, Songs: append([]playlistfile.Entry(nil), it.Songs...)}
-	}
-	return out
-}
+func cloneItems(items []playlistfile.Item) []playlistfile.Item { return listhistory.Clone(items) }
 
 // setItems makes items the list, keeping what it was to undo, and puts the cursor on playlist
 // sel.
 func (m Model) setItems(items []playlistfile.Item, sel int) Model {
-	m.undone = append(m.undone, cloneItems(m.session.File().Items))
-	m.redone = nil
+	m.history = m.history.Recorded(m.session.File().Items)
 	return m.showItems(items, sel)
 }
 
@@ -125,20 +119,18 @@ func (m Model) editCommand(name string) (tea.Model, tea.Cmd) {
 	i, ok := m.selected()
 	switch name {
 	case entryUndo:
-		if len(m.undone) == 0 {
+		history, last, ok := m.history.Undone(m.session.File().Items)
+		if !ok {
 			return m, nil
 		}
-		m.redone = append(m.redone, cloneItems(m.session.File().Items))
-		last := m.undone[len(m.undone)-1]
-		m.undone = m.undone[:len(m.undone)-1]
+		m.history = history
 		return m.showItems(last, i), nil
 	case entryRedo:
-		if len(m.redone) == 0 {
+		history, last, ok := m.history.Redone(m.session.File().Items)
+		if !ok {
 			return m, nil
 		}
-		m.undone = append(m.undone, cloneItems(m.session.File().Items))
-		last := m.redone[len(m.redone)-1]
-		m.redone = m.redone[:len(m.redone)-1]
+		m.history = history
 		return m.showItems(last, i), nil
 	case entryPaste:
 		return m.paste()

@@ -1,7 +1,7 @@
 package workspace
 
 import (
-	"fmt"
+	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -15,30 +15,13 @@ import (
 // when it asks first.
 type CloseRequestedMsg struct{}
 
-// closeAsk is the question asked before the app closes while songs download: which of its two
-// buttons has the focus (0 quits, 1 keeps downloading).
-type closeAsk struct {
-	on    bool
-	focus int
-}
-
 // downloading is how many songs are being downloaded or wait for their turn to be.
-func (m Model) downloading() int {
-	if m.run == nil {
-		return 0
-	}
-	t := m.screen.State().Tally()
-	if m.run.Paused() {
-		return t.Running // what was accepted waits for the Download button: nothing is lost by quitting
-	}
-
-	return t.Accepted + t.Running
-}
+func (m Model) downloading() int { return m.facts().Downloading() }
 
 // closeRequested closes the app, after asking when songs are being downloaded.
 func (m Model) closeRequested() (Model, tea.Cmd) {
 	if m.downloading() > 0 {
-		m.closing = closeAsk{on: true, focus: 1}
+		m.closing = closequestion.Ask()
 
 		return m, nil
 	}
@@ -46,23 +29,17 @@ func (m Model) closeRequested() (Model, tea.Cmd) {
 	return m.stop(true)
 }
 
-var closeButtons = []string{"Quit", "Keep downloading"}
-
 // closeLayout is the question drawn: its lines, the buttons on the last, and the size of the frame.
 func (m Model) closeLayout() (lines []string, buttons []dialog.Span, w, h int) {
 	w = min(max(m.width*60/100, 46), max(m.width-2, 20))
-	n := m.downloading()
-	what := fmt.Sprintf("%d songs are still downloading.", n)
-	if n == 1 {
-		what = "1 song is still downloading."
-	}
+	what, ask := closequestion.Words(m.downloading())
 	lines = []string{
 		"",
 		"  " + look.Text.Render(what),
-		"  " + look.Text.Render("Quit and stop them?"),
+		"  " + look.Text.Render(ask),
 		"",
 	}
-	label, spans := dialog.Buttons(closeButtons, m.closing.focus, nil)
+	label, spans := dialog.Buttons(closequestion.Answers, m.closing.Focus, nil)
 	pad := max((w-2-spans[len(spans)-1].X1)/2, 0)
 	lines = append(lines, strings.Repeat(" ", pad)+label)
 	for i := range spans {
@@ -88,18 +65,10 @@ func (m Model) closeOrigin() (int, int) {
 
 // closeKey works a key while the question is asked.
 func (m Model) closeKey(key tea.KeyPressMsg) (Model, tea.Cmd) {
-	switch key.String() {
-	case "y", "Y":
+	closing, outcome := m.closing.Key(key.String())
+	m.closing = closing
+	if outcome == closequestion.QuitNow {
 		return m.quitNow()
-	case "n", "N", "esc":
-		m.closing = closeAsk{}
-	case "left", "right", "tab", "shift+tab", "h", "l":
-		m.closing.focus = 1 - m.closing.focus
-	case "enter", "space":
-		if m.closing.focus == 0 {
-			return m.quitNow()
-		}
-		m.closing = closeAsk{}
 	}
 
 	return m, nil
@@ -107,7 +76,7 @@ func (m Model) closeKey(key tea.KeyPressMsg) (Model, tea.Cmd) {
 
 // quitNow stops the downloads and closes the app.
 func (m Model) quitNow() (Model, tea.Cmd) {
-	m.closing = closeAsk{}
+	m.closing = closequestion.State{}
 
 	return m.stop(true)
 }
@@ -125,15 +94,16 @@ func (m Model) closeMouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 		}
 		switch msg.(type) {
 		case tea.MouseMotionMsg:
-			m.closing.focus = i
+			m.closing = m.closing.Hover(i)
 		case tea.MouseClickMsg:
 			if pos.Button != tea.MouseLeft {
 				return m, nil
 			}
-			if i == 0 {
+			closing, outcome := m.closing.Click(i)
+			m.closing = closing
+			if outcome == closequestion.QuitNow {
 				return m.quitNow()
 			}
-			m.closing = closeAsk{}
 		}
 	}
 
