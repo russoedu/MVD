@@ -26,27 +26,46 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"youtube-downloader/libs/mvd-core/menumodel"
 )
+
+// Entry and Menu are what the menus are made of; the menus, which one is open and what choosing
+// an entry does are in package menumodel.
+type (
+	Entry = menumodel.Entry
+	Menu  = menumodel.Menu
+)
+
+// ParseMenus reads menus from the text a design file carries them as (see menumodel.ParseMenus).
+func ParseMenus(text string) ([]Menu, error) { return menumodel.ParseMenus(text) }
+
+// MenusJSON writes menus as ParseMenus reads them.
+func MenusJSON(menus []Menu) string { return menumodel.MenusJSON(menus) }
+
+// ShortcutLabel is a shortcut as the person reads it (see menumodel.ShortcutLabel).
+func ShortcutLabel(text string) string { return menumodel.ShortcutLabel(text) }
+
+// SelectedMsg is sent when an entry is chosen with the mouse or the keyboard,
+// or by pressing its shortcut.
+type SelectedMsg struct {
+	// Menu and Entry are the position of the entry: the menu in the bar and the
+	// entry in that menu, both from 0.
+	Menu, Entry int
+	// MenuName, Name and Shortcut are what the entry says.
+	MenuName, Name, Shortcut string
+}
 
 // padX is the space at each side of an entry, inside the box.
 const padX = 2
 
-// Model is the menu bar component.
+// Model is the menu bar component: the bar's state is a menumodel.Bar, and this draws it and
+// turns the pointer and the keys into its intents.
 type Model struct {
-	menus []Menu
+	bar   menumodel.Bar
 	title string
-	// open is the menu whose box is showing, or -1.
-	open int
-	// cursor is the entry the keyboard or the pointer is on in the open menu,
-	// or -1; menuCursor is the heading the keyboard is on.
-	cursor, menuCursor int
-	// active is true once the keyboard has taken the bar (F10, an Alt letter or
-	// a press): until then the arrow keys are left to the program.
-	active              bool
-	// disabled are the entries, by name, that are greyed out and cannot be chosen.
-	disabled map[string]bool
-	// hover is the heading the pointer is over while no menu is open, or -1.
-	hover int
+	// open is what WithOpen asked for, until New gives the bar its menus.
+	open                int
 	w, h                int
 	originX, originY    int
 	accent, muted, rule string
@@ -57,17 +76,19 @@ type Option func(*Model)
 
 // New returns a closed bar with no menus.
 func New(opts ...Option) Model {
-	m := Model{open: -1, cursor: -1, w: 40, h: 8, accent: "212", muted: "245", rule: "240", disabled: map[string]bool{}, hover: -1}
+	m := Model{bar: menumodel.NewBar(), open: menumodel.None, w: 40, h: 8, accent: "212", muted: "245", rule: "240"}
 	for _, o := range opts {
 		o(&m)
 	}
-	m.open = m.validMenu(m.open)
-	m.menuCursor = max(m.open, 0)
+	m.bar = m.bar.WithMenus(m.bar.Menus(), m.open)
+
 	return m
 }
 
 // WithMenus sets the menus.
-func WithMenus(menus ...Menu) Option { return func(m *Model) { m.menus = menus } }
+func WithMenus(menus ...Menu) Option {
+	return func(m *Model) { m.bar = m.bar.WithMenus(menus, menumodel.None) }
+}
 
 // WithMenusJSON sets the menus from the text a design file carries them as
 // (see ParseMenus). Text that does not parse leaves the menus empty.
@@ -77,7 +98,7 @@ func WithMenusJSON(text string) Option {
 		if err != nil {
 			menus = nil
 		}
-		m.menus = menus
+		m.bar = m.bar.WithMenus(menus, menumodel.None)
 	}
 }
 
@@ -122,11 +143,7 @@ func (m *Model) SetMuted(c string)  { m.muted = c }
 func (m *Model) SetRule(c string)   { m.rule = c }
 
 // SetMenus replaces the menus and closes the bar.
-func (m *Model) SetMenus(menus []Menu) {
-	m.menus = menus
-	m.Close()
-	m.menuCursor = 0
-}
+func (m *Model) SetMenus(menus []Menu) { m.bar.SetMenus(menus) }
 
 // SetMenusJSON replaces the menus from the text a design file carries them as
 // and reports whether it parsed; the menus are left as they were when it did
@@ -137,22 +154,16 @@ func (m *Model) SetMenusJSON(text string) bool {
 		return false
 	}
 	m.SetMenus(menus)
+
 	return true
 }
 
 // SetEnabled greys out the entry with the given name, or brings it back. A greyed entry
 // is skipped by the arrow keys and chooses nothing, by pointer or by shortcut.
-func (m *Model) SetEnabled(name string, enabled bool) {
-	if m.disabled == nil {
-		m.disabled = map[string]bool{}
-	}
-	m.disabled[name] = !enabled
-}
-
-func (m Model) off(e Entry) bool { return m.disabled[e.Name] }
+func (m *Model) SetEnabled(name string, enabled bool) { m.bar.SetEnabled(name, enabled) }
 
 // Enabled reports whether the entry with the given name can be chosen.
-func (m Model) Enabled(name string) bool { return !m.disabled[name] }
+func (m Model) Enabled(name string) bool { return m.bar.Enabled(name) }
 
 // SetTitle changes the text at the left of the bar.
 func (m *Model) SetTitle(title string) { m.title = title }
@@ -165,28 +176,19 @@ func (m *Model) SetOrigin(x, y int) { m.originX, m.originY = x, y }
 
 // SetOpen opens menu i, or closes the bar for -1 or a number there is no menu
 // for.
-func (m *Model) SetOpen(i int) {
-	m.open = m.validMenu(i)
-	m.cursor = -1
-	if m.open >= 0 {
-		m.menuCursor = m.open
-		m.cursor = m.step(-1, 1)
-	}
-}
+func (m *Model) SetOpen(i int) { m.bar.SetOpen(i) }
 
 // Close hides the box and gives the keyboard back to the program.
-func (m *Model) Close() {
-	m.open, m.cursor, m.active = -1, -1, false
-}
+func (m *Model) Close() { m.bar.Close() }
 
 // Open is the menu showing, or -1.
-func (m Model) Open() int { return m.open }
+func (m Model) Open() int { return m.bar.Open() }
 
 // Menus are the menus.
-func (m Model) Menus() []Menu { return m.menus }
+func (m Model) Menus() []Menu { return m.bar.Menus() }
 
 // MenusJSON is the menus as WithMenusJSON reads them.
-func (m Model) MenusJSON() string { return MenusJSON(m.menus) }
+func (m Model) MenusJSON() string { return MenusJSON(m.bar.Menus()) }
 
 // Width and Height are the room the component takes.
 func (m Model) Width() int  { return m.w }
@@ -195,20 +197,14 @@ func (m Model) Height() int { return m.h }
 // ContentHeight is the rows the bar and the box of its tallest menu need.
 func (m Model) ContentHeight() int {
 	tallest := 0
-	for _, mn := range m.menus {
+	for _, mn := range m.bar.Menus() {
 		tallest = max(tallest, len(mn.Entries))
 	}
 	if tallest == 0 {
 		return 1
 	}
-	return 1 + tallest + 2
-}
 
-func (m Model) validMenu(i int) int {
-	if i < 0 || i >= len(m.menus) {
-		return -1
-	}
-	return i
+	return 1 + tallest + 2
 }
 
 // Init implements tea.Model.
@@ -224,164 +220,90 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		if msg.Button != tea.MouseLeft {
 			return m, nil
 		}
+
 		return m.click(msg.X-m.originX, msg.Y-m.originY)
 	case tea.MouseMotionMsg:
-		m.hover = -1
-		if m.open < 0 && msg.Y-m.originY == 0 {
-			m.hover = m.headingAt(msg.X - m.originX)
+		x, y := msg.X-m.originX, msg.Y-m.originY
+		heading := menumodel.None
+		if y == 0 {
+			heading = m.headingAt(x)
 		}
-		if m.open >= 0 {
-			x, y := msg.X-m.originX, msg.Y-m.originY
-			if y == 0 {
-				if i := m.headingAt(x); i >= 0 && i != m.open {
-					m.open, m.menuCursor = i, i
-				}
-			}
-			m.cursor = m.entryAt(x, y)
-		}
+		m.bar.PointerOver(heading, m.entryAt(x, y))
+
 		return m, nil
 	case tea.KeyPressMsg:
 		return m.key(msg.String())
 	}
+
 	return m, nil
 }
 
 func (m Model) click(x, y int) (Model, tea.Cmd) {
 	if y == 0 {
 		if i := m.headingAt(x); i >= 0 {
-			if m.open == i {
-				m.Close()
-			} else {
-				m.SetOpen(i)
-				m.active = true
-				m.cursor = -1
-			}
+			m.bar.ClickHeading(i)
+
 			return m, nil
 		}
 	}
-	if m.open >= 0 {
+	if m.bar.Open() >= 0 {
 		if j := m.entryAt(x, y); j >= 0 {
-			return m.choose(m.open, j)
+			sel, ok := m.bar.ClickEntry(j)
+
+			return m.chosen(sel, ok)
 		}
-		m.Close()
+		m.bar.ClickAway()
 	}
+
 	return m, nil
 }
 
 func (m Model) key(name string) (Model, tea.Cmd) {
 	// Shortcuts work whether the menu is open or not.
-	for i, mn := range m.menus {
-		for j, e := range mn.Entries {
-			if e.Separator || e.Shortcut == "" || m.off(e) {
-				continue
-			}
-			for _, k := range shortcutKeys(e.Shortcut) {
-				if k == name {
-					return m.choose(i, j)
-				}
-			}
-		}
-	}
-	if len(m.menus) == 0 {
-		return m, nil
+	if sel, ok := m.bar.ChooseShortcut(name); ok {
+		return m.chosen(sel, true)
 	}
 	if name == "f10" {
-		m.SetOpen(m.menuCursor)
-		m.active = true
+		m.bar.Activate()
+
 		return m, nil
 	}
 	if letter, ok := strings.CutPrefix(name, "alt+"); ok && len([]rune(letter)) == 1 {
-		for i, mn := range m.menus {
-			if first := []rune(strings.ToLower(strings.TrimSpace(mn.Name))); len(first) > 0 && string(first[0]) == letter {
-				m.SetOpen(i)
-				m.active = true
-				return m, nil
-			}
-		}
-		return m, nil
-	}
-	if !m.active && m.open < 0 {
+		m.bar.OpenByLetter(letter)
+
 		return m, nil
 	}
 	switch name {
-	case "left", "right":
-		dir := 1
-		if name == "left" {
-			dir = -1
-		}
-		next := ((m.menuCursor+dir)%len(m.menus) + len(m.menus)) % len(m.menus)
-		m.menuCursor = next
-		if m.open >= 0 {
-			m.SetOpen(next)
-		}
-	case "down", "up":
-		if m.open < 0 {
-			if name == "down" {
-				m.SetOpen(m.menuCursor)
-			}
-			break
-		}
-		dir := 1
-		if name == "up" {
-			dir = -1
-		}
-		from := m.cursor
-		if from < 0 && dir < 0 {
-			from = 0
-		}
-		m.cursor = m.step(from, dir)
+	case "left":
+		m.bar.MoveHeading(-1)
+	case "right":
+		m.bar.MoveHeading(1)
+	case "down":
+		m.bar.MoveEntry(1)
+	case "up":
+		m.bar.MoveEntry(-1)
 	case "home":
-		if m.open >= 0 {
-			m.cursor = m.step(-1, 1)
-		}
+		m.bar.First()
 	case "end":
-		if m.open >= 0 {
-			m.cursor = m.step(0, -1)
-		}
+		m.bar.Last()
 	case "enter", "space":
-		if m.open < 0 {
-			m.SetOpen(m.menuCursor)
-			break
-		}
-		if m.cursor >= 0 {
-			return m.choose(m.open, m.cursor)
-		}
+		sel, ok := m.bar.Confirm()
+
+		return m.chosen(sel, ok)
 	case "esc":
-		if m.open >= 0 {
-			m.open, m.cursor = -1, -1
-		} else {
-			m.active = false
-		}
+		m.bar.Escape()
 	}
+
 	return m, nil
 }
 
-// step is the next entry from index from in direction dir that can be chosen:
-// separators are skipped and it wraps. It is -1 when there is none.
-func (m Model) step(from, dir int) int {
-	if m.open < 0 {
-		return -1
-	}
-	entries := m.menus[m.open].Entries
-	n := len(entries)
-	for k := 1; k <= n; k++ {
-		i := ((from+dir*k)%n + n) % n
-		if !entries[i].Separator && !m.off(entries[i]) {
-			return i
-		}
-	}
-	return -1
-}
-
-// choose closes the bar and reports entry j of menu i.
-func (m Model) choose(i, j int) (Model, tea.Cmd) {
-	e := m.menus[i].Entries[j]
-	if m.off(e) {
+// chosen is the bar after an entry was chosen, with the command that tells of it.
+func (m Model) chosen(sel menumodel.Selection, ok bool) (Model, tea.Cmd) {
+	if !ok {
 		return m, nil
 	}
-	m.Close()
-	m.menuCursor = i
-	out := SelectedMsg{Menu: i, Entry: j, MenuName: m.menus[i].Name, Name: e.Name, Shortcut: e.Shortcut}
+	out := SelectedMsg{Menu: sel.Menu, Entry: sel.Entry, MenuName: sel.MenuName, Name: sel.Name, Shortcut: sel.Shortcut}
+
 	return m, func() tea.Msg { return out }
 }
 
@@ -393,8 +315,8 @@ func (m Model) headingX() []int {
 	if m.title != "" {
 		x += lipgloss.Width(m.title) + 1 + 2
 	}
-	xs := make([]int, len(m.menus))
-	for i, mn := range m.menus {
+	xs := make([]int, len(m.bar.Menus()))
+	for i, mn := range m.bar.Menus() {
 		xs[i] = x
 		x += lipgloss.Width(mn.Name) + 3
 	}
@@ -404,7 +326,7 @@ func (m Model) headingX() []int {
 // headingAt is the heading under column x, or -1.
 func (m Model) headingAt(x int) int {
 	for i, x0 := range m.headingX() {
-		if x >= x0 && x < x0+lipgloss.Width(m.menus[i].Name)+2 {
+		if x >= x0 && x < x0+lipgloss.Width(m.bar.Menus()[i].Name)+2 {
 			return i
 		}
 	}
@@ -414,7 +336,7 @@ func (m Model) headingAt(x int) int {
 // boxWidth is the inner width of the open menu's box.
 func (m Model) boxWidth() int {
 	w := 0
-	for _, e := range m.menus[m.open].Entries {
+	for _, e := range m.bar.Menus()[m.bar.Open()].Entries {
 		n := lipgloss.Width(e.Name)
 		if e.Shortcut != "" {
 			n += 3 + lipgloss.Width(ShortcutLabel(e.Shortcut))
@@ -427,21 +349,21 @@ func (m Model) boxWidth() int {
 // boxX is the column of the box's left edge: under its heading, kept inside
 // the component.
 func (m Model) boxX() int {
-	return min(m.headingX()[m.open], max(m.w-m.boxWidth()-2, 0))
+	return min(m.headingX()[m.bar.Open()], max(m.w-m.boxWidth()-2, 0))
 }
 
 // entryAt is the entry of the open menu under (x, y), or -1: row 0 is the bar,
 // row 1 the top edge of the box.
 func (m Model) entryAt(x, y int) int {
-	if m.open < 0 {
+	if m.bar.Open() < 0 {
 		return -1
 	}
 	j := y - 2
 	left := m.boxX()
-	if x <= left || x >= left+m.boxWidth()+1 || j < 0 || j >= len(m.menus[m.open].Entries) || j >= m.h-2 {
+	if x <= left || x >= left+m.boxWidth()+1 || j < 0 || j >= len(m.bar.Menus()[m.bar.Open()].Entries) || j >= m.h-2 {
 		return -1
 	}
-	if e := m.menus[m.open].Entries[j]; e.Separator || m.off(e) {
+	if e := m.bar.Menus()[m.bar.Open()].Entries[j]; e.Separator || m.bar.Off(e) {
 		return -1
 	}
 	return j
@@ -463,11 +385,11 @@ func (m Model) View() string {
 	if m.title != "" {
 		bar.WriteString(accent.Bold(true).Render(m.title) + " " + rule.Render("│") + " ")
 	}
-	for i, mn := range m.menus {
+	for i, mn := range m.bar.Menus() {
 		label := " " + mn.Name + " "
-		if i == m.open || (i == m.menuCursor && m.active) {
+		if i == m.bar.Open() || (i == m.bar.MenuCursor() && m.bar.Active()) {
 			bar.WriteString(selected.Render(label))
-		} else if i == m.hover {
+		} else if i == m.bar.Hover() {
 			bar.WriteString(accent.Underline(true).Render(label))
 		} else {
 			bar.WriteString(muted.Render(label))
@@ -476,10 +398,10 @@ func (m Model) View() string {
 	}
 	rows[0] = fit(bar.String(), m.w)
 
-	if m.open >= 0 && m.h > 1 {
+	if m.bar.Open() >= 0 && m.h > 1 {
 		x, w := m.boxX(), m.boxWidth()
 		box := []string{rule.Render("╭" + strings.Repeat("─", w) + "╮")}
-		for j, e := range m.menus[m.open].Entries {
+		for j, e := range m.bar.Menus()[m.bar.Open()].Entries {
 			if e.Separator {
 				box = append(box, rule.Render("│"+strings.Repeat("─", w)+"│"))
 				continue
@@ -488,9 +410,9 @@ func (m Model) View() string {
 			gap := max(w-2*padX-lipgloss.Width(e.Name)-lipgloss.Width(shortcut), 1)
 			pad := strings.Repeat(" ", padX)
 			var text string
-			if m.off(e) {
+			if m.bar.Off(e) {
 				text = muted.Faint(true).Render(pad + e.Name + strings.Repeat(" ", gap) + shortcut + pad)
-			} else if j == m.cursor {
+			} else if j == m.bar.Cursor() {
 				text = selected.Render(pad + e.Name + strings.Repeat(" ", gap) + shortcut + pad)
 			} else {
 				text = pad + e.Name + strings.Repeat(" ", gap) + muted.Render(shortcut) + pad

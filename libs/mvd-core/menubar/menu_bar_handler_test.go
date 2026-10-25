@@ -162,12 +162,12 @@ func TestTheArrowsSkipSeparators(t *testing.T) {
 	for range 2 {
 		m, _ = m.Update(press("down"))
 	}
-	if m.cursor != 3 {
-		t.Errorf("cursor = %d, want Quit (3) after skipping the separator", m.cursor)
+	if m.bar.Cursor() != 3 {
+		t.Errorf("cursor = %d, want Quit (3) after skipping the separator", m.bar.Cursor())
 	}
 	m, _ = m.Update(press("down"))
-	if m.cursor != 0 {
-		t.Errorf("cursor = %d, want it to wrap to New", m.cursor)
+	if m.bar.Cursor() != 0 {
+		t.Errorf("cursor = %d, want it to wrap to New", m.bar.Cursor())
 	}
 }
 

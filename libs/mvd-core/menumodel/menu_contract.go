@@ -1,4 +1,4 @@
-package menubar
+package menumodel
 
 // Entry is one line of a menu: a name with an optional shortcut, or a
 // separator rule. The shortcut is shown at the right of the name, and pressing
@@ -15,9 +15,9 @@ type Menu struct {
 	Entries []Entry `json:"entries"`
 }
 
-// SelectedMsg is sent when an entry is chosen with the mouse or the keyboard,
-// or by pressing its shortcut.
-type SelectedMsg struct {
+// Selection is an entry that was chosen, with the mouse or the keyboard, or by pressing its
+// shortcut.
+type Selection struct {
 	// Menu and Entry are the position of the entry: the menu in the bar and the
 	// entry in that menu, both from 0.
 	Menu, Entry int
