@@ -1,4 +1,4 @@
-package prefspopup
+package prefsform
 
 import (
 	"regexp"
@@ -6,26 +6,26 @@ import (
 )
 
 // The name pattern of the files is shown as blocks, each a field of the song that cannot
-// be changed, with the text the person typed between them. A unit is one of those: a block
+// be changed, with the text the person typed between them. A Unit is one of those: a block
 // or a character.
 
 var blockToken = regexp.MustCompile(`%\(([^)]*)\)[0-9]*[sd]`)
 
-// unit is a block of the pattern, or one character of text between blocks.
-type unit struct {
-	token string // the yt-dlp field for a block; "" for a character
-	label string // what a block says
-	r     rune   // the character, for text
+// Unit is a block of the pattern, or one character of text between blocks.
+type Unit struct {
+	Token string // the yt-dlp field for a block; "" for a character
+	Label string // what a block says
+	R     rune   // the character, for text
 }
 
-func (u unit) isBlock() bool { return u.token != "" }
+func (u Unit) IsBlock() bool { return u.Token != "" }
 
 // labelOf is what a block says: the name the palette gives it, else the first field of the
 // token in capitals.
 func labelOf(token string) string {
-	for _, b := range templateBlocks {
-		if b.token == token {
-			return b.name
+	for _, b := range TemplateBlocks {
+		if b.Token == token {
+			return b.Name
 		}
 	}
 	parts := blockToken.FindStringSubmatch(token)
@@ -40,10 +40,10 @@ func labelOf(token string) string {
 // move or take away, so it is kept out of the blocks and added again when the template is made.
 const extensionSuffix = ".%(ext)s"
 
-// parseTemplate splits a yt-dlp output template into blocks and characters, without its
+// ParseTemplate splits a yt-dlp output template into blocks and characters, without its
 // extension.
-func parseTemplate(template string) []unit {
-	var units []unit
+func ParseTemplate(template string) []Unit {
+	var units []Unit
 	rest := strings.TrimSuffix(template, extensionSuffix)
 	for rest != "" {
 		loc := blockToken.FindStringIndex(rest)
@@ -52,59 +52,59 @@ func parseTemplate(template string) []unit {
 			text = rest[:loc[0]]
 		}
 		for _, r := range text {
-			units = append(units, unit{r: r})
+			units = append(units, Unit{R: r})
 		}
 		if loc == nil {
 			break
 		}
 		token := rest[loc[0]:loc[1]]
-		units = append(units, unit{token: token, label: labelOf(token)})
+		units = append(units, Unit{Token: token, Label: labelOf(token)})
 		rest = rest[loc[1]:]
 	}
 	return units
 }
 
-// formatTemplate is the yt-dlp template the units make, ending with the extension.
-func formatTemplate(units []unit) string {
+// FormatTemplate is the yt-dlp template the units make, ending with the extension.
+func FormatTemplate(units []Unit) string {
 	var b strings.Builder
 	for _, u := range units {
-		if u.isBlock() {
-			b.WriteString(u.token)
+		if u.IsBlock() {
+			b.WriteString(u.Token)
 		} else {
-			b.WriteRune(u.r)
+			b.WriteRune(u.R)
 		}
 	}
 	b.WriteString(extensionSuffix)
 	return b.String()
 }
 
-// insertUnits puts add into units at index at.
-func insertUnits(units []unit, at int, add ...unit) []unit {
+// InsertUnits puts add into units at index at.
+func InsertUnits(units []Unit, at int, add ...Unit) []Unit {
 	at = max(min(at, len(units)), 0)
-	out := make([]unit, 0, len(units)+len(add))
+	out := make([]Unit, 0, len(units)+len(add))
 	out = append(out, units[:at]...)
 	out = append(out, add...)
 	return append(out, units[at:]...)
 }
 
-// removeUnit takes out unit i.
-func removeUnit(units []unit, i int) []unit {
+// RemoveUnit takes out Unit i.
+func RemoveUnit(units []Unit, i int) []Unit {
 	if i < 0 || i >= len(units) {
 		return units
 	}
-	return append(append([]unit(nil), units[:i]...), units[i+1:]...)
+	return append(append([]Unit(nil), units[:i]...), units[i+1:]...)
 }
 
-// moveUnit takes unit from out and puts it where the boundary to (counted before it was
+// MoveUnit takes Unit from out and puts it where the boundary to (counted before it was
 // taken out) is.
-func moveUnit(units []unit, from, to int) []unit {
+func MoveUnit(units []Unit, from, to int) []Unit {
 	if from < 0 || from >= len(units) || to < 0 || to > len(units) || to == from || to == from+1 {
 		return units
 	}
 	moved := units[from]
-	rest := removeUnit(units, from)
+	rest := RemoveUnit(units, from)
 	if to > from {
 		to--
 	}
-	return insertUnits(rest, to, moved)
+	return InsertUnits(rest, to, moved)
 }

@@ -1,4 +1,4 @@
-package prefspopup
+package prefsform
 
 import (
 	"regexp"
@@ -43,10 +43,10 @@ func ExampleName(template, ext string) string {
 	})
 }
 
-// templateBlock is one of the blocks that add a field to the template.
-type templateBlock struct{ name, token string }
+// TemplateBlock is one of the blocks that add a field to the template.
+type TemplateBlock struct{ Name, Token string }
 
-var templateBlocks = []templateBlock{
+var TemplateBlocks = []TemplateBlock{
 	{"ARTIST", "%(artist,uploader)s"},
 	{"TITLE", "%(title)s"},
 	{"PLAYLIST NAME", "%(playlist_title,playlist)s"},
