@@ -1,18 +1,20 @@
 package preferences
 
+import "youtube-downloader/libs/mvd-core/setup/preferencessession"
+
 // MoveOutcome is how asking to move the app to its own folder went.
-type MoveOutcome int
+type MoveOutcome = preferencessession.MoveOutcome
 
 const (
 	// MoveStarted: the person agreed and the app was moved and started from its new
 	// place. It ends with this copy quitting.
-	MoveStarted MoveOutcome = iota
+	MoveStarted = preferencessession.MoveStarted
 	// MoveDeclined: the person said no, or the move failed and said so.
-	MoveDeclined
+	MoveDeclined = preferencessession.MoveDeclined
 	// MoveAlreadyThere: the app already lives in its own folder.
-	MoveAlreadyThere
+	MoveAlreadyThere = preferencessession.MoveAlreadyThere
 	// MoveUnavailable: there is nowhere to move it to on this machine, or no way to ask.
-	MoveUnavailable
+	MoveUnavailable = preferencessession.MoveUnavailable
 )
 
 // Mover asks the person, on the machine's own screen, whether to move the app to its

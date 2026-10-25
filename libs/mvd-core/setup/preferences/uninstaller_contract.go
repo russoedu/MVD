@@ -1,16 +1,18 @@
 package preferences
 
+import "youtube-downloader/libs/mvd-core/setup/preferencessession"
+
 // RemovalOutcome is how asking to remove the app went.
-type RemovalOutcome int
+type RemovalOutcome = preferencessession.RemovalOutcome
 
 const (
 	// RemovalStarted: the person agreed and the removal is under way. It ends with
 	// the app quitting.
-	RemovalStarted RemovalOutcome = iota
+	RemovalStarted = preferencessession.RemovalStarted
 	// RemovalDeclined: the person said no; nothing was removed.
-	RemovalDeclined
+	RemovalDeclined = preferencessession.RemovalDeclined
 	// RemovalUnavailable: this machine has no way to ask, so nothing was removed.
-	RemovalUnavailable
+	RemovalUnavailable = preferencessession.RemovalUnavailable
 )
 
 // Uninstaller asks the person, on the machine's own screen, whether to remove the
