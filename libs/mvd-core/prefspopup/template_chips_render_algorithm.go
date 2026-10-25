@@ -1,6 +1,7 @@
 package prefspopup
 
 import (
+	"youtube-downloader/libs/mvd-core/prefsform"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -30,8 +31,8 @@ type boundary struct{ y, x, index int }
 // chips draws the pattern as blocks and text, wrapped to w columns, and says where each part
 // takes clicks. The lines are counted from the first of them.
 func (m Model) chips(field, w int) (lines []string, hits []hit, bounds []boundary) {
-	units := parseTemplate(m.cfg.OutputTemplate)
-	here := field == m.cursor
+	units := prefsform.ParseTemplate(m.form.Cfg.OutputTemplate)
+	here := field == m.form.Cursor
 	var line strings.Builder
 	x, y := gutterWidth, 0
 	flush := func() {
@@ -41,7 +42,7 @@ func (m Model) chips(field, w int) (lines []string, hits []hit, bounds []boundar
 	}
 	mark := func(i int) {
 		bounds = append(bounds, boundary{y: y, x: x, index: i})
-		if (m.editing && here && m.caret == i && !m.dragging) || (m.dragging && m.dragTo == i) {
+		if (m.form.Editing && here && m.form.Caret == i && !m.dragging) || (m.dragging && m.dragTo == i) {
 			line.WriteString(caretStyle.Render("▎"))
 			x++
 		}
@@ -55,24 +56,24 @@ func (m Model) chips(field, w int) (lines []string, hits []hit, bounds []boundar
 	}
 	for i, u := range units {
 		need := 1
-		if u.isBlock() {
-			need = width(u.label) + chipLeft + chipRight
+		if u.IsBlock() {
+			need = width(u.Label) + chipLeft + chipRight
 		}
 		if x+need+1 > w && x > gutterWidth {
 			hits = append(hits, hit{y: y, x0: x, x1: w, kind: hitCaret, field: field, arg: i})
 			flush()
 		}
 		mark(i)
-		if u.isBlock() {
-			bw := width(u.label) + chipLeft + chipRight
-			line.WriteString(chipStyle.Render(" ") + chipGrip.Render("≡") + chipStyle.Render(" "+u.label+" ") + chipRemove.Render("×") + chipStyle.Render(" "))
+		if u.IsBlock() {
+			bw := width(u.Label) + chipLeft + chipRight
+			line.WriteString(chipStyle.Render(" ") + chipGrip.Render("≡") + chipStyle.Render(" "+u.Label+" ") + chipRemove.Render("×") + chipStyle.Render(" "))
 			hits = append(hits,
 				hit{y: y, x0: x, x1: x + 3, kind: hitChipHandle, field: field, arg: i},
 				hit{y: y, x0: x + 3, x1: x + bw - 3, kind: hitCaret, field: field, arg: i + 1},
 				hit{y: y, x0: x + bw - 3, x1: x + bw, kind: hitChipRemove, field: field, arg: i})
 			x += bw
 		} else {
-			line.WriteString(look.Text.Render(string(u.r)))
+			line.WriteString(look.Text.Render(string(u.R)))
 			hits = append(hits, hit{y: y, x0: x, x1: x + 1, kind: hitCaret, field: field, arg: i})
 			x++
 		}
@@ -88,8 +89,8 @@ func (m Model) palette(field, y int) (string, []hit) {
 	var row strings.Builder
 	var hits []hit
 	x := gutterWidth
-	for j, b := range templateBlocks {
-		label := " + " + b.name + " "
+	for j, b := range prefsform.TemplateBlocks {
+		label := " + " + b.Name + " "
 		style := chipStyle
 		if m.hy-tabRows+m.scroll == y && m.hx-1 >= x && m.hx-1 < x+ansi.StringWidth(label) {
 			style = chipHover // under the pointer

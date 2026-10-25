@@ -9,6 +9,7 @@ import (
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/look"
+	"youtube-downloader/libs/mvd-core/prefsform"
 )
 
 func newPopup() Model {
@@ -95,7 +96,7 @@ func TestAColourIsOnlyTakenWhenItIsOne(t *testing.T) {
 	m = press(press(m, "down"), "down") // past the theme and the background: the accent
 	m = press(m, "enter")
 	m.input.SetValue("pink")
-	if m = press(m, "enter"); !m.Editing() || m.status == "" {
+	if m = press(m, "enter"); !m.Editing() || m.form.Status == "" {
 		t.Fatal("a bad colour was accepted")
 	}
 	m.input.SetValue("#f07")
@@ -122,7 +123,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 		t.Errorf("a click on an option set %q", got)
 	}
 	for _, h := range l.hits {
-		if h.kind == hitPlus && m.pages[m.tab].fields[h.field].label == "Max Concurrent Downloads" {
+		if h.kind == hitPlus && m.form.Pages[m.form.Tab].Fields[h.field].Label == "Max Concurrent Downloads" {
 			before := m.Config().MaxConcurrentDownloads
 			m = m.reveal()
 			m.scroll = max(h.y-3, 0) // the page is longer than the room: bring the row into it
@@ -133,7 +134,7 @@ func TestClicksOnTabsOptionsStepsAndBlocks(t *testing.T) {
 		}
 	}
 	m = m.show(0)
-	m.cursor = 1
+	m.form.Cursor = 1
 	for _, h := range m.layout().hits {
 		if h.kind == hitBlock && h.arg == 1 {
 			m = click(m, h.x0+2, tabRows+h.y)
@@ -169,25 +170,25 @@ func clickHit(m Model, h hit) Model {
 
 func templateModel() Model {
 	m := newPopup().show(0)
-	m.cursor = 1
-	m.cfg.OutputTemplate = "%(title)s - %(artist,uploader)s.%(ext)s"
+	m.form.Cursor = 1
+	m.form.Cfg.OutputTemplate = "%(title)s - %(artist,uploader)s.%(ext)s"
 	return m
 }
 
 func TestTheTemplateIsBlocksWithTextBetweenThem(t *testing.T) {
-	units := parseTemplate("%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s")
+	units := prefsform.ParseTemplate("%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s")
 	var blocks, text int
 	for _, u := range units {
-		if u.isBlock() {
+		if u.IsBlock() {
 			blocks++
 		} else {
 			text++
 		}
 	}
-	if blocks != 3 || text != 4 || units[0].label != "PLAYLIST NAME" || units[len(units)-1].label != "TITLE" {
+	if blocks != 3 || text != 4 || units[0].Label != "PLAYLIST NAME" || units[len(units)-1].Label != "TITLE" {
 		t.Errorf("blocks %d, text %d, units %+v", blocks, text, units)
 	}
-	if got := formatTemplate(units); got != "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s" {
+	if got := prefsform.FormatTemplate(units); got != "%(playlist_title,playlist)s/%(playlist_index)02d - %(title)s.%(ext)s" {
 		t.Errorf("round trip %q", got)
 	}
 }
@@ -200,8 +201,8 @@ func TestABlockOfThePaletteGoesWhereTheCursorIs(t *testing.T) {
 	} else {
 		t.Fatal("no place for the cursor")
 	}
-	if !m.Editing() || m.caret != 2 {
-		t.Fatalf("editing %v, cursor %d", m.Editing(), m.caret)
+	if !m.Editing() || m.form.Caret != 2 {
+		t.Fatalf("editing %v, cursor %d", m.Editing(), m.form.Caret)
 	}
 	m = clickHit(m, chipAt(m, hitBlock, 0))
 	if got, want := m.Config().OutputTemplate, "%(title)s %(artist,uploader)s- %(artist,uploader)s.%(ext)s"; got != want {
@@ -211,7 +212,7 @@ func TestABlockOfThePaletteGoesWhereTheCursorIs(t *testing.T) {
 
 func TestTypedTextGoesBetweenBlocksAndBackspaceTakesAWholeBlock(t *testing.T) {
 	m := templateModel()
-	m = clickHit(m, chipAt(m, hitCaret, len(parseTemplate(m.cfg.OutputTemplate))))
+	m = clickHit(m, chipAt(m, hitCaret, len(prefsform.ParseTemplate(m.form.Cfg.OutputTemplate))))
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	if got := m.Config().OutputTemplate; got != "%(title)s - .%(ext)s" {
 		t.Errorf("after backspace %q", got)
@@ -240,7 +241,7 @@ func TestABlockCanBeCarriedToAnotherPlace(t *testing.T) {
 	from := chipAt(m, hitChipHandle, 0)
 	var to boundary
 	for _, b := range l.bounds {
-		if b.index == len(parseTemplate(m.cfg.OutputTemplate)) {
+		if b.index == len(prefsform.ParseTemplate(m.form.Cfg.OutputTemplate)) {
 			to = b
 		}
 	}

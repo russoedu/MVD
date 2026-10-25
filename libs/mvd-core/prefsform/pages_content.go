@@ -1,0 +1,163 @@
+package prefsform
+
+import (
+	"strconv"
+	"strings"
+
+	"youtube-downloader/libs/mvd-core/config"
+)
+
+var yesNo = []string{"yes", "no"}
+
+func boolText(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "no"
+}
+
+func intText(n int) string { return strconv.Itoa(n) }
+
+func parseInt(s string) int {
+	n, _ := strconv.Atoi(s)
+	return n
+}
+
+func upper(s string) string { return strings.ToUpper(s) }
+
+func cookieChoice(c config.Config) string {
+	switch {
+	case c.CookiesFromBrowser != "":
+		return c.CookiesFromBrowser
+	case c.AutoCookies:
+		return "all"
+	}
+	return "off"
+}
+
+func setCookieChoice(c *config.Config, v string) {
+	switch v {
+	case "all":
+		c.AutoCookies, c.CookiesFromBrowser = true, ""
+	case "off":
+		c.AutoCookies, c.CookiesFromBrowser = false, ""
+	default:
+		c.AutoCookies, c.CookiesFromBrowser = false, v
+	}
+}
+
+var cookieOptions = []string{"off", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari", "all"}
+
+// colourField is a theme colour; slot points at it inside the config.
+func colourField(label string, slot func(*config.ThemeColors) *string) Field {
+	return Field{
+		Label: label, Kind: KindColour, Slot: slot,
+		Get: func(c config.Config) string { return *slot(&c.Colors) },
+		// Changing a colour makes the theme the person's own, with the one before as its base.
+		Set: func(c *config.Config, v string) { *slot(&c.Colors) = v; c.ThemeName = config.CustomTheme },
+	}
+}
+
+// themeField is the choice of theme: each of the themes of the app, and the person's own.
+func themeField() Field {
+	return Field{
+		Label: "Theme", Kind: KindChoice, Options: config.ThemeNames(),
+		Hint: "Pick one to start from, then change any colour below to make it yours",
+		Get:  func(c config.Config) string { return c.ThemeName },
+		Set: func(c *config.Config, v string) {
+			if colours, ok := config.PresetColors(v); ok {
+				c.Colors = colours
+			}
+			c.ThemeName = v
+		},
+		Swatches: func(option string) []string {
+			c, ok := config.PresetColors(option)
+			if !ok {
+				return nil
+			}
+			return []string{c.Background, c.Accent, c.Focus, c.Highlight, c.Success, c.Error}
+		},
+	}
+}
+
+// Pages are the tabs, in the order they are shown.
+func Pages(caps Capabilities) []Page {
+	advanced := []Field{
+		{Label: "Parts downloaded at once", Hint: "Each video is fetched in pieces; this is how many come at once. More can be faster.", Kind: KindStepper, Min: 0, Max: 16, Step: 1, Off: "off",
+			Get: func(c config.Config) string { return intText(c.ConcurrentFragments) },
+			Set: func(c *config.Config, v string) { c.ConcurrentFragments = parseInt(v) }},
+		{Label: "Give up on a slow start after (seconds)", Kind: KindStepper, Hint: "How long a download may take to start before it is stopped.", Min: 10, Max: 3600, Step: 10,
+			Get: func(c config.Config) string { return intText(c.StartTimeoutSeconds) },
+			Set: func(c *config.Config, v string) { c.StartTimeoutSeconds = parseInt(v) }},
+		{Label: "Use my browser's YouTube login", Hint: "Off reads nothing from your browsers. Pick one to use its login for age-restricted or private videos; All tries each installed browser.", Kind: KindChoice, Options: cookieOptions,
+			Get: cookieChoice, Set: setCookieChoice},
+		{Label: "List songs with no official video (CSV)", Hint: "Only matters when Download Official Music Video is set to Only: keeps a CSV list of the songs no official video was found for.", Kind: KindChoice, Options: yesNo,
+			Get: func(c config.Config) string { return boolText(c.SaveNotFound) },
+			Set: func(c *config.Config, v string) { c.SaveNotFound = v == "yes" }},
+		{Label: "Create Log File", Hint: "Write a log of what the app did, which helps to find out what went wrong.", Kind: KindChoice, Options: yesNo,
+			Get: func(c config.Config) string { return boolText(c.CreateLogFile) },
+			Set: func(c *config.Config, v string) { c.CreateLogFile = v == "yes" }},
+		{Label: "Log File Location", Hint: "The folder the log is written to.", Kind: KindFolder,
+			Get: func(c config.Config) string { return c.LogDir },
+			Set: func(c *config.Config, v string) { c.LogDir = v }},
+	}
+	if caps.CanMove {
+		advanced = append(advanced, Field{Label: "Move MVD to its own folder", Kind: KindAction, Action: ActionMove})
+	}
+	if caps.CanUninstall {
+		advanced = append(advanced, Field{Label: "Uninstall MVD", Kind: KindAction, Action: ActionUninstall})
+	}
+	return []Page{
+		{Name: "Output", Fields: []Field{
+			{Label: "Videos Output Folder", Hint: "Where the downloaded videos are saved.", Kind: KindFolder,
+				Get: func(c config.Config) string { return c.OutputDir },
+				Set: func(c *config.Config, v string) { c.OutputDir = v }},
+			{Label: "Output Template", Hint: "How each file is named, and which folders it goes in. Add blocks, and type any text between them.", Kind: KindTemplate,
+				Get: func(c config.Config) string { return c.OutputTemplate },
+				Set: func(c *config.Config, v string) { c.OutputTemplate = v }},
+		}},
+		{Name: "Download", Fields: []Field{
+			{Label: "Video Quality", Hint: "The best picture quality to download. A lower one makes smaller files.", Kind: KindChoice, Options: config.VideoPresets,
+				Get: func(c config.Config) string { return c.VideoQuality },
+				Set: func(c *config.Config, v string) { c.VideoQuality = v }},
+			{Label: "Audio Quality", Hint: "The sound quality to keep.", Kind: KindChoice, Options: config.AudioPresets,
+				Get: func(c config.Config) string { return c.AudioQuality },
+				Set: func(c *config.Config, v string) { c.AudioQuality = v }},
+			{Label: "Merge Format", Hint: "The kind of video file made. MP4 plays almost everywhere; MKV and WebM can hold higher quality.", Kind: KindChoice, Options: []string{"mp4", "mkv", "webm"}, Show: upper,
+				Get: func(c config.Config) string { return c.MergeOutputFormat },
+				Set: func(c *config.Config, v string) { c.MergeOutputFormat = v }},
+			{Label: "Download Official Music Video", Hint: "Yes: use the official music video when there is one, and the video as it is otherwise. Only: download just the songs that have one. No: never look for it.", Kind: KindChoice, Options: config.OfficialModes,
+				Get: func(c config.Config) string { return string(c.OfficialVideo) },
+				Set: func(c *config.Config, v string) { c.OfficialVideo = config.OfficialMode(v) }},
+			{Label: "Max Concurrent Downloads", Hint: "How many videos are downloaded at the same time. More is faster but uses more of your connection.", Kind: KindStepper, Min: 1, Max: 32, Step: 1,
+				Get: func(c config.Config) string { return intText(c.MaxConcurrentDownloads) },
+				Set: func(c *config.Config, v string) { c.MaxConcurrentDownloads = parseInt(v) }},
+			{Label: "Retry Failed Downloads", Hint: "Try a download again by itself when it fails, because of a dropped connection, for example.", Kind: KindChoice, Options: yesNo,
+				Get: func(c config.Config) string { return boolText(c.AutoRetry) },
+				Set: func(c *config.Config, v string) { c.AutoRetry = v == "yes" }},
+			{Label: "Retry Attempts", Hint: "How many times a failed download is tried again before it is given up.", Kind: KindStepper, Min: 1, Max: 999, Step: 1,
+				Get: func(c config.Config) string { return intText(c.RetryCycles) },
+				Set: func(c *config.Config, v string) { c.RetryCycles = parseInt(v) }},
+			{Label: "Wait before retrying (seconds)", Kind: KindStepper, Hint: "The wait before the first retry, times the number of the attempt.", Min: 1, Max: 3600, Step: 5,
+				Get: func(c config.Config) string { return intText(c.RetryWaitSeconds) },
+				Set: func(c *config.Config, v string) { c.RetryWaitSeconds = parseInt(v) }},
+		}},
+		{Name: "Advanced", Fields: advanced},
+		{Name: "Theme", Fields: []Field{
+			themeField(),
+			func() Field {
+				f := colourField("Background", func(t *config.ThemeColors) *string { return &t.Background })
+				f.Optional = true
+				return f
+			}(),
+			colourField("Accent (title)", func(t *config.ThemeColors) *string { return &t.Accent }),
+			colourField("Focus (active border)", func(t *config.ThemeColors) *string { return &t.Focus }),
+			colourField("Highlight (keys, bars)", func(t *config.ThemeColors) *string { return &t.Highlight }),
+			colourField("Success", func(t *config.ThemeColors) *string { return &t.Success }),
+			colourField("Error", func(t *config.ThemeColors) *string { return &t.Error }),
+			colourField("Dim (borders, hints)", func(t *config.ThemeColors) *string { return &t.Dim }),
+			colourField("Text", func(t *config.ThemeColors) *string { return &t.Text }),
+			colourField("Selected row (background)", func(t *config.ThemeColors) *string { return &t.Selected }),
+		}},
+	}
+}

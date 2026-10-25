@@ -1,6 +1,7 @@
 package prefspopup
 
 import (
+	"youtube-downloader/libs/mvd-core/prefsform"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -53,34 +54,11 @@ type pageLayout struct {
 func width(s string) int { return ansi.StringWidth(s) }
 
 
-func capitalise(s string) string {
-	if s == "" {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
-}
-
-// optionText is how an option of a field reads.
-func (f field) optionText(option string) string {
-	if f.show != nil {
-		return f.show(option)
-	}
-	return capitalise(option)
-}
-
-// numberText is how a number of a field reads.
-func (f field) numberText(value string) string {
-	if value == "0" && f.off != "" {
-		return f.off
-	}
-	return value
-}
-
 // layout draws the page of the tab w columns wide.
 func (m Model) layout() pageLayout {
 	w := m.bodyWidth()
 	var l pageLayout
-	fields := m.pages[m.tab].fields
+	fields := m.form.Pages[m.form.Tab].Fields
 	selected := lipgloss.NewStyle().Bold(true).
 		Background(lipgloss.Color(look.Colours.Selected)).Foreground(lipgloss.Color(look.Colours.Text))
 	bar := look.Title.Render("┃") + " "
@@ -92,7 +70,7 @@ func (m Model) layout() pageLayout {
 		l.lines = append(l.lines, cells.Fit(gutter+text, w))
 		return len(l.lines) - 1
 	}
-	editingHere := func(i int) bool { return m.editing && i == m.cursor }
+	editingHere := func(i int) bool { return m.form.Editing && i == m.form.Cursor }
 	// A description is as long as it needs to be: it goes on to the next line at the width of the page.
 	addHint := func(focused bool, text string) {
 		for _, line := range strings.Split(ansi.Wrap(text, max(w-gutterWidth-1, 10), ""), "\n") {
@@ -101,15 +79,15 @@ func (m Model) layout() pageLayout {
 	}
 
 	for i, f := range fields {
-		focused := i == m.cursor
+		focused := i == m.form.Cursor
 		first := len(l.lines)
 		value := ""
-		if f.get != nil {
-			value = f.get(m.cfg)
+		if f.Get != nil {
+			value = f.Get(m.form.Cfg)
 		}
-		switch f.kind {
-		case kindColour:
-			label := cells.Fit(f.label, 28)
+		switch f.Kind {
+		case prefsform.KindColour:
+			label := cells.Fit(f.Label, 28)
 			if focused {
 				label = selected.Render(label)
 			} else {
@@ -128,38 +106,38 @@ func (m Model) layout() pageLayout {
 			}
 			y := add(focused, label+" "+swatch+" "+shown)
 			l.hits = append(l.hits, hit{y: y, x0: gutterWidth + 29, x1: w, kind: hitValue, field: i})
-		case kindChoice:
-			add(focused, look.Title.Render(f.label))
-			if f.hint != "" {
-				addHint(focused, f.hint)
+		case prefsform.KindChoice:
+			add(focused, look.Title.Render(f.Label))
+			if f.Hint != "" {
+				addHint(focused, f.Hint)
 			}
 			current := value
-			for j, option := range f.options {
-				text := "  " + look.Text.Render(f.optionText(option))
+			for j, option := range f.Options {
+				text := "  " + look.Text.Render(f.OptionText(option))
 				if option == current {
-					text = look.Yellow.Render("› ") + look.Text.Bold(true).Render(f.optionText(option))
+					text = look.Yellow.Render("› ") + look.Text.Bold(true).Render(f.OptionText(option))
 				}
-				if f.swatches != nil {
-					text += "  " + swatchRow(f.swatches(option))
+				if f.Swatches != nil {
+					text += "  " + swatchRow(f.Swatches(option))
 				}
 				y := add(focused, text)
 				l.hits = append(l.hits, hit{y: y, x0: gutterWidth, x1: w, kind: hitOption, field: i, arg: j})
 			}
-		case kindStepper:
-			add(focused, look.Title.Render(f.label))
-			if f.hint != "" {
-				addHint(focused, f.hint)
+		case prefsform.KindStepper:
+			add(focused, look.Title.Render(f.Label))
+			if f.Hint != "" {
+				addHint(focused, f.Hint)
 			}
-			shown := f.numberText(value)
+			shown := f.NumberText(value)
 			y := add(focused, look.Yellow.Render("-")+" "+look.Text.Bold(true).Render(shown)+" "+look.Yellow.Render("+"))
 			vw := width(shown)
 			l.hits = append(l.hits,
 				hit{y: y, x0: gutterWidth, x1: gutterWidth + 2, kind: hitMinus, field: i},
 				hit{y: y, x0: gutterWidth + 2 + vw, x1: gutterWidth + 5 + vw, kind: hitPlus, field: i})
-		case kindTemplate:
-			add(focused, look.Title.Render(f.label))
-			if f.hint != "" {
-				addHint(focused, f.hint)
+		case prefsform.KindTemplate:
+			add(focused, look.Title.Render(f.Label))
+			if f.Hint != "" {
+				addHint(focused, f.Hint)
 			}
 			rows, hits, bounds := m.chips(i, w)
 			first := len(l.lines)
@@ -184,11 +162,11 @@ func (m Model) layout() pageLayout {
 			add(focused, look.Dim.Render("Click a block to add it at the cursor, drag ≡ to reorder, × to remove"))
 			add(focused, "")
 			add(focused, look.Title.Render("Output example"))
-			add(focused, look.Text.Render(cells.Display(ExampleName(value, m.cfg.MergeOutputFormat))))
-		case kindText, kindFolder:
-			add(focused, look.Title.Render(f.label))
+			add(focused, look.Text.Render(cells.Display(ExampleName(value, m.form.Cfg.MergeOutputFormat))))
+		case prefsform.KindText, prefsform.KindFolder:
+			add(focused, look.Title.Render(f.Label))
 			shown := look.Text.Render(cells.Display(value))
-			if f.kind == kindFolder {
+			if f.Kind == prefsform.KindFolder {
 				// A long path keeps its end, which says which folder it is.
 				shown = look.Text.Render(cells.TruncateMiddle(cells.Display(value), max(w-gutterWidth, 8)))
 			}
@@ -196,24 +174,24 @@ func (m Model) layout() pageLayout {
 			case editingHere(i):
 				shown = m.input.View()
 			case value == "":
-				shown = look.Dim.Render(f.placeholder)
+				shown = look.Dim.Render(f.Placeholder)
 			}
 			y := add(focused, shown)
 			l.hits = append(l.hits, hit{y: y, x0: gutterWidth, x1: w, kind: hitValue, field: i})
-			if f.hint != "" {
-				addHint(focused, f.hint)
+			if f.Hint != "" {
+				addHint(focused, f.Hint)
 			}
-		case kindAction:
-			text := look.Yellow.Render("[ " + f.label + " ]")
+		case prefsform.KindAction:
+			text := look.Yellow.Render("[ " + f.Label + " ]")
 			if focused {
-				text = look.Title.Reverse(true).Render("[ " + f.label + " ]")
+				text = look.Title.Reverse(true).Render("[ " + f.Label + " ]")
 			}
 			y := add(focused, text)
-			l.hits = append(l.hits, hit{y: y, x0: gutterWidth, x1: gutterWidth + width(f.label) + 4, kind: hitValue, field: i})
+			l.hits = append(l.hits, hit{y: y, x0: gutterWidth, x1: gutterWidth + width(f.Label) + 4, kind: hitValue, field: i})
 		}
 		l.spans = append(l.spans, span{first, len(l.lines) - 1})
 	}
-	if fields[0].kind == kindColour {
+	if fields[0].Kind == prefsform.KindColour {
 		l.lines = append(l.lines, "",
 			cells.Fit("  "+look.Dim.Render("Colours are #rgb or #rrggbb and apply as soon as you accept them."), w),
 			cells.Fit("  "+look.Dim.Render("Press d for the default of the colour."), w))
@@ -224,10 +202,10 @@ func (m Model) layout() pageLayout {
 // tabSpans are the columns each tab takes in the row of tabs: the tabs touch, as Cuppa's
 // tab pages draw them.
 func (m Model) tabSpans() []span {
-	spans := make([]span, len(m.pages))
+	spans := make([]span, len(m.form.Pages))
 	x := 0
-	for i, p := range m.pages {
-		w := width(p.name) + 4
+	for i, p := range m.form.Pages {
+		w := width(p.Name) + 4
 		spans[i] = span{x, x + w}
 		x += w
 	}
@@ -244,11 +222,11 @@ func (m Model) tabLines() [tabRows]string {
 	edge := look.BorderOn
 	var line strings.Builder
 	used := 0
-	for i, p := range m.pages {
-		label := " " + p.name + " "
+	for i, p := range m.form.Pages {
+		label := " " + p.Name + " "
 		bar := strings.Repeat("─", width(label))
 		style, text := edge, look.Dim.Render(label)
-		if i == m.tab {
+		if i == m.form.Tab {
 			text = edge.Bold(true).Render(label)
 		}
 		if s := m.tabSpans()[i]; m.hy >= 0 && m.hy < tabRows && m.hx >= s.first && m.hx < s.last {
@@ -257,9 +235,9 @@ func (m Model) tabLines() [tabRows]string {
 		rows[0] += style.Render("╭" + bar + "╮")
 		rows[1] += style.Render("│") + text + style.Render("│")
 		switch {
-		case i == m.tab && i == 0:
+		case i == m.form.Tab && i == 0:
 			line.WriteString(edge.Render("│" + strings.Repeat(" ", width(label)) + "└"))
-		case i == m.tab:
+		case i == m.form.Tab:
 			line.WriteString(edge.Render("┘" + strings.Repeat(" ", width(label)) + "└"))
 		case i == 0:
 			line.WriteString(edge.Render("├" + bar + "┴"))
@@ -281,10 +259,10 @@ func (m Model) bodyWidth() int { return max(m.w, 20) - 2 }
 // reveal scrolls the page so the field the cursor is on shows.
 func (m Model) reveal() Model {
 	l := m.layout()
-	if m.cursor >= len(l.spans) {
+	if m.form.Cursor >= len(l.spans) {
 		return m
 	}
-	s, rows := l.spans[m.cursor], m.bodyRows()
+	s, rows := l.spans[m.form.Cursor], m.bodyRows()
 	if s.last >= m.scroll+rows {
 		m.scroll = s.last - rows + 1
 	}
@@ -325,13 +303,13 @@ func (m Model) View() string {
 // hintLine is what the bottom line says.
 func (m Model) hintLine() string {
 	switch {
-	case m.status != "" && m.statusBad:
-		return look.Red.Render(m.status)
-	case m.status != "":
-		return look.Dim.Render(m.status)
-	case m.editing:
+	case m.form.Status != "" && m.form.StatusBad:
+		return look.Red.Render(m.form.Status)
+	case m.form.Status != "":
+		return look.Dim.Render(m.form.Status)
+	case m.form.Editing:
 		return look.Dim.Render("enter apply  esc cancel")
-	case m.welcome:
+	case m.form.Welcome:
 		return look.Yellow.Render("Welcome! Check where your videos go, then press s to save.")
 	}
 	return look.Dim.Render("↑↓ move  ←→ change  enter edit  tab page  s save  esc close  f1 all keys")
