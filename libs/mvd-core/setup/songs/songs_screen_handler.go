@@ -1,36 +1,32 @@
 package songs
 
 import (
-	"strconv"
 	"time"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/outline"
+	"youtube-downloader/libs/mvd-core/setup/songpaste"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
-
-	"youtube-downloader/libs/mvd-core/songfile"
-	"youtube-downloader/libs/mvd-core/wording"
 )
 
-type Outcome int
+// Outcome is where the screen leads; the host acts on it (see songpaste).
+type Outcome = songpaste.Outcome
 
 const (
-	None Outcome = iota
-	Added
-	Cancel
+	None   = songpaste.None
+	Added  = songpaste.Added
+	Cancel = songpaste.Cancel
 )
 
 // Model is the screen for pasting songs: one "Artist - Title" per line, or
-// a CSV exported from a music service. Saving stores the list as a file that
-// the download list then names, so any service can feed the app.
+// a CSV exported from a music service. What it does is songpaste's; the
+// model turns keys into its intents and draws it.
 type Model struct {
 	ta            textarea.Model
-	dir           string // where the lists are stored
+	paste         songpaste.Paste
 	width, height int
-	saved         string // the file the last save wrote
-	err           string
 }
 
 func New(dir string) Model {
@@ -39,7 +35,7 @@ func New(dir string) Model {
 	ta.ShowLineNumbers = true
 	ta.CharLimit = 0
 	ta.Focus()
-	return Model{ta: ta, dir: dir}
+	return Model{ta: ta, paste: songpaste.New(dir)}
 }
 
 func (m Model) SetSize(w, h int) Model {
@@ -53,20 +49,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	if k, ok := msg.(tea.KeyPressMsg); ok {
 		switch k.String() {
 		case "ctrl+s":
-			path, err := songfile.Save(m.dir, m.ta.Value(), time.Now())
-			if err != nil {
-				m.err = err.Error()
-				return m, nil, None
-			}
-			m.saved, m.err = path, ""
-			return m, nil, Added
+			return m, nil, m.paste.Save(time.Now())
 		case "esc":
-			return m, nil, Cancel
+			return m, nil, m.paste.Leave()
 		}
-		m.err = ""
+		m.paste.ClearError()
 	}
 	var cmd tea.Cmd
 	m.ta, cmd = m.ta.Update(msg)
+	m.paste.SetText(m.ta.Value())
 	return m, cmd, None
 }
 
@@ -75,30 +66,14 @@ func (m Model) View(width, height int) string {
 	props.Palette = Palette(look.CurrentPalette())
 	props.Hints = keybar.Of[HintsHint](m.Hints())
 	props.SongsView = m.ta.View()
-	if m.err != "" {
+	if m.paste.Err != "" {
 		props.ShowSummary, props.ShowProblem = false, true
-		props.Problem = " " + m.err
+		props.Problem = " " + m.paste.Err
 	} else {
 		props.ShowSummary, props.ShowProblem = true, false
-		props.Summary = " " + m.summaryText()
+		props.Summary = " " + m.paste.Summary()
 	}
 	return View(props, width, height).View
-}
-
-func (m Model) title() string { return "MVD · Add songs" }
-
-// summaryText tells how the text reads: how many songs, and how many lines no
-// song could be read from. An error from the last save replaces it.
-func (m Model) summaryText() string {
-	if m.err != "" {
-		return m.err
-	}
-	list := songfile.Parse(m.ta.Value())
-	text := strconv.Itoa(len(list.Songs)) + " song" + wording.Plural(len(list.Songs))
-	if list.Skipped > 0 {
-		text += ", " + strconv.Itoa(list.Skipped) + " line" + wording.Plural(list.Skipped) + " not understood"
-	}
-	return text
 }
 
 func (m Model) Hints() []keybar.Hint {
@@ -108,20 +83,21 @@ func (m Model) Hints() []keybar.Hint {
 // Outline describes the screen in plain terms, from the same state and hints the view draws.
 func (m Model) Outline() outline.ScreenOutline {
 	return outline.ScreenOutline{
-		Title:     m.title(),
-		Text:      m.ta.Value(),
+		Title:     songpaste.Heading,
+		Text:      m.paste.Text,
 		HasText:   true,
-		TextLabel: "Songs, one Artist - Title per line",
-		Prompt:    m.summaryText(),
+		TextLabel: songpaste.TextLabel,
+		Prompt:    m.paste.Summary(),
 		Keys:      outline.KeysOf(m.Hints()),
 	}
 }
 
 // Saved is the file the last save wrote.
-func (m Model) Saved() string { return m.saved }
+func (m Model) Saved() string { return m.paste.Saved }
 
 // WithText puts text in the editor, as if it had been typed or pasted.
 func (m Model) WithText(text string) Model {
 	m.ta.SetValue(text)
+	m.paste.SetText(text)
 	return m
 }

@@ -1,33 +1,33 @@
 package list
 
 import (
-	"strconv"
-	"strings"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/outline"
-	"youtube-downloader/libs/mvd-core/wording"
+	"youtube-downloader/libs/mvd-core/setup/urllist"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 )
 
-type Outcome int
+// Outcome is where the screen leads; the host acts on it (see urllist).
+type Outcome = urllist.Outcome
 
 const (
-	None Outcome = iota
-	Start
-	Prefs
-	Songs
-	Review
-	Quit
+	None   = urllist.None
+	Start  = urllist.Start
+	Prefs  = urllist.Prefs
+	Songs  = urllist.Songs
+	Review = urllist.Review
+	Quit   = urllist.Quit
 )
 
-// Model is the download-list editor: a multi-line text area of URLs.
+// Model is the download-list editor: a multi-line text area of URLs. What the list does is
+// urllist's; the model turns keys into its intents and draws it.
 type Model struct {
 	ta            textarea.Model
+	list          urllist.List
 	width, height int
-	confirmQuit   bool
 }
 
 func New(URLs []string) Model {
@@ -35,9 +35,10 @@ func New(URLs []string) Model {
 	ta.Placeholder = "Paste or type playlist / video URLs, one per line"
 	ta.ShowLineNumbers = true
 	ta.CharLimit = 0
-	ta.SetValue(strings.Join(URLs, "\n"))
+	list := urllist.New(URLs)
+	ta.SetValue(list.Text)
 	ta.Focus()
-	return Model{ta: ta}
+	return Model{ta: ta, list: list}
 }
 
 func (m Model) SetSize(w, h int) Model {
@@ -48,87 +49,61 @@ func (m Model) SetSize(w, h int) Model {
 }
 
 // URLs returns the trimmed, non-empty lines.
-func (m Model) URLs() []string {
-	var out []string
-	for _, l := range strings.Split(m.ta.Value(), "\n") {
-		if t := strings.TrimSpace(l); t != "" {
-			out = append(out, t)
-		}
-	}
-	return out
-}
+func (m Model) URLs() []string { return m.list.URLs() }
 
 // WithURL adds a line to the list unless it is already there.
 func (m Model) WithURL(url string) Model {
-	for _, existing := range m.URLs() {
-		if existing == url {
-			return m
-		}
-	}
-	value := strings.TrimRight(m.ta.Value(), "\n")
-	if value != "" {
-		value += "\n"
-	}
-	m.ta.SetValue(value + url)
+	m.list.AddURL(url)
+	m.ta.SetValue(m.list.Text)
 	return m
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	if k, ok := msg.(tea.KeyPressMsg); ok {
-		if m.confirmQuit {
+		if m.list.ConfirmQuit {
 			switch k.String() {
 			case "y", "Y", "enter":
-				return m, nil, Quit
+				return m, nil, m.list.Answer(true)
 			default:
-				m.confirmQuit = false
-				return m, nil, None
+				return m, nil, m.list.Answer(false)
 			}
 		}
 		switch k.String() {
 		case "ctrl+s":
-			if len(m.URLs()) == 0 {
-				return m, nil, None
-			}
-			return m, nil, Start
+			return m, nil, m.list.Begin()
 		case "ctrl+e":
-			if len(m.URLs()) == 0 {
-				return m, nil, None
-			}
-			return m, nil, Review
+			return m, nil, m.list.ReviewLinks()
 		case "ctrl+p":
-			return m, nil, Prefs
+			return m, nil, m.list.OpenPreferences()
 		case "ctrl+o":
-			return m, nil, Songs
+			return m, nil, m.list.OpenSongs()
 		case "ctrl+r":
-			m.ta.SetValue("")
+			m.list.Reset()
+			m.ta.SetValue(m.list.Text)
 			return m, nil, None
 		case "ctrl+q", "esc":
-			if len(m.URLs()) > 0 {
-				m.confirmQuit = true
-				return m, nil, None
-			}
-			return m, nil, Quit
+			return m, nil, m.list.Leave()
 		}
 	}
 	var cmd tea.Cmd
 	m.ta, cmd = m.ta.Update(msg)
+	m.list.SetText(m.ta.Value())
 	return m, cmd, None
 }
 
 func (m Model) View(width, height int) string {
-	n := len(m.URLs())
-	title := " MVD · Download list"
-	if n > 0 {
-		title += "  (" + strconv.Itoa(n) + " item" + wording.Plural(n) + ")"
+	title := " " + urllist.Heading
+	if count := m.list.Count(); count != "" {
+		title += "  " + count
 	}
 
 	props := Default()
 	props.Palette = Palette(look.CurrentPalette())
 	props.Title = title
 	props.LinksView = m.ta.View()
-	props.ShowConfirm, props.ShowKeys = m.confirmQuit, !m.confirmQuit
+	props.ShowConfirm, props.ShowKeys = m.list.ConfirmQuit, !m.list.ConfirmQuit
 	props.Hints = keybar.Of[HintsHint](m.Hints())
-	props.Confirm = " " + look.Red.Render("Discard the list and quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
+	props.Confirm = " " + look.Red.Render(urllist.QuitQuestion+" ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
 	return View(props, width, height).View
 }
 
@@ -141,14 +116,13 @@ func (m Model) Hints() []keybar.Hint {
 
 // Outline describes the screen in plain terms, from the same state and Hints the view draws.
 func (m Model) Outline() outline.ScreenOutline {
-	n := len(m.URLs())
-	title := "MVD · Download list"
-	if n > 0 {
-		title += " (" + strconv.Itoa(n) + " item" + wording.Plural(n) + ")"
+	title := urllist.Heading
+	if count := m.list.Count(); count != "" {
+		title += " " + count
 	}
-	out := outline.ScreenOutline{Title: title, Text: m.ta.Value(), HasText: true, Keys: outline.KeysOf(m.Hints())}
-	if m.confirmQuit {
-		out.Prompt = "Discard the list and quit? y/n"
+	out := outline.ScreenOutline{Title: title, Text: m.list.Text, HasText: true, Keys: outline.KeysOf(m.Hints())}
+	if m.list.ConfirmQuit {
+		out.Prompt = urllist.QuitQuestion + " y/n"
 	}
 	return out
 }

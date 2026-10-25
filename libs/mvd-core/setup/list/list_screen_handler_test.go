@@ -33,7 +33,7 @@ func TestListModel(t *testing.T) {
 
 	// Quit with entries asks to confirm, then y quits.
 	confirming, _, out := m.Update(keys.Press("ctrl+q"))
-	if out != None || !confirming.confirmQuit {
+	if out != None || !confirming.list.ConfirmQuit {
 		t.Fatalf("ctrl+q with entries should ask to confirm")
 	}
 	if _, _, out := confirming.Update(keys.Press("y")); out != Quit {
