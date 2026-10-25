@@ -13,6 +13,7 @@ import (
 
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
+	"youtube-downloader/libs/mvd-core/songlist"
 )
 
 func (m Model) render() string {
@@ -192,7 +193,7 @@ func (m Model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 	case engine.StateFailed:
 		return "✗", c.Error
 	case engine.StatePlanned:
-		if foundOfficial(en) {
+		if songlist.FoundOfficial(en) {
 			return "✓", c.Success
 		}
 

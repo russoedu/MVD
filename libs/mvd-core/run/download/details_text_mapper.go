@@ -9,6 +9,7 @@ import (
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/runstate"
+	"youtube-downloader/libs/mvd-core/songlist"
 )
 
 // detailRows are the lines of the details pane: for the song that is selected, or for the link
@@ -85,7 +86,7 @@ func (m Model) detailRows(w int) []OutputRow {
 	}
 
 	say(entryTitle(en), bold)
-	if who := m.whoSings(en); who != "" {
+	if who := songlist.Artist(en); who != "" {
 		say("by "+who, dim)
 	}
 	blank()
@@ -95,18 +96,6 @@ func (m Model) detailRows(w int) []OutputRow {
 		say(shortAddress("https://www.youtube.com/watch?v="+en.TargetID), dim)
 	}
 	return rows
-}
-
-// whoSings is the artist of a song, or the channel it came from when no artist is known.
-func (m Model) whoSings(en *runstate.Entry) string {
-	switch {
-	case en.NamedArtist != "":
-		return en.NamedArtist
-	case en.Channel != "":
-		// A channel of the music service is named after the artist, with this added.
-		return strings.TrimSuffix(en.Channel, " - Topic")
-	}
-	return ""
 }
 
 // linkSummary says how the songs of a link are doing, counting only what is not zero.

@@ -13,6 +13,7 @@ import (
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/runstate"
+	"youtube-downloader/libs/mvd-core/songlist"
 	"youtube-downloader/libs/mvd-core/viewport"
 )
 
@@ -201,7 +202,7 @@ func (m Model) plannedCounts() (official, original int) {
 		if en == nil || en.State != engine.StatePlanned {
 			continue
 		}
-		if foundOfficial(en) {
+		if songlist.FoundOfficial(en) {
 			official++
 		} else {
 			original++

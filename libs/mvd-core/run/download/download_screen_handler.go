@@ -16,6 +16,7 @@ import (
 
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
+	"youtube-downloader/libs/mvd-core/songlist"
 )
 
 // Controller is what the screen needs from the engine.
@@ -76,11 +77,10 @@ type Model struct {
 	outScroll     int // lines scrolled up from the bottom of the output pane
 	follow        bool
 	loaded        bool // every playlist has been listed; until then the loading screen is shown
-	// sortBy is the column the songs are sorted by (a click on its heading), "" for the order they came in.
-	sortBy   string
-	sortDesc bool
-	// statusHidden are the groups of statuses the person hid with the filter.
-	statusHidden map[string]bool
+	// order is the column the songs are sorted by (a click on its heading), none for the order they came in.
+	order songlist.Order
+	// statusFilter is the groups of statuses the person hid with the filter.
+	statusFilter songlist.Filter
 	filterList   filterMenu
 	fullLog       bool
 	// technical shows the log of the tool in the details pane instead of the plain account.
@@ -353,7 +353,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.flash("follow off")
 		}
 	case "f":
-		m.showOnly(groupFailed)
+		m.showOnly(songlist.GroupFailed)
 		if m.filterActive() {
 			m.flash("showing failed songs only")
 		} else {

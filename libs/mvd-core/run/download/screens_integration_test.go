@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/songlist"
 )
 
 // fakeController stands in for the engine.
@@ -91,7 +92,7 @@ func TestViewLayouts(t *testing.T) {
 		checkFrame(t, "fulllog", m.View().Content, sz[0], sz[1])
 
 		m.fullLog = false
-		m.statusHidden = onlyFailed()
+		m.statusFilter = onlyFailed()
 		m.focus = paneEntries
 		checkFrame(t, "filter", m.View().Content, sz[0], sz[1])
 
@@ -217,13 +218,4 @@ func TestKeyHandling(t *testing.T) {
 }
 
 // onlyFailed is the filter that hides every group of statuses but the failed ones.
-func onlyFailed() map[string]bool {
-	hidden := map[string]bool{}
-	for _, g := range statusGroups {
-		if g.key != groupFailed {
-			hidden[g.key] = true
-		}
-	}
-
-	return hidden
-}
+func onlyFailed() songlist.Filter { return songlist.Filter{}.Only(songlist.GroupFailed) }

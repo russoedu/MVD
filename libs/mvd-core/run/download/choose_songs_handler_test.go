@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/songlist"
 	"youtube-downloader/libs/mvd-core/testing/keys"
 )
 
@@ -314,15 +315,15 @@ func TestAClickOnAHeadingSortsAndAnotherClickTurnsTheOrderRound(t *testing.T) {
 	selected := m.selectedEntry().ID
 	m = click(m)
 	asc := names(m)
-	if m.sortBy != columnSong || m.sortDesc || !sort.StringsAreSorted(asc) {
-		t.Fatalf("sorted by %q desc %v: %v", m.sortBy, m.sortDesc, asc)
+	if m.order.By != columnSong || m.order.Desc || !sort.StringsAreSorted(asc) {
+		t.Fatalf("sorted by %q desc %v: %v", m.order.By, m.order.Desc, asc)
 	}
 	if m.selectedEntry().ID != selected {
 		t.Error("the song the cursor was on changed with the sort")
 	}
 	m = click(m)
 	desc := names(m)
-	if !m.sortDesc || desc[0] != asc[len(asc)-1] {
+	if !m.order.Desc || desc[0] != asc[len(asc)-1] {
 		t.Errorf("the second click did not turn the order round: %v", desc)
 	}
 	if !strings.Contains(ansi.Strip(m.render()), "Song ▼") {
@@ -338,8 +339,8 @@ func TestTheFilterHidesTheStatusesTheListHides(t *testing.T) {
 	if !m.filterList.open {
 		t.Fatal("the filter did not open")
 	}
-	for i, g := range statusGroups {
-		if g.key == groupSaved {
+	for i, g := range songlist.Groups {
+		if g.Key == songlist.GroupSaved {
 			m.filterList.sel = i
 		}
 	}
@@ -424,7 +425,7 @@ func TestTheStatusSaysWhetherAnOfficialVideoWasFound(t *testing.T) {
 	if got := word(engine.EvEntryState{Entry: 3, State: engine.StateAccepted, TargetID: "a"}); got != "accepted" {
 		t.Errorf("an accepted song says %q", got)
 	}
-	if got := statusGroup(m.state.Entries[3]); got != groupAccepted {
+	if got := songlist.GroupOf(m.state.Entries[3]); got != songlist.GroupAccepted {
 		t.Errorf("an accepted song is in the group %q", got)
 	}
 }
