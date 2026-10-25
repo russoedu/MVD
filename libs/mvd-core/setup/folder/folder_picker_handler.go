@@ -1,14 +1,11 @@
 package folder
 
 import (
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/outline"
+	"youtube-downloader/libs/mvd-core/setup/folderbrowser"
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textinput"
@@ -24,54 +21,23 @@ const (
 )
 
 // Model is a directory navigator: browse into/out of folders, make a
-// new one, and pick the current directory.
+// new one, and pick the current directory. What it does is the browser's;
+// the model turns keys into the browser's intents and draws it.
 type Model struct {
-	dir           string
-	entries       []string // sub-directory names
-	cursor        int
-	creating      bool
+	browser       folderbrowser.Browser
 	input         textinput.Model
-	err           string
 	width, height int
 }
 
 func New(start string) Model {
 	ti := textinput.New()
 	ti.Prompt = "new folder: "
-	m := Model{dir: ResolveDir(start), input: ti}
-	m.load()
-	return m
+
+	return Model{browser: folderbrowser.New(start, nil), input: ti}
 }
 
-func ResolveDir(start string) string {
-	if start == "" {
-		if wd, err := os.Getwd(); err == nil {
-			return wd
-		}
-		return "."
-	}
-	if abs, err := filepath.Abs(start); err == nil {
-		return abs
-	}
-	return start
-}
-
-func (m *Model) load() {
-	m.entries = nil
-	m.cursor = 0
-	m.err = ""
-	ents, err := os.ReadDir(m.dir)
-	if err != nil {
-		m.err = err.Error()
-		return
-	}
-	for _, e := range ents {
-		if e.IsDir() {
-			m.entries = append(m.entries, e.Name())
-		}
-	}
-	sort.Strings(m.entries)
-}
+// ResolveDir is the absolute folder the picker begins in.
+func ResolveDir(start string) string { return folderbrowser.ResolveDir(start) }
 
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
@@ -82,7 +48,7 @@ func (m Model) SetSize(w, h int) Model {
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
-		if m.creating {
+		if m.browser.Creating {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
 			return m, cmd, None
@@ -90,21 +56,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 		return m, nil, None
 	}
 
-	if m.creating {
+	if m.browser.Creating {
 		switch k.String() {
 		case "esc":
-			m.creating = false
+			m.browser.CancelCreating()
 		case "enter":
-			name := strings.TrimSpace(m.input.Value())
-			if name != "" {
-				if err := os.Mkdir(filepath.Join(m.dir, name), 0o755); err != nil {
-					m.err = err.Error()
-				} else {
-					m.dir = filepath.Join(m.dir, name)
-					m.load()
-				}
-			}
-			m.creating = false
+			m.browser.SetNewName(m.input.Value())
+			m.browser.CreateFolder()
 		default:
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
@@ -115,25 +73,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 
 	switch k.String() {
 	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
+		m.browser.Up()
 	case "down", "j":
-		if m.cursor < len(m.entries)-1 {
-			m.cursor++
-		}
+		m.browser.Down()
 	case "right", "l":
-		if m.cursor < len(m.entries) {
-			m.dir = filepath.Join(m.dir, m.entries[m.cursor])
-			m.load()
-		}
+		m.browser.Open()
 	case "left", "h":
-		if parent := filepath.Dir(m.dir); parent != m.dir {
-			m.dir = parent
-			m.load()
-		}
+		m.browser.Parent()
 	case "n":
-		m.creating = true
+		m.browser.StartCreating()
 		m.input.SetValue("")
 		m.input.Focus()
 	case "enter":
@@ -145,7 +93,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 }
 
 func (m Model) Hints() []keybar.Hint {
-	if m.creating {
+	if m.browser.Creating {
 		return []keybar.Hint{{Key: "enter", Desc: "create"}, {Key: "esc", Desc: "cancel"}}
 	}
 	return []keybar.Hint{
@@ -155,10 +103,11 @@ func (m Model) Hints() []keybar.Hint {
 }
 
 func (m Model) View(width, height int) string {
+	b := m.browser
 	var rows []FoldersRow
-	for i, name := range m.entries {
+	for i, name := range b.Entries {
 		row := FoldersRow{Entry: "  " + name + "/"}
-		if i == m.cursor {
+		if i == b.Cursor {
 			row.Entry, row.Style = "▸ "+name+"/", RowSelected
 		}
 		rows = append(rows, row)
@@ -168,45 +117,45 @@ func (m Model) View(width, height int) string {
 	}
 	visible := max(1, height-5)
 	if len(rows) > visible {
-		start := viewport.Start(len(rows), m.cursor, visible)
+		start := viewport.Start(len(rows), b.Cursor, visible)
 		rows = rows[start : start+visible]
 	}
 
 	props := Default()
 	props.Palette = Palette(look.CurrentPalette())
 	props.Hints = keybar.Of[HintsHint](m.Hints())
-	props.Path = cells.Truncate(m.dir, width-2)
-	props.HasProblem, props.NoProblem = m.err != "", m.err == ""
-	props.Problem = cells.Truncate(m.err, width-2)
+	props.Path = cells.Truncate(b.Dir, width-2)
+	props.HasProblem, props.NoProblem = b.Err != "", b.Err == ""
+	props.Problem = cells.Truncate(b.Err, width-2)
 	props.Folders = rows
 	props.FolderRows, props.ProblemRows = len(rows), 0
-	if m.err != "" {
+	if b.Err != "" {
 		props.ProblemRows = 1
 	}
-	props.Creating = m.creating
+	props.Creating = b.Creating
 	props.NewFolderView = m.input.View()
 	return View(props, width, height).View
 }
 
 // Outline describes the screen in plain terms, from the same state and Hints the view draws.
 func (m Model) Outline() outline.ScreenOutline {
-	items := make([]outline.Item, len(m.entries))
-	for i, name := range m.entries {
-		items[i] = outline.Item{Label: name, Selected: i == m.cursor}
+	items := make([]outline.Item, len(m.browser.Entries))
+	for i, name := range m.browser.Entries {
+		items[i] = outline.Item{Label: name, Selected: i == m.browser.Cursor}
 	}
-	out := outline.ScreenOutline{Title: "MVD · Choose folder", Text: m.dir, HasText: true, ItemsLabel: "Sub-folders", Items: items, Keys: outline.KeysOf(m.Hints())}
-	if m.err != "" {
-		out.Prompt = m.err
+	out := outline.ScreenOutline{Title: "MVD · Choose folder", Text: m.browser.Dir, HasText: true, ItemsLabel: "Sub-folders", Items: items, Keys: outline.KeysOf(m.Hints())}
+	if m.browser.Err != "" {
+		out.Prompt = m.browser.Err
 	}
 	return out
 }
 
 // Dir is the folder being browsed.
-func (m Model) Dir() string { return m.dir }
+func (m Model) Dir() string { return m.browser.Dir }
 
 // Listing is a browser showing a listing that was not read from disk: for previews and
 // tests, where the folders must not depend on the machine.
 func (m Model) Listing(dir string, entries []string, cursor int, err string, creating bool) Model {
-	m.dir, m.entries, m.cursor, m.err, m.creating = dir, entries, cursor, err, creating
+	m.browser = m.browser.Listing(dir, entries, cursor, err, creating)
 	return m
 }
