@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsnapshot"
 	"fmt"
 	"slices"
 	"strings"
@@ -10,10 +11,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"youtube-downloader/libs/mvd-core/cells"
-	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/runstate"
-	"youtube-downloader/libs/mvd-core/songlist"
 	"youtube-downloader/libs/mvd-core/viewport"
 )
 
@@ -137,79 +136,36 @@ func (m Model) downloadProps(w, h int) Props {
 
 // headerTexts are the counters inside the header box and the label on its top edge.
 func (m Model) headerTexts() (counters, right string) {
-	t := m.session.State.Tally()
-	elapsed := runstate.HumanDuration(m.session.State.Elapsed())
-
-	right = elapsed
-	if m.session.Editable {
-		right = "" // nothing is running: there is no time to count
-	} else if m.session.Paused && t.Accepted > 0 {
-		right = "ACCEPTED · press Download to start · " + elapsed
-	} else if m.session.State.Idle && t.Planned > 0 {
-		right = "CHOOSE WHAT TO DOWNLOAD · " + elapsed
-	} else if m.session.Paused {
-		right = "STOPPED · " + elapsed
-	} else if m.session.State.Idle {
-		right = "FINISHED · " + elapsed
-	} else if t.Downloading > 0 {
-		right = downloadingSummary(t) + " · " + elapsed
+	h := downloadsnapshot.HeaderOf(m.session)
+	parts := make([]string, 0, len(h.Counters))
+	for _, c := range h.Counters {
+		parts = append(parts, m.counterText(c))
 	}
 
-	// What matters is always there, in everyday words; the rest only when it has something to say.
-	parts := []string{
-		look.Text.Render(fmt.Sprintf("Waiting %d", t.Queued)),
-		look.Yellow.Render(fmt.Sprintf("%s Downloading %d", look.SpinnerFrames[m.spin], t.Running)),
-		look.Green.Render(fmt.Sprintf("✓ Done %d", t.Done)),
-		look.Red.Render(fmt.Sprintf("✗ Failed %d", t.Failed+m.unreadableLinks())),
-	}
-	if t.Running == 0 || m.session.State.Idle || m.session.Paused {
-		// Nothing moves, so nothing spins.
-		parts[1] = look.Dim.Render(fmt.Sprintf("  Downloading %d", t.Running))
-	}
-	official, original := m.plannedCounts()
-	if official > 0 {
-		parts = append(parts, look.Green.Render(fmt.Sprintf("✓ Official found %d", official)))
-	}
-	if original > 0 {
-		parts = append(parts, look.Yellow.Render(fmt.Sprintf("? Original only %d", original)))
-	}
-	if t.Accepted > 0 {
-		parts = append(parts, look.Cyan.Render(fmt.Sprintf("▸ Accepted %d", t.Accepted)))
-	}
-	for _, extra := range []struct {
-		n     int
-		text  string
-		style func(...string) string
-	}{
-		{t.Official, "⇄ Official video", look.Cyan.Render},
-		{t.Better, "↑ Better quality", look.Cyan.Render},
-		{t.Duplicate, "≡ Already had", look.Dim.Render},
-		{t.NotFound, "∅ No official video", look.Dim.Render},
-		{t.Skipped, "– Rejected", look.Dim.Render},
-		{t.Retried, "↻ Tried again", look.Cyan.Render},
-	} {
-		if extra.n > 0 {
-			parts = append(parts, extra.style(fmt.Sprintf("%s %d", extra.text, extra.n)))
-		}
-	}
-	return strings.Join(parts, "   "), right
+	return strings.Join(parts, "   "), h.Right
 }
 
-// plannedCounts are how many songs wait for the person: with an official video found for them, and
-// with only the original.
-func (m Model) plannedCounts() (official, original int) {
-	for _, en := range m.session.State.Entries {
-		if en == nil || en.State != engine.StatePlanned {
-			continue
-		}
-		if songlist.FoundOfficial(en) {
-			official++
-		} else {
-			original++
-		}
+// counterGlyphs are the marks in front of the counters of the header.
+var counterGlyphs = map[downloadsnapshot.CounterKind]string{
+	downloadsnapshot.CounterDone: "✓", downloadsnapshot.CounterFailed: "✗", downloadsnapshot.CounterOfficialFound: "✓",
+	downloadsnapshot.CounterOriginalOnly: "?", downloadsnapshot.CounterAccepted: "▸", downloadsnapshot.CounterOfficialVideo: "⇄",
+	downloadsnapshot.CounterBetterQuality: "↑", downloadsnapshot.CounterAlreadyHad: "≡", downloadsnapshot.CounterNoOfficial: "∅",
+	downloadsnapshot.CounterRejected: "–", downloadsnapshot.CounterTriedAgain: "↻",
+}
+
+// counterText is one counter of the header, in the colour of its tone.
+func (m Model) counterText(c downloadsnapshot.Counter) string {
+	style := toneStyle(c.Tone)
+	switch {
+	case c.Kind == downloadsnapshot.CounterWaiting:
+		return style(fmt.Sprintf("Waiting %d", c.Count))
+	case c.Kind == downloadsnapshot.CounterDownloading && c.Moving:
+		return style(fmt.Sprintf("%s Downloading %d", look.SpinnerFrames[m.spin], c.Count))
+	case c.Kind == downloadsnapshot.CounterDownloading:
+		return style(fmt.Sprintf("  Downloading %d", c.Count))
 	}
 
-	return official, original
+	return style(fmt.Sprintf("%s %s %d", counterGlyphs[c.Kind], c.Label, c.Count))
 }
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the
@@ -218,20 +174,13 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 	if len(m.session.State.Playlists) == 0 {
 		return emptyPlaylistRows(w)
 	}
-	rows := make([]PlaylistsRow, 0, len(m.session.State.Playlists))
-	for i, pl := range m.session.State.Playlists {
-		finished, _, _ := m.session.State.PlaylistTally(pl)
-		finished -= m.session.WaitingIn(pl) // a song that waits to be chosen is not done
-		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
-		if pl.Err != "" {
-			count = "can't read"
-		} else if !pl.Listed {
-			count = "reading"
-		}
-		glyph, colour := m.playlistGlyph(pl)
-		title := cells.CellText(cells.Display(m.playlistName(pl)))
+	snapshot := downloadsnapshot.PlaylistRowsOf(m.session)
+	rows := make([]PlaylistsRow, 0, len(snapshot))
+	for i, pl := range snapshot {
+		glyph, colour := m.glyphOf(pl.Glyph)
+		title := cells.CellText(cells.Display(pl.Name))
 		row := PlaylistsRow{
-			Mark: " ", Title: title, Count: count, Glyph: glyph,
+			Mark: " ", Title: title, Count: pl.Count, Glyph: glyph,
 			GlyphStyle: CellStyle{Fg: colour},
 		}
 		if m.session.Editable {
@@ -341,40 +290,15 @@ type barInfo struct {
 
 func (m Model) outputFooter() outputFooter {
 	var f outputFooter
-	en := m.session.SelectedEntry()
-	if en == nil || m.session.Pane == paneLists {
+	foot := downloadsnapshot.FooterOf(m.session)
+	if foot.None {
 		return f
 	}
-	switch en.State {
-	case engine.StateDownloading, engine.StateMerging:
-		info := runstate.ProgressLine(en)
-		if en.State == engine.StateMerging {
-			info = "merging streams with ffmpeg"
-		}
-		percent := en.Percent
-		if en.State == engine.StateMerging {
-			percent = 100 // the parts are all in: the files are being joined
-		} else if en.Total == 0 {
-			percent = 0 // the size is not known yet: an empty bar, not a full one
-		}
-		f.bar = &barInfo{info: info, percent: percent}
-		f.lines = []string{"", look.Yellow.Render(info)}
-	case engine.StateFailed:
-		if m.session.Technical {
-			f.lines = []string{"", look.Red.Render("✗ " + cells.Display(runstate.PlainError(en.Err)))}
-		}
-	case engine.StateDone:
-		if !m.session.Technical {
-			break // the details say it
-		}
-		what := "original " + en.TargetID
-		if en.Official {
-			what = "official video " + en.TargetID
-		} else if en.Better {
-			what = "better quality video " + en.TargetID
-		}
-		f.lines = []string{"", look.Green.Render("✓ downloaded " + what)}
+	if foot.HasBar {
+		f.bar = &barInfo{info: foot.Info, percent: foot.Percent}
 	}
+	f.lines = []string{"", toneStyle(foot.Tone)(cells.Display(foot.Info))}
+
 	return f
 }
 
@@ -458,32 +382,11 @@ func emptyPlaylistRows(w int) []PlaylistsRow {
 	return rows
 }
 
-// emptyEntriesText is what the entries pane says while it has no songs to show: that there is
-// nothing yet, or that a list has been made and not looked up, and how to do it.
-func (m Model) emptyEntriesText() string {
-	switch {
-	case len(m.session.State.Playlists) == 0:
-		return "The songs of each link show here, once you add one."
-	case m.session.Editable:
-		return "Nothing loaded yet. Press Load playlists (Ctrl+R) to see the songs of each playlist, then choose what to download."
-	case m.session.SelPlaylist < len(m.session.State.Playlists) && !m.session.State.Playlists[m.session.SelPlaylist].Listed:
-		return "Reading the songs of this link…"
-	}
-	return "No songs to show here."
-}
+// emptyEntriesText is what the entries pane says while it has no songs to show.
+func (m Model) emptyEntriesText() string { return downloadsnapshot.EmptyEntriesText(m.session) }
 
-// emptyOutputText is what the output pane says when nothing was written for what is selected:
-// before the run it says what will show; for a playlist that could not be read, why there is
-// none; otherwise that this one wrote nothing.
-func (m Model) emptyOutputText() string {
-	switch {
-	case m.session.SelPlaylist < len(m.session.State.Playlists) && m.session.State.Playlists[m.session.SelPlaylist].Err != "":
-		return "Nothing to show: this link could not be read."
-	case m.session.Editable || len(m.session.State.Playlists) == 0:
-		return "Nothing yet. What happens to each song shows here while it downloads."
-	}
-	return "Nothing to show for this one."
-}
+// emptyOutputText is what the output pane says when nothing was written for what is selected.
+func (m Model) emptyOutputText() string { return downloadsnapshot.EmptyOutputText(m.session) }
 
 // emptyOutputRows is the text of the output pane, wrapped and dim, before anything has been written.
 func emptyOutputRows(text string, w int) []OutputRow {
@@ -494,15 +397,3 @@ func emptyOutputRows(text string, w int) []OutputRow {
 	return rows
 }
 
-// unreadableLinks is how many links could not be read at all: no song of them is counted, and for
-// the person it is a failure all the same.
-func (m Model) unreadableLinks() int {
-	n := 0
-	for _, pl := range m.session.State.Playlists {
-		if pl.Err != "" {
-			n++
-		}
-	}
-
-	return n
-}

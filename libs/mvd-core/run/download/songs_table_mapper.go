@@ -1,12 +1,12 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsnapshot"
 	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"fmt"
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/cells"
-	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/internal/cuppa"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/runstate"
@@ -107,31 +107,7 @@ func (m Model) tableColumns(w int) []tableColumn {
 }
 
 // tableHas says whether any song shown has something for the artist, video, album or quality column.
-func (m Model) tableHas(column string) bool {
-	for _, id := range m.session.VisibleEntries() {
-		en := m.session.State.Entries[id]
-		switch column {
-		case columnArtist:
-			if songlist.Artist(en) != "" {
-				return true
-			}
-		case columnVideo:
-			if songName(en) != entryTitle(en) {
-				return true
-			}
-		case columnAlbum:
-			if en.NamedAlbum != "" {
-				return true
-			}
-		case columnQuality:
-			if qualityText(en) != "" {
-				return true
-			}
-		}
-	}
-
-	return false
-}
+func (m Model) tableHas(column string) bool { return downloadsnapshot.ColumnHasContent(m.session, column) }
 
 // songName is the song as it is called: as a music database named it, else the name of its video.
 func songName(en *runstate.Entry) string {
@@ -258,19 +234,12 @@ func entryStatus(en *runstate.Entry) (word, colour string) {
 // progressCell is a bar and a percentage while a song comes in, a full bar once it is saved, and
 // nothing for a song that has not begun or has failed.
 func progressCell(en *runstate.Entry) (text, colour string) {
-	c := look.Colours
-	switch en.State {
-	case engine.StateDownloading:
-		if en.Total > 0 {
-			return bar(en.Percent) + fmt.Sprintf(" %3.0f%%", en.Percent), c.Highlight
-		}
-	case engine.StateMerging:
-		return bar(100) + " 100%", c.Highlight
-	case engine.StateDone:
-		return bar(100) + " 100%", c.Success
+	p := downloadsnapshot.ProgressOf(en)
+	if !p.Visible {
+		return "", toneColour(p.Tone)
 	}
 
-	return "", c.Text
+	return bar(p.Percent) + fmt.Sprintf(" %3.0f%%", p.Percent), toneColour(p.Tone)
 }
 
 // bar draws percent as a bar of progressBar cells.
@@ -282,13 +251,4 @@ func bar(percent float64) string {
 
 // qualityText is how good the version of a song is: the height of its picture ("1080p"), or for
 // one with sound only the bitrate ("160k"); empty until yt-dlp has said.
-func qualityText(en *runstate.Entry) string {
-	switch {
-	case en.Height > 0:
-		return fmt.Sprintf("%dp", en.Height)
-	case en.AudioKbps > 0:
-		return fmt.Sprintf("%dk", en.AudioKbps)
-	}
-
-	return ""
-}
+func qualityText(en *runstate.Entry) string { return downloadsnapshot.QualityText(en) }
