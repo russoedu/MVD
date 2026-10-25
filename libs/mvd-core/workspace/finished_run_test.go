@@ -48,8 +48,9 @@ func labels(buttons []button) string {
 	return strings.Join(out, "|")
 }
 
-func TestARunThatHasNotFinishedIsStillRunningAndNewIsRefused(t *testing.T) {
+func TestARunThatIsDownloadingIsStillRunningAndNewIsRefused(t *testing.T) {
 	m, _ := started(t)
+	m = download(m)
 	if m.finished() || !m.active() {
 		t.Fatal("a run with work to do is not finished")
 	}

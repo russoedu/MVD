@@ -28,6 +28,8 @@ func (m Model) removeFromRun(pos int) Model {
 	}
 	link := playlists[pos]
 	if !remover.RemoveSource(link.Index) {
+		m.notice = "That link cannot be taken out now"
+
 		return m
 	}
 	items := cloneItems(m.session.File().Items)
