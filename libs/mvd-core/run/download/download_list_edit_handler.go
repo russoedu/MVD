@@ -30,6 +30,15 @@ func (m Model) SelectedPlaylist() int { return m.selPlaylist }
 // SelectPlaylist puts the cursor on playlist i, as far as there is one.
 func (m Model) SelectPlaylist(i int) Model {
 	m.selPlaylist = max(min(i, len(m.state.Playlists)-1), 0)
+	m.marquee = 0
+	m.keepSelectionVisible()
+	return m
+}
+
+// WithLinkEditing says that the links of the run that goes on can be changed or taken out: the row
+// the cursor is on then has the pencil and the cross.
+func (m Model) WithLinkEditing(on bool) Model {
+	m.linkEditing = on
 	return m
 }
 
@@ -37,7 +46,7 @@ func (m Model) SelectPlaylist(i int) Model {
 // the cross removes, the pencil changes the address, the grip takes hold of the row. It says
 // whether the event was for the icons.
 func (m Model) editClick(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, bool) {
-	if !m.editable || !l.hasLists {
+	if (!m.editable && !m.linkEditing) || !l.hasLists {
 		return m, nil, false
 	}
 	pos := msg.Mouse()
@@ -67,7 +76,11 @@ func (m Model) editClick(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, bo
 		if !ok || i >= len(m.state.Playlists) {
 			return m, nil, false
 		}
+		onIcons := m.editable || i == m.selPlaylist // a run shows the icons on its chosen row only
 		m.focus, m.follow, m.selPlaylist, m.selEntry, m.outScroll = paneLists, false, i, 0, 0
+		if !onIcons {
+			return m, nil, false
+		}
 		right := l.playlists.x + l.playlists.w
 		switch pos.X {
 		case right - 3:
@@ -75,6 +88,9 @@ func (m Model) editClick(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, bo
 		case right - 5:
 			return m, func() tea.Msg { return ListEditMsg{Op: "edit", Index: i} }, true
 		case l.playlists.x + 1:
+			if !m.editable {
+				return m, nil, false
+			}
 			m.dragRowOn, m.dragRow, m.dropRow = true, i, i
 			return m, nil, true
 		}

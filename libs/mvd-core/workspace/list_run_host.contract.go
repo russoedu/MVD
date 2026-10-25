@@ -11,7 +11,10 @@ import (
 // tried again, and when it holds songs for review each can be released.
 type ListRun interface {
 	downloadpage.Run
-	editorpage.Live
+	downloadpage.Chooser
+	downloadpage.SourceRemover
+	// Snapshot is every song the run has listed, with the version each is to download and its state.
+	Snapshot() []engine.EntrySnapshot
 	Pause()
 	Resume()
 	Paused() bool
@@ -26,6 +29,9 @@ type Host struct {
 	Start func(cfg config.Config, sources []string, plan []engine.PlannedEntry, hold bool) (ListRun, error)
 	// Editor is what the review of a list needs.
 	Editor editorpage.EditorHost
+	// AutoLoad starts loading the songs of the list in the background as soon as it has a link
+	// that has not been loaded, so the person never presses a button for it.
+	AutoLoad bool
 	// ListDir is the folder lists are opened from and saved to by default.
 	ListDir string
 	// PickFile shows the operating system's own open-file window, starting in start, and

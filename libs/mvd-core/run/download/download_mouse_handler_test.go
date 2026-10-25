@@ -5,7 +5,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/pointer"
+	"youtube-downloader/libs/mvd-core/testing/keys"
 	"youtube-downloader/libs/mvd-core/testing/mouse"
 )
 
@@ -44,15 +46,52 @@ func TestDownloadScreenWheelScrollsThePaneUnderThePointer(t *testing.T) {
 
 	next, _ := m.Update(mouse.Wheel(90, 30, tea.MouseWheelUp)) // over the output box, under the songs
 	m = next.(Model)
-	if m.focus != paneOutput || m.outScroll != pointer.WheelStep {
+	if m.focus != paneLists || m.outScroll != pointer.WheelStep {
 		t.Errorf("wheel up over the output: focus %d, scrolled %d", m.focus, m.outScroll)
 	}
 
-	next, _ = m.Update(mouse.Wheel(40, 6, tea.MouseWheelDown)) // over the entries
+	next, _ = m.Update(mouse.Wheel(40, 6, tea.MouseWheelDown)) // over the songs
 	m = next.(Model)
-	if m.focus != paneEntries || m.selEntry != 5 {
-		t.Errorf("wheel down over the entries: focus %d, selEntry %d", m.focus, m.selEntry)
+	if m.focus != paneLists || m.selEntry != 4 {
+		t.Errorf("the wheel over the songs moved the selection: focus %d, selEntry %d", m.focus, m.selEntry)
 	}
+}
+
+func TestTheWheelScrollsTheSongsAndAClickDoesNotMoveThem(t *testing.T) {
+	m := sampleModel(t)
+	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Many", Entries: manyEntries(60)})
+	m.width, m.height = 120, 30
+	m.focus, m.selEntry = paneEntries, 0
+
+	next, _ := m.Update(mouse.Wheel(40, 8, tea.MouseWheelDown))
+	m = next.(Model)
+	if m.entriesTop != pointer.WheelStep || m.selEntry != 0 {
+		t.Fatalf("after the wheel: top %d, selection %d", m.entriesTop, m.selEntry)
+	}
+	top := m.entriesTop
+	next, _ = m.Update(mouse.Click(40, 12)) // a song in view
+	m = next.(Model)
+	if m.entriesTop != top || m.selEntry == 0 {
+		t.Errorf("a click moved the songs: top %d (was %d), selection %d", m.entriesTop, top, m.selEntry)
+	}
+	for i := 0; i < 40; i++ { // the keys go past the bottom: it scrolls just enough
+		next, _ = m.Update(keys.Press("down"))
+		m = next.(Model)
+	}
+	l, _ := m.layout()
+	if h := l.entries.rows().h - 1; m.selEntry < m.entriesTop || m.selEntry >= m.entriesTop+h {
+		t.Errorf("the selection %d is out of view: top %d, %d rows", m.selEntry, m.entriesTop, h)
+	}
+}
+
+// manyEntries are n songs for a playlist.
+func manyEntries(n int) []engine.EntryInfo {
+	out := make([]engine.EntryInfo, n)
+	for i := range out {
+		out[i] = engine.EntryInfo{ID: 100 + i, Playlist: 0, Index: i + 1, VideoID: "v", Title: "song"}
+	}
+
+	return out
 }
 
 func TestDownloadScreenIgnoresTheMouseWhileConfirmingToQuit(t *testing.T) {

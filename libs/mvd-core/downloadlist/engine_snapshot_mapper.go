@@ -29,6 +29,9 @@ func (s *Session) Apply(snapshot []engine.EntrySnapshot) {
 		}
 		fresh.State, fresh.Error = stateOf(snap)
 		fresh.Downloaded = snap.State == engine.StateDone || snap.State == engine.StateDuplicate
+		if snap.State == engine.StateSkipped {
+			fresh.Decision = playlistfile.DecisionSkipped
+		}
 
 		at, ok := item[snap.PlaylistURL]
 		if !ok {
@@ -53,6 +56,9 @@ func (s *Session) Apply(snapshot []engine.EntrySnapshot) {
 			}
 			keep.State, keep.Error = fresh.State, fresh.Error
 			keep.Downloaded = keep.Downloaded || fresh.Downloaded
+			if fresh.Decision == playlistfile.DecisionSkipped {
+				keep.Decision = fresh.Decision
+			}
 			songs[i] = keep
 			break
 		}
@@ -75,6 +81,8 @@ func stateOf(snap engine.EntrySnapshot) (state, err string) {
 		return playlistfile.StateDone, ""
 	case engine.StateNotFound:
 		return playlistfile.StateNotFound, ""
+	case engine.StateSkipped:
+		return playlistfile.StateWaiting, ""
 	case engine.StateFailed:
 		if snap.Err == "cancelled" {
 			return playlistfile.StateWaiting, ""

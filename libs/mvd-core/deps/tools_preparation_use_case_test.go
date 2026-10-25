@@ -41,7 +41,8 @@ func TestOnTheFirstStartTheToolsAreFetchedInTheBackgroundWithAStatus(t *testing.
 	if p.Ready() {
 		t.Fatal("ready before anything was fetched")
 	}
-	if status := p.Status(); !strings.Contains(status, "Getting the download tools") {
+	// The status says what is being got: the tools as a whole until the first one begins, then it.
+	if status := p.Status(); !strings.Contains(status, "Getting") {
 		t.Errorf("status %q", status)
 	}
 	close(release)

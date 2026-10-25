@@ -58,7 +58,7 @@ func menus() []menubar.Menu {
 			{Name: entryRetry, Shortcut: "Ctrl+T"},
 			{Separator: true},
 			{Name: entryAddLink, Shortcut: "Ctrl+L"},
-			{Name: entryReviewSongs, Shortcut: "Ctrl+E"},
+			{Name: entryDownloadAll, Shortcut: "Ctrl+D"},
 			{Separator: true},
 			{Name: entryOpenFolder, Shortcut: "Ctrl+Shift+O"},
 		}},

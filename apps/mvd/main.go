@@ -183,7 +183,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// and closing it ends the app. A second start does not get past appwindow.Run: it
 	// raises the first window and ends.
 	err = appwindow.Run(ctx, appwindow.Options{
-		Program: program, DataDir: appDir, Busy: terminalRuns.Busy, Backdrop: backdrop,
+		Program: program, DataDir: appDir, Backdrop: backdrop,
+		OnCloseRequest: func() { program.Send(workspace.CloseRequestedMsg{}) },
 		// A list double clicked while the app is open is opened in the window that is.
 		OnSecondStart: func(args []string) {
 			if list := filetype.ListInArgs(args); list != "" {

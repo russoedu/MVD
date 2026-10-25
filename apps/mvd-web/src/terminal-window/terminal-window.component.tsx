@@ -7,6 +7,7 @@ import { useDimWhileModal } from './dim-while-modal.hook'
 import { useFocusTerminal } from './focus-terminal.hook'
 import { useFollowTerminalBackground } from './follow-terminal-background.hook'
 import { useOpenLinksInBrowser } from './open-links-in-browser.hook'
+import { useForwardShiftClicks } from './shift-click.hook'
 import { terminalSocket } from './terminal-socket.client'
 
 /**
@@ -22,6 +23,7 @@ export function TerminalWindow () {
   useOpenLinksInBrowser()
   useFollowTerminalBackground(terminalRef)
   useFocusTerminal(terminalRef)
+  useForwardShiftClicks(terminalRef)
 
   return (
     <>

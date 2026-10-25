@@ -117,6 +117,7 @@ func runInteractive(ytDlpPath string, cfg config.Config, cfgPath, listPath strin
 		List:  list,
 		Live:  runner.LiveSettings,
 		Host: workspace.Host{
+			AutoLoad: true,
 			Start: func(cfg config.Config, sources []string, plan []engine.PlannedEntry, hold bool) (workspace.ListRun, error) {
 				if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
 					return nil, fmt.Errorf("cannot create the output directory %s: %w", cfg.OutputDir, err)

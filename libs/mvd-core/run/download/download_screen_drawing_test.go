@@ -33,7 +33,7 @@ func TestTheScreenKeepsItsLook(t *testing.T) {
 		{"download-emoji-playlist", 120, 36, download(func(m *Model) { m.focus = paneLists; m.selPlaylist = 1 })},
 		{"download-failed-playlist", 120, 36, download(func(m *Model) { m.focus = paneLists; m.selPlaylist = 2 })},
 		{"download-full-log", 120, 36, download(func(m *Model) { m.fullLog = true; m.focus = paneOutput; m.outScroll = 5 })},
-		{"download-filter-failed", 120, 36, download(func(m *Model) { m.filterFailed = true; m.focus = paneEntries })},
+		{"download-filter-failed", 120, 36, download(func(m *Model) { m.statusHidden = onlyFailed(); m.focus = paneEntries })},
 		{"download-confirm-quit", 120, 36, download(func(m *Model) { m.confirmQuit = true })},
 		{"download-help", 120, 36, download(func(m *Model) { m.showHelp = true })},
 		{"download-add-links", 120, 36, download(func(m *Model) {

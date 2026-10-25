@@ -14,6 +14,7 @@ import (
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/pointer"
+	"youtube-downloader/libs/mvd-core/runstate"
 )
 
 // gripCells are the columns at the left of an address being edited: the grip and a space.
@@ -27,6 +28,9 @@ const doubleClickWithin = 450 * time.Millisecond
 type inlineEdit struct {
 	on     bool
 	adding bool
+	// running is a link being added to the run that is going on: its row is one the screen
+	// makes up for as long as it is written, and goes when it is done.
+	running bool
 	index  int // the row, counted in the list as it will be
 	// before is the playlist the cursor was on, for a cancelled add to put it back.
 	before int
@@ -54,6 +58,9 @@ func abs(n int) int {
 
 // startAdd opens a new row after the playlist the cursor is on, to write an address in.
 func (m Model) startAdd() (Model, tea.Cmd) {
+	if m.addable() {
+		return m.startAddToRun(), nil
+	}
 	if !m.editable() {
 		return m, nil
 	}
@@ -67,6 +74,20 @@ func (m Model) startAdd() (Model, tea.Cmd) {
 	m.screen = m.screen.WithState(downloadlist.PreviewOf(playlistfile.File{Items: shown})).SelectPlaylist(at)
 	m.inline = inlineEdit{on: true, adding: true, index: at, before: before}
 	return m.sizeInline(""), nil
+}
+
+// startAddToRun opens a row at the end of the playlists of the run, to write an address in: the
+// same place and the same way as when the list is only being made.
+func (m Model) startAddToRun() Model {
+	m = m.stopInline(false)
+	state := m.screen.State()
+	before := m.screen.SelectedPlaylist()
+	state.Playlists = append(state.Playlists, &runstate.Playlist{Index: -1, Listed: true})
+	at := len(state.Playlists) - 1
+	m.screen = m.screen.SelectPlaylist(at)
+	m.inline = inlineEdit{on: true, adding: true, running: true, index: at, before: before}
+
+	return m.sizeInline("")
 }
 
 // startChange turns the row of playlist i into a place to write another address.
@@ -100,6 +121,31 @@ func (m Model) stopInline(keep bool) Model {
 	e := m.inline
 	m.inline = inlineEdit{}
 	text := strings.TrimSpace(e.line.Value())
+	if e.running && !e.adding {
+		// Another address for a link of the run: the old one is taken out, the new one loaded.
+		m.screen = m.screen.SelectPlaylist(e.before)
+		if keep && text != "" {
+			if old, ok := m.runLinkAt(e.index); !ok || old != text {
+				links, _ := parseLinks(text)
+				m = m.removeFromRun(e.index).addToRun(links)
+			}
+		}
+
+		return m
+	}
+	if e.running {
+		state := m.screen.State()
+		if n := len(state.Playlists); n > 0 && n-1 == e.index {
+			state.Playlists = state.Playlists[:n-1]
+		}
+		m.screen = m.screen.SelectPlaylist(e.before)
+		if keep && text != "" {
+			links, _ := parseLinks(text)
+			m = m.addToRun(links)
+		}
+
+		return m
+	}
 	switch {
 	case keep && text != "" && e.adding:
 		links, _ := parseLinks(text)
@@ -219,7 +265,7 @@ func (m Model) listMouse(msg tea.MouseMsg) (Model, tea.Cmd, bool) {
 		}
 		m = next
 	}
-	if !double || m.reviewing || !m.editable() || pos.Y == 0 {
+	if !double || (!m.editable() && !m.addable()) || pos.Y == 0 {
 		return m, nil, false
 	}
 	index, inside := m.screen.PlaylistAt(pos.X, pos.Y-topRows)

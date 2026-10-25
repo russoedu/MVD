@@ -23,9 +23,6 @@ func (m Model) render() string {
 		return "starting..."
 	}
 	below := m.screen.Render()
-	if m.reviewing {
-		below = m.editor.Render()
-	}
 	lines := strings.Split(below, "\n")
 	if len(lines) > m.height-topRows {
 		lines = lines[:m.height-topRows]
@@ -36,6 +33,10 @@ func (m Model) render() string {
 	screen := m.buttonsView(m.barRow() + "\n" + strings.Join(lines, "\n"))
 	if m.inline.on {
 		screen = m.inlineView(screen)
+	}
+	if m.closing.on {
+		x, y := m.closeOrigin()
+		screen = dialog.Overlay(dialog.Dim(screen), m.closeView(), x, y)
 	}
 	if m.about {
 		x, y := m.aboutOrigin()
@@ -82,7 +83,7 @@ func (m Model) bottomLine() string {
 		return cells.Fit(" "+look.Dim.Render(m.disabledReason()), m.width)
 	case m.finished():
 		return cells.Fit(" "+m.summaryLine(), m.width)
-	case m.editable() && !m.reviewing:
+	case m.editable():
 		return cells.Fit(" "+look.Dim.Render(m.idleHints()), m.width)
 	}
 	return ""
@@ -110,7 +111,7 @@ func overlayMenu(screen, barView string) string {
 // idleHints is the line of keys at the bottom while nothing runs: the few that start the work,
 // and the one that lists them all.
 func (m Model) idleHints() string {
-	if _, _, _, drawn := m.buttonRows(); !drawn && !m.reviewing && m.width > 0 {
+	if _, _, _, drawn := m.buttonRows(); !drawn && m.width > 0 {
 		// The window is too narrow for the buttons: the Run menu has what they did.
 		return "No room for buttons at this width: use the Run menu  ·  " + menubar.ShortcutLabel("F1") + " shortcuts"
 	}

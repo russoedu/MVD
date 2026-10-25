@@ -146,6 +146,9 @@ var parts = append(master.PartsFor(masterProps, "Title"), []cuppa.ScreenPart[Pro
 			}
 			v["focused"] = strconv.FormatBool(p.PlaylistsFocus)
 			v["right"] = p.PlaylistsRight
+			if p.PlaylistsTitle != "" {
+				v["title"] = p.PlaylistsTitle
+			}
 			e := env(p, w, h)
 			return (e.In("LeftWidth") > 0.0)
 		},
@@ -540,6 +543,8 @@ type Props struct {
 	Counters string
 	// PlaylistsFocus is the Has focus (false: the border takes the blurred colour) of "Playlists box".
 	PlaylistsFocus bool
+	// PlaylistsTitle is the Title of "Playlists box"; "" keeps the design's.
+	PlaylistsTitle string
 	// PlaylistsRight is the Right label (in the top edge) of "Playlists box".
 	PlaylistsRight string
 	// Playlists is the Sample rows (; between rows, , between cells) of "Playlists rows".

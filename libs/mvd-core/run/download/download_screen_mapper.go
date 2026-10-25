@@ -11,7 +11,6 @@ import (
 
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/engine"
-	"youtube-downloader/libs/mvd-core/internal/cuppa"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/runstate"
 	"youtube-downloader/libs/mvd-core/viewport"
@@ -51,16 +50,17 @@ func (m Model) downloadProps(w, h int) Props {
 
 	// Playlists.
 	p.PlaylistsRows = func(w, h int) ([]PlaylistsRow, int) {
-		return cuppa.Window(m.playlistRows(w), m.selPlaylist, h)
+		return scrolled(m.playlistRows(w), m.playlistsTop, h)
 	}
-	p.PlaylistsRight = fmt.Sprintf("%d", len(m.state.Playlists))
+	p.PlaylistsTitle = counted(len(m.state.Playlists), "link")
+	p.PlaylistsRight = ""
 	p.PlaylistsFocus = m.focus == paneLists
 
 	// Entries.
 	p.EntriesTitle, p.EntriesRight = m.entryHeader()
 	p.EntriesRows = func(w, h int) ([]EntriesRow, int) {
-		rows, sel := m.entryRows(w)
-		return cuppa.Window(rows, sel, h)
+		rows, _ := m.entryRows(w)
+		return scrolled(rows, m.entriesTop, h)
 	}
 	// The songs are a table, with a row of headings, whenever there are songs to show.
 	p.EntriesTable = m.songsTable
@@ -121,6 +121,9 @@ func (m Model) downloadProps(w, h int) Props {
 	case m.confirmQuit:
 		p.ConfirmQuit = true
 		p.Confirm = look.Red.Render(" Downloads are still running. Quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
+	case m.swapping:
+		p.ShowStatus = true
+		p.Status = " " + m.swap.View()
 	case m.status != "" && time.Now().Before(m.statusUntil):
 		p.ShowStatus = true
 		p.Status = " " + m.status
@@ -139,8 +142,12 @@ func (m Model) headerTexts() (counters, right string) {
 	right = elapsed
 	if m.editable {
 		right = "" // nothing is running: there is no time to count
+	} else if m.paused && t.Accepted > 0 {
+		right = "ACCEPTED · press Download to start · " + elapsed
+	} else if m.state.Idle && t.Planned > 0 {
+		right = "CHOOSE WHAT TO DOWNLOAD · " + elapsed
 	} else if m.paused {
-		right = "PAUSED · " + elapsed
+		right = "STOPPED · " + elapsed
 	} else if m.state.Idle {
 		right = "FINISHED · " + elapsed
 	} else if t.Downloading > 0 {
@@ -154,8 +161,19 @@ func (m Model) headerTexts() (counters, right string) {
 		look.Green.Render(fmt.Sprintf("✓ Done %d", t.Done)),
 		look.Red.Render(fmt.Sprintf("✗ Failed %d", t.Failed+m.unreadableLinks())),
 	}
-	if m.state.Idle || m.paused {
+	if t.Running == 0 || m.state.Idle || m.paused {
+		// Nothing moves, so nothing spins.
 		parts[1] = look.Dim.Render(fmt.Sprintf("  Downloading %d", t.Running))
+	}
+	official, original := m.plannedCounts()
+	if official > 0 {
+		parts = append(parts, look.Green.Render(fmt.Sprintf("✓ Official found %d", official)))
+	}
+	if original > 0 {
+		parts = append(parts, look.Yellow.Render(fmt.Sprintf("? Original only %d", original)))
+	}
+	if t.Accepted > 0 {
+		parts = append(parts, look.Cyan.Render(fmt.Sprintf("▸ Accepted %d", t.Accepted)))
 	}
 	for _, extra := range []struct {
 		n     int
@@ -166,6 +184,7 @@ func (m Model) headerTexts() (counters, right string) {
 		{t.Better, "↑ Better quality", look.Cyan.Render},
 		{t.Duplicate, "≡ Already had", look.Dim.Render},
 		{t.NotFound, "∅ No official video", look.Dim.Render},
+		{t.Skipped, "– Rejected", look.Dim.Render},
 		{t.Retried, "↻ Tried again", look.Cyan.Render},
 	} {
 		if extra.n > 0 {
@@ -173,6 +192,23 @@ func (m Model) headerTexts() (counters, right string) {
 		}
 	}
 	return strings.Join(parts, "   "), right
+}
+
+// plannedCounts are how many songs wait for the person: with an official video found for them, and
+// with only the original.
+func (m Model) plannedCounts() (official, original int) {
+	for _, en := range m.state.Entries {
+		if en == nil || en.State != engine.StatePlanned {
+			continue
+		}
+		if foundOfficial(en) {
+			official++
+		} else {
+			original++
+		}
+	}
+
+	return official, original
 }
 
 // playlistRows are the rows of the playlists pane: the design places the cursor, the
@@ -184,6 +220,7 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 	rows := make([]PlaylistsRow, 0, len(m.state.Playlists))
 	for i, pl := range m.state.Playlists {
 		finished, _, _ := m.state.PlaylistTally(pl)
+		finished -= m.waitingIn(pl) // a song that waits to be chosen is not done
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
 		if pl.Err != "" {
 			count = "can't read"
@@ -198,6 +235,10 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 		}
 		if m.editable {
 			row.Mark, row.Count, row.Glyph = "≡", "✎", "×"
+			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
+		}
+		if !m.editable && m.linkEditing && i == m.selPlaylist {
+			row.Count, row.Glyph = "✎", "×"
 			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
 		}
 		if m.dragRowOn && i == m.dropRow {
@@ -244,14 +285,16 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 
 // entryHeader are the title and the label of the entries pane.
 func (m Model) entryHeader() (title, right string) {
-	title = "Songs"
-	if m.filterFailed {
-		title = "Songs (failed only)"
-	}
+	n := 0
 	if m.selPlaylist < len(m.state.Playlists) {
-		right = fmt.Sprintf("%d", len(m.visibleEntries()))
+		n = len(m.visibleEntries())
 	}
-	return title, right
+	title = counted(n, "song")
+	if m.filterActive() && m.selPlaylist < len(m.state.Playlists) {
+		title = fmt.Sprintf("%d of %s", n, counted(len(m.state.Playlists[m.selPlaylist].Entries), "song"))
+	}
+
+	return title, ""
 }
 
 // entryNotesShown is whether the entries pane has a note to show instead of rows: the
@@ -261,7 +304,7 @@ func (m Model) entryNotesShown() bool {
 		return false
 	}
 	pl := m.state.Playlists[m.selPlaylist]
-	return pl.Err != "" || !pl.Listed || (m.filterFailed && len(m.visibleEntries()) == 0)
+	return pl.Err != "" || !pl.Listed || (m.filterActive() && len(m.visibleEntries()) == 0)
 }
 
 // entryNotes are the lines of that note, wrapped to innerW cells.
@@ -278,8 +321,8 @@ func (m Model) entryNotes(innerW int) []NotesRow {
 		}
 	case !pl.Listed:
 		notes = []NotesRow{{Line: "reading this link...", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
-	case len(m.visibleEntries()) == 0 && m.filterFailed:
-		notes = []NotesRow{{Line: "no failed songs", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
+	case len(m.visibleEntries()) == 0 && m.filterActive():
+		notes = []NotesRow{{Line: "no songs with these statuses: change the filter above", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
 	}
 	return notes
 }
@@ -387,7 +430,13 @@ func (m Model) detailsHeight(h int) int {
 		return max(6, room/2)
 	}
 
-	return min(7, max(4, room/3))
+	base := min(7, max(4, room/3))
+	if m.anyWaiting() {
+		// The buttons of a song that waits to be chosen sit on the last row.
+		return min(max(base, choiceButtonsHeight), max(room-5, base))
+	}
+
+	return base
 }
 
 // emptyPlaylistRows is what the playlists pane says while there is nothing in it: what to do
@@ -416,6 +465,8 @@ func (m Model) emptyEntriesText() string {
 		return "The songs of each link show here, once you add one."
 	case m.editable:
 		return "Nothing loaded yet. Press Load playlists (Ctrl+R) to see the songs of each playlist, then choose what to download."
+	case m.selPlaylist < len(m.state.Playlists) && !m.state.Playlists[m.selPlaylist].Listed:
+		return "Reading the songs of this link…"
 	}
 	return "No songs to show here."
 }

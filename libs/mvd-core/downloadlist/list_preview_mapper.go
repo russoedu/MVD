@@ -77,7 +77,7 @@ func entryStateOf(id int, song playlistfile.Entry) engine.EvEntryState {
 	case song.Downloaded || song.State == playlistfile.StateDone:
 		ev.State = engine.StateDone
 	case song.Decision == playlistfile.DecisionSkipped:
-		ev.State = engine.StateNotFound
+		ev.State = engine.StateSkipped
 	case song.State == playlistfile.StateFailed:
 		ev.State = engine.StateFailed
 	case song.State == playlistfile.StateNotFound:

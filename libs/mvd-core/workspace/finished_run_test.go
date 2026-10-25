@@ -27,7 +27,7 @@ func finishRun(t *testing.T, m Model, done, failed int) Model {
 	}
 	state.Apply(engine.EvIdle{})
 
-	return m
+	return m.keepRoomForButtons() // what the next Update of the app does
 }
 
 func entriesOf(n int) []engine.EntryInfo {
@@ -49,7 +49,7 @@ func labels(buttons []button) string {
 }
 
 func TestARunThatHasNotFinishedIsStillRunningAndNewIsRefused(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	if m.finished() || !m.active() {
 		t.Fatal("a run with work to do is not finished")
 	}
@@ -60,7 +60,7 @@ func TestARunThatHasNotFinishedIsStillRunningAndNewIsRefused(t *testing.T) {
 }
 
 func TestAFinishedRunOffersTheIdleButtonsAndNotPauseOrStop(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m = finishRun(t, m, 2, 0)
 	if !m.finished() || m.active() {
 		t.Fatalf("finished %v active %v", m.finished(), m.active())
@@ -75,7 +75,7 @@ func TestAFinishedRunOffersTheIdleButtonsAndNotPauseOrStop(t *testing.T) {
 }
 
 func TestAFinishedRunWithFailuresOffersRetryToo(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m = finishRun(t, m, 1, 2)
 	if got := labels(m.buttons()); got != "Open folder|► Load playlists again|Retry failed|+ Add link" {
 		t.Errorf("the buttons are %q", got)
@@ -83,7 +83,7 @@ func TestAFinishedRunWithFailuresOffersRetryToo(t *testing.T) {
 }
 
 func TestANewListIsAllowedAfterARunFinishedWithoutPressingStop(t *testing.T) {
-	m, fake := started(t, false)
+	m, fake := started(t)
 	m = finishRun(t, m, 1, 0)
 	next, _ := m.Update(menubar.SelectedMsg{Name: entryNew})
 	m = next.(Model)
@@ -99,7 +99,7 @@ func TestANewListIsAllowedAfterARunFinishedWithoutPressingStop(t *testing.T) {
 }
 
 func TestOpeningAListIsAllowedAfterARunFinished(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
 	next, _ := m.Update(menubar.SelectedMsg{Name: entryOpen})
 	m = next.(Model)
@@ -112,7 +112,7 @@ func TestOpeningAListIsAllowedAfterARunFinished(t *testing.T) {
 }
 
 func TestAddingALinkAfterARunFinishedOpensTheRowOnTheList(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
 	next, _ := m.Update(menubar.SelectedMsg{Name: entryAddLink})
 	m = next.(Model)
@@ -122,7 +122,7 @@ func TestAddingALinkAfterARunFinishedOpensTheRowOnTheList(t *testing.T) {
 }
 
 func TestStartAgainEndsTheFinishedRunAndBeginsAnother(t *testing.T) {
-	m, fake := started(t, false)
+	m, fake := started(t)
 	m = finishRun(t, m, 1, 0)
 	next, cmd := m.Update(menubar.SelectedMsg{Name: entryStart})
 	m = next.(Model)
@@ -135,7 +135,7 @@ func TestStartAgainEndsTheFinishedRunAndBeginsAnother(t *testing.T) {
 }
 
 func TestAFinishedRunSaysHowItWentAndWhereTheVideosAre(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m = finishRun(t, m, 3, 1)
 	screen := screenOf(m)
 	for _, want := range []string{"✓ 3 downloaded", "✗ 1 failed", "Videos in", "Ctrl+Shift+O"} {
@@ -146,7 +146,7 @@ func TestAFinishedRunSaysHowItWentAndWhereTheVideosAre(t *testing.T) {
 }
 
 func TestTheSummaryKeepsTheEndOfALongFolder(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
 	m.cfg.OutputDir = `C:\Users\someone\AppData\Local\Temp\a\very\long\path\that\goes\on\and\on\to\MVD-Videos`
 	if got := m.summaryLine(); !strings.Contains(ansi.Strip(got), `MVD-Videos`) {
@@ -155,7 +155,7 @@ func TestTheSummaryKeepsTheEndOfALongFolder(t *testing.T) {
 }
 
 func TestOpenFolderAsksTheHostAndSaysWhenThereIsNone(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	dir := t.TempDir()
 	m.cfg.OutputDir = dir
 	var opened string
@@ -182,7 +182,7 @@ func TestOpenFolderAsksTheHostAndSaysWhenThereIsNone(t *testing.T) {
 }
 
 func TestWhenARunEndsWhatWasSaidAtItsStartMakesRoomForHowItWent(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m.done = "Kept this list as a draft: somewhere"
 	m = finishRun(t, m, 1, 0)
 	next, _ := m.Update(saveTickMsg{})
@@ -196,7 +196,7 @@ func TestWhenARunEndsWhatWasSaidAtItsStartMakesRoomForHowItWent(t *testing.T) {
 }
 
 func TestTheSummaryMentionsALinkThatCouldNotBeReadAtAll(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
 	state := m.screen.State()
 	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(state.Playlists), URL: "https://bad"}})
@@ -211,7 +211,7 @@ func TestTheSummaryMentionsALinkThatCouldNotBeReadAtAll(t *testing.T) {
 }
 
 func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
-	m, _ := started(t, false)
+	m, _ := started(t)
 	state := m.screen.State()
 	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: 0, URL: "https://a"}})
 	state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "a", Entries: entriesOf(5)})
@@ -224,14 +224,14 @@ func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
 	}
 }
 
-func TestPausingShowsInTheHeaderForAsLongAsTheDownloadsAreHeld(t *testing.T) {
-	m, run := started(t, false)
+func TestStoppingShowsInTheHeaderForAsLongAsTheDownloadsAreHeld(t *testing.T) {
+	m, run := started(t)
 	m = m.togglePause()
-	if !run.paused || !strings.Contains(screenOf(m), "PAUSED") {
+	if !run.paused || !strings.Contains(screenOf(m), "STOPPED") {
 		t.Errorf("paused %v, screen:\n%s", run.paused, screenOf(m))
 	}
 	m = m.togglePause()
-	if strings.Contains(screenOf(m), "PAUSED") {
-		t.Error("it still says PAUSED after the downloads went on")
+	if strings.Contains(screenOf(m), "STOPPED") {
+		t.Error("it still says STOPPED after the downloads went on")
 	}
 }

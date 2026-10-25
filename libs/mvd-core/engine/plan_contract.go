@@ -117,6 +117,9 @@ func (e *Engine) Plan() []PlannedEntry {
 	defer e.mu.Unlock()
 	var plan []PlannedEntry
 	for _, en := range e.entries {
+		if e.removed[en.info.Playlist] {
+			continue
+		}
 		switch en.state {
 		case StatePlanned, StateNotFound, StateFailed:
 		default:

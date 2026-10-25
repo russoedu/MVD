@@ -25,7 +25,7 @@ func (m Model) Caution(text string) Model {
 
 // WindowOpen reports whether a window of the workspace (About, Keyboard shortcuts) is showing
 // over the screen, which the page around the terminal dims itself for.
-func (m Model) WindowOpen() bool { return m.about || m.shortcuts }
+func (m Model) WindowOpen() bool { return m.about || m.shortcuts || m.closing.on }
 
 // shortcutsKey works a key press while the Keyboard shortcuts window is showing: it scrolls,
 // or it closes.
@@ -109,6 +109,9 @@ func (m Model) popupMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, false
 	}
 	switch {
+	case m.closing.on:
+		next, cmd := m.closeMouse(msg)
+		return next, cmd, true
 	case m.about:
 		return m.aboutMouse(msg)
 	case m.shortcuts:
@@ -146,16 +149,20 @@ func (m Model) aboutMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 // for the address being written, and Copy needs something selected; the other commands work
 // on the playlist the cursor is on, and wait for the downloads to stop.
 func (m Model) refreshMenus() Model {
-	free := m.editable() && !m.reviewing
-	writing := free && m.inline.on
+	free := m.editable()
+	live := m.addable()
+	writing := (free || live) && m.inline.on
 	i, has := m.selected()
 	n := len(m.session.File().Items)
 	m.bar.SetEnabled(entryCut, writing && m.inline.line.HasSelection())
 	m.bar.SetEnabled(entryCopy, writing && m.inline.line.HasSelection())
-	m.bar.SetEnabled(entryPaste, free)
+	m.bar.SetEnabled(entryPaste, free || live)
+	m.bar.SetEnabled(entryDelete, live && !writing && m.screen.SelectedPlaylist() >= 0)
 	m.bar.SetEnabled(entryUndo, free && !writing && len(m.undone) > 0)
 	m.bar.SetEnabled(entryRedo, free && !writing && len(m.redone) > 0)
-	m.bar.SetEnabled(entryDelete, free && !writing && has)
+	if free {
+		m.bar.SetEnabled(entryDelete, !writing && has)
+	}
 	m.bar.SetEnabled(entryMoveUp, free && !writing && has && i > 0)
 	m.bar.SetEnabled(entryMoveDown, free && !writing && has && i < n-1)
 	return m

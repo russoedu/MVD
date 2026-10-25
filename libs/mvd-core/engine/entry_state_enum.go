@@ -20,6 +20,12 @@ const (
 	// StatePlanned is a song a plan-only run has chosen the version of: it is not
 	// downloaded, the plan says what would be.
 	StatePlanned
+	// StateSkipped is a song the person cancelled while it waited for their choice: it is not
+	// downloaded.
+	StateSkipped
+	// StateAccepted is a song the person accepted: it waits in the queue for the downloads to start,
+	// and shows as downloading once a downloader takes it.
+	StateAccepted
 )
 
 func (s EntryState) String() string {
@@ -42,11 +48,15 @@ func (s EntryState) String() string {
 		return "not found"
 	case StatePlanned:
 		return "planned"
+	case StateSkipped:
+		return "skipped"
+	case StateAccepted:
+		return "accepted"
 	}
 	return "unknown"
 }
 
 // Finished reports whether the state is terminal.
 func (s EntryState) Finished() bool {
-	return s == StateDone || s == StateDuplicate || s == StateFailed || s == StateNotFound || s == StatePlanned
+	return s == StateDone || s == StateDuplicate || s == StateFailed || s == StateNotFound || s == StatePlanned || s == StateSkipped
 }

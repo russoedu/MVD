@@ -14,6 +14,7 @@ import (
 // The columns of the table of songs, and how wide each is, in cells. The song takes what is left.
 const (
 	columnMark     = "mark"
+	columnCheck    = "check"
 	columnIdx      = "idx"
 	columnSong     = "song"
 	columnArtist   = "artist"
@@ -24,8 +25,9 @@ const (
 	columnStatus   = "status"
 
 	widthMark     = 1
+	widthCheck    = 3
 	widthIdx      = 2
-	widthStatus   = 11
+	widthStatus   = 14
 	widthProgress = 13 // a bar of 8, a space and "100%"
 	widthArtist   = 16
 	widthVideo    = 22
@@ -49,9 +51,21 @@ func (m Model) tableColumns(w int) []tableColumn {
 		columnStatus: widthStatus, columnProgress: widthProgress, columnArtist: widthArtist, columnVideo: widthVideo,
 		columnAlbum: widthAlbum, columnQuality: widthQuality,
 	}
+	for name, given := range m.colWidth {
+		if _, known := widths[name]; known && given >= minColumnWidth {
+			widths[name] = given // the width the person gave it
+		}
+	}
+	_, choosing := m.chooser()
 	used := widthMark + widthIdx + minSongWidth + 2 // and the gaps between these three
+	if choosing {
+		used += widthCheck + 1
+	}
 	include := map[string]bool{}
 	for _, name := range []string{columnStatus, columnProgress, columnQuality, columnArtist, columnAlbum, columnVideo} {
+		if m.hiddenCols[name] {
+			continue
+		}
 		if name != columnStatus && name != columnProgress && !m.tableHas(name) {
 			continue
 		}
@@ -61,14 +75,19 @@ func (m Model) tableColumns(w int) []tableColumn {
 		}
 	}
 
-	all := []tableColumn{
-		{columnMark, "", widthMark}, {columnIdx, "#", widthIdx}, {columnSong, "Song", 0},
-		{columnArtist, "Artist", widthArtist}, {columnVideo, "Video", widthVideo}, {columnAlbum, "Album", widthAlbum},
-		{columnQuality, "Quality", widthQuality}, {columnProgress, "Progress", widthProgress}, {columnStatus, "Status", widthStatus},
+	titles := map[string]string{columnArtist: "Artist", columnVideo: "Video", columnAlbum: "Album", columnQuality: "Quality", columnProgress: "Progress", columnStatus: "Status"}
+	all := []tableColumn{{columnMark, "", widthMark}, {columnCheck, "", widthCheck}, {columnIdx, "#", widthIdx}, {columnSong, "Song", 0}}
+	for _, name := range m.columnOrder() {
+		all = append(all, tableColumn{name, titles[name], widths[name]})
 	}
 	var out []tableColumn
 	for _, c := range all {
-		if c.name == columnMark || c.name == columnIdx || c.name == columnSong || include[c.name] {
+		switch {
+		case c.name == columnCheck:
+			if choosing {
+				out = append(out, c)
+			}
+		case c.name == columnMark || c.name == columnIdx || c.name == columnSong || include[c.name]:
 			out = append(out, c)
 		}
 	}
@@ -152,9 +171,24 @@ func (m Model) songsTable(w int) Table {
 	var header, styles []string
 	for i, c := range cols {
 		if i > 0 {
-			header, styles = append(header, " "), append(styles, "")
+			// A pipe between the headings is the border the person carries to resize a column.
+			sep := " "
+			if resizable(c.name) && (cols[i-1].name == columnSong || resizable(cols[i-1].name)) {
+				sep = "│"
+			}
+			header, styles = append(header, sep), append(styles, dim)
 		}
-		header, styles = append(header, c.title), append(styles, dim)
+		title := c.title
+		if c.name == columnCheck {
+			title = [3]string{"[ ]", "[-]", "[x]"}[m.pickState()]
+		}
+		if mark := m.sortMark(c.name); mark != "" {
+			title += mark
+			if c.width > 3 {
+				title = c.title + " " + mark
+			}
+		}
+		header, styles = append(header, title), append(styles, dim)
 	}
 
 	return Table{Columns: columnsSpec(cols), Header: header, HeaderStyles: styles}
@@ -175,6 +209,11 @@ func (m Model) songCells(en *runstate.Entry, cols []tableColumn, selected bool) 
 		switch c.name {
 		case columnMark:
 			text, style = glyph, plain(glyphColour)
+		case columnCheck:
+			text, style = "[ ]", plain(look.Colours.Dim)
+			if m.picked[en.ID] {
+				text, style = "[x]", plain(look.Colours.Focus)
+			}
 		case columnIdx:
 			text = fmt.Sprintf("%02d", en.Index)
 		case columnSong:
@@ -229,7 +268,11 @@ func entryStatus(en *runstate.Entry) (word, colour string) {
 	case engine.StateFailed:
 		return "failed", c.Error
 	case engine.StatePlanned:
-		return "to choose", c.Dim
+		return plannedWord(en)
+	case engine.StateAccepted:
+		return "accepted", c.Focus
+	case engine.StateSkipped:
+		return "rejected", c.Dim
 	case engine.StateDone:
 		switch {
 		case en.Official:
@@ -241,6 +284,26 @@ func entryStatus(en *runstate.Entry) (word, colour string) {
 	}
 
 	return "", c.Text
+}
+
+// foundOfficial says whether what was found for a song that waits is an official video: the one
+// found for it, or its own upload when that is the official one.
+func foundOfficial(en *runstate.Entry) bool { return en.Official || en.OwnOfficial }
+
+// plannedWord is what the status of a song that waits says of what was found: whether there is an
+// official video, so the person knows whether they can accept it without a look.
+func plannedWord(en *runstate.Entry) (word, colour string) {
+	c := look.Colours
+	switch {
+	case en.Official:
+		return "official found", c.Success
+	case en.OwnOfficial:
+		return "is official", c.Success
+	case en.Better:
+		return "better found", c.Focus
+	}
+
+	return "original only", c.Highlight
 }
 
 // progressCell is a bar and a percentage while a song comes in, a full bar once it is saved, and

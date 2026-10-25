@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
@@ -16,11 +17,11 @@ const topRows = 1
 const (
 	entryStart       = "Load playlists"
 	entryAddLink     = "Add link…"
-	entryPause       = "Pause"
-	entryResume      = "Resume"
+	entryPause       = "Stop downloads"
+	entryResume      = "Download"
 	entryStop        = "Stop"
 	entryRetry       = "Retry failed"
-	entryReviewSongs = "Review songs"
+	entryDownloadAll = "Accept all songs"
 )
 
 // button is one button of the toolbar.
@@ -51,14 +52,13 @@ func (m Model) buttons() []button {
 			{"+ Add link", entryAddLink, busy},
 		}
 	}
-	pause := button{"Pause", entryPause, busy}
-	if m.run.Paused() {
-		pause = button{"► Resume", entryResume, busy}
+	// Download starts the downloads of what was accepted, and Stop downloads holds them again: the
+	// songs that are on their way finish, and nothing else begins.
+	download := button{"► Download", entryResume, busy}
+	if !m.run.Paused() {
+		download = button{"■ Stop downloads", entryPause, busy}
 	}
-	out := []button{pause, {"■ Stop", entryStop, busy}, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
-	if m.editor.Live() {
-		out = append(out, button{"Review songs", entryReviewSongs, busy})
-	}
+	out := []button{download, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
 	return out
 }
 
@@ -67,7 +67,7 @@ func (m Model) buttons() []button {
 // when the screen has no such column (a narrow window), and the Run menu is the way then.
 func (m Model) buttonRows() (x, y, w int, ok bool) {
 	cx, cy, cw, ch, reserve, drawn := m.screen.LeftColumn()
-	if !drawn || reserve == 0 || m.reviewing {
+	if !drawn || reserve == 0 {
 		return 0, 0, 0, false
 	}
 	return cx, cy + (ch - reserve) + topRows, cw, true
@@ -134,7 +134,7 @@ func (m Model) refreshRunMenus() Model {
 	m.bar.SetEnabled(entryStop, running && !busy)
 	m.bar.SetEnabled(entryRetry, m.running() && !busy)
 	m.bar.SetEnabled(entryOpenFolder, m.host.OpenFolder != nil)
-	m.bar.SetEnabled(entryReviewSongs, running && !busy && m.editor.Live())
+	m.bar.SetEnabled(entryDownloadAll, running && !busy && m.waiting())
 	return m
 }
 
@@ -155,14 +155,19 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 		m.openFolder()
 		return m, nil, true
 	case entryAddLink:
-		if m.editable() {
+		if m.editable() || m.addable() {
 			next, cmd := m.startAdd()
 			return next, cmd, true
 		}
 		return m.ask(askAddLink, "Add a playlist or video link", ""), textinput.Blink, true
-	case entryReviewSongs:
-		if m.running() && m.editor.Live() {
-			m.reviewing = true
+	case entryDownloadAll:
+		if m.running() {
+			n := m.run.ReleaseAll()
+			if n == 1 {
+				m.done = "1 song accepted: it will download"
+			} else {
+				m.done = fmt.Sprintf("%d songs accepted: they will download", n)
+			}
 		}
 		return m, nil, true
 	}
@@ -172,7 +177,7 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 // keepRoomForButtons tells the screen how many rows under the playlists the buttons take, and
 // whether the list can be changed on it.
 func (m Model) keepRoomForButtons() Model {
-	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable())
+	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable()).WithLinkEditing(m.addable())
 	return m
 }
 

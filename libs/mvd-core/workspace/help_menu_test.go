@@ -76,8 +76,8 @@ func TestTheShortcutsWindowListsEveryShortcutOfTheMenusAndNothingElseOfTheirs(t 
 	if !strings.Contains(all, "While downloading") {
 		t.Error("the keys of the download screen are missing")
 	}
-	if !strings.Contains(all, "Pause / Resume") {
-		t.Error("Pause and Resume share Ctrl+P and should be said once")
+	if !strings.Contains(all, "Stop downloads / Download") {
+		t.Error("Download and Stop downloads share Ctrl+P and should be said once")
 	}
 }
 

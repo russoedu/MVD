@@ -2,6 +2,7 @@ package download
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/cells"
@@ -29,7 +30,38 @@ func (m Model) detailRows(w int) []OutputRow {
 	}
 	pl := m.state.Playlists[m.selPlaylist]
 	en := m.selectedEntry()
-	if m.focus == paneLists || en == nil {
+	picks := len(m.picked)
+	if picks > 1 {
+		say(counted(picks, "song")+" selected", bold)
+		blank()
+		counts := map[string]int{}
+		for id := range m.picked {
+			if p := m.state.Entry(id); p != nil {
+				word, _ := entryStatus(p)
+				counts[word]++
+			}
+		}
+		words := make([]string, 0, len(counts))
+		for word := range counts {
+			words = append(words, word)
+		}
+		sort.Strings(words)
+		for _, word := range words {
+			say(fmt.Sprintf("%d %s", counts[word], word), plain)
+		}
+		blank()
+		say("Accept them or reject them with the buttons below.", CellStyle{Fg: c.Highlight})
+
+		return rows
+	}
+	if picks == 1 {
+		for id := range m.picked {
+			if p := m.state.Entry(id); p != nil {
+				en = p // the one song that is ticked is the one the details are about
+			}
+		}
+	}
+	if (m.focus == paneLists && picks == 0) || en == nil {
 		say(m.playlistName(pl), bold)
 		if address := shortAddress(pl.URL); address != m.playlistName(pl) {
 			say(address, dim)
@@ -44,6 +76,10 @@ func (m Model) detailRows(w int) []OutputRow {
 			say("Reading the songs of this link…", dim)
 		default:
 			say(m.linkSummary(pl), plain)
+			if m.waitingIn(pl) > 0 && m.anyWaiting() {
+				blank()
+				say("Accept them all with the button below, or tab to the songs to choose one by one.", CellStyle{Fg: c.Highlight})
+			}
 		}
 		return rows
 	}
@@ -55,6 +91,9 @@ func (m Model) detailRows(w int) []OutputRow {
 	blank()
 	sentence, style := m.songSentence(en)
 	say(sentence, style)
+	if waiting(en) && en.TargetID != "" {
+		say(shortAddress("https://www.youtube.com/watch?v="+en.TargetID), dim)
+	}
 	return rows
 }
 
@@ -72,7 +111,7 @@ func (m Model) whoSings(en *runstate.Entry) string {
 
 // linkSummary says how the songs of a link are doing, counting only what is not zero.
 func (m Model) linkSummary(pl *runstate.Playlist) string {
-	var saved, failed, waiting, working, had int
+	var saved, failed, waiting, working, had, toChoose, cancelled, accepted int
 	for _, id := range pl.Entries {
 		switch m.state.Entries[id].State {
 		case engine.StateDone:
@@ -83,6 +122,12 @@ func (m Model) linkSummary(pl *runstate.Playlist) string {
 			waiting++
 		case engine.StateDuplicate:
 			had++
+		case engine.StatePlanned:
+			toChoose++
+		case engine.StateAccepted:
+			accepted++
+		case engine.StateSkipped:
+			cancelled++
 		case engine.StateResolving, engine.StateDownloading, engine.StateMerging:
 			working++
 		}
@@ -91,7 +136,7 @@ func (m Model) linkSummary(pl *runstate.Playlist) string {
 	for _, p := range []struct {
 		n    int
 		text string
-	}{{saved, "saved"}, {working, "being downloaded"}, {waiting, "waiting"}, {had, "already in your folder"}, {failed, "failed"}} {
+	}{{saved, "saved"}, {working, "being downloaded"}, {toChoose, "waiting for you to choose"}, {accepted, "accepted"}, {waiting, "waiting"}, {had, "already in your folder"}, {cancelled, "rejected"}, {failed, "failed"}} {
 		if p.n > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", p.n, p.text))
 		}
@@ -114,19 +159,36 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 	case engine.StateDone:
 		switch {
 		case en.Official:
-			return "✓ Saved in your videos folder. It was replaced with the official music video.", CellStyle{Fg: c.Success}
+			return "✓ Saved in your videos folder. It was replaced with the official music video. Not the right one? Swap the video.", CellStyle{Fg: c.Success}
 		case en.Better:
 			return "✓ Saved in your videos folder. A better quality version was found and used.", CellStyle{Fg: c.Success}
 		}
-		return "✓ Saved in your videos folder.", CellStyle{Fg: c.Success}
+		return "✓ Saved in your videos folder. Not the right video? Swap it.", CellStyle{Fg: c.Success}
 	case engine.StateDuplicate:
 		return "Skipped: you already have this song.", CellStyle{Fg: c.Dim}
 	case engine.StateNotFound:
 		return "Skipped: no official video was found for it.", CellStyle{Fg: c.Dim}
 	case engine.StateFailed:
 		return "✗ " + cells.Display(runstate.PlainError(en.Err)) + " Press r to try again.", CellStyle{Fg: c.Error}
+	case engine.StateAccepted:
+		if m.paused {
+			return "Accepted. It downloads when you press Download.", CellStyle{Fg: c.Focus}
+		}
+
+		return "Accepted: it downloads when its turn comes.", CellStyle{Fg: c.Focus}
 	case engine.StatePlanned:
-		return "Found, and waiting for you to choose it.", CellStyle{Fg: c.Dim}
+		what, style := "No official video was found: the video from your playlist is what you would get.", CellStyle{Fg: c.Highlight}
+		switch {
+		case en.Official:
+			what, style = "Found the official music video.", CellStyle{Fg: c.Success}
+		case en.OwnOfficial:
+			what, style = "The video in your playlist is the official one.", CellStyle{Fg: c.Success}
+		case en.Better:
+			what, style = "Found a better quality version of it.", CellStyle{Fg: c.Focus}
+		}
+		return what + " Accept it to put it in the downloads, or reject it.", style
+	case engine.StateSkipped:
+		return "Rejected: this song will not be downloaded. Accept it to bring it back.", CellStyle{Fg: c.Dim}
 	}
 	return "", CellStyle{Fg: c.Text}
 }

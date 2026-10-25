@@ -35,8 +35,10 @@ type Options struct {
 	Program *ttygo.SharedProgram
 	// DataDir is the app-data folder; the web view keeps its profile in a folder inside.
 	DataDir string
-	// Busy reports whether downloads are running, so closing the window asks first.
-	Busy func() bool
+	// OnCloseRequest is told when the person asks to close the window (its close button, or the
+	// system's): the window stays open and the program decides, asking first when songs download.
+	// Nil closes the window at once.
+	OnCloseRequest func()
 	// OnSecondStart is told the arguments of a second start of the app, which raises this
 	// window instead of opening its own: a .mvd file double clicked while the app is open
 	// arrives this way. Nil for none.
@@ -80,7 +82,7 @@ func Run(ctx context.Context, opts Options) error {
 			stopWindowEvents = wailsruntime.EventsOn(c, windowEvent, func(data ...interface{}) {
 				if len(data) > 0 {
 					if action, ok := data[0].(string); ok {
-						doWindowAction(c, action, opts.Busy, &quitting)
+						doWindowAction(c, action, opts.OnCloseRequest, &quitting)
 					}
 				}
 			})
@@ -90,6 +92,7 @@ func Run(ctx context.Context, opts Options) error {
 			unbind = ttygo.BindShared(c, opts.Program, wailsEvents{ctx: c}, ttygo.BindOptions{})
 			go func() {
 				<-ctx.Done()
+				quitting.Store(true) // the program has decided: the window closes without asking again
 				wailsruntime.Quit(c)
 			}()
 		},
@@ -105,7 +108,12 @@ func Run(ctx context.Context, opts Options) error {
 			if quitting.Load() {
 				return false
 			}
-			return keepOpen(opts.Busy, func() bool { return askToQuit(c) })
+			if opts.OnCloseRequest == nil {
+				return false
+			}
+			opts.OnCloseRequest()
+
+			return true
 		},
 		Menu: appMenu(),
 		Windows: &windows.Options{
@@ -120,21 +128,6 @@ func Run(ctx context.Context, opts Options) error {
 		return errors.New("cannot open the app window: " + err.Error())
 	}
 	return nil
-}
-
-// askToQuit asks whether to close the app although downloads are running.
-func askToQuit(ctx context.Context) bool {
-	answer, err := wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
-		Type:          wailsruntime.QuestionDialog,
-		Title:         "MVD",
-		Message:       "Downloads are still running. Quit and stop them?",
-		Buttons:       []string{"Quit", "Keep downloading"},
-		DefaultButton: "Keep downloading",
-		CancelButton:  "Keep downloading",
-	})
-	// Windows has its own Yes and No buttons and answers with those; the other systems
-	// answer with the label of the button.
-	return err == nil && (answer == "Quit" || answer == "Yes")
 }
 
 // appMenu is the menu bar macOS expects of an app: the app menu (with Quit) and the edit

@@ -45,8 +45,12 @@ func (m Model) selected() (int, bool) {
 
 // editList does what the person did to a playlist of the screen.
 func (m Model) editList(msg downloadpage.ListEditMsg) (tea.Model, tea.Cmd) {
+	m = m.settle()
+	if m.addable() {
+		return m.editRun(msg)
+	}
 	if !m.editable() {
-		m.notice = "Stop the downloads before editing the list"
+		m.notice = "One moment..."
 		return m, nil
 	}
 	items := cloneItems(m.session.File().Items)
@@ -83,6 +87,10 @@ func (m Model) changeAddress(i int, address string) Model {
 // addAddresses adds one playlist for each non-empty line of text, after the one the cursor
 // is on (or at the end), and puts the cursor on the first one added.
 func (m Model) addAddresses(text string) Model {
+	if m.addable() {
+		links, _ := parseLinks(text)
+		return m.addToRun(links)
+	}
 	if !m.editable() {
 		return m
 	}
@@ -106,8 +114,12 @@ func (m Model) addAddresses(text string) Model {
 
 // editCommand works the commands of the Edit menu on the playlist the cursor is on.
 func (m Model) editCommand(name string) (tea.Model, tea.Cmd) {
+	m = m.settle()
+	if m.addable() {
+		return m.editRunCommand(name)
+	}
 	if !m.editable() {
-		m.notice = "Stop the downloads before editing the list"
+		m.notice = "One moment..."
 		return m, nil
 	}
 	i, ok := m.selected()

@@ -10,6 +10,7 @@ import (
 	"youtube-downloader/libs/mvd-core/viewport"
 
 	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"golang.org/x/term"
 
@@ -75,7 +76,12 @@ type Model struct {
 	outScroll     int // lines scrolled up from the bottom of the output pane
 	follow        bool
 	loaded        bool // every playlist has been listed; until then the loading screen is shown
-	filterFailed  bool
+	// sortBy is the column the songs are sorted by (a click on its heading), "" for the order they came in.
+	sortBy   string
+	sortDesc bool
+	// statusHidden are the groups of statuses the person hid with the filter.
+	statusHidden map[string]bool
+	filterList   filterMenu
 	fullLog       bool
 	// technical shows the log of the tool in the details pane instead of the plain account.
 	technical bool
@@ -89,6 +95,7 @@ type Model struct {
 	// carry it by, and icons to change and to remove it. dragRow is the playlist being
 	// carried, dropRow the one it is over; dragging a row is on while dragRowOn.
 	editable          bool
+	linkEditing       bool // the links of a run that goes on can be changed or taken out
 	dragRowOn         bool
 	dragRow, dropRow  int
 	// marquee counts the ticks, for the text of the selected row that is wider than its column.
@@ -101,6 +108,25 @@ type Model struct {
 	embedded      bool // inside an app model: ends with FinishedMsg instead of quitting
 	hosted        bool // inside the workspace: it owns quitting and adding links, and the run comes and goes
 	adding        bool // the box for adding links is open
+	// picked are the songs ticked in the table: the actions work on them, else on the song the cursor
+	// is on.
+	picked map[int]bool
+	// anchor is the song the last tick was on, where a range with Shift begins.
+	anchor    int
+	anchorSet bool
+	// playlistsTop and entriesTop are how many rows the links and the songs are scrolled down.
+	playlistsTop, entriesTop int
+	// colWidth are the widths the person gave to columns by carrying their borders, and hiddenCols
+	// the columns they hid. Both are replaced, never changed, so a copy of the screen keeps its own.
+	colWidth   map[string]int
+	colOrder   []string
+	hiddenCols map[string]bool
+	colDrag    columnDrag
+	columnList columnsMenu
+	// swapping is the address of another video being asked for the song swapEntry.
+	swapping  bool
+	swap      textinput.Model
+	swapEntry int
 	links         textarea.Model
 }
 
@@ -150,6 +176,19 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	before := [3]int{m.selPlaylist, m.selEntry, m.focus}
+	next, cmd := m.update(msg)
+	if now, ok := next.(Model); ok && [3]int{now.selPlaylist, now.selEntry, now.focus} != before {
+		// A row that was just chosen shows the start of its name, still, before it scrolls.
+		now.marquee = 0
+		now.keepSelectionVisible()
+		next = now
+	}
+
+	return next, cmd
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -162,6 +201,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case evMsg:
 		id := m.state.Apply(msg.ev)
+		if added, ok := msg.ev.(engine.EvPlaylistAdded); ok {
+			// A link that was just added is the one the person looks at: its songs come in under it.
+			if at := m.state.PlaylistPos(added.Source.Index); at >= 0 {
+				m.selPlaylist, m.selEntry, m.entriesTop = at, 0, 0
+				m.keepSelectionVisible()
+			}
+		}
+		m.selPlaylist = max(min(m.selPlaylist, len(m.state.Playlists)-1), 0)
 		if !m.loaded && (m.state.Idle || m.state.AllListed()) {
 			m.loaded = true
 		}
@@ -213,6 +260,23 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.adding {
 		return m.updateAdding(msg)
 	}
+	if m.swapping {
+		return m.updateSwapping(msg)
+	}
+	if m.columnList.open {
+		return m.columnsKey(key), nil
+	}
+	if m.filterList.open {
+		return m.filterKey(key), nil
+	}
+	if key == "c" && m.controlsShown() {
+		m.columnList, m.filterList = columnsMenu{open: true}, filterMenu{}
+		return m, nil
+	}
+	if key == "F" && m.controlsShown() {
+		m.filterList, m.columnList = filterMenu{open: true}, columnsMenu{}
+		return m, nil
+	}
 
 	if m.confirmQuit {
 		switch key {
@@ -231,6 +295,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.showHelp = false
 		}
 		return m, nil
+	}
+
+	if next, cmd, handled := m.chooseKey(key); handled {
+		return next, cmd
 	}
 
 	if m.hosted && (key == "q" || key == "esc" || key == "a") {
@@ -261,6 +329,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.move(-1)
 	case "down", "j":
 		m.move(1)
+	case "shift+up", "shift+down":
+		if _, held := m.chooser(); held && m.focus == paneEntries {
+			m.extendPick(map[string]int{"shift+up": -1, "shift+down": 1}[key])
+		}
 	case "pgup":
 		m.move(-10)
 	case "pgdown":
@@ -281,9 +353,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.flash("follow off")
 		}
 	case "f":
-		m.filterFailed = !m.filterFailed
-		m.selEntry = 0
-		if m.filterFailed {
+		m.showOnly(groupFailed)
+		if m.filterActive() {
 			m.flash("showing failed songs only")
 		} else {
 			m.flash("showing all songs")
@@ -357,7 +428,7 @@ func (m *Model) retry() {
 		}
 	default:
 		if m.selPlaylist < len(m.state.Playlists) {
-			n := m.ctrl.RetryPlaylist(m.selPlaylist)
+			n := m.ctrl.RetryPlaylist(m.state.Playlists[m.selPlaylist].Index)
 			m.flash(fmt.Sprintf("re-queued %d failed entries", n))
 		}
 	}
@@ -369,16 +440,16 @@ func (m *Model) visibleEntries() []int {
 		return nil
 	}
 	pl := m.state.Playlists[m.selPlaylist]
-	if !m.filterFailed {
-		return pl.Entries
-	}
-	var out []int
-	for _, id := range pl.Entries {
-		if m.state.Entries[id].State == engine.StateFailed {
-			out = append(out, id)
+	ids := pl.Entries
+	if m.filterActive() {
+		ids = nil
+		for _, id := range pl.Entries {
+			if m.matchesFilter(m.state.Entries[id]) {
+				ids = append(ids, id)
+			}
 		}
 	}
-	return out
+	return m.sorted(ids)
 }
 
 func (m *Model) selectedEntry() *runstate.Entry {
@@ -405,7 +476,7 @@ func (m *Model) jumpTo(id int) {
 	if en == nil {
 		return
 	}
-	m.selPlaylist = en.Playlist
+	m.selPlaylist = max(m.state.PlaylistPos(en.Playlist), 0)
 	for i, eid := range m.visibleEntries() {
 		if eid == id {
 			m.selEntry = i
@@ -451,7 +522,9 @@ func (m Model) Attach(c Controller) (Model, tea.Cmd) {
 	m.state = runstate.New(c.Sources())
 	m.loaded = len(m.state.Playlists) == 0
 	m.follow = true
-	m.selPlaylist, m.selEntry, m.outScroll = 0, 0, 0
+	// The link the cursor was on stays the one, when the run has it: a link was just added there.
+	m.selPlaylist = max(min(m.selPlaylist, len(m.state.Playlists)-1), 0)
+	m.selEntry, m.outScroll, m.entriesTop, m.playlistsTop = 0, 0, 0, 0
 	return m, waitEvent(m.events)
 }
 

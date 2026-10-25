@@ -20,7 +20,7 @@ func (e *Engine) RetryAll() int {
 	e.mu.Lock()
 	var ids []int
 	for _, en := range e.entries {
-		if en.state == StateFailed {
+		if en.state == StateFailed && !e.removed[en.info.Playlist] {
 			ids = append(ids, en.info.ID)
 		}
 	}

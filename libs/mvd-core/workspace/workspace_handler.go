@@ -13,7 +13,6 @@ import (
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
-	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/menubar"
 	"youtube-downloader/libs/mvd-core/playlistfile"
@@ -81,12 +80,13 @@ type Model struct {
 	run      ListRun
 	starting bool
 	stopping bool
-
-	editor    editorpage.Model
-	reviewing bool
-	decided   int // the version of the decisions of the review the list has
+	// loadedKey is the list of addresses the last run was started on (or taken in), so a list is
+	// loaded in the background only when it has changed since.
+	loadedKey string
 
 	about bool
+	// closing is the question asked before the app closes while songs download.
+	closing closeAsk
 	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
 	// down its lines it is.
 	shortcuts       bool
@@ -106,12 +106,12 @@ type Model struct {
 	asking purpose
 	input  textinput.Model
 
-	notice        string
+	notice string
 	// done is what an action that worked says, and caution what it warns of; both go away at the
 	// next key or click, while an error stays until something replaces it.
 	done, caution string
 	// wasFinished is whether the run had finished when the screen was last drawn.
-	wasFinished bool
+	wasFinished   bool
 	width, height int
 }
 
@@ -133,6 +133,56 @@ func (m Model) Init() tea.Cmd { return tea.Batch(m.screen.Init(), m.toolsTick())
 
 func (m Model) running() bool { return m.run != nil }
 
+// sourcesKey is the addresses of the list, as one text that changes when the list does.
+func (m Model) sourcesKey() string { return strings.Join(m.session.Sources(), "\n") }
+
+// wantsLoading says whether the songs of the list are to be loaded now, in the background: the list
+// has addresses nobody has loaded, nothing is being written or asked, and the tools are there.
+func (m Model) wantsLoading() bool {
+	if !m.host.AutoLoad || m.host.Start == nil || m.running() || m.starting || m.stopping {
+		return false
+	}
+	if m.inline.on || m.asking != askNone || m.about || m.shortcuts || len(m.session.Sources()) == 0 {
+		return false
+	}
+	if _, waiting := m.toolsWaiting(); waiting {
+		return false
+	}
+
+	return m.sourcesKey() != m.loadedKey
+}
+
+// addable says whether links can be added to the run that is going on.
+func (m Model) addable() bool {
+	_, ok := m.run.(downloadpage.SourceAdder)
+
+	return ok && m.active() && !m.starting && !m.stopping
+}
+
+// addToRun gives the run more links, and keeps them in the list.
+func (m Model) addToRun(links []string) Model {
+	adder, ok := m.run.(downloadpage.SourceAdder)
+	if !ok || len(links) == 0 {
+		return m
+	}
+	m.session.SetSources(append(m.session.Sources(), links...))
+	for _, link := range links {
+		adder.AddSource(link)
+	}
+	m.loadedKey = m.sourcesKey()
+	m.syncFile()
+	if len(links) == 1 {
+		m.done = "Added: its songs are loading"
+	} else {
+		m.done = fmt.Sprintf("Added %d links: their songs are loading", len(links))
+	}
+
+	return m
+}
+
+// waiting says whether some song of the run waits for the person to choose it.
+func (m Model) waiting() bool { return m.run != nil && m.screen.State().Tally().Planned > 0 }
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if ws, ok := next.(Model); ok {
@@ -142,6 +192,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if finished {
 				ws.done, ws.caution = "", ""
 			}
+		}
+		if ws.wantsLoading() {
+			var load tea.Cmd
+			ws, load = ws.start(true)
+			cmd = tea.Batch(cmd, load)
 		}
 		next = ws.refreshMenus().refreshRunMenus().keepRoomForButtons()
 	}
@@ -164,8 +219,6 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.bar.SetSize(msg.Width, max(m.bar.ContentHeight(), 1))
 		m.screen = m.screen.Resize(msg.Width, max(msg.Height-topRows, 0))
-		next, _ := m.editor.Update(tea.WindowSizeMsg{Width: msg.Width, Height: max(msg.Height-topRows, 0)})
-		m.editor = next
 		return m, nil
 
 	case menubar.SelectedMsg:
@@ -176,7 +229,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case runClosedMsg:
 		left := m.screen.State().Tally()
-		m.run, m.stopping, m.reviewing = nil, false, false
+		m.run, m.stopping = nil, false
 		m.screen = m.screen.Detach().WithState(m.session.Preview())
 		if unfinished := left.Queued + left.Running; unfinished > 0 && !msg.quit {
 			m.done = fmt.Sprintf("Stopped: %d saved, %d not downloaded. Load the playlists again to carry on.", left.Done, unfinished)
@@ -201,7 +254,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.notice = "Stop the downloads before opening " + filepath.Base(msg.Path)
 			return m, nil
 		}
-		m.reviewing, m.asking = false, askNone
+		m.asking = askNone
 		return m.answered(askOpen, msg.Path)
 
 	case filePickedMsg:
@@ -224,26 +277,29 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.inline.on {
 			return m.pasteInline(msg.Content), nil
 		}
-		if m.asking == askNone && !m.reviewing {
+		if m.asking == askNone {
 			return m.addAddresses(msg.Content), nil
 		}
 
-	case editorpage.LeaveMsg:
-		m.reviewing = false
+	case downloadpage.OpenVideoMsg:
+		if m.host.Open != nil {
+			if err := m.host.Open(msg.URL); err != nil {
+				m.notice = "Cannot open the browser: " + err.Error()
+			}
+		}
 		return m, nil
 
 	case downloadpage.RunEndedMsg:
 		return m, nil
-	}
 
-	if editorpage.Owns(msg) {
-		if !m.reviewing {
-			return m, nil
-		}
-		return m.toEditor(msg)
+	case CloseRequestedMsg:
+		return m.closeRequested()
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok {
+		if m.closing.on {
+			return m.closeKey(key)
+		}
 		if m.about {
 			if name := key.String(); name == "esc" || name == "enter" || name == "space" || name == "q" {
 				m.about = false
@@ -262,15 +318,10 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.inline.on && m.bar.Open() < 0 {
 			return m.inlineKey(key)
 		}
-		if !m.reviewing || m.bar.Open() >= 0 {
-			bar, cmd := m.bar.Update(msg)
-			m.bar = bar
-			if cmd != nil || m.bar.Open() >= 0 {
-				return m, cmd
-			}
-		}
-		if m.reviewing {
-			return m.toEditor(msg)
+		bar, cmd := m.bar.Update(msg)
+		m.bar = bar
+		if cmd != nil || m.bar.Open() >= 0 {
+			return m, cmd
 		}
 		return m.toScreen(msg)
 	}
@@ -285,7 +336,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m = next
 	}
-	if click, ok := msg.(tea.MouseClickMsg); ok && m.bar.Open() < 0 && !m.reviewing && click.Button == tea.MouseLeft {
+	if click, ok := msg.(tea.MouseClickMsg); ok && m.bar.Open() < 0 && click.Button == tea.MouseLeft {
 		if next, cmd, handled := m.toolbarClick(click.X, click.Y); handled {
 			return next, cmd
 		}
@@ -300,18 +351,6 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.bar = bar
 		return m, cmd
 	}
-	if m.reviewing {
-		if !isInput(msg) {
-			// What is not a key or the pointer is the screen's own news too: the events of the run
-			// it shows. It keeps taking them while the review is in front, so it is up to date
-			// when the person leaves the review.
-			screen, screenCmd := m.screen.Update(msg)
-			m.screen = screen.(downloadpage.Model)
-			next, editorCmd := m.toEditor(msg)
-			return next, tea.Batch(screenCmd, editorCmd)
-		}
-		return m.toEditor(msg)
-	}
 	return m.toScreen(msg)
 }
 
@@ -322,23 +361,6 @@ func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	next, cmd := m.screen.Update(msg)
 	m.screen = next.(downloadpage.Model)
-	return m, cmd
-}
-
-// toEditor gives a message to the review, and keeps the list up to date with what the
-// person decided there.
-func (m Model) toEditor(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if mouse, ok := msg.(tea.MouseMsg); ok {
-		msg = pointer.Shift(mouse, 0, -topRows)
-	}
-	next, cmd := m.editor.Update(msg)
-	m.editor = next
-	if m.editor.Version() != m.decided {
-		m.decided = m.editor.Version()
-		if err := m.session.Decide(m.editor.Rows()); err != nil {
-			m.notice = "Cannot save the list: " + err.Error()
-		}
-	}
 	return m, cmd
 }
 
@@ -398,7 +420,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	case entryReport:
 		m.openAddress(m.reportAddress())
 	case entryQuit:
-		return m.stop(true)
+		return m.closeRequested()
 	}
 	return m, nil
 }
@@ -501,10 +523,8 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 func (m Model) answeredLink(p purpose, text string) (tea.Model, tea.Cmd) {
 	switch p {
 	case askAddLink:
-		if adder, ok := m.run.(downloadpage.SourceAdder); ok && m.run != nil {
-			m.session.SetSources(append(m.session.Sources(), text))
-			adder.AddSource(text)
-			m.syncFile()
+		if m.addable() {
+			m = m.addToRun([]string{text})
 		} else {
 			m = m.addAddresses(text)
 		}
@@ -549,6 +569,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		m.caution, m.done = state.Message, ""
 		return m, nil
 	}
+	m.loadedKey = m.sourcesKey()
 	if m.session.Path() == "" {
 		// A new list is kept as a draft in the app's own folder, so a download starts at once and
 		// nothing is lost; File > Save as gives it a name of the person's own.
@@ -591,15 +612,8 @@ func (m Model) runStarted(msg runStartedMsg) (tea.Model, tea.Cmd) {
 	}
 	m.run = msg.run
 	screen, cmd := m.screen.Attach(msg.run)
-	m.screen = screen
+	m.screen = screen.WithPaused(msg.run.Paused())
 	cmds := []tea.Cmd{cmd, saveTick()}
-	if msg.review {
-		m.editor = editorpage.NewLive(m.host.Editor, msg.run, m.session.File().Songs())
-		m.decided = m.editor.Version()
-		next, _ := m.editor.Update(tea.WindowSizeMsg{Width: m.width, Height: max(m.height-topRows, 0)})
-		m.editor, m.reviewing = next, true
-		cmds = append(cmds, m.editor.Init())
-	}
 	return m, tea.Batch(cmds...)
 }
 
@@ -654,10 +668,10 @@ func (m Model) togglePause() Model {
 	}
 	if m.run.Paused() {
 		m.run.Resume()
-		m.done = "Downloads go on"
+		m.done = "Downloading: what you accept goes on from here"
 	} else {
 		m.run.Pause()
-		m.done = "Paused: the downloads under way finish, no new one starts"
+		m.done = "Stopped: the songs on their way finish, and nothing else begins"
 	}
 	m.screen = m.screen.WithPaused(m.run.Paused())
 
@@ -695,7 +709,7 @@ func (m Model) View() tea.View {
 // is empty with no worker busy, and no song is left waiting for the person to choose it. A song
 // that is not wanted is dealt with by stopping the run.
 func (m Model) finished() bool {
-	if m.run == nil || m.starting || m.stopping || m.reviewing {
+	if m.run == nil || m.starting || m.stopping {
 		return false
 	}
 	state := m.screen.State()
@@ -716,7 +730,7 @@ func (m Model) settle() Model {
 	}
 	m.syncList()
 	m.run.Close()
-	m.run, m.reviewing = nil, false
+	m.run = nil
 	m.screen = m.screen.Detach().WithState(m.session.Preview())
 
 	return m
@@ -776,15 +790,4 @@ func (m Model) draftPath() string {
 	}
 
 	return ""
-}
-
-// isInput says whether a message is the person at the keys or the pointer, which only the screen in
-// front takes.
-func isInput(msg tea.Msg) bool {
-	switch msg.(type) {
-	case tea.KeyPressMsg, tea.KeyReleaseMsg, tea.MouseMsg, tea.PasteMsg:
-		return true
-	}
-
-	return false
 }

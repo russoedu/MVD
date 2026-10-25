@@ -24,6 +24,16 @@ type (
 	EvPlaylistAdded struct {
 		Source PlaylistSource
 	}
+	// EvEntryRenamed is sent when a song was given another video (Swap) and the title and the
+	// channel of that video are known: they are what the song is called from then on.
+	EvEntryRenamed struct {
+		Entry          int
+		Title, Channel string
+	}
+	// EvPlaylistRemoved is sent when RemoveSource takes a playlist out of the run.
+	EvPlaylistRemoved struct {
+		Playlist int
+	}
 	// EvPlaylistListing is sent when the listing of a playlist starts.
 	EvPlaylistListing struct {
 		Playlist int

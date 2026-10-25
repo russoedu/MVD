@@ -23,11 +23,12 @@ func (m Model) render() string {
 		return look.Dim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
-	if !m.loaded && !m.adding && !m.showHelp {
+	if !m.loaded && !m.hosted && !m.adding && !m.showHelp {
 		return m.renderLoading()
 	}
 
 	view := screenview.Padded(View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
+	view = m.withTableControls(m.withChoiceButtons(view))
 
 	if m.adding {
 		return m.renderAddBox()
@@ -69,10 +70,10 @@ func (m Model) outputTitle() string {
 	}
 	pl := m.state.Playlists[m.selPlaylist]
 	if m.focus == paneLists || m.selectedEntry() == nil {
-		return cells.Display(m.playlistName(pl))
+		return "Technical log · " + cells.Display(m.playlistName(pl))
 	}
 	en := m.selectedEntry()
-	return fmt.Sprintf("%s › %02d %s", cells.Display(m.playlistName(pl)), en.Index, entryTitle(en))
+	return fmt.Sprintf("Technical log · %02d %s", en.Index, entryTitle(en))
 }
 
 // hints lists the keys the download screen offers now. The key bar and the
@@ -83,6 +84,19 @@ func (m Model) hints() []keybar.Hint {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry failed"}, {Key: "t", Desc: "technical log"}}
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
+	}
+	if _, held := m.chooser(); held && (m.focus == paneEntries || len(m.picked) > 0) && len(m.targetIDs()) > 0 {
+		hints = append([]keybar.Hint{{Key: "space", Desc: "select"}, {Key: "d", Desc: "accept"}, {Key: "x", Desc: "reject"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "accept all"}}, append(hints[:2:2], keybar.Hint{Key: "t", Desc: "technical log"})...)
+	}
+	if m.technical {
+		// The log of the tool is not the screen people expect: the way back is always on the bar.
+		kept := hints[:0:0]
+		for _, h := range hints {
+			if h.Key != "t" {
+				kept = append(kept, h)
+			}
+		}
+		hints = append(kept, keybar.Hint{Key: "t", Desc: "back to the details"})
 	}
 	if m.hosted {
 		return hints
@@ -122,6 +136,18 @@ func counted(n int, word string) string {
 	return fmt.Sprintf("%d %ss", n, word)
 }
 
+// waitingIn is how many songs of a link wait for the person to choose them.
+func (m Model) waitingIn(pl *runstate.Playlist) int {
+	n := 0
+	for _, id := range pl.Entries {
+		if waiting(m.state.Entries[id]) {
+			n++
+		}
+	}
+
+	return n
+}
+
 // playlistGlyph is the mark at the end of a playlist row and its colour.
 func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	c := look.Colours
@@ -135,6 +161,8 @@ func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	switch {
 	case active > 0:
 		return look.SpinnerFrames[m.spin], c.Highlight
+	case m.waitingIn(pl) > 0:
+		return "?", c.Highlight
 	case finished == len(pl.Entries) && failed > 0:
 		return "✗", c.Error
 	case finished == len(pl.Entries):
@@ -163,6 +191,16 @@ func (m Model) entryGlyph(en *runstate.Entry) (glyph, colour string) {
 		return "∅", c.Dim
 	case engine.StateFailed:
 		return "✗", c.Error
+	case engine.StatePlanned:
+		if foundOfficial(en) {
+			return "✓", c.Success
+		}
+
+		return "?", c.Highlight
+	case engine.StateAccepted:
+		return "▸", c.Focus
+	case engine.StateSkipped:
+		return "–", c.Dim
 	}
 	return " ", c.Text
 }
