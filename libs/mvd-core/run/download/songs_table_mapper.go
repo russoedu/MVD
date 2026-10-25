@@ -9,6 +9,7 @@ import (
 	"youtube-downloader/libs/mvd-core/internal/cuppa"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/runstate"
+	"youtube-downloader/libs/mvd-core/songlist"
 )
 
 // The columns of the table of songs, and how wide each is, in cells. The song takes what is left.
@@ -110,7 +111,7 @@ func (m Model) tableHas(column string) bool {
 		en := m.state.Entries[id]
 		switch column {
 		case columnArtist:
-			if m.whoSings(en) != "" {
+			if songlist.Artist(en) != "" {
 				return true
 			}
 		case columnVideo:
@@ -222,7 +223,7 @@ func (m Model) songCells(en *runstate.Entry, cols []tableColumn, selected bool) 
 				text = marquee(cells.CellText(text), c.width, m.marquee)
 			}
 		case columnArtist:
-			text, style = m.whoSings(en), plain(look.Colours.Dim)
+			text, style = songlist.Artist(en), plain(look.Colours.Dim)
 		case columnVideo:
 			if songName(en) != entryTitle(en) {
 				text = entryTitle(en)
@@ -248,62 +249,9 @@ func (m Model) songCells(en *runstate.Entry, cols []tableColumn, selected bool) 
 
 // entryStatus is the word that says where a song is, and its colour.
 func entryStatus(en *runstate.Entry) (word, colour string) {
-	c := look.Colours
-	switch en.State {
-	case engine.StateQueued:
-		return "waiting", c.Dim
-	case engine.StateResolving:
-		return "finding", c.Focus
-	case engine.StateDownloading:
-		if en.Total > 0 {
-			return "downloading", c.Highlight
-		}
-		return "starting", c.Highlight
-	case engine.StateMerging:
-		return "joining", c.Highlight
-	case engine.StateDuplicate:
-		return "have it", c.Dim
-	case engine.StateNotFound:
-		return "no official", c.Dim
-	case engine.StateFailed:
-		return "failed", c.Error
-	case engine.StatePlanned:
-		return plannedWord(en)
-	case engine.StateAccepted:
-		return "accepted", c.Focus
-	case engine.StateSkipped:
-		return "rejected", c.Dim
-	case engine.StateDone:
-		switch {
-		case en.Official:
-			return "official", c.Focus
-		case en.Better:
-			return "better", c.Focus
-		}
-		return "saved", c.Success
-	}
+	word, tone := songlist.StatusWord(en)
 
-	return "", c.Text
-}
-
-// foundOfficial says whether what was found for a song that waits is an official video: the one
-// found for it, or its own upload when that is the official one.
-func foundOfficial(en *runstate.Entry) bool { return en.Official || en.OwnOfficial }
-
-// plannedWord is what the status of a song that waits says of what was found: whether there is an
-// official video, so the person knows whether they can accept it without a look.
-func plannedWord(en *runstate.Entry) (word, colour string) {
-	c := look.Colours
-	switch {
-	case en.Official:
-		return "official found", c.Success
-	case en.OwnOfficial:
-		return "is official", c.Success
-	case en.Better:
-		return "better found", c.Focus
-	}
-
-	return "original only", c.Highlight
+	return word, toneColour(tone)
 }
 
 // progressCell is a bar and a percentage while a song comes in, a full bar once it is saved, and
