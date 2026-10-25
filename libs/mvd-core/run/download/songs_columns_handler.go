@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -34,54 +35,6 @@ type columnsMenu struct {
 	from, to int
 }
 
-// configurable are the columns the person can hide, in the order the menu lists them.
-var configurable = []struct{ name, label string }{
-	{columnArtist, "Artist"}, {columnVideo, "Video name"}, {columnAlbum, "Album"},
-	{columnQuality, "Quality"}, {columnProgress, "Progress"}, {columnStatus, "Status"},
-}
-
-// labelOf is how the list of columns calls a column.
-func labelOf(name string) string {
-	for _, c := range configurable {
-		if c.name == name {
-			return c.label
-		}
-	}
-
-	return name
-}
-
-// columnOrder is the columns the person can arrange, in the order they are shown: the one they gave,
-// else the order of configurable.
-func (m Model) columnOrder() []string {
-	order := make([]string, 0, len(configurable))
-	seen := map[string]bool{}
-	for _, name := range m.colOrder {
-		if resizable(name) && !seen[name] {
-			order, seen[name] = append(order, name), true
-		}
-	}
-	for _, c := range configurable {
-		if !seen[c.name] {
-			order = append(order, c.name)
-		}
-	}
-
-	return order
-}
-
-// moveColumn puts the column that is at row from of the list at row to.
-func (m *Model) moveColumn(from, to int) {
-	order := m.columnOrder()
-	if from < 0 || from >= len(order) || to < 0 || to >= len(order) || from == to {
-		return
-	}
-	moved := order[from]
-	rest := append(append([]string(nil), order[:from]...), order[from+1:]...)
-	out := append(append(append([]string(nil), rest[:to]...), moved), rest[to:]...)
-	m.colOrder = out
-}
-
 // columnSpan is where a column is in the pane of the table, counted from its first cell.
 type columnSpan struct {
 	name   string
@@ -100,20 +53,9 @@ func (m Model) columnSpans(w int) []columnSpan {
 	return out
 }
 
-// controlsShown says whether the buttons of the table are there: the playlist has songs, also when the
-// filter hides them all.
-func (m Model) controlsShown() bool {
-	if m.selPlaylist >= len(m.state.Playlists) {
-		return false
-	}
-	pl := m.state.Playlists[m.selPlaylist]
-
-	return pl.Err == "" && pl.Listed && len(pl.Entries) > 0
-}
-
 // tableShown says whether the songs are drawn as a table with a row of headings.
 func (m Model) tableShown() bool {
-	return len(m.visibleEntries()) > 0 && !m.entryNotesShown()
+	return len(m.session.VisibleEntries()) > 0 && !m.entryNotesShown()
 }
 
 // tableInner is the pane of the table's rows: where its first cell is and how wide it is.
@@ -135,7 +77,7 @@ func (m Model) columnsButton(l downloadLayout) (x, y, w int) {
 // columnsMenuRect is where the list of columns is drawn, under its button.
 func (m Model) columnsMenuRect(l downloadLayout) rect {
 	w := 24
-	h := len(configurable) + 2
+	h := len(downloadsession.Configurable) + 2
 
 	return rect{l.entries.x + l.entries.w - w - 1, l.entries.y + 1, w, h}
 }
@@ -143,7 +85,7 @@ func (m Model) columnsMenuRect(l downloadLayout) rect {
 // withTableControls draws what sits over the table: the buttons for the columns and the filter, and
 // the list that is open.
 func (m Model) withTableControls(screen string) string {
-	if !m.controlsShown() || m.showHelp || m.adding || m.swapping {
+	if !m.session.ControlsShown() || m.session.ShowHelp || m.session.Adding || m.session.Swapping {
 		return screen
 	}
 	l, ok := m.layout()
@@ -154,7 +96,7 @@ func (m Model) withTableControls(screen string) string {
 	screen = dialog.Overlay(screen, dialog.WidePill("Columns ▾", w, dialog.PillNormal, false), x, y)
 	fx, fy, fw := m.filterButton(l)
 	kind := dialog.PillNormal
-	if m.filterActive() {
+	if m.session.Filter.Active() {
 		kind = dialog.PillPrimary
 	}
 	screen = dialog.Overlay(screen, dialog.WidePill(m.filterLabel(), fw, kind, false), fx, fy)
@@ -163,18 +105,18 @@ func (m Model) withTableControls(screen string) string {
 		return screen
 	}
 	r := m.columnsMenuRect(l)
-	order := m.columnOrder()
+	order := m.session.ArrangedColumns()
 	lines := make([]string, 0, len(order))
 	for i, name := range order {
 		mark := "[x]"
-		if m.hiddenCols[name] {
+		if m.session.HiddenCols[name] {
 			mark = "[ ]"
 		}
 		grip := "≡"
 		if m.columnList.drag && i == m.columnList.to {
 			grip = "▶"
 		}
-		line := grip + " " + mark + " " + labelOf(name)
+		line := grip + " " + mark + " " + downloadsession.LabelOf(name)
 		if i == m.columnList.sel {
 			line = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color(look.Colours.Selected)).Render(line + strings.Repeat(" ", max(r.w-2-len([]rune(line)), 0)))
 		}
@@ -182,16 +124,6 @@ func (m Model) withTableControls(screen string) string {
 	}
 
 	return dialog.Overlay(screen, dialog.Frame("Columns", lines, r.w, r.h), r.x, r.y)
-}
-
-// toggleColumn shows or hides a column.
-func (m *Model) toggleColumn(name string) {
-	hidden := make(map[string]bool, len(m.hiddenCols)+1)
-	for k, v := range m.hiddenCols {
-		hidden[k] = v
-	}
-	hidden[name] = !hidden[name]
-	m.hiddenCols = hidden
 }
 
 // columnsKey handles a key while the list of columns is open.
@@ -202,15 +134,15 @@ func (m Model) columnsKey(key string) Model {
 	case "up", "k":
 		m.columnList.sel = max(m.columnList.sel-1, 0)
 	case "down", "j":
-		m.columnList.sel = min(m.columnList.sel+1, len(configurable)-1)
+		m.columnList.sel = min(m.columnList.sel+1, len(downloadsession.Configurable)-1)
 	case "shift+up":
-		m.moveColumn(m.columnList.sel, m.columnList.sel-1)
+		m.session.MoveColumn(m.columnList.sel, m.columnList.sel-1)
 		m.columnList.sel = max(m.columnList.sel-1, 0)
 	case "shift+down":
-		m.moveColumn(m.columnList.sel, m.columnList.sel+1)
-		m.columnList.sel = min(m.columnList.sel+1, len(configurable)-1)
+		m.session.MoveColumn(m.columnList.sel, m.columnList.sel+1)
+		m.columnList.sel = min(m.columnList.sel+1, len(downloadsession.Configurable)-1)
 	case "space", "enter":
-		m.toggleColumn(m.columnOrder()[m.columnList.sel])
+		m.session.ToggleColumn(m.session.ArrangedColumns()[m.columnList.sel])
 	}
 
 	return m
@@ -263,7 +195,7 @@ func (m Model) tableInnerFor() (x, y, w int) {
 // list, the boxes to tick songs, and the borders between the headings, which are carried to resize.
 // It says whether the event was for them.
 func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, bool) {
-	if !l.hasLists || !m.controlsShown() {
+	if !l.hasLists || !m.session.ControlsShown() {
 		return m, nil, false
 	}
 	pos := msg.Mouse()
@@ -311,23 +243,23 @@ func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, b
 		case pos.Y == iy:
 			return m.headingClick(spans, ix, pos.X)
 		case pos.Y > iy && l.entries.rows().contains(pos.X, pos.Y):
-			if _, choosing := m.chooser(); !choosing {
+			if !m.session.CanChoose() {
 				return m, nil, false
 			}
 			m.clickEntry(pos.Y)
-			en := m.selectedEntry()
+			en := m.session.SelectedEntry()
 			if en == nil {
 				return m, nil, true
 			}
 			shift := pos.Mod.Contains(tea.ModShift)
 			for _, s := range spans {
 				if s.name == columnCheck && pos.X >= ix+s.x0 && pos.X < ix+s.x1 {
-					m.tickSong(en.ID, shift) // the box of a song ticks or unticks that song, or the range with Shift
+					m.session.TickSong(en.ID, shift) // the box of a song ticks or unticks that song, or the range with Shift
 
 					return m, nil, true
 				}
 			}
-			m.chooseSong(en.ID, shift) // anywhere else on the row chooses that song alone
+			m.session.ChooseSong(en.ID, shift) // anywhere else on the row chooses that song alone
 
 			return m, nil, true
 		}
@@ -341,12 +273,12 @@ func (m Model) tableMouse(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, b
 func (m Model) headingClick(spans []columnSpan, ix, x int) (Model, tea.Cmd, bool) {
 	for i, s := range spans {
 		if s.name == columnCheck && x >= ix+s.x0 && x < ix+s.x1 {
-			m.togglePickAll()
+			m.session.TickAll()
 
 			return m, nil, true
 		}
 		if x >= ix+s.x0 && x < ix+s.x1 {
-			if sortable(s.name) {
+			if downloadsession.Sortable(s.name) {
 				m.sortOn(s.name) // a click on a heading sorts by it, and again turns the order round
 			}
 
@@ -356,7 +288,7 @@ func (m Model) headingClick(spans []columnSpan, ix, x int) (Model, tea.Cmd, bool
 			continue
 		}
 		left, right := s, spans[i+1]
-		if !resizable(right.name) || (left.name != columnSong && !resizable(left.name)) {
+		if !downloadsession.Resizable(right.name) || (left.name != columnSong && !downloadsession.Resizable(left.name)) {
 			return m, nil, true
 		}
 		m.colDrag = columnDrag{on: true, left: left.name, right: right.name, x: x, leftW: left.x1 - left.x0, rightW: right.x1 - right.x0}
@@ -367,26 +299,21 @@ func (m Model) headingClick(spans []columnSpan, ix, x int) (Model, tea.Cmd, bool
 	return m, nil, false
 }
 
-// resizable says whether a column can be given another width by the person.
-func resizable(name string) bool {
-	return strings.Contains(" artist video album quality progress status ", " "+name+" ")
-}
-
 // columnsMouse works the mouse on the list of columns: the grip carries a column to another place,
 // anywhere else on a row shows or hides it, and a click outside closes the list.
 func (m Model) columnsMouse(l downloadLayout, msg tea.MouseMsg) Model {
 	r := m.columnsMenuRect(l)
 	pos := msg.Mouse()
 	row := pos.Y - (r.y + 1)
-	inside := r.contains(pos.X, pos.Y) && row >= 0 && row < len(configurable)
+	inside := r.contains(pos.X, pos.Y) && row >= 0 && row < len(downloadsession.Configurable)
 	switch msg.(type) {
 	case tea.MouseMotionMsg:
-		if m.columnList.drag && row >= 0 && row < len(configurable) {
+		if m.columnList.drag && row >= 0 && row < len(downloadsession.Configurable) {
 			m.columnList.to = row
 		}
 	case tea.MouseReleaseMsg:
 		if m.columnList.drag {
-			m.moveColumn(m.columnList.from, m.columnList.to)
+			m.session.MoveColumn(m.columnList.from, m.columnList.to)
 			m.columnList.sel = m.columnList.to
 			m.columnList.drag = false
 		}
@@ -401,7 +328,7 @@ func (m Model) columnsMouse(l downloadLayout, msg tea.MouseMsg) Model {
 			m.columnList = columnsMenu{open: true, sel: row, drag: true, from: row, to: row}
 		case inside:
 			m.columnList.sel = row
-			m.toggleColumn(m.columnOrder()[row])
+			m.session.ToggleColumn(m.session.ArrangedColumns()[row])
 		}
 	}
 

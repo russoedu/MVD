@@ -8,8 +8,8 @@ import (
 
 func TestDownloadOutlineWindowsALongList(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 	out := m.Outline()
 	if len(out.Items) != 6 || !out.Items[4].Selected {
 		t.Fatalf("items: %+v", out.Items)
@@ -25,8 +25,8 @@ func TestDownloadOutlineWindowsALongList(t *testing.T) {
 	for i := 0; i < 500; i++ {
 		entries = append(entries, engine.EntryInfo{ID: 100 + i, Playlist: 0, Index: i + 1, Title: "t"})
 	}
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Big", Entries: entries})
-	m.selEntry = 250
+	m.session.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Big", Entries: entries})
+	m.session.SelEntry = 250
 	if n := len(m.Outline().Items); n != 2*outlineEntryWindow+1 {
 		t.Errorf("want a window of %d, got %d", 2*outlineEntryWindow+1, n)
 	}

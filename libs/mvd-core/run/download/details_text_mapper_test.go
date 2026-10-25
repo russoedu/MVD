@@ -13,7 +13,7 @@ import (
 // detailsOf is the plain text of the details pane for the song at row i of the first link.
 func detailsOf(t *testing.T, m Model, i int) string {
 	t.Helper()
-	m.focus, m.selPlaylist, m.selEntry = paneEntries, 0, i
+	m.session.Pane, m.session.SelPlaylist, m.session.SelEntry = paneEntries, 0, i
 	var out []string
 	for _, row := range m.detailRows(60) {
 		out = append(out, strings.TrimSpace(string(row.Line)))
@@ -52,7 +52,7 @@ func TestTheDetailsSayWhatHappenedToASongInEverydayWords(t *testing.T) {
 
 func TestTheDetailsOfALinkSayHowItsSongsAreDoing(t *testing.T) {
 	m := sampleModel(t)
-	m.focus, m.selPlaylist = paneLists, 0
+	m.session.Pane, m.session.SelPlaylist = paneLists, 0
 	var text []string
 	for _, row := range m.detailRows(80) {
 		text = append(text, strings.TrimSpace(string(row.Line)))
@@ -63,7 +63,7 @@ func TestTheDetailsOfALinkSayHowItsSongsAreDoing(t *testing.T) {
 			t.Errorf("the details of the link lack %q:\n%s", want, got)
 		}
 	}
-	m.selPlaylist = 2 // the link that could not be read
+	m.session.SelPlaylist = 2 // the link that could not be read
 	text = nil
 	for _, row := range m.detailRows(80) {
 		text = append(text, strings.TrimSpace(string(row.Line)))
@@ -76,22 +76,22 @@ func TestTheDetailsOfALinkSayHowItsSongsAreDoing(t *testing.T) {
 func TestTheKeyTSwitchesBetweenTheDetailsAndTheTechnicalLog(t *testing.T) {
 	m := sampleModel(t)
 	m.width, m.height = 120, 36
-	m.focus, m.selEntry = paneEntries, 4
-	if m.technical || m.outputTitle() != "Details" {
+	m.session.Pane, m.session.SelEntry = paneEntries, 4
+	if m.session.Technical || m.outputTitle() != "Details" {
 		t.Fatalf("the plain details are not the default (title %q)", m.outputTitle())
 	}
 	m = press(t, m, tea.KeyPressMsg{Text: "t", Code: 't'})
-	if !m.technical {
+	if !m.session.Technical {
 		t.Error("t did not show the technical log")
 	}
 	if m.outputTitle() == "Details" {
 		t.Errorf("the technical log is titled %q", m.outputTitle())
 	}
-	if got := m.outputLines(); len(got) == 0 {
+	if got := m.session.OutputLines(); len(got) == 0 {
 		t.Error("the technical log is empty")
 	}
 	m = press(t, m, tea.KeyPressMsg{Text: "t", Code: 't'})
-	if m.technical {
+	if m.session.Technical {
 		t.Error("t did not go back to the details")
 	}
 }
@@ -104,13 +104,13 @@ func TestTheWordsAtTheEndOfARowAreNotCodes(t *testing.T) {
 		engine.StateDone: "saved",
 	}
 	for state, word := range want {
-		en := m.state.Entries[0]
+		en := m.session.State.Entries[0]
 		en.State, en.Official = state, false
 		if got, _ := entryStatus(en); got != word {
 			t.Errorf("%v says %q, want %q", state, got, word)
 		}
 	}
-	en := m.state.Entries[4]
+	en := m.session.State.Entries[4]
 	en.Total = 0
 	if got, _ := entryStatus(en); got != "starting" {
 		t.Errorf("a download of unknown size says %q", got)
@@ -119,11 +119,11 @@ func TestTheWordsAtTheEndOfARowAreNotCodes(t *testing.T) {
 
 func TestALinkIsNamedByWhatItIsAndNotByItsAddress(t *testing.T) {
 	m := New(&fakeController{events: make(chan interface{}), sources: []engine.PlaylistSource{{Index: 0, URL: "https://www.youtube.com/watch?v=abc"}}})
-	pl := m.state.Playlists[0]
+	pl := m.session.State.Playlists[0]
 	if got := m.playlistName(pl); got != "youtube.com/watch?v=abc" {
 		t.Errorf("an address is shown as %q", got)
 	}
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "https://www.youtube.com/watch?v=abc", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, VideoID: "abc", Title: "Me at the zoo"}}})
+	m.session.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "https://www.youtube.com/watch?v=abc", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, VideoID: "abc", Title: "Me at the zoo"}}})
 	if got := m.playlistName(pl); got != "Me at the zoo" {
 		t.Errorf("a single video is named %q", got)
 	}

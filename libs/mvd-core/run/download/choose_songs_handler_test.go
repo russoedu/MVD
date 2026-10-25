@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"sort"
@@ -36,10 +37,10 @@ func (c *choosingRun) Skip(entry int) bool               { c.skipped = append(c.
 func choosingModel(t *testing.T) (Model, *choosingRun) {
 	t.Helper()
 	m := sampleModel(t)
-	run := &choosingRun{fakeController: m.ctrl.(*fakeController)}
-	m.ctrl = run
-	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "abc12345678", Official: true})
-	m.focus, m.selPlaylist, m.selEntry = paneEntries, 0, 3
+	run := &choosingRun{fakeController: m.session.Ctrl.(*fakeController)}
+	m.session.Ctrl = run
+	m.session.State.Apply(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "abc12345678", Official: true})
+	m.session.Pane, m.session.SelPlaylist, m.session.SelEntry = paneEntries, 0, 3
 
 	return m, run
 }
@@ -64,34 +65,34 @@ func TestDSendsTheSelectedSongToDownloadAndXCancelsIt(t *testing.T) {
 	if run.all != 1 {
 		t.Errorf("release all was called %d times", run.all)
 	}
-	if !strings.Contains(m.status, "3 songs") {
-		t.Errorf("the screen says %q", m.status)
+	if !strings.Contains(m.session.Notice, "3 songs") {
+		t.Errorf("the screen says %q", m.session.Notice)
 	}
 }
 
 func TestSwapAsksForAnotherVideoAndSendsTheSongWithIt(t *testing.T) {
 	m, run := choosingModel(t)
 	m = pressKey(m, "s")
-	if !m.swapping {
+	if !m.session.Swapping {
 		t.Fatal("the address of another video was not asked")
 	}
 	for _, r := range "https://www.youtube.com/watch?v=dQw4w9WgXcQ" {
 		m = pressKey(m, string(r))
 	}
 	m = pressKey(m, "enter")
-	if m.swapping || run.released[3] != "dQw4w9WgXcQ" {
-		t.Errorf("swapping %v, released %v", m.swapping, run.released)
+	if m.session.Swapping || run.released[3] != "dQw4w9WgXcQ" {
+		t.Errorf("swapping %v, released %v", m.session.Swapping, run.released)
 	}
-	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateDownloading, TargetID: "x"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 3, State: engine.StateDownloading, TargetID: "x"})
 	m = pressKey(m, "s")
-	if m.swapping {
+	if m.session.Swapping {
 		t.Error("a song on its way was offered a swap")
 	}
 }
 
 func TestClickingASongAwayFromItsBoxChoosesThatSongAlone(t *testing.T) {
 	m, _ := choosingModel(t)
-	m.state.Apply(engine.EvEntryState{Entry: 1, State: engine.StatePlanned, TargetID: "bbb12345678"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 1, State: engine.StatePlanned, TargetID: "bbb12345678"})
 	m.width, m.height = 140, 30
 	l, _ := m.layout()
 	ix, iy, iw := m.tableInner(l)
@@ -112,22 +113,22 @@ func TestClickingASongAwayFromItsBoxChoosesThatSongAlone(t *testing.T) {
 	}
 	m = click(m, ix+box.x0+1, rowY(0)) // the box of the first song
 	m = click(m, ix+box.x0+1, rowY(1)) // the box of the second
-	if len(m.picked) != 2 {
-		t.Fatalf("picked %v", m.picked)
+	if len(m.session.Picked) != 2 {
+		t.Fatalf("picked %v", m.session.Picked)
 	}
 	m = click(m, ix+song.x0+2, rowY(1)) // the second song itself: it alone
-	if len(m.picked) != 1 || !m.picked[1] {
-		t.Errorf("picked %v", m.picked)
+	if len(m.session.Picked) != 1 || !m.session.Picked[1] {
+		t.Errorf("picked %v", m.session.Picked)
 	}
 	m = click(m, ix+song.x0+2, rowY(1)) // again: the tick goes
-	if len(m.picked) != 0 {
-		t.Errorf("picked %v", m.picked)
+	if len(m.session.Picked) != 0 {
+		t.Errorf("picked %v", m.session.Picked)
 	}
 }
 
 func TestTheWaitingSongsAreSaidInWordsAndTheKeysAreOffered(t *testing.T) {
 	m, _ := choosingModel(t)
-	if status, _ := entryStatus(m.state.Entries[3]); status != "official found" {
+	if status, _ := entryStatus(m.session.State.Entries[3]); status != "official found" {
 		t.Errorf("status %q", status)
 	}
 	counters, _ := m.headerTexts()
@@ -141,7 +142,7 @@ func TestTheWaitingSongsAreSaidInWordsAndTheKeysAreOffered(t *testing.T) {
 	if got := strings.Join(keysOffered, " "); !strings.HasPrefix(got, "space d x o D") {
 		t.Errorf("keys %q", got)
 	}
-	sentence, _ := m.songSentence(m.state.Entries[3])
+	sentence, _ := m.songSentence(m.session.State.Entries[3])
 	if !strings.Contains(sentence, "official music video") || !strings.Contains(sentence, "Accept it") {
 		t.Errorf("sentence %q", sentence)
 	}
@@ -170,49 +171,49 @@ func TestTheChoicesOfAWaitingSongAreButtonsThatCanBeClicked(t *testing.T) {
 		t.Error("the swap button must be usable with one song")
 	}
 	m = click(m, buttons[2]) // Swap video
-	if !m.swapping {
+	if !m.session.Swapping {
 		t.Error("the swap did not ask for an address")
 	}
 }
 
 func TestSongsTickedWithTheBoxesAreAcceptedOrRejectedTogether(t *testing.T) {
 	m, run := choosingModel(t)
-	m.state.Apply(engine.EvEntryState{Entry: 1, State: engine.StatePlanned, TargetID: "bbb12345678"})
-	m.state.Apply(engine.EvEntryState{Entry: 2, State: engine.StatePlanned, TargetID: "ccc12345678"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 1, State: engine.StatePlanned, TargetID: "bbb12345678"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 2, State: engine.StatePlanned, TargetID: "ccc12345678"})
 	m.width, m.height = 120, 30
-	m.selEntry = 1
+	m.session.SelEntry = 1
 	m = pressKey(m, "space")
-	m.selEntry = 2
+	m.session.SelEntry = 2
 	m = pressKey(m, "space")
-	if len(m.picked) != 2 || m.pickState() != 1 {
-		t.Fatalf("picked %v, state %d", m.picked, m.pickState())
+	if len(m.session.Picked) != 2 || m.session.PickState() != 1 {
+		t.Fatalf("picked %v, state %d", m.session.Picked, m.session.PickState())
 	}
 	buttons := m.choiceButtons()
 	if buttons[0].label != "✓ Accept 2" || !buttons[3].disabled {
 		t.Errorf("buttons %+v", buttons)
 	}
 	m = pressKey(m, "o")
-	if !strings.Contains(m.status, "one video at a time") {
-		t.Errorf("opening many says %q", m.status)
+	if !strings.Contains(m.session.Notice, "one video at a time") {
+		t.Errorf("opening many says %q", m.session.Notice)
 	}
 	m = pressKey(m, "x")
-	if len(run.skipped) != 2 || len(m.picked) != 0 {
-		t.Errorf("skipped %v, picked %v", run.skipped, m.picked)
+	if len(run.skipped) != 2 || len(m.session.Picked) != 0 {
+		t.Errorf("skipped %v, picked %v", run.skipped, m.session.Picked)
 	}
-	m.togglePickAll()
-	if m.pickState() != 2 {
-		t.Errorf("select all gives state %d", m.pickState())
+	m.session.TickAll()
+	if m.session.PickState() != 2 {
+		t.Errorf("select all gives state %d", m.session.PickState())
 	}
-	m.togglePickAll()
-	if m.pickState() != 0 {
-		t.Errorf("select all again gives state %d", m.pickState())
+	m.session.TickAll()
+	if m.session.PickState() != 0 {
+		t.Errorf("select all again gives state %d", m.session.PickState())
 	}
 }
 
 func TestARejectedSongCanBeAcceptedAgain(t *testing.T) {
 	m, run := choosingModel(t)
-	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateSkipped, TargetID: "abc12345678"})
-	if !acceptable(m.state.Entry(3)) {
+	m.session.State.Apply(engine.EvEntryState{Entry: 3, State: engine.StateSkipped, TargetID: "abc12345678"})
+	if !downloadsession.Acceptable(m.session.State.Entry(3)) {
 		t.Fatal("a rejected song is not offered to be accepted")
 	}
 	m = pressKey(m, "d")
@@ -264,7 +265,7 @@ func TestColumnsCanBeCarriedToAnotherPlaceInTheList(t *testing.T) {
 	m.width, m.height = 140, 30
 	m = pressKey(m, "c")
 	m = pressKey(m, "shift+down") // Artist goes below Video name
-	if got := m.columnOrder(); got[0] != columnVideo || got[1] != columnArtist {
+	if got := m.session.ArrangedColumns(); got[0] != columnVideo || got[1] != columnArtist {
 		t.Errorf("order %v", got)
 	}
 	if names := namesOf(m.tableColumns(140)); strings.Index(names, columnArtist) < strings.Index(names, columnVideo) && strings.Contains(names, columnVideo) {
@@ -283,7 +284,7 @@ func TestColumnsCanBeCarriedToAnotherPlaceInTheList(t *testing.T) {
 		next, _ := m.Update(msg)
 		m = next.(Model)
 	}
-	if got := m.columnOrder(); got[2] != columnVideo {
+	if got := m.session.ArrangedColumns(); got[2] != columnVideo {
 		t.Errorf("order after the drag %v", got)
 	}
 }
@@ -306,24 +307,24 @@ func TestAClickOnAHeadingSortsAndAnotherClickTurnsTheOrderRound(t *testing.T) {
 	}
 	names := func(m Model) []string {
 		var out []string
-		for _, id := range m.visibleEntries() {
-			out = append(out, strings.ToLower(songName(m.state.Entries[id])))
+		for _, id := range m.session.VisibleEntries() {
+			out = append(out, strings.ToLower(songName(m.session.State.Entries[id])))
 		}
 
 		return out
 	}
-	selected := m.selectedEntry().ID
+	selected := m.session.SelectedEntry().ID
 	m = click(m)
 	asc := names(m)
-	if m.order.By != columnSong || m.order.Desc || !sort.StringsAreSorted(asc) {
-		t.Fatalf("sorted by %q desc %v: %v", m.order.By, m.order.Desc, asc)
+	if m.session.Order.By != columnSong || m.session.Order.Desc || !sort.StringsAreSorted(asc) {
+		t.Fatalf("sorted by %q desc %v: %v", m.session.Order.By, m.session.Order.Desc, asc)
 	}
-	if m.selectedEntry().ID != selected {
+	if m.session.SelectedEntry().ID != selected {
 		t.Error("the song the cursor was on changed with the sort")
 	}
 	m = click(m)
 	desc := names(m)
-	if !m.order.Desc || desc[0] != asc[len(asc)-1] {
+	if !m.session.Order.Desc || desc[0] != asc[len(asc)-1] {
 		t.Errorf("the second click did not turn the order round: %v", desc)
 	}
 	if !strings.Contains(ansi.Strip(m.render()), "Song ▼") {
@@ -334,7 +335,7 @@ func TestAClickOnAHeadingSortsAndAnotherClickTurnsTheOrderRound(t *testing.T) {
 func TestTheFilterHidesTheStatusesTheListHides(t *testing.T) {
 	m, _ := choosingModel(t)
 	m.width, m.height = 140, 30
-	all := len(m.visibleEntries())
+	all := len(m.session.VisibleEntries())
 	m = pressKey(m, "F")
 	if !m.filterList.open {
 		t.Fatal("the filter did not open")
@@ -346,20 +347,20 @@ func TestTheFilterHidesTheStatusesTheListHides(t *testing.T) {
 	}
 	m = pressKey(m, "space")
 	m = pressKey(m, "esc")
-	if got := len(m.visibleEntries()); got != all-1 || !m.filterActive() {
+	if got := len(m.session.VisibleEntries()); got != all-1 || !m.session.Filter.Active() {
 		t.Errorf("%d of %d songs show with the saved ones hidden", got, all)
 	}
 	if title, _ := m.entryHeader(); !strings.Contains(title, " of ") {
 		t.Errorf("the title does not say it is filtered: %q", title)
 	}
 	m = pressKey(m, "f") // failed only
-	for _, id := range m.visibleEntries() {
-		if m.state.Entries[id].State != engine.StateFailed {
+	for _, id := range m.session.VisibleEntries() {
+		if m.session.State.Entries[id].State != engine.StateFailed {
 			t.Errorf("song %d is not failed", id)
 		}
 	}
 	m = pressKey(m, "f")
-	if m.filterActive() {
+	if m.session.Filter.Active() {
 		t.Error("f did not show every song again")
 	}
 }
@@ -405,8 +406,8 @@ func TestACarriedBorderFollowsThePointerAndTheOtherSideGivesTheRoom(t *testing.T
 func TestTheStatusSaysWhetherAnOfficialVideoWasFound(t *testing.T) {
 	m, _ := choosingModel(t)
 	word := func(en engine.EvEntryState) string {
-		m.state.Apply(en)
-		w, _ := entryStatus(m.state.Entries[3])
+		m.session.State.Apply(en)
+		w, _ := entryStatus(m.session.State.Entries[3])
 
 		return w
 	}
@@ -425,7 +426,7 @@ func TestTheStatusSaysWhetherAnOfficialVideoWasFound(t *testing.T) {
 	if got := word(engine.EvEntryState{Entry: 3, State: engine.StateAccepted, TargetID: "a"}); got != "accepted" {
 		t.Errorf("an accepted song says %q", got)
 	}
-	if got := songlist.GroupOf(m.state.Entries[3]); got != songlist.GroupAccepted {
+	if got := songlist.GroupOf(m.session.State.Entries[3]); got != songlist.GroupAccepted {
 		t.Errorf("an accepted song is in the group %q", got)
 	}
 }
@@ -449,11 +450,11 @@ func TestTheSongsAreSortedByTheNumberFromTheStart(t *testing.T) {
 func TestATickedSongBringsItsButtonsEvenWhileTheLinksHaveTheFocus(t *testing.T) {
 	m, _ := choosingModel(t)
 	m.width, m.height = 140, 30
-	m.focus = paneLists
+	m.session.Pane = paneLists
 	if buttons := m.choiceButtons(); len(buttons) != 1 || !strings.Contains(buttons[0].label, "link") {
 		t.Fatalf("with nothing ticked the link's button is there: %+v", buttons)
 	}
-	m.togglePick(3)
+	m.session.TickSong(3, false)
 	buttons := m.choiceButtons()
 	if len(buttons) != 4 || buttons[0].label != "✓ Accept" {
 		t.Fatalf("a ticked song did not bring its buttons: %+v", buttons)
@@ -461,7 +462,7 @@ func TestATickedSongBringsItsButtonsEvenWhileTheLinksHaveTheFocus(t *testing.T) 
 	if rows := m.detailRows(60); len(rows) == 0 || !strings.Contains(rows[0].Line, "Bob Sinclar") {
 		t.Errorf("the details are not about the ticked song: %+v", rows)
 	}
-	m.togglePick(2)
+	m.session.TickSong(2, false)
 	if rows := m.detailRows(60); !strings.Contains(rows[0].Line, "2 songs selected") {
 		t.Errorf("many ticked songs are not summed up: %+v", rows[0])
 	}
@@ -470,16 +471,16 @@ func TestATickedSongBringsItsButtonsEvenWhileTheLinksHaveTheFocus(t *testing.T) 
 func TestALinkThatWasJustAddedIsTheOneSelected(t *testing.T) {
 	m, _ := choosingModel(t)
 	m.width, m.height = 140, 30
-	next, _ := m.Update(evMsg{ev: engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(m.state.Playlists), URL: "https://new"}}})
+	next, _ := m.Update(evMsg{ev: engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(m.session.State.Playlists), URL: "https://new"}}})
 	m = next.(Model)
-	if m.selPlaylist != len(m.state.Playlists)-1 || m.state.Playlists[m.selPlaylist].URL != "https://new" {
-		t.Errorf("selected %d of %d", m.selPlaylist, len(m.state.Playlists))
+	if m.session.SelPlaylist != len(m.session.State.Playlists)-1 || m.session.State.Playlists[m.session.SelPlaylist].URL != "https://new" {
+		t.Errorf("selected %d of %d", m.session.SelPlaylist, len(m.session.State.Playlists))
 	}
 
-	m.selPlaylist = 1
-	attached, _ := m.Attach(m.ctrl)
-	if attached.selPlaylist != 1 {
-		t.Errorf("a new run moved the cursor from 1 to %d", attached.selPlaylist)
+	m.session.SelPlaylist = 1
+	attached, _ := m.Attach(m.session.Ctrl)
+	if attached.session.SelPlaylist != 1 {
+		t.Errorf("a new run moved the cursor from 1 to %d", attached.session.SelPlaylist)
 	}
 }
 
@@ -501,31 +502,31 @@ func TestShiftTicksTheSongsBetweenTwoClicksAsAListOfMailDoes(t *testing.T) {
 	}
 	m = click(m, 1, 0)
 	m = click(m, 4, tea.ModShift)
-	if len(m.picked) != 4 || !m.picked[1] || !m.picked[4] {
-		t.Fatalf("shift did not tick the range: %v", m.picked)
+	if len(m.session.Picked) != 4 || !m.session.Picked[1] || !m.session.Picked[4] {
+		t.Fatalf("shift did not tick the range: %v", m.session.Picked)
 	}
 	m = click(m, 2, 0) // a click on one box of the range unticks that one alone
-	if len(m.picked) != 3 || m.picked[2] {
-		t.Errorf("picked %v", m.picked)
+	if len(m.session.Picked) != 3 || m.session.Picked[2] {
+		t.Errorf("picked %v", m.session.Picked)
 	}
 	m = click(m, 0, tea.ModShift) // from the box clicked last (2) up to the first: ticks them
-	if !m.picked[0] || !m.picked[1] || !m.picked[2] {
-		t.Errorf("picked %v", m.picked)
+	if !m.session.Picked[0] || !m.session.Picked[1] || !m.session.Picked[2] {
+		t.Errorf("picked %v", m.session.Picked)
 	}
 }
 
 func TestShiftAndTheArrowsExtendTheTicks(t *testing.T) {
 	m, _ := choosingModel(t)
 	m.width, m.height = 140, 30
-	m.selEntry = 1
+	m.session.SelEntry = 1
 	m = pressKey(m, "shift+down")
 	m = pressKey(m, "shift+down")
-	if len(m.picked) != 3 || !m.picked[1] || !m.picked[3] {
-		t.Fatalf("picked %v", m.picked)
+	if len(m.session.Picked) != 3 || !m.session.Picked[1] || !m.session.Picked[3] {
+		t.Fatalf("picked %v", m.session.Picked)
 	}
 	m = pressKey(m, "shift+up")
-	if len(m.picked) != 2 || m.picked[3] {
-		t.Errorf("going back did not take the last tick away: %v", m.picked)
+	if len(m.session.Picked) != 2 || m.session.Picked[3] {
+		t.Errorf("going back did not take the last tick away: %v", m.session.Picked)
 	}
 }
 
@@ -543,11 +544,11 @@ func TestTheKeyForTheTechnicalLogIsAlwaysOnTheBar(t *testing.T) {
 	if !has(m, "technical log") {
 		t.Errorf("with a song chosen the bar lacks the technical log: %v", m.hints())
 	}
-	m.focus = paneLists
+	m.session.Pane = paneLists
 	if !has(m, "technical log") {
 		t.Errorf("with the links chosen the bar lacks the technical log: %v", m.hints())
 	}
-	m.technical = true
+	m.session.Technical = true
 	if !has(m, "back to the details") {
 		t.Errorf("in the log the bar lacks the way back: %v", m.hints())
 	}

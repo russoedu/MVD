@@ -24,17 +24,17 @@ func (m Model) render() string {
 		return look.Dim.Render(fmt.Sprintf("terminal too small (%dx%d), need at least 60x16", m.width, m.height))
 	}
 
-	if !m.loaded && !m.hosted && !m.adding && !m.showHelp {
+	if !m.session.Loaded && !m.session.Hosted && !m.session.Adding && !m.session.ShowHelp {
 		return m.renderLoading()
 	}
 
 	view := screenview.Padded(View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
 	view = m.withTableControls(m.withChoiceButtons(view))
 
-	if m.adding {
+	if m.session.Adding {
 		return m.renderAddBox()
 	}
-	if m.showHelp {
+	if m.session.ShowHelp {
 		return m.renderHelp()
 	}
 	return view
@@ -42,38 +42,27 @@ func (m Model) render() string {
 
 // renderLoading is the screen shown until every playlist of the run has been listed.
 func (m Model) renderLoading() string {
-	p := loading.Progress{Spin: m.spin, Detail: "Reading the songs of each playlist", Elapsed: runstate.HumanDuration(time.Since(m.state.Started))}
-	for _, pl := range m.state.Playlists {
+	p := loading.Progress{Spin: m.spin, Detail: "Reading the songs of each playlist", Elapsed: runstate.HumanDuration(time.Since(m.session.State.Started))}
+	for _, pl := range m.session.State.Playlists {
 		p.Playlists = append(p.Playlists, loading.Playlist{
 			Name: m.playlistName(pl), Songs: len(pl.Entries), Listed: pl.Listed, Failed: pl.Err != "",
 		})
 	}
-	if m.confirmQuit {
+	if m.session.ConfirmQuit {
 		p.Confirm = look.Red.Render(" Downloads are still running. Quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
 	}
 	return loading.Render(p, m.width, m.height)
 }
 
-// outputLines returns the log lines for the current selection.
-func (m Model) outputLines() []string {
-	if m.focus == paneLists || m.selectedEntry() == nil {
-		if m.selPlaylist < len(m.state.Playlists) {
-			return m.state.Playlists[m.selPlaylist].Log
-		}
-		return nil
-	}
-	return m.selectedEntry().Log
-}
-
 func (m Model) outputTitle() string {
-	if !m.technical || m.selPlaylist >= len(m.state.Playlists) {
+	if !m.session.Technical || m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return "Details"
 	}
-	pl := m.state.Playlists[m.selPlaylist]
-	if m.focus == paneLists || m.selectedEntry() == nil {
+	pl := m.session.State.Playlists[m.session.SelPlaylist]
+	if m.session.Pane == paneLists || m.session.SelectedEntry() == nil {
 		return "Technical log · " + cells.Display(m.playlistName(pl))
 	}
-	en := m.selectedEntry()
+	en := m.session.SelectedEntry()
 	return fmt.Sprintf("Technical log · %02d %s", en.Index, entryTitle(en))
 }
 
@@ -81,15 +70,15 @@ func (m Model) outputTitle() string {
 // outline both read it, so they cannot drift apart.
 func (m Model) hints() []keybar.Hint {
 	var hints []keybar.Hint
-	if m.state.Idle {
+	if m.session.State.Idle {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry failed"}, {Key: "t", Desc: "technical log"}}
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
-	if _, held := m.chooser(); held && (m.focus == paneEntries || len(m.picked) > 0) && len(m.targetIDs()) > 0 {
+	if m.session.CanChoose() && (m.session.Pane == paneEntries || len(m.session.Picked) > 0) && len(m.session.TargetIDs()) > 0 {
 		hints = append([]keybar.Hint{{Key: "space", Desc: "select"}, {Key: "d", Desc: "accept"}, {Key: "x", Desc: "reject"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "accept all"}}, append(hints[:2:2], keybar.Hint{Key: "t", Desc: "technical log"})...)
 	}
-	if m.technical {
+	if m.session.Technical {
 		// The log of the tool is not the screen people expect: the way back is always on the bar.
 		kept := hints[:0:0]
 		for _, h := range hints {
@@ -99,13 +88,13 @@ func (m Model) hints() []keybar.Hint {
 		}
 		hints = append(kept, keybar.Hint{Key: "t", Desc: "back to the details"})
 	}
-	if m.hosted {
+	if m.session.Hosted {
 		return hints
 	}
-	if m.canAdd() {
+	if m.session.CanAdd() {
 		hints = append(hints, keybar.Hint{Key: "a", Desc: "add links"})
 	}
-	if !m.state.Idle {
+	if !m.session.State.Idle {
 		hints = append(hints, keybar.Hint{Key: "?", Desc: "help"})
 	}
 	return append(hints, keybar.Hint{Key: "q", Desc: "quit"})
@@ -113,10 +102,10 @@ func (m Model) hints() []keybar.Hint {
 
 func (m Model) renderHelp() string {
 	logPath := ""
-	if m.ctrl != nil {
-		logPath = m.ctrl.LogPath()
+	if m.session.Ctrl != nil {
+		logPath = m.session.Ctrl.LogPath()
 	}
-	return helppage.Screen(m.width, m.height, helppage.Options{LogPath: logPath, Hosted: m.hosted})
+	return helppage.Screen(m.width, m.height, helppage.Options{LogPath: logPath, Hosted: m.session.Hosted})
 }
 
 // downloadingSummary says how many songs are coming in now and how fast, all of them together:
@@ -137,18 +126,6 @@ func counted(n int, word string) string {
 	return fmt.Sprintf("%d %ss", n, word)
 }
 
-// waitingIn is how many songs of a link wait for the person to choose them.
-func (m Model) waitingIn(pl *runstate.Playlist) int {
-	n := 0
-	for _, id := range pl.Entries {
-		if waiting(m.state.Entries[id]) {
-			n++
-		}
-	}
-
-	return n
-}
-
 // playlistGlyph is the mark at the end of a playlist row and its colour.
 func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	c := look.Colours
@@ -158,11 +135,11 @@ func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	if !pl.Listed {
 		return look.SpinnerFrames[m.spin], c.Dim
 	}
-	finished, failed, active := m.state.PlaylistTally(pl)
+	finished, failed, active := m.session.State.PlaylistTally(pl)
 	switch {
 	case active > 0:
 		return look.SpinnerFrames[m.spin], c.Highlight
-	case m.waitingIn(pl) > 0:
+	case m.session.WaitingIn(pl) > 0:
 		return "?", c.Highlight
 	case finished == len(pl.Entries) && failed > 0:
 		return "✗", c.Error

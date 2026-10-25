@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
@@ -25,7 +26,7 @@ const choiceButtonsHeight = 9
 // accepts its songs. They sit on the last row of the details pane. None when there is nothing to
 // choose or no room for them.
 func (m Model) choiceButtons() []choiceButton {
-	if _, held := m.chooser(); !held || m.technical || m.fullLog || m.adding || m.swapping || m.showHelp || m.columnList.open {
+	if !m.session.CanChoose() || m.session.Technical || m.session.FullLog || m.session.Adding || m.session.Swapping || m.session.ShowHelp || m.columnList.open {
 		return nil
 	}
 	l, ok := m.layout()
@@ -34,19 +35,19 @@ func (m Model) choiceButtons() []choiceButton {
 	}
 	var buttons []choiceButton
 	switch {
-	case m.focus == paneLists && len(m.picked) == 0:
-		if m.selPlaylist >= len(m.state.Playlists) || m.waitingIn(m.state.Playlists[m.selPlaylist]) == 0 {
+	case m.session.Pane == paneLists && len(m.session.Picked) == 0:
+		if m.session.SelPlaylist >= len(m.session.State.Playlists) || m.session.WaitingIn(m.session.State.Playlists[m.session.SelPlaylist]) == 0 {
 			return nil
 		}
 		buttons = []choiceButton{{label: "✓ Accept this link's songs", key: "d"}}
-	case (m.focus == paneEntries || len(m.picked) > 0) && len(m.targetIDs()) > 0:
-		ids := m.targetIDs()
+	case (m.session.Pane == paneEntries || len(m.session.Picked) > 0) && len(m.session.TargetIDs()) > 0:
+		ids := m.session.TargetIDs()
 		accept, reject := 0, 0
 		for _, id := range ids {
-			if acceptable(m.state.Entry(id)) {
+			if downloadsession.Acceptable(m.session.State.Entry(id)) {
 				accept++
 			}
-			if rejectable(m.state.Entry(id)) {
+			if downloadsession.Rejectable(m.session.State.Entry(id)) {
 				reject++
 			}
 		}
@@ -57,7 +58,7 @@ func (m Model) choiceButtons() []choiceButton {
 		buttons = []choiceButton{
 			{label: accepting, key: "d", disabled: accept == 0},
 			{label: rejecting, key: "x", disabled: reject == 0},
-			{label: "⇄ Swap video", key: "s", disabled: len(ids) != 1 || !swappable(m.state.Entry(ids[0]))},
+			{label: "⇄ Swap video", key: "s", disabled: len(ids) != 1 || !downloadsession.Swappable(m.session.State.Entry(ids[0]))},
 			{label: "↗ Open video", key: "o", disabled: len(ids) != 1},
 		}
 	default:

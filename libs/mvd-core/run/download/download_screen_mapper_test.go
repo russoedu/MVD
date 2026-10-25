@@ -9,8 +9,8 @@ import (
 
 func TestALongLogLineWrapsInsteadOfBeingCut(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 	last := "[download] line " + strings.Repeat("x", 49) // 65 cells, wider than the pane below
 
 	rows, _ := m.outputWindow(30, 10)
@@ -32,25 +32,25 @@ func TestALongLogLineWrapsInsteadOfBeingCut(t *testing.T) {
 
 func TestAWideEnoughPaneShowsOneRowPerLogLine(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 
 	rows, first := m.outputWindow(200, 10)
 	if len(rows) != 10 {
 		t.Fatalf("want 10 rows, got %d", len(rows))
 	}
-	if first != len(m.outputLines())-10 {
-		t.Errorf("the first row belongs to line %d, want %d", first, len(m.outputLines())-10)
+	if first != len(m.session.OutputLines())-10 {
+		t.Errorf("the first row belongs to line %d, want %d", first, len(m.session.OutputLines())-10)
 	}
 }
 
 func TestScrollingStillMovesByLogLines(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 	atBottom, _ := m.outputWindow(30, 6)
 
-	m.outScroll = 2
+	m.session.OutScroll = 2
 	scrolled, _ := m.outputWindow(30, 6)
 	if strings.Join(scrolled, "|") == strings.Join(atBottom, "|") {
 		t.Error("scrolling up two lines changed nothing")
@@ -62,8 +62,8 @@ func TestScrollingStillMovesByLogLines(t *testing.T) {
 
 func TestAShortLogShowsEveryRowOnceWithRoomToSpare(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneLists
-	m.selPlaylist = 2 // a playlist with no log lines
+	m.session.Pane = paneLists
+	m.session.SelPlaylist = 2 // a playlist with no log lines
 
 	rows, first := m.outputWindow(40, 8)
 	if len(rows) != 0 || first != 0 {

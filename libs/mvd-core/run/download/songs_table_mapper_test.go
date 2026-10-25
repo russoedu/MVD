@@ -51,7 +51,7 @@ func TestTheVideoColumnAppearsOnlyWhenTheSongIsCalledSomethingElse(t *testing.T)
 	if strings.Contains(namesOf(m.tableColumns(200)), columnVideo) {
 		t.Error("a video column with nothing to say is shown")
 	}
-	en := m.state.Entries[0]
+	en := m.session.State.Entries[0]
 	en.NamedTitle = "You Don't Know Me"
 	if !strings.Contains(namesOf(m.tableColumns(200)), columnVideo) {
 		t.Error("the name of the video is missing when it differs from the song")
@@ -73,7 +73,7 @@ func TestTheTableHasAHeadingForEachColumnAndTheProgressOfEachSong(t *testing.T) 
 	if len(table.Header) != len(table.HeaderStyles) {
 		t.Error("a heading has no style")
 	}
-	en := m.state.Entries[4] // downloading, 34%
+	en := m.session.State.Entries[4] // downloading, 34%
 	if text, _ := progressCell(en); !strings.Contains(text, "34%") || !strings.Contains(text, "███░░░░░") {
 		t.Errorf("progress %q", text)
 	}
@@ -95,7 +95,7 @@ func TestTheAlbumAndTheQualityAppearOnceTheyAreKnown(t *testing.T) {
 	if names := namesOf(m.tableColumns(200)); strings.Contains(names, columnAlbum) || strings.Contains(names, columnQuality) {
 		t.Fatalf("columns with nothing to say are shown: %s", names)
 	}
-	en := m.state.Entries[0]
+	en := m.session.State.Entries[0]
 	en.NamedAlbum, en.Height = "Whenever You Need Somebody", 1080
 	names := namesOf(m.tableColumns(200))
 	if !strings.Contains(names, columnAlbum) || !strings.Contains(names, columnQuality) {

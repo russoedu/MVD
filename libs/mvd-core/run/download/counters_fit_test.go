@@ -25,7 +25,7 @@ func TestTheCountersAreInEverydayWordsAndTheQuietOnesOnlyHaveAPlaceWhenTheyHaveA
 
 func TestACounterAtZeroLeavesRoomForTheOnesThatMatter(t *testing.T) {
 	m := sampleModel(t)
-	m.state = New(&fakeController{events: make(chan interface{})}).state
+	m.session.State = New(&fakeController{events: make(chan interface{})}).session.State
 	counters, _ := m.headerTexts()
 	plain := ansi.Strip(counters)
 	if strings.Contains(plain, "Official") || strings.Contains(plain, "Already had") {

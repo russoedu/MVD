@@ -1,38 +1,25 @@
 package download
 
 import (
-	"fmt"
-	"strings"
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/outline"
 	addlinkspage "youtube-downloader/libs/mvd-core/run/addlinks"
 	"youtube-downloader/libs/mvd-core/screenview"
-	"youtube-downloader/libs/mvd-core/wording"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
-	"youtube-downloader/libs/mvd-core/engine"
 )
 
 // SourceAdder is what a run offers when it can take more links while it works.
-// The engine does; the download screen shows its "add" key only for a run that does.
-type SourceAdder interface {
-	// AddSource queues another playlist or video; false once the run has ended.
-	AddSource(url string) (engine.PlaylistSource, bool)
-}
-
-// canAdd reports whether the run behind the screen takes more links.
-func (m Model) canAdd() bool {
-	_, ok := m.ctrl.(SourceAdder)
-	return ok
-}
+type SourceAdder = downloadsession.SourceAdder
 
 // startAdding opens the box for pasting links.
 func (m Model) startAdding() (tea.Model, tea.Cmd) {
-	if !m.canAdd() {
-		m.flash("this run cannot take more links")
+	m.session.BeginAdding()
+	if !m.session.Adding {
 		return m, nil
 	}
 	ta := textarea.New()
@@ -42,7 +29,7 @@ func (m Model) startAdding() (tea.Model, tea.Cmd) {
 	ta.SetWidth(m.addBoxWidth())
 	ta.SetHeight(8)
 	ta.Focus()
-	m.adding, m.links = true, ta
+	m.links = ta
 	return m, textarea.Blink
 }
 
@@ -51,44 +38,21 @@ func (m Model) startAdding() (tea.Model, tea.Cmd) {
 func (m Model) updateAdding(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.adding = false
+		m.session.CancelAdding()
 		return m, nil
 	case "ctrl+s":
 		return m.addLinks()
 	}
 	var cmd tea.Cmd
 	m.links, cmd = m.links.Update(msg)
+	m.session.SetLinksText(m.links.Value())
 	return m, cmd
 }
 
 // addLinks queues every line of the box on the run and closes the box.
 func (m Model) addLinks() (tea.Model, tea.Cmd) {
-	adder, ok := m.ctrl.(SourceAdder)
-	if !ok {
-		m.adding = false
-		return m, nil
-	}
-	added, lines := 0, 0
-	for _, line := range strings.Split(m.links.Value(), "\n") {
-		url := strings.TrimSpace(line)
-		if url == "" {
-			continue
-		}
-		lines++
-		if _, queued := adder.AddSource(url); queued {
-			added++
-		}
-	}
-	m.adding = false
-	switch {
-	case lines == 0:
-		m.flash("no links to add")
-	case added < lines:
-		m.flash(fmt.Sprintf("added %d of %d links; the run has ended", added, lines))
-	default:
-		m.flash(fmt.Sprintf("added %d link%s", added, wording.Plural(added)))
-		m.follow = true
-	}
+	m.session.SetLinksText(m.links.Value())
+	m.session.CommitLinks()
 	return m, nil
 }
 
@@ -113,7 +77,7 @@ func addLinksHints() []keybar.Hint {
 func (m Model) addingOutline() outline.ScreenOutline {
 	return outline.ScreenOutline{
 		Title:     "MVD · Add links",
-		Text:      m.links.Value(),
+		Text:      m.session.LinksText,
 		HasText:   true,
 		TextLabel: "Links to add, one per line",
 		Keys:      outline.KeysOf(addLinksHints()),

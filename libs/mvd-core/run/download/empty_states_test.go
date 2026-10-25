@@ -20,16 +20,16 @@ func TestTheEmptyPlaylistsPaneSaysWhatToDoFirstHowAndWhatWorks(t *testing.T) {
 
 func TestTheEntriesPaneSaysWhatIsMissingAndHowToGetIt(t *testing.T) {
 	m := sampleModel(t)
-	m.state.Playlists = nil
+	m.session.State.Playlists = nil
 	if got := m.emptyEntriesText(); !strings.Contains(got, "once you add one") {
 		t.Errorf("an empty list says %q", got)
 	}
 	m = sampleModel(t)
-	m.editable = true
+	m.session.Editable = true
 	if got := m.emptyEntriesText(); !strings.Contains(got, "Load playlists (Ctrl+R)") {
 		t.Errorf("a list not looked up says %q", got)
 	}
-	m.editable = false
+	m.session.Editable = false
 	if got := m.emptyEntriesText(); got != "No songs to show here." {
 		t.Errorf("a run with no songs says %q", got)
 	}
@@ -37,16 +37,16 @@ func TestTheEntriesPaneSaysWhatIsMissingAndHowToGetIt(t *testing.T) {
 
 func TestTheOutputPaneSaysWhyItIsEmpty(t *testing.T) {
 	m := sampleModel(t)
-	m.selPlaylist = 2 // the playlist that could not be read
+	m.session.SelPlaylist = 2 // the playlist that could not be read
 	if got := m.emptyOutputText(); !strings.Contains(got, "could not be read") {
 		t.Errorf("a failed playlist says %q", got)
 	}
-	m.selPlaylist = 0
-	m.editable = true
+	m.session.SelPlaylist = 0
+	m.session.Editable = true
 	if got := m.emptyOutputText(); !strings.Contains(got, "shows here while it downloads") {
 		t.Errorf("before a run it says %q", got)
 	}
-	m.editable = false
+	m.session.Editable = false
 	if got := m.emptyOutputText(); got != "Nothing to show for this one." {
 		t.Errorf("during a run it says %q", got)
 	}
