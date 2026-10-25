@@ -16,14 +16,15 @@ var (
 // View draws the text in exactly the width the editor has: the characters from the first that
 // shows, the selection lit, the cursor a block, and the rest of the line filled.
 func (m Model) View() string {
-	lo, hi := m.bounds()
+	lo, hi := m.text.Bounds()
 	var b strings.Builder
 	used := 0
-	for i := m.scroll; i <= len(m.text) && used < m.width; i++ {
+	caret, size := m.text.Caret(), m.text.Len()
+	for i := m.scroll; i <= size && used < m.width; i++ {
 		r := ' '
-		if i < len(m.text) {
-			r = m.text[i]
-		} else if i != m.caret {
+		if i < size {
+			r = m.text.Rune(i)
+		} else if i != caret {
 			break
 		}
 		cell := string(r)
@@ -32,7 +33,7 @@ func (m Model) View() string {
 			break
 		}
 		switch {
-		case i == m.caret && lo == hi:
+		case i == caret && lo == hi:
 			b.WriteString(caretOn.Render(cell))
 		case i >= lo && i < hi:
 			b.WriteString(selected.Render(cell))

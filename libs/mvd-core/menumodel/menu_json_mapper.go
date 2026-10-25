@@ -1,4 +1,4 @@
-package menubar
+package menumodel
 
 import (
 	"encoding/json"
