@@ -64,7 +64,7 @@ func (m Model) tableColumns(w int) []tableColumn {
 	}
 	include := map[string]bool{}
 	for _, name := range []string{columnStatus, columnProgress, columnQuality, columnArtist, columnAlbum, columnVideo} {
-		if m.hiddenCols[name] {
+		if m.session.HiddenCols[name] {
 			continue
 		}
 		if name != columnStatus && name != columnProgress && !m.tableHas(name) {
@@ -108,7 +108,7 @@ func (m Model) tableColumns(w int) []tableColumn {
 // tableHas says whether any song shown has something for the artist, video, album or quality column.
 func (m Model) tableHas(column string) bool {
 	for _, id := range m.visibleEntries() {
-		en := m.state.Entries[id]
+		en := m.session.State.Entries[id]
 		switch column {
 		case columnArtist:
 			if songlist.Artist(en) != "" {
@@ -212,7 +212,7 @@ func (m Model) songCells(en *runstate.Entry, cols []tableColumn, selected bool) 
 			text, style = glyph, plain(glyphColour)
 		case columnCheck:
 			text, style = "[ ]", plain(look.Colours.Dim)
-			if m.picked[en.ID] {
+			if m.session.Picked[en.ID] {
 				text, style = "[x]", plain(look.Colours.Focus)
 			}
 		case columnIdx:

@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,27 +14,11 @@ import (
 	"youtube-downloader/libs/mvd-core/runstate"
 )
 
-// Chooser is what a run offers when it holds each song for the person to choose: a song waits,
-// found and proposed, until it is accepted, with the video it proposes or another, or rejected. A
-// song that was rejected can be accepted again. The engine does when it is told to hold the songs.
-type Chooser interface {
-	// Release accepts song entry: it goes to download as proposed when videoID is "", else with that
-	// video.
-	Release(entry int, videoID string) bool
-	// ReleaseAll accepts every song that waits, as proposed, and says how many.
-	ReleaseAll() int
-	// Skip rejects song entry: it is not downloaded.
-	Skip(entry int) bool
-	// Swap gives song entry another video to download, also when it was saved already: what it
-	// saved is then taken away. False when the song is on its way and cannot be swapped.
-	Swap(entry int, videoID string) bool
-}
+// Chooser is what a run offers when it holds each song for the person to choose.
+type Chooser = downloadsession.Chooser
 
 // SourceRemover is what a run offers when it takes a link out while it goes on.
-type SourceRemover interface {
-	// RemoveSource takes playlist (the engine's number for it) out of the run.
-	RemoveSource(playlist int) bool
-}
+type SourceRemover = downloadsession.SourceRemover
 
 // OpenVideoMsg asks the app to show a video in the person's browser.
 type OpenVideoMsg struct{ URL string }
@@ -58,12 +43,12 @@ func swappable(en *runstate.Entry) bool {
 // pickOnly is a click on a song, away from its box: it alone is ticked, or when it was the only one
 // ticked the click takes the tick away.
 func (m *Model) pickOnly(id int) {
-	if len(m.picked) == 1 && m.picked[id] {
-		m.picked = nil
+	if len(m.session.Picked) == 1 && m.session.Picked[id] {
+		m.session.Picked = nil
 
 		return
 	}
-	m.picked = map[int]bool{id: true}
+	m.session.Picked = map[int]bool{id: true}
 }
 
 // rejectable says whether a song can be rejected now: it waits, or it was accepted and has not begun.
@@ -74,7 +59,7 @@ func rejectable(en *runstate.Entry) bool {
 // accepted is what the screen says after songs were accepted: they wait for the Download button, or
 // they go on at once.
 func (m Model) accepted(n int) string {
-	if m.paused {
+	if m.session.Paused {
 		return counted(n, "song") + " accepted. Press Download to start them"
 	}
 
@@ -88,10 +73,10 @@ func acceptable(en *runstate.Entry) bool {
 
 // chooser is the run as something that holds songs for choosing, when it is.
 func (m Model) chooser() (Chooser, bool) {
-	if m.ctrl == nil {
+	if m.session.Ctrl == nil {
 		return nil, false
 	}
-	c, ok := m.ctrl.(Chooser)
+	c, ok := m.session.Ctrl.(Chooser)
 
 	return c, ok
 }
@@ -100,15 +85,15 @@ func (m Model) chooser() (Chooser, bool) {
 func (m Model) anyWaiting() bool {
 	_, ok := m.chooser()
 
-	return ok && m.state.Tally().Planned > 0
+	return ok && m.session.State.Tally().Planned > 0
 }
 
 // targetIDs are the songs the actions work on: the ones ticked, else the one the cursor is on.
 func (m Model) targetIDs() []int {
-	if len(m.picked) > 0 {
+	if len(m.session.Picked) > 0 {
 		var ids []int
-		for id := range m.picked {
-			if m.state.Entry(id) != nil {
+		for id := range m.session.Picked {
+			if m.session.State.Entry(id) != nil {
 				ids = append(ids, id)
 			}
 		}
@@ -125,8 +110,8 @@ func (m Model) targetIDs() []int {
 
 // togglePick ticks or unticks a song.
 func (m *Model) togglePick(id int) {
-	picked := make(map[int]bool, len(m.picked)+1)
-	for k := range m.picked {
+	picked := make(map[int]bool, len(m.session.Picked)+1)
+	for k := range m.session.Picked {
 		picked[k] = true
 	}
 	if picked[id] {
@@ -134,7 +119,7 @@ func (m *Model) togglePick(id int) {
 	} else {
 		picked[id] = true
 	}
-	m.picked = picked
+	m.session.Picked = picked
 }
 
 // togglePickAll ticks every song of the table, or unticks them all when they all are.
@@ -142,12 +127,12 @@ func (m *Model) togglePickAll() {
 	ids := m.visibleEntries()
 	all := len(ids) > 0
 	for _, id := range ids {
-		if !m.picked[id] {
+		if !m.session.Picked[id] {
 			all = false
 		}
 	}
-	picked := make(map[int]bool, len(m.picked))
-	for k := range m.picked {
+	picked := make(map[int]bool, len(m.session.Picked))
+	for k := range m.session.Picked {
 		picked[k] = true
 	}
 	for _, id := range ids {
@@ -157,7 +142,7 @@ func (m *Model) togglePickAll() {
 			picked[id] = true
 		}
 	}
-	m.picked = picked
+	m.session.Picked = picked
 }
 
 // pickRange ticks, or unticks, the songs from one song to another, in the order they are shown.
@@ -178,8 +163,8 @@ func (m *Model) pickRange(from, to int, on bool) {
 	if a > b {
 		a, b = b, a
 	}
-	picked := make(map[int]bool, len(m.picked)+b-a+1)
-	for k := range m.picked {
+	picked := make(map[int]bool, len(m.session.Picked)+b-a+1)
+	for k := range m.session.Picked {
 		picked[k] = true
 	}
 	for _, id := range ids[a : b+1] {
@@ -189,31 +174,31 @@ func (m *Model) pickRange(from, to int, on bool) {
 			delete(picked, id)
 		}
 	}
-	m.picked = picked
+	m.session.Picked = picked
 }
 
 // tickSong is a click on the box of a song: it ticks or unticks that song, and with Shift all the songs
 // from the one ticked last, as a list of mail does.
 func (m *Model) tickSong(id int, shift bool) {
-	on := !m.picked[id]
-	if shift && m.anchorSet {
-		m.pickRange(m.anchor, id, on)
+	on := !m.session.Picked[id]
+	if shift && m.session.AnchorSet {
+		m.pickRange(m.session.Anchor, id, on)
 	} else {
 		m.togglePick(id)
 	}
-	m.anchor, m.anchorSet = id, true
+	m.session.Anchor, m.session.AnchorSet = id, true
 }
 
 // chooseSong is a click on a song away from its box: it alone is ticked, and with Shift every song
 // from the one ticked last to it.
 func (m *Model) chooseSong(id int, shift bool) {
-	if shift && m.anchorSet {
-		m.pickRange(m.anchor, id, true)
+	if shift && m.session.AnchorSet {
+		m.pickRange(m.session.Anchor, id, true)
 
 		return
 	}
 	m.pickOnly(id)
-	m.anchor, m.anchorSet = id, true
+	m.session.Anchor, m.session.AnchorSet = id, true
 }
 
 // extendPick moves the cursor by delta songs with Shift held, and ticks every song from where the
@@ -223,13 +208,13 @@ func (m *Model) extendPick(delta int) {
 	if en == nil {
 		return
 	}
-	if !m.anchorSet {
-		m.anchor, m.anchorSet = en.ID, true
+	if !m.session.AnchorSet {
+		m.session.Anchor, m.session.AnchorSet = en.ID, true
 	}
 	m.move(delta)
 	if now := m.selectedEntry(); now != nil {
-		m.picked = nil
-		m.pickRange(m.anchor, now.ID, true)
+		m.session.Picked = nil
+		m.pickRange(m.session.Anchor, now.ID, true)
 	}
 }
 
@@ -238,7 +223,7 @@ func (m Model) pickState() int {
 	ids := m.visibleEntries()
 	n := 0
 	for _, id := range ids {
-		if m.picked[id] {
+		if m.session.Picked[id] {
 			n++
 		}
 	}
@@ -266,15 +251,15 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 	}
 	if key == "D" {
 		m.flash(m.accepted(chooser.ReleaseAll()))
-		m.picked = nil
+		m.session.Picked = nil
 
 		return m, nil, true
 	}
-	if key == "d" && m.focus == paneLists && len(m.picked) == 0 {
+	if key == "d" && m.session.Pane == paneLists && len(m.session.Picked) == 0 {
 		sent := 0
-		if m.selPlaylist < len(m.state.Playlists) {
-			for _, id := range m.state.Playlists[m.selPlaylist].Entries {
-				if waiting(m.state.Entries[id]) && chooser.Release(id, "") {
+		if m.session.SelPlaylist < len(m.session.State.Playlists) {
+			for _, id := range m.session.State.Playlists[m.session.SelPlaylist].Entries {
+				if waiting(m.session.State.Entries[id]) && chooser.Release(id, "") {
 					sent++
 				}
 			}
@@ -284,7 +269,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		return m, nil, true
 	}
 	if key == "space" {
-		if en := m.selectedEntry(); en != nil && m.focus == paneEntries {
+		if en := m.selectedEntry(); en != nil && m.session.Pane == paneEntries {
 			m.tickSong(en.ID, false)
 		}
 
@@ -303,7 +288,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 
 			return m, nil, true
 		}
-		en := m.state.Entry(ids[0])
+		en := m.session.State.Entry(ids[0])
 		video := en.TargetID
 		if video == "" {
 			video = en.VideoID
@@ -313,7 +298,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 	case "d":
 		done := 0
 		for _, id := range ids {
-			if acceptable(m.state.Entry(id)) && chooser.Release(id, "") {
+			if acceptable(m.session.State.Entry(id)) && chooser.Release(id, "") {
 				done++
 			}
 		}
@@ -322,11 +307,11 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		} else {
 			m.flash(m.accepted(done))
 		}
-		m.picked = nil
+		m.session.Picked = nil
 	case "x":
 		done := 0
 		for _, id := range ids {
-			if rejectable(m.state.Entry(id)) && chooser.Skip(id) {
+			if rejectable(m.session.State.Entry(id)) && chooser.Skip(id) {
 				done++
 			}
 		}
@@ -335,9 +320,9 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		} else {
 			m.flash(fmt.Sprintf("%s rejected: they will not download. Accept brings them back", counted(done, "song")))
 		}
-		m.picked = nil
+		m.session.Picked = nil
 	case "s":
-		en := m.state.Entry(ids[0])
+		en := m.session.State.Entry(ids[0])
 		switch {
 		case len(ids) != 1:
 			m.flash("swap the video of one song at a time")
@@ -353,7 +338,7 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 		in.CharLimit = 0
 		in.SetWidth(max(m.width-len(in.Prompt)-6, 10))
 		blink := in.Focus()
-		m.swapping, m.swap, m.swapEntry = true, in, en.ID
+		m.session.Swapping, m.swap, m.session.SwapEntry = true, in, en.ID
 
 		return m, blink, true
 	}
@@ -366,11 +351,11 @@ func (m Model) chooseKey(key string) (next Model, cmd tea.Cmd, handled bool) {
 func (m Model) updateSwapping(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.swapping = false
+		m.session.Swapping = false
 
 		return m, nil
 	case "enter":
-		m.swapping = false
+		m.session.Swapping = false
 		id, ok := playlisteditor.VideoID(strings.TrimSpace(m.swap.Value()))
 		if !ok {
 			m.flash("that is not the address of a YouTube video")
@@ -380,7 +365,7 @@ func (m Model) updateSwapping(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		chooser, held := m.chooser()
 		switch {
 		case !held:
-		case chooser.Swap(m.swapEntry, id):
+		case chooser.Swap(m.session.SwapEntry, id):
 			m.flash("accepted with the video you chose")
 		default:
 			m.flash("this song cannot be changed now")

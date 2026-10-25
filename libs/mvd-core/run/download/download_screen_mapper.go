@@ -31,18 +31,18 @@ func (m Model) downloadProps(w, h int) Props {
 		p.Columns, p.LeftReserve, p.DetailsHeight = 1, m.reserve, m.detailsHeight(h)
 	}
 	p.FullLog = 0
-	if m.fullLog {
+	if m.session.FullLog {
 		p.FullLog = 1
 	}
-	showOutput := m.fullLog || w >= minWideWidth
-	p.PlaylistCount = len(m.state.Playlists)
+	showOutput := m.session.FullLog || w >= minWideWidth
+	p.PlaylistCount = len(m.session.State.Playlists)
 
 	p.Counters, p.HeaderRight = m.headerTexts()
 	p.Counters = cells.Truncate(p.Counters, w-2)
 
 	// The app has a footer under the output only when there is something for it.
 	footer := m.outputFooter()
-	if !showOutput || !m.technical {
+	if !showOutput || !m.session.Technical {
 		footer = outputFooter{}
 	}
 	if len(footer.lines) > 0 {
@@ -53,9 +53,9 @@ func (m Model) downloadProps(w, h int) Props {
 	p.PlaylistsRows = func(w, h int) ([]PlaylistsRow, int) {
 		return scrolled(m.playlistRows(w), m.playlistsTop, h)
 	}
-	p.PlaylistsTitle = counted(len(m.state.Playlists), "link")
+	p.PlaylistsTitle = counted(len(m.session.State.Playlists), "link")
 	p.PlaylistsRight = ""
-	p.PlaylistsFocus = m.focus == paneLists
+	p.PlaylistsFocus = m.session.Pane == paneLists
 
 	// Entries.
 	p.EntriesTitle, p.EntriesRight = m.entryHeader()
@@ -73,11 +73,11 @@ func (m Model) downloadProps(w, h int) Props {
 		p.HasNotes = 1
 	}
 	p.NotesRows = func(w, _ int) ([]NotesRow, int) { return m.entryNotes(w), 0 }
-	p.EntriesFocus = m.focus == paneEntries
+	p.EntriesFocus = m.session.Pane == paneEntries
 
 	// Output.
 	p.OutputRows = func(w, h int) ([]OutputRow, int) {
-		if !m.technical {
+		if !m.session.Technical {
 			return m.detailRows(w), 0
 		}
 		lines, first := m.outputWindow(w, h)
@@ -92,13 +92,13 @@ func (m Model) downloadProps(w, h int) Props {
 	}
 	p.OutputTitle = m.outputTitle()
 	p.OutputRight = ""
-	if m.technical {
+	if m.session.Technical {
 		p.OutputRight = "technical log"
-		if m.outScroll > 0 {
-			p.OutputRight = fmt.Sprintf("↑%d", m.outScroll)
+		if m.session.OutScroll > 0 {
+			p.OutputRight = fmt.Sprintf("↑%d", m.session.OutScroll)
 		}
 	}
-	p.OutputFocus = m.focus == paneOutput
+	p.OutputFocus = m.session.Pane == paneOutput
 
 	// The footer of the output pane: a progress bar, or a note.
 	if len(footer.lines) > 0 {
@@ -119,37 +119,37 @@ func (m Model) downloadProps(w, h int) Props {
 	// The bottom line: what was asked, what just happened, or the keys.
 	p.Hints = keybar.Of[HintsHint](m.hints())
 	switch {
-	case m.confirmQuit:
+	case m.session.ConfirmQuit:
 		p.ConfirmQuit = true
 		p.Confirm = look.Red.Render(" Downloads are still running. Quit? ") + look.Key.Render("y") + look.Dim.Render("/") + look.Key.Render("n")
-	case m.swapping:
+	case m.session.Swapping:
 		p.ShowStatus = true
 		p.Status = " " + m.swap.View()
-	case m.status != "" && time.Now().Before(m.statusUntil):
+	case m.session.Notice != "" && time.Now().Before(m.session.NoticeUntil):
 		p.ShowStatus = true
-		p.Status = " " + m.status
+		p.Status = " " + m.session.Notice
 	default:
 		// The keys are for a run; while the list is only being made there is nothing to press.
-		p.ShowKeys = !m.editable
+		p.ShowKeys = !m.session.Editable
 	}
 	return p
 }
 
 // headerTexts are the counters inside the header box and the label on its top edge.
 func (m Model) headerTexts() (counters, right string) {
-	t := m.state.Tally()
-	elapsed := runstate.HumanDuration(m.state.Elapsed())
+	t := m.session.State.Tally()
+	elapsed := runstate.HumanDuration(m.session.State.Elapsed())
 
 	right = elapsed
-	if m.editable {
+	if m.session.Editable {
 		right = "" // nothing is running: there is no time to count
-	} else if m.paused && t.Accepted > 0 {
+	} else if m.session.Paused && t.Accepted > 0 {
 		right = "ACCEPTED · press Download to start · " + elapsed
-	} else if m.state.Idle && t.Planned > 0 {
+	} else if m.session.State.Idle && t.Planned > 0 {
 		right = "CHOOSE WHAT TO DOWNLOAD · " + elapsed
-	} else if m.paused {
+	} else if m.session.Paused {
 		right = "STOPPED · " + elapsed
-	} else if m.state.Idle {
+	} else if m.session.State.Idle {
 		right = "FINISHED · " + elapsed
 	} else if t.Downloading > 0 {
 		right = downloadingSummary(t) + " · " + elapsed
@@ -162,7 +162,7 @@ func (m Model) headerTexts() (counters, right string) {
 		look.Green.Render(fmt.Sprintf("✓ Done %d", t.Done)),
 		look.Red.Render(fmt.Sprintf("✗ Failed %d", t.Failed+m.unreadableLinks())),
 	}
-	if t.Running == 0 || m.state.Idle || m.paused {
+	if t.Running == 0 || m.session.State.Idle || m.session.Paused {
 		// Nothing moves, so nothing spins.
 		parts[1] = look.Dim.Render(fmt.Sprintf("  Downloading %d", t.Running))
 	}
@@ -198,7 +198,7 @@ func (m Model) headerTexts() (counters, right string) {
 // plannedCounts are how many songs wait for the person: with an official video found for them, and
 // with only the original.
 func (m Model) plannedCounts() (official, original int) {
-	for _, en := range m.state.Entries {
+	for _, en := range m.session.State.Entries {
 		if en == nil || en.State != engine.StatePlanned {
 			continue
 		}
@@ -215,12 +215,12 @@ func (m Model) plannedCounts() (official, original int) {
 // playlistRows are the rows of the playlists pane: the design places the cursor, the
 // title, the count and the glyph; the app says what each says and the colour of the glyph.
 func (m Model) playlistRows(w int) []PlaylistsRow {
-	if len(m.state.Playlists) == 0 {
+	if len(m.session.State.Playlists) == 0 {
 		return emptyPlaylistRows(w)
 	}
-	rows := make([]PlaylistsRow, 0, len(m.state.Playlists))
-	for i, pl := range m.state.Playlists {
-		finished, _, _ := m.state.PlaylistTally(pl)
+	rows := make([]PlaylistsRow, 0, len(m.session.State.Playlists))
+	for i, pl := range m.session.State.Playlists {
+		finished, _, _ := m.session.State.PlaylistTally(pl)
 		finished -= m.waitingIn(pl) // a song that waits to be chosen is not done
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
 		if pl.Err != "" {
@@ -234,21 +234,21 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 			Mark: " ", Title: title, Count: count, Glyph: glyph,
 			GlyphStyle: CellStyle{Fg: colour},
 		}
-		if m.editable {
+		if m.session.Editable {
 			row.Mark, row.Count, row.Glyph = "≡", "✎", "×"
 			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
 		}
-		if !m.editable && m.linkEditing && i == m.selPlaylist {
+		if !m.session.Editable && m.session.LinkEditing && i == m.session.SelPlaylist {
 			row.Count, row.Glyph = "✎", "×"
 			row.GlyphStyle, row.CountStyle = CellStyle{Fg: look.Colours.Error}, CellStyle{Fg: look.Colours.Focus}
 		}
 		if m.dragRowOn && i == m.dropRow {
 			row.Mark = "▶"
 		}
-		if i == m.selPlaylist {
+		if i == m.session.SelPlaylist {
 			// 6 cells are the mark, the gaps, the glyph and the end of the row.
 			row.Style = RowSelected
-			if !m.editable {
+			if !m.session.Editable {
 				row.Mark = "▸"
 			}
 			row.Title = marquee(title, w-6-ansi.StringWidth(row.Count), m.marquee)
@@ -269,11 +269,11 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 		}
 		return rows, 0
 	}
-	sel = viewport.Clamp(m.selEntry, 0, max(0, len(ids)-1))
+	sel = viewport.Clamp(m.session.SelEntry, 0, max(0, len(ids)-1))
 
 	cols := m.tableColumns(w)
 	for i, id := range ids {
-		texts, styles := m.songCells(m.state.Entries[id], cols, i == sel)
+		texts, styles := m.songCells(m.session.State.Entries[id], cols, i == sel)
 		row := EntriesRow{Cells: texts, CellStyles: styles}
 		if i == sel {
 			// Whether the pane has the focus is the design's: an unfocused pane draws it as text.
@@ -287,12 +287,12 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 // entryHeader are the title and the label of the entries pane.
 func (m Model) entryHeader() (title, right string) {
 	n := 0
-	if m.selPlaylist < len(m.state.Playlists) {
+	if m.session.SelPlaylist < len(m.session.State.Playlists) {
 		n = len(m.visibleEntries())
 	}
 	title = counted(n, "song")
-	if m.filterActive() && m.selPlaylist < len(m.state.Playlists) {
-		title = fmt.Sprintf("%d of %s", n, counted(len(m.state.Playlists[m.selPlaylist].Entries), "song"))
+	if m.filterActive() && m.session.SelPlaylist < len(m.session.State.Playlists) {
+		title = fmt.Sprintf("%d of %s", n, counted(len(m.session.State.Playlists[m.session.SelPlaylist].Entries), "song"))
 	}
 
 	return title, ""
@@ -301,19 +301,19 @@ func (m Model) entryHeader() (title, right string) {
 // entryNotesShown is whether the entries pane has a note to show instead of rows: the
 // playlist has an error, is still being listed, or has no failed entries to show.
 func (m Model) entryNotesShown() bool {
-	if m.selPlaylist >= len(m.state.Playlists) {
+	if m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return false
 	}
-	pl := m.state.Playlists[m.selPlaylist]
+	pl := m.session.State.Playlists[m.session.SelPlaylist]
 	return pl.Err != "" || !pl.Listed || (m.filterActive() && len(m.visibleEntries()) == 0)
 }
 
 // entryNotes are the lines of that note, wrapped to innerW cells.
 func (m Model) entryNotes(innerW int) []NotesRow {
-	if m.selPlaylist >= len(m.state.Playlists) {
+	if m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return nil
 	}
-	pl := m.state.Playlists[m.selPlaylist]
+	pl := m.session.State.Playlists[m.session.SelPlaylist]
 	var notes []NotesRow
 	switch {
 	case pl.Err != "":
@@ -342,7 +342,7 @@ type barInfo struct {
 func (m Model) outputFooter() outputFooter {
 	var f outputFooter
 	en := m.selectedEntry()
-	if en == nil || m.focus == paneLists {
+	if en == nil || m.session.Pane == paneLists {
 		return f
 	}
 	switch en.State {
@@ -360,11 +360,11 @@ func (m Model) outputFooter() outputFooter {
 		f.bar = &barInfo{info: info, percent: percent}
 		f.lines = []string{"", look.Yellow.Render(info)}
 	case engine.StateFailed:
-		if m.technical {
+		if m.session.Technical {
 			f.lines = []string{"", look.Red.Render("✗ " + cells.Display(runstate.PlainError(en.Err)))}
 		}
 	case engine.StateDone:
-		if !m.technical {
+		if !m.session.Technical {
 			break // the details say it
 		}
 		what := "original " + en.TargetID
@@ -384,7 +384,7 @@ func (m Model) outputFooter() outputFooter {
 // index of the log line the first row belongs to.
 func (m Model) outputWindow(w, h int) ([]string, int) {
 	lines := m.outputLines()
-	end := max(0, len(lines)-m.outScroll)
+	end := max(0, len(lines)-m.session.OutScroll)
 	h = max(h, 1)
 
 	// Built from the bottom up, so only the lines that show are wrapped however long the log is.
@@ -409,7 +409,7 @@ func (m Model) outputWindow(w, h int) ([]string, int) {
 // output has the whole screen.
 func (m Model) leftWidth(w int) int {
 	switch {
-	case m.fullLog:
+	case m.session.FullLog:
 		return 0
 	case w < minWideWidth:
 		return w
@@ -421,13 +421,13 @@ func (m Model) leftWidth(w int) int {
 }
 
 // columns is whether the playlists, the entries and the output stand side by side.
-func (m Model) columns(w int) bool { return !m.fullLog && w >= minWideWidth }
+func (m Model) columns(w int) bool { return !m.session.FullLog && w >= minWideWidth }
 
 // detailsHeight is how tall the details pane under the songs is in a window h cells tall: enough
 // for the account of a song, or half of what there is for the log of the tool.
 func (m Model) detailsHeight(h int) int {
 	room := max(h-4, 6)
-	if m.technical {
+	if m.session.Technical {
 		return max(6, room/2)
 	}
 
@@ -462,11 +462,11 @@ func emptyPlaylistRows(w int) []PlaylistsRow {
 // nothing yet, or that a list has been made and not looked up, and how to do it.
 func (m Model) emptyEntriesText() string {
 	switch {
-	case len(m.state.Playlists) == 0:
+	case len(m.session.State.Playlists) == 0:
 		return "The songs of each link show here, once you add one."
-	case m.editable:
+	case m.session.Editable:
 		return "Nothing loaded yet. Press Load playlists (Ctrl+R) to see the songs of each playlist, then choose what to download."
-	case m.selPlaylist < len(m.state.Playlists) && !m.state.Playlists[m.selPlaylist].Listed:
+	case m.session.SelPlaylist < len(m.session.State.Playlists) && !m.session.State.Playlists[m.session.SelPlaylist].Listed:
 		return "Reading the songs of this link…"
 	}
 	return "No songs to show here."
@@ -477,9 +477,9 @@ func (m Model) emptyEntriesText() string {
 // none; otherwise that this one wrote nothing.
 func (m Model) emptyOutputText() string {
 	switch {
-	case m.selPlaylist < len(m.state.Playlists) && m.state.Playlists[m.selPlaylist].Err != "":
+	case m.session.SelPlaylist < len(m.session.State.Playlists) && m.session.State.Playlists[m.session.SelPlaylist].Err != "":
 		return "Nothing to show: this link could not be read."
-	case m.editable || len(m.state.Playlists) == 0:
+	case m.session.Editable || len(m.session.State.Playlists) == 0:
 		return "Nothing yet. What happens to each song shows here while it downloads."
 	}
 	return "Nothing to show for this one."
@@ -498,7 +498,7 @@ func emptyOutputRows(text string, w int) []OutputRow {
 // the person it is a failure all the same.
 func (m Model) unreadableLinks() int {
 	n := 0
-	for _, pl := range m.state.Playlists {
+	for _, pl := range m.session.State.Playlists {
 		if pl.Err != "" {
 			n++
 		}

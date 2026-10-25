@@ -28,14 +28,14 @@ func TestTheScreenKeepsItsLook(t *testing.T) {
 		w, h int
 		draw func(t *testing.T) string
 	}{
-		{"download-entries", 120, 36, download(func(m *Model) { m.focus = paneEntries; m.selEntry = 4 })},
-		{"download-lists", 120, 36, download(func(m *Model) { m.focus = paneLists })},
-		{"download-emoji-playlist", 120, 36, download(func(m *Model) { m.focus = paneLists; m.selPlaylist = 1 })},
-		{"download-failed-playlist", 120, 36, download(func(m *Model) { m.focus = paneLists; m.selPlaylist = 2 })},
-		{"download-full-log", 120, 36, download(func(m *Model) { m.fullLog = true; m.focus = paneOutput; m.outScroll = 5 })},
-		{"download-filter-failed", 120, 36, download(func(m *Model) { m.statusFilter = onlyFailed(); m.focus = paneEntries })},
-		{"download-confirm-quit", 120, 36, download(func(m *Model) { m.confirmQuit = true })},
-		{"download-help", 120, 36, download(func(m *Model) { m.showHelp = true })},
+		{"download-entries", 120, 36, download(func(m *Model) { m.session.Pane = paneEntries; m.session.SelEntry = 4 })},
+		{"download-lists", 120, 36, download(func(m *Model) { m.session.Pane = paneLists })},
+		{"download-emoji-playlist", 120, 36, download(func(m *Model) { m.session.Pane = paneLists; m.session.SelPlaylist = 1 })},
+		{"download-failed-playlist", 120, 36, download(func(m *Model) { m.session.Pane = paneLists; m.session.SelPlaylist = 2 })},
+		{"download-full-log", 120, 36, download(func(m *Model) { m.session.FullLog = true; m.session.Pane = paneOutput; m.session.OutScroll = 5 })},
+		{"download-filter-failed", 120, 36, download(func(m *Model) { m.session.Filter = onlyFailed(); m.session.Pane = paneEntries })},
+		{"download-confirm-quit", 120, 36, download(func(m *Model) { m.session.ConfirmQuit = true })},
+		{"download-help", 120, 36, download(func(m *Model) { m.session.ShowHelp = true })},
 		{"download-add-links", 120, 36, download(func(m *Model) {
 			ta := textarea.New()
 			ta.Placeholder = "Paste or type playlist / video URLs, one per line"
@@ -44,7 +44,7 @@ func TestTheScreenKeepsItsLook(t *testing.T) {
 			ta.SetHeight(8)
 			ta.SetValue("https://youtube.com/playlist?list=A\nhttps://youtube.com/watch?v=B")
 			ta.Focus()
-			m.adding, m.links = true, ta
+			m.session.Adding, m.links = true, ta
 		})},
 		{"download-add-links-narrow", 70, 20, download(func(m *Model) {
 			m.width, m.height = 70, 20
@@ -54,10 +54,10 @@ func TestTheScreenKeepsItsLook(t *testing.T) {
 			ta.SetWidth(m.addBoxWidth())
 			ta.SetHeight(8)
 			ta.Focus()
-			m.adding, m.links = true, ta
+			m.session.Adding, m.links = true, ta
 		})},
-		{"download-help-narrow", 70, 20, download(func(m *Model) { m.width, m.height = 70, 20; m.showHelp = true })},
-		{"download-narrow", 80, 24, download(func(m *Model) { m.width, m.height = 80, 24; m.focus = paneEntries; m.selEntry = 2 })},
+		{"download-help-narrow", 70, 20, download(func(m *Model) { m.width, m.height = 70, 20; m.session.ShowHelp = true })},
+		{"download-narrow", 80, 24, download(func(m *Model) { m.width, m.height = 80, 24; m.session.Pane = paneEntries; m.session.SelEntry = 2 })},
 	}
 	for _, c := range cases {
 		drawing.Check(t, "testdata", c.name, c.w, c.draw(t))

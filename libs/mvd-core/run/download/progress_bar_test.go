@@ -18,8 +18,8 @@ func footerPercent(t *testing.T, m Model) float64 {
 
 func TestTheBarIsEmptyWhileTheSizeIsNotKnown(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 	en := m.selectedEntry()
 	en.State, en.Total, en.Percent = engine.StateDownloading, 0, 0
 	if got := footerPercent(t, m); got != 0 {
@@ -29,8 +29,8 @@ func TestTheBarIsEmptyWhileTheSizeIsNotKnown(t *testing.T) {
 
 func TestTheBarFollowsTheDownloadOnceTheSizeIsKnown(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 	en := m.selectedEntry()
 	en.State, en.Total, en.Percent = engine.StateDownloading, 1000, 34.2
 	if got := footerPercent(t, m); got != 34.2 {
@@ -40,8 +40,8 @@ func TestTheBarFollowsTheDownloadOnceTheSizeIsKnown(t *testing.T) {
 
 func TestTheBarIsFullWhileTheFilesAreBeingJoined(t *testing.T) {
 	m := sampleModel(t)
-	m.focus = paneEntries
-	m.selEntry = 5
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 5
 	en := m.selectedEntry()
 	en.State, en.Total = engine.StateMerging, 0
 	if got := footerPercent(t, m); got != 100 {

@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"context"
 	"fmt"
 	"os"
@@ -20,13 +21,7 @@ import (
 )
 
 // Controller is what the screen needs from the engine.
-type Controller interface {
-	Events() <-chan interface{}
-	Sources() []engine.PlaylistSource
-	LogPath() string
-	Retry(entryID int) bool
-	RetryPlaylist(playlist int) int
-}
+type Controller = downloadsession.Controller
 
 // Enabled decides between the full screen interface and plain log output.
 func Enabled(noTUIFlag bool) bool {
@@ -42,15 +37,15 @@ func Drive(ctx context.Context, c Controller) (*runstate.State, error) {
 	p := tea.NewProgram(New(c), tea.WithContext(ctx))
 	final, err := p.Run()
 	if fm, ok := final.(Model); ok {
-		return fm.state, err
+		return fm.session.State, err
 	}
 	return nil, err
 }
 
 const (
-	paneLists = iota
-	paneEntries
-	paneOutput
+	paneLists   = downloadsession.PaneLists
+	paneEntries = downloadsession.PaneEntries
+	paneOutput  = downloadsession.PaneOutput
 )
 
 // minWideWidth is the window width from which the output pane is shown beside the lists.
@@ -65,69 +60,39 @@ type (
 	tickMsg  time.Time
 )
 
+// Model is the download screen as a Bubble Tea model: the session holds what the screen does, and
+// what is here is what only the terminal knows, such as sizes in cells, the dragging of borders and
+// the widgets that edit text.
 type Model struct {
-	ctrl   Controller
-	events <-chan interface{}
-	state  *runstate.State
+	session downloadsession.Session
+	events  <-chan interface{}
 
 	width, height int
-	focus         int
-	selPlaylist   int
-	selEntry      int
-	outScroll     int // lines scrolled up from the bottom of the output pane
-	follow        bool
-	loaded        bool // every playlist has been listed; until then the loading screen is shown
-	// order is the column the songs are sorted by (a click on its heading), none for the order they came in.
-	order songlist.Order
-	// statusFilter is the groups of statuses the person hid with the filter.
-	statusFilter songlist.Filter
-	filterList   filterMenu
-	fullLog       bool
-	// technical shows the log of the tool in the details pane instead of the plain account.
-	technical bool
-	// paused is whether the downloads are held: the header says so for as long as they are.
-	paused bool
 	// leftW and midW are the widths the person gave the columns by dragging their borders;
 	// 0 is the default. dragging is the border being dragged: 1 after the playlists, 2 after
 	// the entries, 0 for none. reserve is the rows kept under the playlists for buttons.
 	leftW, dragging, reserve int
-	// editable is true while the list can be changed here: each playlist then has a grip to
-	// carry it by, and icons to change and to remove it. dragRow is the playlist being
-	// carried, dropRow the one it is over; dragging a row is on while dragRowOn.
-	editable          bool
-	linkEditing       bool // the links of a run that goes on can be changed or taken out
-	dragRowOn         bool
-	dragRow, dropRow  int
+	// dragRow is the playlist being carried, dropRow the one it is over; dragging a row is on while
+	// dragRowOn.
+	dragRowOn        bool
+	dragRow, dropRow int
+	filterList       filterMenu
 	// marquee counts the ticks, for the text of the selected row that is wider than its column.
 	marquee int
-	showHelp      bool
-	confirmQuit   bool
-	spin          int
-	status        string // transient message shown in the key bar
-	statusUntil   time.Time
-	embedded      bool // inside an app model: ends with FinishedMsg instead of quitting
-	hosted        bool // inside the workspace: it owns quitting and adding links, and the run comes and goes
-	adding        bool // the box for adding links is open
-	// picked are the songs ticked in the table: the actions work on them, else on the song the cursor
-	// is on.
-	picked map[int]bool
-	// anchor is the song the last tick was on, where a range with Shift begins.
-	anchor    int
-	anchorSet bool
+	spin    int
+	// embedded: inside an app model, it ends with FinishedMsg instead of quitting.
+	embedded bool
 	// playlistsTop and entriesTop are how many rows the links and the songs are scrolled down.
 	playlistsTop, entriesTop int
-	// colWidth are the widths the person gave to columns by carrying their borders, and hiddenCols
-	// the columns they hid. Both are replaced, never changed, so a copy of the screen keeps its own.
+	// colWidth are the widths the person gave to columns by carrying their borders. They are
+	// replaced, never changed, so a copy of the screen keeps its own.
 	colWidth   map[string]int
-	colOrder   []string
-	hiddenCols map[string]bool
 	colDrag    columnDrag
 	columnList columnsMenu
-	// swapping is the address of another video being asked for the song swapEntry.
-	swapping  bool
-	swap      textinput.Model
-	swapEntry int
-	links         textarea.Model
+	// swap and links are the widgets that edit the address of another video and the links to add;
+	// the session holds what they say.
+	swap  textinput.Model
+	links textarea.Model
 }
 
 // FinishedMsg tells the app model the user left the download screen.
@@ -143,15 +108,7 @@ func (m Model) quit() tea.Cmd {
 }
 
 func New(c Controller) Model {
-	state := runstate.New(c.Sources())
-	return Model{
-		ctrl:   c,
-		events: c.Events(),
-		state:  state,
-		follow: true,
-		// A run with no playlists to list (the download of a plan) has nothing to wait for.
-		loaded: len(state.Playlists) == 0,
-	}
+	return Model{session: downloadsession.New(c), events: c.Events()}
 }
 
 func waitEvent(ch <-chan interface{}) tea.Cmd {
@@ -176,9 +133,9 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	before := [3]int{m.selPlaylist, m.selEntry, m.focus}
+	before := [3]int{m.session.SelPlaylist, m.session.SelEntry, int(m.session.Pane)}
 	next, cmd := m.update(msg)
-	if now, ok := next.(Model); ok && [3]int{now.selPlaylist, now.selEntry, now.focus} != before {
+	if now, ok := next.(Model); ok && [3]int{now.session.SelPlaylist, now.session.SelEntry, int(now.session.Pane)} != before {
 		// A row that was just chosen shows the start of its name, still, before it scrolls.
 		now.marquee = 0
 		now.keepSelectionVisible()
@@ -200,35 +157,35 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tick()
 
 	case evMsg:
-		id := m.state.Apply(msg.ev)
+		id := m.session.State.Apply(msg.ev)
 		if added, ok := msg.ev.(engine.EvPlaylistAdded); ok {
 			// A link that was just added is the one the person looks at: its songs come in under it.
-			if at := m.state.PlaylistPos(added.Source.Index); at >= 0 {
-				m.selPlaylist, m.selEntry, m.entriesTop = at, 0, 0
+			if at := m.session.State.PlaylistPos(added.Source.Index); at >= 0 {
+				m.session.SelPlaylist, m.session.SelEntry, m.entriesTop = at, 0, 0
 				m.keepSelectionVisible()
 			}
 		}
-		m.selPlaylist = max(min(m.selPlaylist, len(m.state.Playlists)-1), 0)
-		if !m.loaded && (m.state.Idle || m.state.AllListed()) {
-			m.loaded = true
+		m.session.SelPlaylist = max(min(m.session.SelPlaylist, len(m.session.State.Playlists)-1), 0)
+		if !m.session.Loaded && (m.session.State.Idle || m.session.State.AllListed()) {
+			m.session.Loaded = true
 		}
-		if st, ok := msg.ev.(engine.EvEntryState); ok && m.follow {
+		if st, ok := msg.ev.(engine.EvEntryState); ok && m.session.Follow {
 			if st.State == engine.StateDownloading || st.State == engine.StateResolving {
 				m.jumpTo(id)
 			}
 		}
-		if lg, ok := msg.ev.(engine.EvLog); ok && m.outScroll > 0 {
+		if lg, ok := msg.ev.(engine.EvLog); ok && m.session.OutScroll > 0 {
 			// Keep the view anchored while the user is reading older lines.
 			if en := m.selectedEntry(); en != nil && lg.Entry == en.ID {
-				m.outScroll++
+				m.session.OutScroll++
 			}
 		}
 		return m, waitEvent(m.events)
 
 	case evClosed:
-		if m.hosted {
+		if m.session.Hosted {
 			// The run is over; what it reported stays on the screen.
-			m.events, m.ctrl = nil, nil
+			m.events, m.session.Ctrl = nil, nil
 			return m, func() tea.Msg { return RunEndedMsg{} }
 		}
 		return m, m.quit()
@@ -239,7 +196,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseMsg:
 		return m.mouse(msg)
 	}
-	if m.adding {
+	if m.session.Adding {
 		// The text area's cursor blinks on messages of its own.
 		var cmd tea.Cmd
 		m.links, cmd = m.links.Update(msg)
@@ -257,10 +214,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if key == "ctrl+l" {
 		return m, tea.ClearScreen
 	}
-	if m.adding {
+	if m.session.Adding {
 		return m.updateAdding(msg)
 	}
-	if m.swapping {
+	if m.session.Swapping {
 		return m.updateSwapping(msg)
 	}
 	if m.columnList.open {
@@ -278,21 +235,21 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.confirmQuit {
+	if m.session.ConfirmQuit {
 		switch key {
 		case "y", "Y", "enter":
 			return m, m.quit()
 		default:
-			m.confirmQuit = false
+			m.session.ConfirmQuit = false
 		}
 		return m, nil
 	}
 
-	if m.showHelp {
+	if m.session.ShowHelp {
 		// A stray key does not close it; the ones that mean "done" do.
 		switch key {
 		case "esc", "?", "enter", "space", "q":
-			m.showHelp = false
+			m.session.ShowHelp = false
 		}
 		return m, nil
 	}
@@ -301,36 +258,36 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return next, cmd
 	}
 
-	if m.hosted && (key == "q" || key == "esc" || key == "a") {
+	if m.session.Hosted && (key == "q" || key == "esc" || key == "a") {
 		return m, nil // the workspace takes these
 	}
 
 	switch key {
 	case "q", "esc":
-		if m.state.Idle {
+		if m.session.State.Idle {
 			return m, m.quit()
 		}
-		m.confirmQuit = true
+		m.session.ConfirmQuit = true
 	case "?":
-		m.showHelp = true
+		m.session.ShowHelp = true
 	case "a":
 		return m.startAdding()
 	case "tab":
-		m.focus = (m.focus + 1) % 3
-		if m.focus == paneOutput && !m.outputVisible() {
-			m.focus = paneLists
+		m.session.Pane = (m.session.Pane + 1) % 3
+		if m.session.Pane == paneOutput && !m.outputVisible() {
+			m.session.Pane = paneLists
 		}
 	case "shift+tab":
-		m.focus = (m.focus + 2) % 3
-		if m.focus == paneOutput && !m.outputVisible() {
-			m.focus = paneEntries
+		m.session.Pane = (m.session.Pane + 2) % 3
+		if m.session.Pane == paneOutput && !m.outputVisible() {
+			m.session.Pane = paneEntries
 		}
 	case "up", "k":
 		m.move(-1)
 	case "down", "j":
 		m.move(1)
 	case "shift+up", "shift+down":
-		if _, held := m.chooser(); held && m.focus == paneEntries {
+		if _, held := m.chooser(); held && m.session.Pane == paneEntries {
 			m.extendPick(map[string]int{"shift+up": -1, "shift+down": 1}[key])
 		}
 	case "pgup":
@@ -342,9 +299,9 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "end":
 		m.move(1 << 20)
 	case "enter":
-		m.follow = !m.follow
-		if m.follow {
-			m.outScroll = 0
+		m.session.Follow = !m.session.Follow
+		if m.session.Follow {
+			m.session.OutScroll = 0
 			if id := m.activeEntry(); id >= 0 {
 				m.jumpTo(id)
 			}
@@ -360,20 +317,20 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.flash("showing all songs")
 		}
 	case "t":
-		m.technical = !m.technical
-		m.outScroll = 0
-		if m.technical {
+		m.session.Technical = !m.session.Technical
+		m.session.OutScroll = 0
+		if m.session.Technical {
 			m.flash("technical log on: t goes back to the plain details")
 		} else {
 			m.flash("plain details on")
 		}
 	case "l":
-		m.fullLog = !m.fullLog
-		if m.fullLog {
-			m.technical = true // the full screen is for reading the log
-			m.focus = paneOutput
-		} else if m.focus == paneOutput && !m.outputVisible() {
-			m.focus = paneEntries
+		m.session.FullLog = !m.session.FullLog
+		if m.session.FullLog {
+			m.session.Technical = true // the full screen is for reading the log
+			m.session.Pane = paneOutput
+		} else if m.session.Pane == paneOutput && !m.outputVisible() {
+			m.session.Pane = paneEntries
 		}
 	case "r":
 		m.retry()
@@ -382,38 +339,38 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) flash(s string) {
-	m.status = s
-	m.statusUntil = time.Now().Add(3 * time.Second)
+	m.session.Notice = s
+	m.session.NoticeUntil = time.Now().Add(3 * time.Second)
 }
 
 func (m *Model) outputVisible() bool {
-	return m.fullLog || m.width >= minWideWidth
+	return m.session.FullLog || m.width >= minWideWidth
 }
 
 func (m *Model) move(delta int) {
-	switch m.focus {
+	switch m.session.Pane {
 	case paneLists:
-		m.follow = false
-		m.selPlaylist = viewport.Clamp(m.selPlaylist+delta, 0, len(m.state.Playlists)-1)
-		m.selEntry = 0
-		m.outScroll = 0
+		m.session.Follow = false
+		m.session.SelPlaylist = viewport.Clamp(m.session.SelPlaylist+delta, 0, len(m.session.State.Playlists)-1)
+		m.session.SelEntry = 0
+		m.session.OutScroll = 0
 	case paneEntries:
-		m.follow = false
+		m.session.Follow = false
 		n := len(m.visibleEntries())
-		m.selEntry = viewport.Clamp(m.selEntry+delta, 0, n-1)
-		m.outScroll = 0
+		m.session.SelEntry = viewport.Clamp(m.session.SelEntry+delta, 0, n-1)
+		m.session.OutScroll = 0
 	case paneOutput:
 		lines := len(m.outputLines())
-		m.outScroll = viewport.Clamp(m.outScroll-delta, 0, max(0, lines-1))
+		m.session.OutScroll = viewport.Clamp(m.session.OutScroll-delta, 0, max(0, lines-1))
 	}
 }
 
 func (m *Model) retry() {
-	if m.ctrl == nil {
+	if m.session.Ctrl == nil {
 		m.flash("nothing is running; start the downloads first")
 		return
 	}
-	switch m.focus {
+	switch m.session.Pane {
 	case paneEntries:
 		en := m.selectedEntry()
 		if en == nil {
@@ -423,12 +380,12 @@ func (m *Model) retry() {
 			m.flash("only failed entries can be retried")
 			return
 		}
-		if m.ctrl.Retry(en.ID) {
+		if m.session.Ctrl.Retry(en.ID) {
 			m.flash(fmt.Sprintf("retrying %02d %s", en.Index, entryTitle(en)))
 		}
 	default:
-		if m.selPlaylist < len(m.state.Playlists) {
-			n := m.ctrl.RetryPlaylist(m.state.Playlists[m.selPlaylist].Index)
+		if m.session.SelPlaylist < len(m.session.State.Playlists) {
+			n := m.session.Ctrl.RetryPlaylist(m.session.State.Playlists[m.session.SelPlaylist].Index)
 			m.flash(fmt.Sprintf("re-queued %d failed entries", n))
 		}
 	}
@@ -436,15 +393,15 @@ func (m *Model) retry() {
 
 // visibleEntries returns the entry ids shown in the entries pane.
 func (m *Model) visibleEntries() []int {
-	if m.selPlaylist >= len(m.state.Playlists) {
+	if m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return nil
 	}
-	pl := m.state.Playlists[m.selPlaylist]
+	pl := m.session.State.Playlists[m.session.SelPlaylist]
 	ids := pl.Entries
 	if m.filterActive() {
 		ids = nil
 		for _, id := range pl.Entries {
-			if m.matchesFilter(m.state.Entries[id]) {
+			if m.matchesFilter(m.session.State.Entries[id]) {
 				ids = append(ids, id)
 			}
 		}
@@ -457,13 +414,13 @@ func (m *Model) selectedEntry() *runstate.Entry {
 	if len(ids) == 0 {
 		return nil
 	}
-	i := viewport.Clamp(m.selEntry, 0, len(ids)-1)
-	return m.state.Entries[ids[i]]
+	i := viewport.Clamp(m.session.SelEntry, 0, len(ids)-1)
+	return m.session.State.Entries[ids[i]]
 }
 
 // activeEntry returns the id of the first entry currently downloading.
 func (m *Model) activeEntry() int {
-	for _, en := range m.state.Entries {
+	for _, en := range m.session.State.Entries {
 		if en != nil && (en.State == engine.StateDownloading || en.State == engine.StateMerging || en.State == engine.StateResolving) {
 			return en.ID
 		}
@@ -472,18 +429,18 @@ func (m *Model) activeEntry() int {
 }
 
 func (m *Model) jumpTo(id int) {
-	en := m.state.Entry(id)
+	en := m.session.State.Entry(id)
 	if en == nil {
 		return
 	}
-	m.selPlaylist = max(m.state.PlaylistPos(en.Playlist), 0)
+	m.session.SelPlaylist = max(m.session.State.PlaylistPos(en.Playlist), 0)
 	for i, eid := range m.visibleEntries() {
 		if eid == id {
-			m.selEntry = i
+			m.session.SelEntry = i
 			break
 		}
 	}
-	m.outScroll = 0
+	m.session.OutScroll = 0
 }
 
 func (m Model) View() tea.View { return screenview.Of(m.render()) }
@@ -504,44 +461,44 @@ type RunEndedMsg struct{}
 // (showing whatever state it is given), takes a run with Attach and lets it go when it ends.
 // Quitting and adding links are left to the workspace.
 func NewHosted() Model {
-	return Model{embedded: true, hosted: true, loaded: true, follow: true, state: runstate.New(nil)}
+	return Model{embedded: true, session: downloadsession.NewHosted()}
 }
 
 // WithState shows state, for a list that is not being run: what an earlier session
 // reported, read from the list file.
 func (m Model) WithState(state *runstate.State) Model {
-	m.state = state
-	m.selPlaylist, m.selEntry, m.outScroll = 0, 0, 0
+	m.session.State = state
+	m.session.SelPlaylist, m.session.SelEntry, m.session.OutScroll = 0, 0, 0
 	return m
 }
 
 // Attach shows a run that has begun: the screen starts again from what the run reports. The
 // command it returns waits for the run's first event.
 func (m Model) Attach(c Controller) (Model, tea.Cmd) {
-	m.ctrl, m.events = c, c.Events()
-	m.state = runstate.New(c.Sources())
-	m.loaded = len(m.state.Playlists) == 0
-	m.follow = true
+	m.session.Ctrl, m.events = c, c.Events()
+	m.session.State = runstate.New(c.Sources())
+	m.session.Loaded = len(m.session.State.Playlists) == 0
+	m.session.Follow = true
 	// The link the cursor was on stays the one, when the run has it: a link was just added there.
-	m.selPlaylist = max(min(m.selPlaylist, len(m.state.Playlists)-1), 0)
-	m.selEntry, m.outScroll, m.entriesTop, m.playlistsTop = 0, 0, 0, 0
+	m.session.SelPlaylist = max(min(m.session.SelPlaylist, len(m.session.State.Playlists)-1), 0)
+	m.session.SelEntry, m.session.OutScroll, m.entriesTop, m.playlistsTop = 0, 0, 0, 0
 	return m, waitEvent(m.events)
 }
 
 // Detach lets the run go, keeping what it reported on the screen.
 func (m Model) Detach() Model {
-	m.ctrl, m.events, m.paused = nil, nil, false
+	m.session.Ctrl, m.events, m.session.Paused = nil, nil, false
 	return m
 }
 
 // WithPaused says whether the downloads are held, which the header shows.
 func (m Model) WithPaused(paused bool) Model {
-	m.paused = paused
+	m.session.Paused = paused
 	return m
 }
 
 // Running reports whether a run is attached.
-func (m Model) Running() bool { return m.ctrl != nil }
+func (m Model) Running() bool { return m.session.Ctrl != nil }
 
 // Resize gives the screen its size.
 func (m Model) Resize(w, h int) Model {
@@ -560,7 +517,7 @@ func IsLeftover(msg tea.Msg) bool {
 }
 
 // State is what the run has reported so far.
-func (m Model) State() *runstate.State { return m.state }
+func (m Model) State() *runstate.State { return m.session.State }
 
 // Render draws the screen, for an app model that shows it under its own notice.
 func (m Model) Render() string { return m.render() }

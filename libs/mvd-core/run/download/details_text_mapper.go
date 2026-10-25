@@ -26,18 +26,18 @@ func (m Model) detailRows(w int) []OutputRow {
 	c := look.Colours
 	plain, bold, dim := CellStyle{Fg: c.Text}, CellStyle{Fg: c.Text, Bold: true}, CellStyle{Fg: c.Dim}
 
-	if m.selPlaylist >= len(m.state.Playlists) {
+	if m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return emptyOutputRows(m.emptyOutputText(), w)
 	}
-	pl := m.state.Playlists[m.selPlaylist]
+	pl := m.session.State.Playlists[m.session.SelPlaylist]
 	en := m.selectedEntry()
-	picks := len(m.picked)
+	picks := len(m.session.Picked)
 	if picks > 1 {
 		say(counted(picks, "song")+" selected", bold)
 		blank()
 		counts := map[string]int{}
-		for id := range m.picked {
-			if p := m.state.Entry(id); p != nil {
+		for id := range m.session.Picked {
+			if p := m.session.State.Entry(id); p != nil {
 				word, _ := entryStatus(p)
 				counts[word]++
 			}
@@ -56,13 +56,13 @@ func (m Model) detailRows(w int) []OutputRow {
 		return rows
 	}
 	if picks == 1 {
-		for id := range m.picked {
-			if p := m.state.Entry(id); p != nil {
+		for id := range m.session.Picked {
+			if p := m.session.State.Entry(id); p != nil {
 				en = p // the one song that is ticked is the one the details are about
 			}
 		}
 	}
-	if (m.focus == paneLists && picks == 0) || en == nil {
+	if (m.session.Pane == paneLists && picks == 0) || en == nil {
 		say(m.playlistName(pl), bold)
 		if address := shortAddress(pl.URL); address != m.playlistName(pl) {
 			say(address, dim)
@@ -102,7 +102,7 @@ func (m Model) detailRows(w int) []OutputRow {
 func (m Model) linkSummary(pl *runstate.Playlist) string {
 	var saved, failed, waiting, working, had, toChoose, cancelled, accepted int
 	for _, id := range pl.Entries {
-		switch m.state.Entries[id].State {
+		switch m.session.State.Entries[id].State {
 		case engine.StateDone:
 			saved++
 		case engine.StateFailed:
@@ -160,7 +160,7 @@ func (m Model) songSentence(en *runstate.Entry) (string, CellStyle) {
 	case engine.StateFailed:
 		return "✗ " + cells.Display(runstate.PlainError(en.Err)) + " Press r to try again.", CellStyle{Fg: c.Error}
 	case engine.StateAccepted:
-		if m.paused {
+		if m.session.Paused {
 			return "Accepted. It downloads when you press Download.", CellStyle{Fg: c.Focus}
 		}
 
@@ -210,7 +210,7 @@ func (m Model) playlistName(pl *runstate.Playlist) string {
 		return pl.Title
 	}
 	if pl.Listed && len(pl.Entries) == 1 {
-		if name := entryTitle(m.state.Entries[pl.Entries[0]]); name != "" {
+		if name := entryTitle(m.session.State.Entries[pl.Entries[0]]); name != "" {
 			return name
 		}
 	}

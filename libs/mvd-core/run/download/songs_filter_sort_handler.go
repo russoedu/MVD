@@ -20,26 +20,26 @@ type filterMenu struct {
 }
 
 // filterActive says whether some of the statuses are hidden.
-func (m Model) filterActive() bool { return m.statusFilter.Active() }
+func (m Model) filterActive() bool { return m.session.Filter.Active() }
 
 // matchesFilter says whether a song passes the filter by status.
-func (m Model) matchesFilter(en *runstate.Entry) bool { return m.statusFilter.Matches(en) }
+func (m Model) matchesFilter(en *runstate.Entry) bool { return m.session.Filter.Matches(en) }
 
 // toggleStatus shows or hides the songs of a group of statuses.
 func (m *Model) toggleStatus(group string) {
-	m.statusFilter = m.statusFilter.Toggled(group)
-	m.selEntry, m.entriesTop = 0, 0
+	m.session.Filter = m.session.Filter.Toggled(group)
+	m.session.SelEntry, m.entriesTop = 0, 0
 }
 
 // showOnly shows the songs of one group of statuses and hides the rest; when that is what the filter
 // is already, it shows them all.
 func (m *Model) showOnly(group string) {
-	m.statusFilter = m.statusFilter.Only(group)
-	m.selEntry, m.entriesTop = 0, 0
+	m.session.Filter = m.session.Filter.Only(group)
+	m.session.SelEntry, m.entriesTop = 0, 0
 }
 
 // sorted puts the songs in the order the person chose by a click on a heading, else as they are.
-func (m *Model) sorted(ids []int) []int { return m.order.Sorted(ids, m.state.Entries) }
+func (m *Model) sorted(ids []int) []int { return m.session.Order.Sorted(ids, m.session.State.Entries) }
 
 // sortable says whether a click on the heading of a column sorts the songs by it.
 func sortable(name string) bool { return name != columnMark && name != columnCheck }
@@ -51,10 +51,10 @@ func (m *Model) sortOn(column string) {
 	if en := m.selectedEntry(); en != nil {
 		keep = en.ID
 	}
-	m.order = m.order.Clicked(column)
+	m.session.Order = m.session.Order.Clicked(column)
 	for i, id := range m.visibleEntries() {
 		if id == keep {
-			m.selEntry = i
+			m.session.SelEntry = i
 		}
 	}
 	m.keepSelectionVisible()
@@ -62,7 +62,7 @@ func (m *Model) sortOn(column string) {
 
 // sortMark is what a heading shows when it is the one that sorts.
 func (m Model) sortMark(column string) string {
-	switch m.order.Direction(column) {
+	switch m.session.Order.Direction(column) {
 	case 1:
 		return "▲"
 	case -1:
@@ -75,7 +75,7 @@ func (m Model) sortMark(column string) string {
 // filterLabel is what the button for the filter says.
 func (m Model) filterLabel() string {
 	if m.filterActive() {
-		return "Filter (" + string(rune('0'+min(m.statusFilter.HiddenCount(), 9))) + " hidden) ▾"
+		return "Filter (" + string(rune('0'+min(m.session.Filter.HiddenCount(), 9))) + " hidden) ▾"
 	}
 
 	return "Filter ▾"
@@ -105,7 +105,7 @@ func (m Model) withFilterMenu(screen string, l downloadLayout) string {
 	lines := make([]string, 0, len(songlist.Groups))
 	for i, g := range songlist.Groups {
 		mark := "[ ]"
-		if !m.statusFilter.Hidden(g.Key) {
+		if !m.session.Filter.Hidden(g.Key) {
 			mark = "[x]"
 		}
 		line := "  " + mark + " " + g.Label
@@ -130,7 +130,7 @@ func (m Model) filterKey(key string) Model {
 	case "space", "enter":
 		m.toggleStatus(songlist.Groups[m.filterList.sel].Key)
 	case "backspace", "delete":
-		m.statusFilter = songlist.Filter{}
+		m.session.Filter = songlist.Filter{}
 	}
 
 	return m

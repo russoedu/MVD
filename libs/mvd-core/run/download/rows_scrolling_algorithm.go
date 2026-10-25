@@ -35,12 +35,12 @@ func (m *Model) keepSelectionVisible() {
 	if !ok || !l.hasLists {
 		return
 	}
-	m.playlistsTop = scrollTo(m.playlistsTop, m.selPlaylist, l.playlists.rows().h, len(m.state.Playlists))
+	m.playlistsTop = scrollTo(m.playlistsTop, m.session.SelPlaylist, l.playlists.rows().h, len(m.session.State.Playlists))
 	header := 0
 	if m.tableShown() {
 		header = 1
 	}
-	m.entriesTop = scrollTo(m.entriesTop, m.selEntry, l.entries.rows().h-header, len(m.visibleEntries()))
+	m.entriesTop = scrollTo(m.entriesTop, m.session.SelEntry, l.entries.rows().h-header, len(m.visibleEntries()))
 }
 
 // scrollPane scrolls a pane by rows with the wheel, with the selection where it is.
@@ -58,5 +58,5 @@ func (m *Model) scrollPane(entries bool, rows int) {
 
 		return
 	}
-	m.playlistsTop = scrollTo(m.playlistsTop+rows, m.playlistsTop+rows, l.playlists.rows().h, len(m.state.Playlists))
+	m.playlistsTop = scrollTo(m.playlistsTop+rows, m.playlistsTop+rows, l.playlists.rows().h, len(m.session.State.Playlists))
 }

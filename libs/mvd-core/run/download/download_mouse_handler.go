@@ -23,7 +23,7 @@ type downloadLayout struct {
 // layout is where the screen's design puts each pane, so a mouse position can be matched
 // to the pane that was drawn there. ok is false while the screen shows no panes.
 func (m Model) layout() (l downloadLayout, ok bool) {
-	if m.width < 60 || m.height < 16 || m.showHelp {
+	if m.width < 60 || m.height < 16 || m.session.ShowHelp {
 		return l, false
 	}
 	p := m.downloadProps(m.width, m.height)
@@ -33,7 +33,7 @@ func (m Model) layout() (l downloadLayout, ok bool) {
 		r, _ := frame.RegionNamed(name)
 		return rect{r.X, r.Y, r.W, r.H}
 	}
-	l.hasLists, l.hasOutput = p.LeftWidth > 0, m.fullLog || m.width >= minWideWidth
+	l.hasLists, l.hasOutput = p.LeftWidth > 0, m.session.FullLog || m.width >= minWideWidth
 	if l.hasLists {
 		l.playlists, l.entries = box("Playlists box"), box("Entries box")
 	}
@@ -45,13 +45,13 @@ func (m Model) layout() (l downloadLayout, ok bool) {
 
 // mouse handles a click or a wheel notch on the download screen.
 func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	if m.showHelp {
+	if m.session.ShowHelp {
 		if pointer.IsLeftClick(msg) {
-			m.showHelp = false
+			m.session.ShowHelp = false
 		}
 		return m, nil
 	}
-	if m.confirmQuit || m.adding {
+	if m.session.ConfirmQuit || m.session.Adding {
 		return m, nil
 	}
 	l, ok := m.layout()
@@ -74,7 +74,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if !pointer.IsLeftClick(msg) {
 		return m, nil
 	}
-	if msg.Mouse().Y == m.height-1 && !m.editable {
+	if msg.Mouse().Y == m.height-1 && !m.session.Editable {
 		if h, found := keybar.At(m.hints(), msg.Mouse().X); found {
 			if key, clickable := keybar.KeyMsg(h.Key); clickable {
 				return m.handleKey(key)
@@ -90,7 +90,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	} else if l.hasLists && l.entries.rows().contains(msg.Mouse().X, msg.Mouse().Y) {
 		m.clickEntry(msg.Mouse().Y)
 	} else if l.hasOutput && l.output.contains(msg.Mouse().X, msg.Mouse().Y) {
-		m.focus = paneOutput
+		m.session.Pane = paneOutput
 	}
 	return m, nil
 }
@@ -104,38 +104,38 @@ func (m Model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, te
 	case l.hasLists && l.entries.contains(msg.Mouse().X, msg.Mouse().Y):
 		m.scrollPane(true, dir*pointer.WheelStep)
 	case l.hasOutput && l.output.contains(msg.Mouse().X, msg.Mouse().Y):
-		focus := m.focus
-		m.focus = paneOutput
+		focus := m.session.Pane
+		m.session.Pane = paneOutput
 		m.move(dir * pointer.WheelStep)
-		m.focus = focus
+		m.session.Pane = focus
 	}
 	return m, nil
 }
 
 func (m *Model) clickPlaylist(y int) {
 	i, ok := PlaylistsAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
-	m.focus = paneLists
+	m.session.Pane = paneLists
 	if !ok {
 		return
 	}
-	m.follow = false
-	m.selPlaylist, m.selEntry, m.outScroll = i, 0, 0
+	m.session.Follow = false
+	m.session.SelPlaylist, m.session.SelEntry, m.session.OutScroll = i, 0, 0
 }
 
 func (m *Model) clickEntry(y int) {
-	m.focus = paneEntries
-	if m.selPlaylist >= len(m.state.Playlists) {
+	m.session.Pane = paneEntries
+	if m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return
 	}
-	if pl := m.state.Playlists[m.selPlaylist]; pl.Err != "" || !pl.Listed {
+	if pl := m.session.State.Playlists[m.session.SelPlaylist]; pl.Err != "" || !pl.Listed {
 		return
 	}
 	i, ok := EntriesAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
 	if !ok {
 		return
 	}
-	m.follow = false
-	m.selEntry, m.outScroll = i, 0
+	m.session.Follow = false
+	m.session.SelEntry, m.session.OutScroll = i, 0
 }
 
 // PlaylistsBox is where the Playlists box is drawn, in the cells of the screen; ok is false

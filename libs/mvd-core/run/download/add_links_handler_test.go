@@ -48,7 +48,7 @@ func TestAddingLinksQueuesEveryLineOnTheRun(t *testing.T) {
 	m, c := addingScreen(t)
 
 	m = press(t, m, keys.Press("a"))
-	if !m.adding {
+	if !m.session.Adding {
 		t.Fatal("the key should open the box")
 	}
 	if !strings.Contains(m.View().Content, "Add links") {
@@ -59,14 +59,14 @@ func TestAddingLinksQueuesEveryLineOnTheRun(t *testing.T) {
 	m = press(t, m, tea.PasteMsg{Content: "https://b\n\n https://c "})
 	m = press(t, m, keys.Press("ctrl+s"))
 
-	if m.adding {
+	if m.session.Adding {
 		t.Error("adding should close the box")
 	}
 	if len(c.added) != 2 || c.added[0] != "https://b" || c.added[1] != "https://c" {
 		t.Errorf("queued %v", c.added)
 	}
-	if m.status != "added 2 links" {
-		t.Errorf("status %q", m.status)
+	if m.session.Notice != "added 2 links" {
+		t.Errorf("status %q", m.session.Notice)
 	}
 }
 
@@ -74,8 +74,8 @@ func TestEscapeClosesTheBoxWithoutAdding(t *testing.T) {
 	m, c := addingScreen(t)
 	m = press(t, m, keys.Press("a"), keys.Text("https://b"), keys.Press("esc"))
 
-	if m.adding || len(c.added) != 0 {
-		t.Errorf("adding %v, queued %v", m.adding, c.added)
+	if m.session.Adding || len(c.added) != 0 {
+		t.Errorf("adding %v, queued %v", m.session.Adding, c.added)
 	}
 }
 
@@ -83,8 +83,8 @@ func TestAnEmptyBoxAddsNothingAndSaysSo(t *testing.T) {
 	m, c := addingScreen(t)
 	m = press(t, m, keys.Press("a"), keys.Press("ctrl+s"))
 
-	if len(c.added) != 0 || m.status != "no links to add" {
-		t.Errorf("queued %v, status %q", c.added, m.status)
+	if len(c.added) != 0 || m.session.Notice != "no links to add" {
+		t.Errorf("queued %v, status %q", c.added, m.session.Notice)
 	}
 }
 
@@ -93,8 +93,8 @@ func TestLinksAddedAfterTheRunEndedAreReported(t *testing.T) {
 	c.ended = true
 	m = press(t, m, keys.Press("a"), keys.Text("https://b"), keys.Press("ctrl+s"))
 
-	if m.status != "added 0 of 1 links; the run has ended" {
-		t.Errorf("status %q", m.status)
+	if m.session.Notice != "added 0 of 1 links; the run has ended" {
+		t.Errorf("status %q", m.session.Notice)
 	}
 }
 
@@ -108,8 +108,8 @@ func TestARunThatCannotTakeLinksHasNoAddKey(t *testing.T) {
 		}
 	}
 	m = press(t, m, keys.Press("a"))
-	if m.adding || m.status != "this run cannot take more links" {
-		t.Errorf("adding %v, status %q", m.adding, m.status)
+	if m.session.Adding || m.session.Notice != "this run cannot take more links" {
+		t.Errorf("adding %v, status %q", m.session.Adding, m.session.Notice)
 	}
 }
 
@@ -126,7 +126,7 @@ func TestTheAddKeyIsInTheKeyBarAndClickable(t *testing.T) {
 	if !found {
 		t.Fatal("the key bar should offer add")
 	}
-	if !m.adding {
+	if !m.session.Adding {
 		t.Error("clicking the entry should open the box")
 	}
 }
@@ -144,10 +144,10 @@ func TestTheBoxIsDescribedForAScreenReader(t *testing.T) {
 func TestTheMouseDoesNothingWhileTheBoxIsOpen(t *testing.T) {
 	m, _ := addingScreen(t)
 	m = press(t, m, keys.Press("a"))
-	before := m.selPlaylist
+	before := m.session.SelPlaylist
 
 	m = press(t, m, mouse.Click(5, 5))
-	if !m.adding || m.selPlaylist != before {
+	if !m.session.Adding || m.session.SelPlaylist != before {
 		t.Error("a click should not reach the screen behind the box")
 	}
 }

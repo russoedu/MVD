@@ -20,8 +20,8 @@ func docModel(t *testing.T) Model {
 	t.Helper()
 	c := &fakeController{events: make(chan interface{}), sources: []engine.PlaylistSource{{Index: 0, URL: "https://youtube.com/playlist?list=a"}, {Index: 1, URL: "https://youtube.com/playlist?list=b"}}}
 	m := New(c)
-	m.loaded = true
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "90s Dance Hits", Entries: []engine.EntryInfo{
+	m.session.Loaded = true
+	m.session.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "90s Dance Hits", Entries: []engine.EntryInfo{
 		{ID: 0, Playlist: 0, Index: 1, VideoID: "a1", Title: "You Don't Know Me (feat. Duane Harden) (Radio Edit)", Channel: "Armand Van Helden - Topic"},
 		{ID: 1, Playlist: 0, Index: 2, VideoID: "a2", Title: "Don't Call Me Baby", Channel: "Madison Avenue - Topic"},
 		{ID: 2, Playlist: 0, Index: 3, VideoID: "a3", Title: "Modjo - Lady (Hear Me Tonight) [Official Video]", Channel: "Modjo"},
@@ -30,29 +30,29 @@ func docModel(t *testing.T) Model {
 		{ID: 5, Playlist: 0, Index: 6, VideoID: "a6", Title: "The Bucketheads - The Bomb! (These Sounds Fall Into My Mind)", Channel: "The Bucketheads - Topic"},
 		{ID: 6, Playlist: 0, Index: 7, VideoID: "a7", Title: "Haddaway - What Is Love", Channel: "Haddaway"},
 	}})
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 1, Title: "Road trip", Entries: []engine.EntryInfo{
+	m.session.State.Apply(engine.EvPlaylistListed{Playlist: 1, Title: "Road trip", Entries: []engine.EntryInfo{
 		{ID: 7, Playlist: 1, Index: 1, VideoID: "b1", Title: "Daft Punk - One More Time", Channel: "Daft Punk"},
 		{ID: 8, Playlist: 1, Index: 2, VideoID: "b2", Title: "Cassius - Toop Toop", Channel: "Cassius"},
 	}})
 	done := func(id int, artist, title, album string, height, kbps int, official bool) {
-		m.state.Apply(engine.EvEntryState{Entry: id, State: engine.StateDownloading, TargetID: "t", Artist: artist, Title: title, Album: album})
-		m.state.Apply(engine.EvQuality{Entry: id, Height: height, AudioKbps: kbps})
-		m.state.Apply(engine.EvEntryState{Entry: id, State: engine.StateDone, TargetID: "t", Official: official, Artist: artist, Title: title, Album: album})
+		m.session.State.Apply(engine.EvEntryState{Entry: id, State: engine.StateDownloading, TargetID: "t", Artist: artist, Title: title, Album: album})
+		m.session.State.Apply(engine.EvQuality{Entry: id, Height: height, AudioKbps: kbps})
+		m.session.State.Apply(engine.EvEntryState{Entry: id, State: engine.StateDone, TargetID: "t", Official: official, Artist: artist, Title: title, Album: album})
 	}
 	done(0, "Armand Van Helden", "You Don't Know Me", "Killing Puppets", 1080, 0, true)
-	m.state.Apply(engine.EvEntryState{Entry: 1, State: engine.StateDuplicate, TargetID: "t"})
-	m.state.Apply(engine.EvEntryState{Entry: 2, State: engine.StateFailed, TargetID: "t", Err: "Video unavailable"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 1, State: engine.StateDuplicate, TargetID: "t"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 2, State: engine.StateFailed, TargetID: "t", Err: "Video unavailable"})
 	done(3, "Bob Sinclar", "I Feel For You", "Western Dream", 720, 0, false)
-	m.state.Apply(engine.EvEntryState{Entry: 4, State: engine.StateDownloading, TargetID: "t", Artist: "Stardust", Title: "Music Sounds Better With You", Album: "The Ride"})
-	m.state.Apply(engine.EvQuality{Entry: 4, Height: 1080})
-	m.state.Apply(engine.EvProgress{Entry: 4, Percent: 62, Downloaded: 40_000_000, Total: 64_000_000, Speed: 8.1 * 1024 * 1024, ETA: 3})
-	m.state.Apply(engine.EvEntryState{Entry: 5, State: engine.StateResolving, TargetID: "t"})
-	m.state.Apply(engine.EvEntryState{Entry: 8, State: engine.StateNotFound, TargetID: "t"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 4, State: engine.StateDownloading, TargetID: "t", Artist: "Stardust", Title: "Music Sounds Better With You", Album: "The Ride"})
+	m.session.State.Apply(engine.EvQuality{Entry: 4, Height: 1080})
+	m.session.State.Apply(engine.EvProgress{Entry: 4, Percent: 62, Downloaded: 40_000_000, Total: 64_000_000, Speed: 8.1 * 1024 * 1024, ETA: 3})
+	m.session.State.Apply(engine.EvEntryState{Entry: 5, State: engine.StateResolving, TargetID: "t"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 8, State: engine.StateNotFound, TargetID: "t"})
 	done(7, "Daft Punk", "One More Time", "Discovery", 1080, 0, true)
 
 	m.width, m.height = docFrameW, docFrameH
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 
 	return m
 }
@@ -81,7 +81,7 @@ func TestDocFrames(t *testing.T) {
 		}
 		write(name, m)
 		if preset.Name == config.DefaultThemeName {
-			m.technical = true
+			m.session.Technical = true
 			write(name+"-technical", m)
 		}
 	}

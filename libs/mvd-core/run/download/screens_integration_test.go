@@ -30,8 +30,8 @@ func sampleModel(t *testing.T) Model {
 	t.Helper()
 	c := &fakeController{events: make(chan interface{}), sources: []engine.PlaylistSource{{Index: 0, URL: "https://a"}, {Index: 1, URL: "https://b"}, {Index: 2, URL: "https://c"}}}
 	m := New(c)
-	m.loaded = true
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "90s UK Dance Hits", Entries: []engine.EntryInfo{
+	m.session.Loaded = true
+	m.session.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "90s UK Dance Hits", Entries: []engine.EntryInfo{
 		{ID: 0, Playlist: 0, Index: 1, VideoID: "rnlp_avexYQ", Title: "You Don't Know Me (feat. Duane Harden) (Radio Edit)", Channel: "Armand Van Helden - Topic"},
 		{ID: 1, Playlist: 0, Index: 2, VideoID: "LIWrcD4ImwA", Title: "Don't Call Me Baby", Channel: "Madison Avenue - Topic"},
 		{ID: 2, Playlist: 0, Index: 3, VideoID: "MR3uP7IYz44", Title: "Modjo - Lady (Hear Me Tonight)", Channel: "ModjoOfficial"},
@@ -39,21 +39,21 @@ func sampleModel(t *testing.T) Model {
 		{ID: 4, Playlist: 0, Index: 5, VideoID: "hRvrj_diWYQ", Title: "Stardust - Music Sounds Better With You 日本語タイトル 🔊", Channel: "Stardust"},
 		{ID: 5, Playlist: 0, Index: 6, VideoID: "X4UGPCR3zEQ", Title: "", Channel: "The Bucketheads - Topic"},
 	}})
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 1, Title: "Música Eletrônica 1990s 🔊 1999, 1998, 1997, 1996, 1995, 1994, 1993, 1992, 1991, 1990", Entries: []engine.EntryInfo{
+	m.session.State.Apply(engine.EvPlaylistListed{Playlist: 1, Title: "Música Eletrônica 1990s 🔊 1999, 1998, 1997, 1996, 1995, 1994, 1993, 1992, 1991, 1990", Entries: []engine.EntryInfo{
 		{ID: 6, Playlist: 1, Index: 1, VideoID: "Jb6gcoR266U", Title: "Daft Punk - One More Time", Channel: "Daft Punk"},
 	}})
-	m.state.Apply(engine.EvPlaylistFailed{Playlist: 2, Err: "yt-dlp --flat-playlist failed: ERROR: unable to recognize playlist"})
-	m.state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone, TargetID: "-bsONE-kZwI", Official: true})
-	m.state.Apply(engine.EvEntryState{Entry: 1, State: engine.StateDuplicate, TargetID: "-bsONE-kZwI"})
-	m.state.Apply(engine.EvEntryState{Entry: 2, State: engine.StateFailed, TargetID: "MR3uP7IYz44", Err: "Video unavailable"})
-	m.state.Apply(engine.EvEntryState{Entry: 3, State: engine.StateResolving, TargetID: "GUypoENfCtY"})
-	m.state.Apply(engine.EvEntryState{Entry: 4, State: engine.StateDownloading, TargetID: "hRvrj_diWYQ"})
-	m.state.Apply(engine.EvProgress{Entry: 4, Percent: 34.2, Downloaded: 40_000_000, Total: 117_833_728, Speed: 8.1 * 1024 * 1024, ETA: 9})
-	m.state.Apply(engine.EvEntryState{Entry: 5, State: engine.StateMerging, TargetID: "X4UGPCR3zEQ"})
+	m.session.State.Apply(engine.EvPlaylistFailed{Playlist: 2, Err: "yt-dlp --flat-playlist failed: ERROR: unable to recognize playlist"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone, TargetID: "-bsONE-kZwI", Official: true})
+	m.session.State.Apply(engine.EvEntryState{Entry: 1, State: engine.StateDuplicate, TargetID: "-bsONE-kZwI"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 2, State: engine.StateFailed, TargetID: "MR3uP7IYz44", Err: "Video unavailable"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 3, State: engine.StateResolving, TargetID: "GUypoENfCtY"})
+	m.session.State.Apply(engine.EvEntryState{Entry: 4, State: engine.StateDownloading, TargetID: "hRvrj_diWYQ"})
+	m.session.State.Apply(engine.EvProgress{Entry: 4, Percent: 34.2, Downloaded: 40_000_000, Total: 117_833_728, Speed: 8.1 * 1024 * 1024, ETA: 9})
+	m.session.State.Apply(engine.EvEntryState{Entry: 5, State: engine.StateMerging, TargetID: "X4UGPCR3zEQ"})
 	for i := 0; i < 50; i++ {
-		m.state.Apply(engine.EvLog{Playlist: 0, Entry: 4, Line: "[download] line\t" + strings.Repeat("x", i)})
+		m.session.State.Apply(engine.EvLog{Playlist: 0, Entry: 4, Line: "[download] line\t" + strings.Repeat("x", i)})
 	}
-	m.state.Apply(engine.EvLog{Playlist: 0, Entry: -1, Line: "listing https://a"})
+	m.session.State.Apply(engine.EvLog{Playlist: 0, Entry: -1, Line: "listing https://a"})
 	return m
 }
 
@@ -75,32 +75,32 @@ func TestViewLayouts(t *testing.T) {
 	for _, sz := range sizes {
 		m := sampleModel(t)
 		m.width, m.height = sz[0], sz[1]
-		m.focus = paneEntries
-		m.selEntry = 4
+		m.session.Pane = paneEntries
+		m.session.SelEntry = 4
 		checkFrame(t, "entries", m.View().Content, sz[0], sz[1])
 
-		m.focus = paneLists
+		m.session.Pane = paneLists
 		checkFrame(t, "lists", m.View().Content, sz[0], sz[1])
 
-		m.selPlaylist = 1
+		m.session.SelPlaylist = 1
 		checkFrame(t, "emoji playlist", m.View().Content, sz[0], sz[1])
-		m.selPlaylist = 0
+		m.session.SelPlaylist = 0
 
-		m.fullLog = true
-		m.focus = paneOutput
-		m.outScroll = 5
+		m.session.FullLog = true
+		m.session.Pane = paneOutput
+		m.session.OutScroll = 5
 		checkFrame(t, "fulllog", m.View().Content, sz[0], sz[1])
 
-		m.fullLog = false
-		m.statusFilter = onlyFailed()
-		m.focus = paneEntries
+		m.session.FullLog = false
+		m.session.Filter = onlyFailed()
+		m.session.Pane = paneEntries
 		checkFrame(t, "filter", m.View().Content, sz[0], sz[1])
 
-		m.confirmQuit = true
+		m.session.ConfirmQuit = true
 		checkFrame(t, "confirm", m.View().Content, sz[0], sz[1])
 
-		m.confirmQuit = false
-		m.showHelp = true
+		m.session.ConfirmQuit = false
+		m.session.ShowHelp = true
 		checkFrame(t, "help", m.View().Content, sz[0], sz[1])
 	}
 }
@@ -108,8 +108,8 @@ func TestViewLayouts(t *testing.T) {
 func TestViewContent(t *testing.T) {
 	m := sampleModel(t)
 	m.width, m.height = 120, 36
-	m.focus = paneEntries
-	m.selEntry = 4
+	m.session.Pane = paneEntries
+	m.session.SelEntry = 4
 	frame := ansi.Strip(m.View().Content)
 	for _, want := range []string{"Waiting 1", "Downloading 3", "Done 1", "Official video 1", "Already had 1", "Failed 2", "90s UK Dance Hits", "Música Eletrônica 1", "3/6", "████████ 100%", "███░░░░░  34%", "failed", "have it", "finding", "joining", "official", "Details", "6 songs", "3 links"} {
 		if !strings.Contains(frame, want) {
@@ -119,8 +119,8 @@ func TestViewContent(t *testing.T) {
 	if strings.Contains(frame, "🔊") || strings.Contains(frame, "\t") {
 		t.Errorf("emoji and tabs must not reach the screen\n%s", frame)
 	}
-	m.selPlaylist = 2
-	m.focus = paneLists
+	m.session.SelPlaylist = 2
+	m.session.Pane = paneLists
 	if f := ansi.Strip(m.View().Content); !strings.Contains(f, "unable to recognize") {
 		t.Errorf("playlist error not shown\n%s", f)
 	}
@@ -147,20 +147,20 @@ func TestKeyHandling(t *testing.T) {
 		m = mm.(Model)
 	}
 
-	if m.focus != paneLists {
+	if m.session.Pane != paneLists {
 		t.Fatal("initial focus should be playlists")
 	}
 	press("tab")
-	if m.focus != paneEntries {
+	if m.session.Pane != paneEntries {
 		t.Fatal("tab should move to entries")
 	}
 	press("down")
 	press("down")
-	if m.selEntry != 2 || m.follow {
-		t.Fatalf("manual navigation should move selection and stop following: sel=%d follow=%v", m.selEntry, m.follow)
+	if m.session.SelEntry != 2 || m.session.Follow {
+		t.Fatalf("manual navigation should move selection and stop following: sel=%d follow=%v", m.session.SelEntry, m.session.Follow)
 	}
 	press("r")
-	if got := m.ctrl.(*fakeController).retried; len(got) != 1 || got[0] != 2 {
+	if got := m.session.Ctrl.(*fakeController).retried; len(got) != 1 || got[0] != 2 {
 		t.Fatalf("r on a failed entry should retry it, got %v", got)
 	}
 	press("f")
@@ -169,48 +169,48 @@ func TestKeyHandling(t *testing.T) {
 	}
 	press("f")
 	press("enter")
-	if !m.follow || m.selectedEntry().ID != 3 {
-		t.Fatalf("follow should jump to the active entry, got %d follow=%v", m.selectedEntry().ID, m.follow)
+	if !m.session.Follow || m.selectedEntry().ID != 3 {
+		t.Fatalf("follow should jump to the active entry, got %d follow=%v", m.selectedEntry().ID, m.session.Follow)
 	}
 	press("l")
-	if !m.fullLog || m.focus != paneOutput {
+	if !m.session.FullLog || m.session.Pane != paneOutput {
 		t.Fatal("l should open the full log")
 	}
 	press("l")
 	press("q")
-	if !m.confirmQuit {
+	if !m.session.ConfirmQuit {
 		t.Fatal("q while running should ask for confirmation")
 	}
 	press("n")
-	if m.confirmQuit {
+	if m.session.ConfirmQuit {
 		t.Fatal("n should cancel quitting")
 	}
 	press("?")
-	if !m.showHelp {
+	if !m.session.ShowHelp {
 		t.Fatal("? should show help")
 	}
 	press("x")
-	if !m.showHelp {
+	if !m.session.ShowHelp {
 		t.Fatal("a stray key should not close help")
 	}
 	press("esc")
-	if m.showHelp {
+	if m.session.ShowHelp {
 		t.Fatal("esc should close help")
 	}
 	press("?")
 	press("?")
-	if m.showHelp {
+	if m.session.ShowHelp {
 		t.Fatal("? again should close help")
 	}
 
-	m.follow = true
+	m.session.Follow = true
 	mm, _ := m.Update(evMsg{engine.EvEntryState{Entry: 6, State: engine.StateDownloading, TargetID: "Jb6gcoR266U"}})
 	m = mm.(Model)
-	if m.selPlaylist != 1 || m.selectedEntry().ID != 6 {
-		t.Fatalf("follow should jump to playlist 1 entry 6, got playlist %d entry %d", m.selPlaylist, m.selectedEntry().ID)
+	if m.session.SelPlaylist != 1 || m.selectedEntry().ID != 6 {
+		t.Fatalf("follow should jump to playlist 1 entry 6, got playlist %d entry %d", m.session.SelPlaylist, m.selectedEntry().ID)
 	}
 
-	m.state.Idle = true
+	m.session.State.Idle = true
 	_, cmd := m.Update(keys.Text("q"))
 	if cmd == nil {
 		t.Fatal("q when idle should quit")

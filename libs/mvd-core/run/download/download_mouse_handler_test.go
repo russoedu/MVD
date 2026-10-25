@@ -19,68 +19,68 @@ func TestDownloadScreenClicksSelectPanesRowsAndKeyBarEntries(t *testing.T) {
 
 	next, _ := m.Update(mouse.Click(5, 5))
 	m = next.(Model)
-	if m.selPlaylist != 1 || m.focus != paneLists {
-		t.Errorf("clicking the second playlist: selPlaylist %d, focus %d", m.selPlaylist, m.focus)
+	if m.session.SelPlaylist != 1 || m.session.Pane != paneLists {
+		t.Errorf("clicking the second playlist: selPlaylist %d, focus %d", m.session.SelPlaylist, m.session.Pane)
 	}
 
-	m.selPlaylist = 0
+	m.session.SelPlaylist = 0
 	next, _ = m.Update(mouse.Click(40, 7)) // the heading row is at row 4, so the rows start at row 5
 	m = next.(Model)
-	if m.selEntry != 2 || m.focus != paneEntries || m.follow {
-		t.Errorf("clicking the third entry: selEntry %d, focus %d, follow %v", m.selEntry, m.focus, m.follow)
+	if m.session.SelEntry != 2 || m.session.Pane != paneEntries || m.session.Follow {
+		t.Errorf("clicking the third entry: selEntry %d, focus %d, follow %v", m.session.SelEntry, m.session.Pane, m.session.Follow)
 	}
 
-	m.focus = paneLists
+	m.session.Pane = paneLists
 	next, _ = m.Update(mouse.Click(11, 35)) // "tab pane" in the key bar
 	m = next.(Model)
-	if m.focus != paneEntries {
-		t.Errorf("clicking tab in the key bar should change pane, focus %d", m.focus)
+	if m.session.Pane != paneEntries {
+		t.Errorf("clicking tab in the key bar should change pane, focus %d", m.session.Pane)
 	}
 }
 
 func TestDownloadScreenWheelScrollsThePaneUnderThePointer(t *testing.T) {
 	m := sampleModel(t)
 	m.width, m.height = 120, 36
-	m.selEntry = 4 // the entry with a long log
-	m.technical = true
+	m.session.SelEntry = 4 // the entry with a long log
+	m.session.Technical = true
 
 	next, _ := m.Update(mouse.Wheel(90, 30, tea.MouseWheelUp)) // over the output box, under the songs
 	m = next.(Model)
-	if m.focus != paneLists || m.outScroll != pointer.WheelStep {
-		t.Errorf("wheel up over the output: focus %d, scrolled %d", m.focus, m.outScroll)
+	if m.session.Pane != paneLists || m.session.OutScroll != pointer.WheelStep {
+		t.Errorf("wheel up over the output: focus %d, scrolled %d", m.session.Pane, m.session.OutScroll)
 	}
 
 	next, _ = m.Update(mouse.Wheel(40, 6, tea.MouseWheelDown)) // over the songs
 	m = next.(Model)
-	if m.focus != paneLists || m.selEntry != 4 {
-		t.Errorf("the wheel over the songs moved the selection: focus %d, selEntry %d", m.focus, m.selEntry)
+	if m.session.Pane != paneLists || m.session.SelEntry != 4 {
+		t.Errorf("the wheel over the songs moved the selection: focus %d, selEntry %d", m.session.Pane, m.session.SelEntry)
 	}
 }
 
 func TestTheWheelScrollsTheSongsAndAClickDoesNotMoveThem(t *testing.T) {
 	m := sampleModel(t)
-	m.state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Many", Entries: manyEntries(60)})
+	m.session.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "Many", Entries: manyEntries(60)})
 	m.width, m.height = 120, 30
-	m.focus, m.selEntry = paneEntries, 0
+	m.session.Pane, m.session.SelEntry = paneEntries, 0
 
 	next, _ := m.Update(mouse.Wheel(40, 8, tea.MouseWheelDown))
 	m = next.(Model)
-	if m.entriesTop != pointer.WheelStep || m.selEntry != 0 {
-		t.Fatalf("after the wheel: top %d, selection %d", m.entriesTop, m.selEntry)
+	if m.entriesTop != pointer.WheelStep || m.session.SelEntry != 0 {
+		t.Fatalf("after the wheel: top %d, selection %d", m.entriesTop, m.session.SelEntry)
 	}
 	top := m.entriesTop
 	next, _ = m.Update(mouse.Click(40, 12)) // a song in view
 	m = next.(Model)
-	if m.entriesTop != top || m.selEntry == 0 {
-		t.Errorf("a click moved the songs: top %d (was %d), selection %d", m.entriesTop, top, m.selEntry)
+	if m.entriesTop != top || m.session.SelEntry == 0 {
+		t.Errorf("a click moved the songs: top %d (was %d), selection %d", m.entriesTop, top, m.session.SelEntry)
 	}
 	for i := 0; i < 40; i++ { // the keys go past the bottom: it scrolls just enough
 		next, _ = m.Update(keys.Press("down"))
 		m = next.(Model)
 	}
 	l, _ := m.layout()
-	if h := l.entries.rows().h - 1; m.selEntry < m.entriesTop || m.selEntry >= m.entriesTop+h {
-		t.Errorf("the selection %d is out of view: top %d, %d rows", m.selEntry, m.entriesTop, h)
+	if h := l.entries.rows().h - 1; m.session.SelEntry < m.entriesTop || m.session.SelEntry >= m.entriesTop+h {
+		t.Errorf("the selection %d is out of view: top %d, %d rows", m.session.SelEntry, m.entriesTop, h)
 	}
 }
 
@@ -97,10 +97,10 @@ func manyEntries(n int) []engine.EntryInfo {
 func TestDownloadScreenIgnoresTheMouseWhileConfirmingToQuit(t *testing.T) {
 	m := sampleModel(t)
 	m.width, m.height = 120, 36
-	m.confirmQuit = true
+	m.session.ConfirmQuit = true
 
 	next, _ := m.Update(mouse.Click(5, 5))
-	if next.(Model).selPlaylist != m.selPlaylist {
+	if next.(Model).session.SelPlaylist != m.session.SelPlaylist {
 		t.Error("a click while confirming should do nothing")
 	}
 }

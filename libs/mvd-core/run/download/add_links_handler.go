@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"fmt"
 	"strings"
 	"youtube-downloader/libs/mvd-core/keybar"
@@ -13,19 +14,14 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
-	"youtube-downloader/libs/mvd-core/engine"
 )
 
 // SourceAdder is what a run offers when it can take more links while it works.
-// The engine does; the download screen shows its "add" key only for a run that does.
-type SourceAdder interface {
-	// AddSource queues another playlist or video; false once the run has ended.
-	AddSource(url string) (engine.PlaylistSource, bool)
-}
+type SourceAdder = downloadsession.SourceAdder
 
 // canAdd reports whether the run behind the screen takes more links.
 func (m Model) canAdd() bool {
-	_, ok := m.ctrl.(SourceAdder)
+	_, ok := m.session.Ctrl.(SourceAdder)
 	return ok
 }
 
@@ -42,7 +38,7 @@ func (m Model) startAdding() (tea.Model, tea.Cmd) {
 	ta.SetWidth(m.addBoxWidth())
 	ta.SetHeight(8)
 	ta.Focus()
-	m.adding, m.links = true, ta
+	m.session.Adding, m.links = true, ta
 	return m, textarea.Blink
 }
 
@@ -51,7 +47,7 @@ func (m Model) startAdding() (tea.Model, tea.Cmd) {
 func (m Model) updateAdding(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.adding = false
+		m.session.Adding = false
 		return m, nil
 	case "ctrl+s":
 		return m.addLinks()
@@ -63,9 +59,9 @@ func (m Model) updateAdding(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 // addLinks queues every line of the box on the run and closes the box.
 func (m Model) addLinks() (tea.Model, tea.Cmd) {
-	adder, ok := m.ctrl.(SourceAdder)
+	adder, ok := m.session.Ctrl.(SourceAdder)
 	if !ok {
-		m.adding = false
+		m.session.Adding = false
 		return m, nil
 	}
 	added, lines := 0, 0
@@ -79,7 +75,7 @@ func (m Model) addLinks() (tea.Model, tea.Cmd) {
 			added++
 		}
 	}
-	m.adding = false
+	m.session.Adding = false
 	switch {
 	case lines == 0:
 		m.flash("no links to add")
@@ -87,7 +83,7 @@ func (m Model) addLinks() (tea.Model, tea.Cmd) {
 		m.flash(fmt.Sprintf("added %d of %d links; the run has ended", added, lines))
 	default:
 		m.flash(fmt.Sprintf("added %d link%s", added, wording.Plural(added)))
-		m.follow = true
+		m.session.Follow = true
 	}
 	return m, nil
 }

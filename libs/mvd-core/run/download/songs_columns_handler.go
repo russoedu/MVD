@@ -56,7 +56,7 @@ func labelOf(name string) string {
 func (m Model) columnOrder() []string {
 	order := make([]string, 0, len(configurable))
 	seen := map[string]bool{}
-	for _, name := range m.colOrder {
+	for _, name := range m.session.ColumnOrder {
 		if resizable(name) && !seen[name] {
 			order, seen[name] = append(order, name), true
 		}
@@ -79,7 +79,7 @@ func (m *Model) moveColumn(from, to int) {
 	moved := order[from]
 	rest := append(append([]string(nil), order[:from]...), order[from+1:]...)
 	out := append(append(append([]string(nil), rest[:to]...), moved), rest[to:]...)
-	m.colOrder = out
+	m.session.ColumnOrder = out
 }
 
 // columnSpan is where a column is in the pane of the table, counted from its first cell.
@@ -103,10 +103,10 @@ func (m Model) columnSpans(w int) []columnSpan {
 // controlsShown says whether the buttons of the table are there: the playlist has songs, also when the
 // filter hides them all.
 func (m Model) controlsShown() bool {
-	if m.selPlaylist >= len(m.state.Playlists) {
+	if m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return false
 	}
-	pl := m.state.Playlists[m.selPlaylist]
+	pl := m.session.State.Playlists[m.session.SelPlaylist]
 
 	return pl.Err == "" && pl.Listed && len(pl.Entries) > 0
 }
@@ -143,7 +143,7 @@ func (m Model) columnsMenuRect(l downloadLayout) rect {
 // withTableControls draws what sits over the table: the buttons for the columns and the filter, and
 // the list that is open.
 func (m Model) withTableControls(screen string) string {
-	if !m.controlsShown() || m.showHelp || m.adding || m.swapping {
+	if !m.controlsShown() || m.session.ShowHelp || m.session.Adding || m.session.Swapping {
 		return screen
 	}
 	l, ok := m.layout()
@@ -167,7 +167,7 @@ func (m Model) withTableControls(screen string) string {
 	lines := make([]string, 0, len(order))
 	for i, name := range order {
 		mark := "[x]"
-		if m.hiddenCols[name] {
+		if m.session.HiddenCols[name] {
 			mark = "[ ]"
 		}
 		grip := "≡"
@@ -186,12 +186,12 @@ func (m Model) withTableControls(screen string) string {
 
 // toggleColumn shows or hides a column.
 func (m *Model) toggleColumn(name string) {
-	hidden := make(map[string]bool, len(m.hiddenCols)+1)
-	for k, v := range m.hiddenCols {
+	hidden := make(map[string]bool, len(m.session.HiddenCols)+1)
+	for k, v := range m.session.HiddenCols {
 		hidden[k] = v
 	}
 	hidden[name] = !hidden[name]
-	m.hiddenCols = hidden
+	m.session.HiddenCols = hidden
 }
 
 // columnsKey handles a key while the list of columns is open.
