@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"fmt"
 	"strings"
 
@@ -57,7 +58,7 @@ func (m Model) tableColumns(w int) []tableColumn {
 			widths[name] = given // the width the person gave it
 		}
 	}
-	_, choosing := m.chooser()
+	choosing := m.session.CanChoose()
 	used := widthMark + widthIdx + minSongWidth + 2 // and the gaps between these three
 	if choosing {
 		used += widthCheck + 1
@@ -78,7 +79,7 @@ func (m Model) tableColumns(w int) []tableColumn {
 
 	titles := map[string]string{columnArtist: "Artist", columnVideo: "Video", columnAlbum: "Album", columnQuality: "Quality", columnProgress: "Progress", columnStatus: "Status"}
 	all := []tableColumn{{columnMark, "", widthMark}, {columnCheck, "", widthCheck}, {columnIdx, "#", widthIdx}, {columnSong, "Song", 0}}
-	for _, name := range m.columnOrder() {
+	for _, name := range m.session.ArrangedColumns() {
 		all = append(all, tableColumn{name, titles[name], widths[name]})
 	}
 	var out []tableColumn
@@ -107,7 +108,7 @@ func (m Model) tableColumns(w int) []tableColumn {
 
 // tableHas says whether any song shown has something for the artist, video, album or quality column.
 func (m Model) tableHas(column string) bool {
-	for _, id := range m.visibleEntries() {
+	for _, id := range m.session.VisibleEntries() {
 		en := m.session.State.Entries[id]
 		switch column {
 		case columnArtist:
@@ -164,7 +165,7 @@ func columnsSpec(cols []tableColumn) string {
 // songsTable is the layout of the songs in a pane w cells wide, with the heading of each column.
 // It is empty while there are no songs to show, and the pane then keeps its rows of text.
 func (m Model) songsTable(w int) Table {
-	if len(m.visibleEntries()) == 0 {
+	if len(m.session.VisibleEntries()) == 0 {
 		return Table{}
 	}
 	cols := m.tableColumns(w)
@@ -174,14 +175,14 @@ func (m Model) songsTable(w int) Table {
 		if i > 0 {
 			// A pipe between the headings is the border the person carries to resize a column.
 			sep := " "
-			if resizable(c.name) && (cols[i-1].name == columnSong || resizable(cols[i-1].name)) {
+			if downloadsession.Resizable(c.name) && (cols[i-1].name == columnSong || downloadsession.Resizable(cols[i-1].name)) {
 				sep = "│"
 			}
 			header, styles = append(header, sep), append(styles, dim)
 		}
 		title := c.title
 		if c.name == columnCheck {
-			title = [3]string{"[ ]", "[-]", "[x]"}[m.pickState()]
+			title = [3]string{"[ ]", "[-]", "[x]"}[m.session.PickState()]
 		}
 		if mark := m.sortMark(c.name); mark != "" {
 			title += mark

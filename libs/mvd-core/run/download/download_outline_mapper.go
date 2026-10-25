@@ -34,7 +34,7 @@ func (m Model) Outline() outline.ScreenOutline {
 		out.Prompt = "Downloads are still running. Quit? y/n"
 	}
 
-	ids := m.visibleEntries()
+	ids := m.session.VisibleEntries()
 	if len(ids) == 0 {
 		return out
 	}

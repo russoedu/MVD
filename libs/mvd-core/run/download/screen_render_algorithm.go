@@ -54,26 +54,15 @@ func (m Model) renderLoading() string {
 	return loading.Render(p, m.width, m.height)
 }
 
-// outputLines returns the log lines for the current selection.
-func (m Model) outputLines() []string {
-	if m.session.Pane == paneLists || m.selectedEntry() == nil {
-		if m.session.SelPlaylist < len(m.session.State.Playlists) {
-			return m.session.State.Playlists[m.session.SelPlaylist].Log
-		}
-		return nil
-	}
-	return m.selectedEntry().Log
-}
-
 func (m Model) outputTitle() string {
 	if !m.session.Technical || m.session.SelPlaylist >= len(m.session.State.Playlists) {
 		return "Details"
 	}
 	pl := m.session.State.Playlists[m.session.SelPlaylist]
-	if m.session.Pane == paneLists || m.selectedEntry() == nil {
+	if m.session.Pane == paneLists || m.session.SelectedEntry() == nil {
 		return "Technical log · " + cells.Display(m.playlistName(pl))
 	}
-	en := m.selectedEntry()
+	en := m.session.SelectedEntry()
 	return fmt.Sprintf("Technical log · %02d %s", en.Index, entryTitle(en))
 }
 
@@ -86,7 +75,7 @@ func (m Model) hints() []keybar.Hint {
 	} else {
 		hints = []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "tab", Desc: "pane"}, {Key: "⏎", Desc: "follow"}, {Key: "f", Desc: "failed"}, {Key: "r", Desc: "retry"}, {Key: "t", Desc: "technical log"}}
 	}
-	if _, held := m.chooser(); held && (m.session.Pane == paneEntries || len(m.session.Picked) > 0) && len(m.targetIDs()) > 0 {
+	if m.session.CanChoose() && (m.session.Pane == paneEntries || len(m.session.Picked) > 0) && len(m.session.TargetIDs()) > 0 {
 		hints = append([]keybar.Hint{{Key: "space", Desc: "select"}, {Key: "d", Desc: "accept"}, {Key: "x", Desc: "reject"}, {Key: "o", Desc: "open video"}, {Key: "D", Desc: "accept all"}}, append(hints[:2:2], keybar.Hint{Key: "t", Desc: "technical log"})...)
 	}
 	if m.session.Technical {
@@ -102,7 +91,7 @@ func (m Model) hints() []keybar.Hint {
 	if m.session.Hosted {
 		return hints
 	}
-	if m.canAdd() {
+	if m.session.CanAdd() {
 		hints = append(hints, keybar.Hint{Key: "a", Desc: "add links"})
 	}
 	if !m.session.State.Idle {
@@ -137,18 +126,6 @@ func counted(n int, word string) string {
 	return fmt.Sprintf("%d %ss", n, word)
 }
 
-// waitingIn is how many songs of a link wait for the person to choose them.
-func (m Model) waitingIn(pl *runstate.Playlist) int {
-	n := 0
-	for _, id := range pl.Entries {
-		if waiting(m.session.State.Entries[id]) {
-			n++
-		}
-	}
-
-	return n
-}
-
 // playlistGlyph is the mark at the end of a playlist row and its colour.
 func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	c := look.Colours
@@ -162,7 +139,7 @@ func (m Model) playlistGlyph(pl *runstate.Playlist) (glyph, colour string) {
 	switch {
 	case active > 0:
 		return look.SpinnerFrames[m.spin], c.Highlight
-	case m.waitingIn(pl) > 0:
+	case m.session.WaitingIn(pl) > 0:
 		return "?", c.Highlight
 	case finished == len(pl.Entries) && failed > 0:
 		return "✗", c.Error

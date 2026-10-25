@@ -39,8 +39,8 @@ func TestAWideEnoughPaneShowsOneRowPerLogLine(t *testing.T) {
 	if len(rows) != 10 {
 		t.Fatalf("want 10 rows, got %d", len(rows))
 	}
-	if first != len(m.outputLines())-10 {
-		t.Errorf("the first row belongs to line %d, want %d", first, len(m.outputLines())-10)
+	if first != len(m.session.OutputLines())-10 {
+		t.Errorf("the first row belongs to line %d, want %d", first, len(m.session.OutputLines())-10)
 	}
 }
 

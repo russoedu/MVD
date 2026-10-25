@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"sort"
@@ -184,8 +185,8 @@ func TestSongsTickedWithTheBoxesAreAcceptedOrRejectedTogether(t *testing.T) {
 	m = pressKey(m, "space")
 	m.session.SelEntry = 2
 	m = pressKey(m, "space")
-	if len(m.session.Picked) != 2 || m.pickState() != 1 {
-		t.Fatalf("picked %v, state %d", m.session.Picked, m.pickState())
+	if len(m.session.Picked) != 2 || m.session.PickState() != 1 {
+		t.Fatalf("picked %v, state %d", m.session.Picked, m.session.PickState())
 	}
 	buttons := m.choiceButtons()
 	if buttons[0].label != "✓ Accept 2" || !buttons[3].disabled {
@@ -199,20 +200,20 @@ func TestSongsTickedWithTheBoxesAreAcceptedOrRejectedTogether(t *testing.T) {
 	if len(run.skipped) != 2 || len(m.session.Picked) != 0 {
 		t.Errorf("skipped %v, picked %v", run.skipped, m.session.Picked)
 	}
-	m.togglePickAll()
-	if m.pickState() != 2 {
-		t.Errorf("select all gives state %d", m.pickState())
+	m.session.TickAll()
+	if m.session.PickState() != 2 {
+		t.Errorf("select all gives state %d", m.session.PickState())
 	}
-	m.togglePickAll()
-	if m.pickState() != 0 {
-		t.Errorf("select all again gives state %d", m.pickState())
+	m.session.TickAll()
+	if m.session.PickState() != 0 {
+		t.Errorf("select all again gives state %d", m.session.PickState())
 	}
 }
 
 func TestARejectedSongCanBeAcceptedAgain(t *testing.T) {
 	m, run := choosingModel(t)
 	m.session.State.Apply(engine.EvEntryState{Entry: 3, State: engine.StateSkipped, TargetID: "abc12345678"})
-	if !acceptable(m.session.State.Entry(3)) {
+	if !downloadsession.Acceptable(m.session.State.Entry(3)) {
 		t.Fatal("a rejected song is not offered to be accepted")
 	}
 	m = pressKey(m, "d")
@@ -264,7 +265,7 @@ func TestColumnsCanBeCarriedToAnotherPlaceInTheList(t *testing.T) {
 	m.width, m.height = 140, 30
 	m = pressKey(m, "c")
 	m = pressKey(m, "shift+down") // Artist goes below Video name
-	if got := m.columnOrder(); got[0] != columnVideo || got[1] != columnArtist {
+	if got := m.session.ArrangedColumns(); got[0] != columnVideo || got[1] != columnArtist {
 		t.Errorf("order %v", got)
 	}
 	if names := namesOf(m.tableColumns(140)); strings.Index(names, columnArtist) < strings.Index(names, columnVideo) && strings.Contains(names, columnVideo) {
@@ -283,7 +284,7 @@ func TestColumnsCanBeCarriedToAnotherPlaceInTheList(t *testing.T) {
 		next, _ := m.Update(msg)
 		m = next.(Model)
 	}
-	if got := m.columnOrder(); got[2] != columnVideo {
+	if got := m.session.ArrangedColumns(); got[2] != columnVideo {
 		t.Errorf("order after the drag %v", got)
 	}
 }
@@ -306,19 +307,19 @@ func TestAClickOnAHeadingSortsAndAnotherClickTurnsTheOrderRound(t *testing.T) {
 	}
 	names := func(m Model) []string {
 		var out []string
-		for _, id := range m.visibleEntries() {
+		for _, id := range m.session.VisibleEntries() {
 			out = append(out, strings.ToLower(songName(m.session.State.Entries[id])))
 		}
 
 		return out
 	}
-	selected := m.selectedEntry().ID
+	selected := m.session.SelectedEntry().ID
 	m = click(m)
 	asc := names(m)
 	if m.session.Order.By != columnSong || m.session.Order.Desc || !sort.StringsAreSorted(asc) {
 		t.Fatalf("sorted by %q desc %v: %v", m.session.Order.By, m.session.Order.Desc, asc)
 	}
-	if m.selectedEntry().ID != selected {
+	if m.session.SelectedEntry().ID != selected {
 		t.Error("the song the cursor was on changed with the sort")
 	}
 	m = click(m)
@@ -334,7 +335,7 @@ func TestAClickOnAHeadingSortsAndAnotherClickTurnsTheOrderRound(t *testing.T) {
 func TestTheFilterHidesTheStatusesTheListHides(t *testing.T) {
 	m, _ := choosingModel(t)
 	m.width, m.height = 140, 30
-	all := len(m.visibleEntries())
+	all := len(m.session.VisibleEntries())
 	m = pressKey(m, "F")
 	if !m.filterList.open {
 		t.Fatal("the filter did not open")
@@ -346,20 +347,20 @@ func TestTheFilterHidesTheStatusesTheListHides(t *testing.T) {
 	}
 	m = pressKey(m, "space")
 	m = pressKey(m, "esc")
-	if got := len(m.visibleEntries()); got != all-1 || !m.filterActive() {
+	if got := len(m.session.VisibleEntries()); got != all-1 || !m.session.Filter.Active() {
 		t.Errorf("%d of %d songs show with the saved ones hidden", got, all)
 	}
 	if title, _ := m.entryHeader(); !strings.Contains(title, " of ") {
 		t.Errorf("the title does not say it is filtered: %q", title)
 	}
 	m = pressKey(m, "f") // failed only
-	for _, id := range m.visibleEntries() {
+	for _, id := range m.session.VisibleEntries() {
 		if m.session.State.Entries[id].State != engine.StateFailed {
 			t.Errorf("song %d is not failed", id)
 		}
 	}
 	m = pressKey(m, "f")
-	if m.filterActive() {
+	if m.session.Filter.Active() {
 		t.Error("f did not show every song again")
 	}
 }
@@ -453,7 +454,7 @@ func TestATickedSongBringsItsButtonsEvenWhileTheLinksHaveTheFocus(t *testing.T) 
 	if buttons := m.choiceButtons(); len(buttons) != 1 || !strings.Contains(buttons[0].label, "link") {
 		t.Fatalf("with nothing ticked the link's button is there: %+v", buttons)
 	}
-	m.togglePick(3)
+	m.session.TickSong(3, false)
 	buttons := m.choiceButtons()
 	if len(buttons) != 4 || buttons[0].label != "✓ Accept" {
 		t.Fatalf("a ticked song did not bring its buttons: %+v", buttons)
@@ -461,7 +462,7 @@ func TestATickedSongBringsItsButtonsEvenWhileTheLinksHaveTheFocus(t *testing.T) 
 	if rows := m.detailRows(60); len(rows) == 0 || !strings.Contains(rows[0].Line, "Bob Sinclar") {
 		t.Errorf("the details are not about the ticked song: %+v", rows)
 	}
-	m.togglePick(2)
+	m.session.TickSong(2, false)
 	if rows := m.detailRows(60); !strings.Contains(rows[0].Line, "2 songs selected") {
 		t.Errorf("many ticked songs are not summed up: %+v", rows[0])
 	}

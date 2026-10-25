@@ -40,7 +40,7 @@ func (m *Model) keepSelectionVisible() {
 	if m.tableShown() {
 		header = 1
 	}
-	m.entriesTop = scrollTo(m.entriesTop, m.session.SelEntry, l.entries.rows().h-header, len(m.visibleEntries()))
+	m.entriesTop = scrollTo(m.entriesTop, m.session.SelEntry, l.entries.rows().h-header, len(m.session.VisibleEntries()))
 }
 
 // scrollPane scrolls a pane by rows with the wheel, with the selection where it is.
@@ -54,7 +54,7 @@ func (m *Model) scrollPane(entries bool, rows int) {
 		if m.tableShown() {
 			header = 1
 		}
-		m.entriesTop = scrollTo(m.entriesTop+rows, m.entriesTop+rows, l.entries.rows().h-header, len(m.visibleEntries()))
+		m.entriesTop = scrollTo(m.entriesTop+rows, m.entriesTop+rows, l.entries.rows().h-header, len(m.session.VisibleEntries()))
 
 		return
 	}

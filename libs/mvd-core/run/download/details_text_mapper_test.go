@@ -87,7 +87,7 @@ func TestTheKeyTSwitchesBetweenTheDetailsAndTheTechnicalLog(t *testing.T) {
 	if m.outputTitle() == "Details" {
 		t.Errorf("the technical log is titled %q", m.outputTitle())
 	}
-	if got := m.outputLines(); len(got) == 0 {
+	if got := m.session.OutputLines(); len(got) == 0 {
 		t.Error("the technical log is empty")
 	}
 	m = press(t, m, tea.KeyPressMsg{Text: "t", Code: 't'})

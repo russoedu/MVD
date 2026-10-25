@@ -104,38 +104,27 @@ func (m Model) wheel(l downloadLayout, msg tea.MouseMsg, dir int) (tea.Model, te
 	case l.hasLists && l.entries.contains(msg.Mouse().X, msg.Mouse().Y):
 		m.scrollPane(true, dir*pointer.WheelStep)
 	case l.hasOutput && l.output.contains(msg.Mouse().X, msg.Mouse().Y):
-		focus := m.session.Pane
-		m.session.Pane = paneOutput
-		m.move(dir * pointer.WheelStep)
-		m.session.Pane = focus
+		m.session.ScrollOutput(dir * pointer.WheelStep)
 	}
 	return m, nil
 }
 
 func (m *Model) clickPlaylist(y int) {
 	i, ok := PlaylistsAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
-	m.session.Pane = paneLists
 	if !ok {
+		m.session.FocusPane(paneLists)
 		return
 	}
-	m.session.Follow = false
-	m.session.SelPlaylist, m.session.SelEntry, m.session.OutScroll = i, 0, 0
+	m.session.ChoosePlaylist(i)
 }
 
 func (m *Model) clickEntry(y int) {
-	m.session.Pane = paneEntries
-	if m.session.SelPlaylist >= len(m.session.State.Playlists) {
-		return
-	}
-	if pl := m.session.State.Playlists[m.session.SelPlaylist]; pl.Err != "" || !pl.Listed {
-		return
-	}
 	i, ok := EntriesAt(m.downloadProps(m.width, m.height), m.width, m.height, y)
 	if !ok {
+		m.session.FocusPane(paneEntries)
 		return
 	}
-	m.session.Follow = false
-	m.session.SelEntry, m.session.OutScroll = i, 0
+	m.session.ChooseEntry(i)
 }
 
 // PlaylistsBox is where the Playlists box is drawn, in the cells of the screen; ok is false

@@ -29,7 +29,7 @@ func (m Model) SelectedPlaylist() int { return m.session.SelPlaylist }
 
 // SelectPlaylist puts the cursor on playlist i, as far as there is one.
 func (m Model) SelectPlaylist(i int) Model {
-	m.session.SelPlaylist = max(min(i, len(m.session.State.Playlists)-1), 0)
+	m.session.SelectPlaylist(i)
 	m.marquee = 0
 	m.keepSelectionVisible()
 	return m
@@ -63,7 +63,7 @@ func (m Model) editClick(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, bo
 			m.dragRowOn = false
 			if m.dropRow != m.dragRow {
 				from, to := m.dragRow, m.dropRow
-				m.session.SelPlaylist = to
+				m.session.SelectPlaylist(to)
 				return m, func() tea.Msg { return ListEditMsg{Op: "move", Index: from, To: to} }, true
 			}
 			return m, nil, true
@@ -77,7 +77,7 @@ func (m Model) editClick(l downloadLayout, msg tea.MouseMsg) (Model, tea.Cmd, bo
 			return m, nil, false
 		}
 		onIcons := m.session.Editable || i == m.session.SelPlaylist // a run shows the icons on its chosen row only
-		m.session.Pane, m.session.Follow, m.session.SelPlaylist, m.session.SelEntry, m.session.OutScroll = paneLists, false, i, 0, 0
+		m.session.ChoosePlaylist(i)
 		if !onIcons {
 			return m, nil, false
 		}

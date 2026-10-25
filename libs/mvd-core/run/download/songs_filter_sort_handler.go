@@ -9,7 +9,6 @@ import (
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/look"
 	"youtube-downloader/libs/mvd-core/pointer"
-	"youtube-downloader/libs/mvd-core/runstate"
 	"youtube-downloader/libs/mvd-core/songlist"
 )
 
@@ -19,44 +18,10 @@ type filterMenu struct {
 	sel  int
 }
 
-// filterActive says whether some of the statuses are hidden.
-func (m Model) filterActive() bool { return m.session.Filter.Active() }
-
-// matchesFilter says whether a song passes the filter by status.
-func (m Model) matchesFilter(en *runstate.Entry) bool { return m.session.Filter.Matches(en) }
-
-// toggleStatus shows or hides the songs of a group of statuses.
-func (m *Model) toggleStatus(group string) {
-	m.session.Filter = m.session.Filter.Toggled(group)
-	m.session.SelEntry, m.entriesTop = 0, 0
-}
-
-// showOnly shows the songs of one group of statuses and hides the rest; when that is what the filter
-// is already, it shows them all.
-func (m *Model) showOnly(group string) {
-	m.session.Filter = m.session.Filter.Only(group)
-	m.session.SelEntry, m.entriesTop = 0, 0
-}
-
-// sorted puts the songs in the order the person chose by a click on a heading, else as they are.
-func (m *Model) sorted(ids []int) []int { return m.session.Order.Sorted(ids, m.session.State.Entries) }
-
-// sortable says whether a click on the heading of a column sorts the songs by it.
-func sortable(name string) bool { return name != columnMark && name != columnCheck }
-
-// sortBy sorts the songs by a column; the column that sorts already changes its direction instead. The
+// sortOn sorts the songs by a column; the column that sorts already changes its direction instead. The
 // song the cursor is on stays the one it is on.
 func (m *Model) sortOn(column string) {
-	keep := -1
-	if en := m.selectedEntry(); en != nil {
-		keep = en.ID
-	}
-	m.session.Order = m.session.Order.Clicked(column)
-	for i, id := range m.visibleEntries() {
-		if id == keep {
-			m.session.SelEntry = i
-		}
-	}
+	m.session.SortBy(column)
 	m.keepSelectionVisible()
 }
 
@@ -74,7 +39,7 @@ func (m Model) sortMark(column string) string {
 
 // filterLabel is what the button for the filter says.
 func (m Model) filterLabel() string {
-	if m.filterActive() {
+	if m.session.Filter.Active() {
 		return "Filter (" + string(rune('0'+min(m.session.Filter.HiddenCount(), 9))) + " hidden) ▾"
 	}
 
@@ -128,9 +93,10 @@ func (m Model) filterKey(key string) Model {
 	case "down", "j":
 		m.filterList.sel = min(m.filterList.sel+1, len(songlist.Groups)-1)
 	case "space", "enter":
-		m.toggleStatus(songlist.Groups[m.filterList.sel].Key)
+		m.session.ToggleStatus(songlist.Groups[m.filterList.sel].Key)
+		m.entriesTop = 0
 	case "backspace", "delete":
-		m.session.Filter = songlist.Filter{}
+		m.session.ClearFilter()
 	}
 
 	return m
@@ -150,7 +116,8 @@ func (m Model) filterMouse(l downloadLayout, msg tea.MouseMsg) Model {
 		m.filterList.open = false
 	case row >= 0 && row < len(songlist.Groups):
 		m.filterList.sel = row
-		m.toggleStatus(songlist.Groups[row].Key)
+		m.session.ToggleStatus(songlist.Groups[row].Key)
+			m.entriesTop = 0
 	}
 
 	return m

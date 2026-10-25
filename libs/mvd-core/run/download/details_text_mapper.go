@@ -1,6 +1,7 @@
 package download
 
 import (
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"fmt"
 	"sort"
 	"strings"
@@ -30,7 +31,7 @@ func (m Model) detailRows(w int) []OutputRow {
 		return emptyOutputRows(m.emptyOutputText(), w)
 	}
 	pl := m.session.State.Playlists[m.session.SelPlaylist]
-	en := m.selectedEntry()
+	en := m.session.SelectedEntry()
 	picks := len(m.session.Picked)
 	if picks > 1 {
 		say(counted(picks, "song")+" selected", bold)
@@ -77,7 +78,7 @@ func (m Model) detailRows(w int) []OutputRow {
 			say("Reading the songs of this link…", dim)
 		default:
 			say(m.linkSummary(pl), plain)
-			if m.waitingIn(pl) > 0 && m.anyWaiting() {
+			if m.session.WaitingIn(pl) > 0 && m.session.AnyWaiting() {
 				blank()
 				say("Accept them all with the button below, or tab to the songs to choose one by one.", CellStyle{Fg: c.Highlight})
 			}
@@ -92,7 +93,7 @@ func (m Model) detailRows(w int) []OutputRow {
 	blank()
 	sentence, style := m.songSentence(en)
 	say(sentence, style)
-	if waiting(en) && en.TargetID != "" {
+	if downloadsession.Waiting(en) && en.TargetID != "" {
 		say(shortAddress("https://www.youtube.com/watch?v="+en.TargetID), dim)
 	}
 	return rows

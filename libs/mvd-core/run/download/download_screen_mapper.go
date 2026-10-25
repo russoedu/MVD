@@ -65,7 +65,7 @@ func (m Model) downloadProps(w, h int) Props {
 	}
 	// The songs are a table, with a row of headings, whenever there are songs to show.
 	p.EntriesTable = m.songsTable
-	if len(m.visibleEntries()) > 0 && !m.entryNotesShown() {
+	if len(m.session.VisibleEntries()) > 0 && !m.entryNotesShown() {
 		p.TableHeader = 1
 	}
 	p.HasNotes = 0
@@ -81,7 +81,7 @@ func (m Model) downloadProps(w, h int) Props {
 			return m.detailRows(w), 0
 		}
 		lines, first := m.outputWindow(w, h)
-		if len(m.outputLines()) == 0 {
+		if len(m.session.OutputLines()) == 0 {
 			return emptyOutputRows(m.emptyOutputText(), w), 0
 		}
 		rows := make([]OutputRow, 0, len(lines))
@@ -221,7 +221,7 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 	rows := make([]PlaylistsRow, 0, len(m.session.State.Playlists))
 	for i, pl := range m.session.State.Playlists {
 		finished, _, _ := m.session.State.PlaylistTally(pl)
-		finished -= m.waitingIn(pl) // a song that waits to be chosen is not done
+		finished -= m.session.WaitingIn(pl) // a song that waits to be chosen is not done
 		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
 		if pl.Err != "" {
 			count = "can't read"
@@ -261,7 +261,7 @@ func (m Model) playlistRows(w int) []PlaylistsRow {
 // entryRows are the rows of the entries pane for the selected playlist and the row that
 // is selected.
 func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
-	ids := m.visibleEntries()
+	ids := m.session.VisibleEntries()
 	if len(ids) == 0 {
 		var rows []EntriesRow
 		for _, line := range wrapText(m.emptyEntriesText(), w-6) {
@@ -288,10 +288,10 @@ func (m Model) entryRows(w int) (rows []EntriesRow, sel int) {
 func (m Model) entryHeader() (title, right string) {
 	n := 0
 	if m.session.SelPlaylist < len(m.session.State.Playlists) {
-		n = len(m.visibleEntries())
+		n = len(m.session.VisibleEntries())
 	}
 	title = counted(n, "song")
-	if m.filterActive() && m.session.SelPlaylist < len(m.session.State.Playlists) {
+	if m.session.Filter.Active() && m.session.SelPlaylist < len(m.session.State.Playlists) {
 		title = fmt.Sprintf("%d of %s", n, counted(len(m.session.State.Playlists[m.session.SelPlaylist].Entries), "song"))
 	}
 
@@ -305,7 +305,7 @@ func (m Model) entryNotesShown() bool {
 		return false
 	}
 	pl := m.session.State.Playlists[m.session.SelPlaylist]
-	return pl.Err != "" || !pl.Listed || (m.filterActive() && len(m.visibleEntries()) == 0)
+	return pl.Err != "" || !pl.Listed || (m.session.Filter.Active() && len(m.session.VisibleEntries()) == 0)
 }
 
 // entryNotes are the lines of that note, wrapped to innerW cells.
@@ -322,7 +322,7 @@ func (m Model) entryNotes(innerW int) []NotesRow {
 		}
 	case !pl.Listed:
 		notes = []NotesRow{{Line: "reading this link...", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
-	case len(m.visibleEntries()) == 0 && m.filterActive():
+	case len(m.session.VisibleEntries()) == 0 && m.session.Filter.Active():
 		notes = []NotesRow{{Line: "no songs with these statuses: change the filter above", LineStyle: CellStyle{Fg: look.Colours.Dim}}}
 	}
 	return notes
@@ -341,7 +341,7 @@ type barInfo struct {
 
 func (m Model) outputFooter() outputFooter {
 	var f outputFooter
-	en := m.selectedEntry()
+	en := m.session.SelectedEntry()
 	if en == nil || m.session.Pane == paneLists {
 		return f
 	}
@@ -383,7 +383,7 @@ func (m Model) outputFooter() outputFooter {
 // still counts log lines, so a line is never half scrolled away; the second value is the
 // index of the log line the first row belongs to.
 func (m Model) outputWindow(w, h int) ([]string, int) {
-	lines := m.outputLines()
+	lines := m.session.OutputLines()
 	end := max(0, len(lines)-m.session.OutScroll)
 	h = max(h, 1)
 
@@ -432,7 +432,7 @@ func (m Model) detailsHeight(h int) int {
 	}
 
 	base := min(7, max(4, room/3))
-	if m.anyWaiting() {
+	if m.session.AnyWaiting() {
 		// The buttons of a song that waits to be chosen sit on the last row.
 		return min(max(base, choiceButtonsHeight), max(room-5, base))
 	}

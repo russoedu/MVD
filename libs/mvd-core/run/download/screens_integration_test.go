@@ -164,13 +164,13 @@ func TestKeyHandling(t *testing.T) {
 		t.Fatalf("r on a failed entry should retry it, got %v", got)
 	}
 	press("f")
-	if !m.filterActive() || len(m.visibleEntries()) != 1 {
-		t.Fatalf("filter should show the single failed entry, got %d", len(m.visibleEntries()))
+	if !m.session.Filter.Active() || len(m.session.VisibleEntries()) != 1 {
+		t.Fatalf("filter should show the single failed entry, got %d", len(m.session.VisibleEntries()))
 	}
 	press("f")
 	press("enter")
-	if !m.session.Follow || m.selectedEntry().ID != 3 {
-		t.Fatalf("follow should jump to the active entry, got %d follow=%v", m.selectedEntry().ID, m.session.Follow)
+	if !m.session.Follow || m.session.SelectedEntry().ID != 3 {
+		t.Fatalf("follow should jump to the active entry, got %d follow=%v", m.session.SelectedEntry().ID, m.session.Follow)
 	}
 	press("l")
 	if !m.session.FullLog || m.session.Pane != paneOutput {
@@ -206,8 +206,8 @@ func TestKeyHandling(t *testing.T) {
 	m.session.Follow = true
 	mm, _ := m.Update(evMsg{engine.EvEntryState{Entry: 6, State: engine.StateDownloading, TargetID: "Jb6gcoR266U"}})
 	m = mm.(Model)
-	if m.session.SelPlaylist != 1 || m.selectedEntry().ID != 6 {
-		t.Fatalf("follow should jump to playlist 1 entry 6, got playlist %d entry %d", m.session.SelPlaylist, m.selectedEntry().ID)
+	if m.session.SelPlaylist != 1 || m.session.SelectedEntry().ID != 6 {
+		t.Fatalf("follow should jump to playlist 1 entry 6, got playlist %d entry %d", m.session.SelPlaylist, m.session.SelectedEntry().ID)
 	}
 
 	m.session.State.Idle = true
