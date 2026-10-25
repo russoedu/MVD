@@ -120,6 +120,7 @@ func TestAListDoubleClickedWhileTheAppIsOpenIsOpenedUnlessDownloadsAreGoing(t *t
 	}
 
 	running, _ := started(t)
+	running = download(running)
 	next, _ = running.Update(OpenListMsg{Path: path})
 	running = next.(Model)
 	if running.session.Path() == path {

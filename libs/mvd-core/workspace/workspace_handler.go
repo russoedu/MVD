@@ -80,6 +80,9 @@ type Model struct {
 	run      ListRun
 	starting bool
 	stopping bool
+	// afterStop is what the person asked for while a run only held the list: it is done once the run
+	// has been stopped.
+	afterStop tea.Msg
 	// loadedKey is the list of addresses the last run was started on (or taken in), so a list is
 	// loaded in the background only when it has changed since.
 	loadedKey string
@@ -237,6 +240,10 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.quit {
 			return m, m.quit()
 		}
+		if next := m.afterStop; next != nil {
+			m.afterStop = nil
+			return m.Update(next)
+		}
 		return m, nil
 
 	case toolsTickMsg:
@@ -250,7 +257,14 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case OpenListMsg:
 		m = m.settle()
-		if m.running() || m.starting || m.stopping {
+		if m.starting || m.stopping {
+			m.notice = "One moment..."
+			return m, nil
+		}
+		if m.running() {
+			if m.holdsOnlyTheList() {
+				return m.stopThen(msg)
+			}
 			m.notice = "Stop the downloads before opening " + filepath.Base(msg.Path)
 			return m, nil
 		}
@@ -379,6 +393,9 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	case entryNew:
 		m = m.stopInline(false)
 		if m.running() {
+			if m.holdsOnlyTheList() {
+				return m.stopThen(menubar.SelectedMsg{Name: name})
+			}
 			m.notice = "Stop the downloads before starting a new list"
 			return m, nil
 		}
@@ -387,6 +404,9 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		m.notice = ""
 	case entryOpen:
 		if m.running() {
+			if m.holdsOnlyTheList() {
+				return m.stopThen(menubar.SelectedMsg{Name: name})
+			}
 			m.notice = "Stop the downloads before opening another list"
 			return m, nil
 		}
@@ -734,6 +754,24 @@ func (m Model) settle() Model {
 	m.screen = m.screen.Detach().WithState(m.session.Preview())
 
 	return m
+}
+
+// holdsOnlyTheList says whether the run does nothing that stopping it would lose: it is stopped, or
+// no song is coming in. Such a run is only the list loaded, and what the person asks for next
+// does not have to wait for them to stop it.
+func (m Model) holdsOnlyTheList() bool {
+	if !m.running() || m.starting || m.stopping {
+		return false
+	}
+
+	return m.run.Paused() || m.screen.State().Tally().Running == 0
+}
+
+// stopThen stops the run, and does what msg asks once it has wound down.
+func (m Model) stopThen(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.afterStop = msg
+
+	return m.stop(false)
 }
 
 // settles says whether an entry needs the list to be free, and so ends a finished run first.
