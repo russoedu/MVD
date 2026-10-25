@@ -19,21 +19,21 @@ func TestColoursModelEditsAndValidates(t *testing.T) {
 	m, _, _, _ = m.Update(keys.Press("enter"))
 	m.input.SetValue("purple")
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if !m.editing || m.status == "" || m.cfg.Colors.Accent != config.DefaultThemeColors().Accent {
-		t.Fatalf("an invalid colour must be refused: editing=%v status=%q accent=%q", m.editing, m.status, m.cfg.Colors.Accent)
+	if !m.session.Editing || m.session.Status == "" || m.session.Cfg.Colors.Accent != config.DefaultThemeColors().Accent {
+		t.Fatalf("an invalid colour must be refused: editing=%v status=%q accent=%q", m.session.Editing, m.session.Status, m.session.Cfg.Colors.Accent)
 	}
 
 	// A valid one is accepted and applied to the interface.
 	m.input.SetValue("#123456")
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.editing || m.cfg.Colors.Accent != "#123456" || look.Title.GetForeground() != lipgloss.Color("#123456") {
-		t.Errorf("a valid colour should be accepted and applied: %+v", m.cfg.Colors)
+	if m.session.Editing || m.session.Cfg.Colors.Accent != "#123456" || look.Title.GetForeground() != lipgloss.Color("#123456") {
+		t.Errorf("a valid colour should be accepted and applied: %+v", m.session.Cfg.Colors)
 	}
 
 	// d puts the default back.
 	m, _, _, _ = m.Update(keys.Press("d"))
-	if m.cfg.Colors.Accent != config.DefaultThemeColors().Accent {
-		t.Errorf("d should restore the default, got %q", m.cfg.Colors.Accent)
+	if m.session.Cfg.Colors.Accent != config.DefaultThemeColors().Accent {
+		t.Errorf("d should restore the default, got %q", m.session.Cfg.Colors.Accent)
 	}
 
 	// Moving down and editing changes another slot, and s saves.

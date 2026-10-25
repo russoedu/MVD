@@ -1,9 +1,6 @@
 package advanced
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
 	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/keybar"
 	"youtube-downloader/libs/mvd-core/look"
@@ -14,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/setup/advancedsession"
 )
 
 type Outcome int
@@ -24,16 +22,10 @@ const (
 	Cancel
 )
 
-const advItemCount = 6
-
-var advLabels = []string{"Extra yt-dlp args", "Parallel fragments per video", "Auto Retry", "Retry cycles", "Retry wait (s x attempt)", "Start timeout (s)"}
-
-// Model is the "if you know what you're doing" screen: raw yt-dlp
-// args, the fragment count and auto-retry.
+// Model is the "if you know what you're doing" screen in the terminal: it turns keys into what the
+// session does, owns the box a value is typed in, and draws.
 type Model struct {
-	cfg           config.Config
-	cursor        int
-	mode          settings.Mode
+	session       advancedsession.Session
 	input         textinput.Model
 	width, height int
 }
@@ -41,11 +33,11 @@ type Model struct {
 func New(cfg config.Config) Model {
 	ti := textinput.New()
 	ti.Prompt = "> "
-	return Model{cfg: cfg, input: ti}
+	return Model{session: advancedsession.New(cfg), input: ti}
 }
 
 // Config is the settings as they stand, including changes not yet saved.
-func (m Model) Config() config.Config { return m.cfg }
+func (m Model) Config() config.Config { return m.session.Cfg }
 
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
@@ -53,150 +45,76 @@ func (m Model) SetSize(w, h int) Model {
 	return m
 }
 
+// outcome is what the host of the screen is told for what the session asked of it.
+func outcome(effect advancedsession.Effect) Outcome {
+	switch effect {
+	case advancedsession.Save:
+		return Save
+	case advancedsession.Cancel:
+		return Cancel
+	}
+	return None
+}
+
+// showTyped puts the text the session holds in the box.
+func (m *Model) showTyped() {
+	m.input.SetValue(m.session.Text)
+	m.input.CursorEnd()
+}
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome, config.Config) {
 	k, isKey := msg.(tea.KeyPressMsg)
 
-	if m.mode != settings.EditNone {
+	if m.session.Editing() {
 		if isKey {
 			switch k.String() {
 			case "esc":
-				m.mode = settings.EditNone
-				return m, nil, None, m.cfg
+				m.session.CancelEdit()
+				return m, nil, None, m.session.Cfg
 			case "enter":
-				m.commit()
-				m.mode = settings.EditNone
-				return m, nil, None, m.cfg
+				m.session.SetText(m.input.Value())
+				m.session.CommitEdit()
+				return m, nil, None, m.session.Cfg
 			}
-			if m.mode == settings.EditNumber {
+			if m.session.Mode == settings.EditNumber {
 				switch k.String() {
-				case "up":
-					m.input.SetValue(strconv.Itoa(m.numberValue() + 1))
-					m.input.CursorEnd()
-					return m, nil, None, m.cfg
-				case "down":
-					if n := m.numberValue(); n > 0 {
-						m.input.SetValue(strconv.Itoa(n - 1))
-						m.input.CursorEnd()
-					}
-					return m, nil, None, m.cfg
+				case "up", "down":
+					m.session.SetText(m.input.Value())
+					m.session.StepNumber(map[string]int{"up": 1, "down": -1}[k.String()])
+					m.showTyped()
+					return m, nil, None, m.session.Cfg
 				}
 			}
 		}
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
-		return m, cmd, None, m.cfg
+		m.session.SetText(m.input.Value())
+		return m, cmd, None, m.session.Cfg
 	}
 
 	if isKey {
 		switch k.String() {
 		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
+			m.session.Move(-1)
 		case "down", "j":
-			if m.cursor < advItemCount-1 {
-				m.cursor++
-			}
+			m.session.Move(1)
 		case "s", "ctrl+s":
-			return m, nil, Save, m.cfg
+			return m, nil, outcome(m.session.Keep()), m.session.Cfg
 		case "esc":
-			return m, nil, Cancel, m.cfg
+			return m, nil, outcome(m.session.Leave()), m.session.Cfg
 		case "enter", " ":
-			m.activate()
+			m.session.Activate()
+			if m.session.Editing() {
+				m.showTyped()
+				m.input.Focus()
+			}
 		}
 	}
-	return m, nil, None, m.cfg
-}
-
-func (m *Model) activate() {
-	switch m.cursor {
-	case 0:
-		m.input.SetValue(strings.Join(m.cfg.ExtraArgs, " "))
-		m.input.CursorEnd()
-		m.input.Focus()
-		m.mode = settings.EditText
-	case 1:
-		m.input.SetValue(strconv.Itoa(m.cfg.ConcurrentFragments))
-		m.input.CursorEnd()
-		m.input.Focus()
-		m.mode = settings.EditNumber
-	case 2:
-		m.cfg.AutoRetry = !m.cfg.AutoRetry
-	case 3, 4, 5:
-		m.input.SetValue(strconv.Itoa(m.current()))
-		m.input.CursorEnd()
-		m.input.Focus()
-		m.mode = settings.EditNumber
-	}
-}
-
-func (m Model) numberValue() int {
-	n, err := strconv.Atoi(strings.TrimSpace(m.input.Value()))
-	if err != nil || n < 0 {
-		return m.current()
-	}
-	return n
-}
-
-// current is the number the setting under the cursor holds now.
-func (m Model) current() int {
-	switch m.cursor {
-	case 3:
-		return m.cfg.RetryCycles
-	case 4:
-		return m.cfg.RetryWaitSeconds
-	case 5:
-		return m.cfg.StartTimeoutSeconds
-	}
-	return m.cfg.ConcurrentFragments
-}
-
-func (m *Model) commit() {
-	switch m.cursor {
-	case 0:
-		m.cfg.ExtraArgs = strings.Fields(m.input.Value())
-	case 1:
-		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 0 {
-			m.cfg.ConcurrentFragments = n
-		}
-	case 3:
-		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 1 {
-			m.cfg.RetryCycles = n
-		}
-	case 4:
-		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 1 {
-			m.cfg.RetryWaitSeconds = n
-		}
-	case 5:
-		if n, err := strconv.Atoi(strings.TrimSpace(m.input.Value())); err == nil && n >= 1 {
-			m.cfg.StartTimeoutSeconds = n
-		}
-	}
-}
-
-func (m Model) display(i int) string {
-	switch i {
-	case 0:
-		if len(m.cfg.ExtraArgs) == 0 {
-			return "(none)"
-		}
-		return strings.Join(m.cfg.ExtraArgs, " ")
-	case 1:
-		return strconv.Itoa(m.cfg.ConcurrentFragments)
-	case 2:
-		return settings.YesNo(m.cfg.AutoRetry)
-	case 3:
-		return strconv.Itoa(m.cfg.RetryCycles)
-	case 4:
-		return retryWaitText(m.cfg.RetryWaitSeconds)
-	case 5:
-		return strconv.Itoa(m.cfg.StartTimeoutSeconds)
-	}
-	return ""
+	return m, nil, None, m.session.Cfg
 }
 
 func (m Model) Hints() []keybar.Hint {
-	if m.mode != settings.EditNone {
+	if m.session.Editing() {
 		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
 	}
 	return []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "s", Desc: "save"}, {Key: "esc", Desc: "back"}}
@@ -208,15 +126,15 @@ func (m Model) View(width, height int) string {
 	props.Hints = keybar.Of[HintsHint](m.Hints())
 
 	var labelW = 0
-	for _, l := range advLabels {
+	for _, l := range advancedsession.Labels {
 		labelW = max(labelW, len(l))
 	}
-	rows := make([]ItemsRow, 0, len(advLabels))
-	for i, label := range advLabels {
-		row := ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.display(i), max(10, width-labelW-6))}
-		if i == m.cursor {
+	rows := make([]ItemsRow, 0, len(advancedsession.Labels))
+	for i, label := range advancedsession.Labels {
+		row := ItemsRow{Mark: "  ", Name: label, Value: cells.Truncate(m.session.Display(i), max(10, width-labelW-6))}
+		if i == m.session.Cursor {
 			row.Mark = "▸ "
-			if m.mode == settings.EditNone {
+			if !m.session.Editing() {
 				row.Style = RowSelected
 			} else {
 				row.Value = cells.Truncate(m.input.View(), max(10, width-labelW-6))
@@ -230,27 +148,19 @@ func (m Model) View(width, height int) string {
 
 // Outline describes the screen in plain terms, from the same state and hints the view draws.
 func (m Model) Outline() outline.ScreenOutline {
-	items := make([]outline.Item, len(advLabels))
-	for i, label := range advLabels {
-		items[i] = outline.Item{Label: label, Value: m.display(i), Selected: i == m.cursor}
+	items := make([]outline.Item, len(advancedsession.Labels))
+	for i, label := range advancedsession.Labels {
+		items[i] = outline.Item{Label: label, Value: m.session.Display(i), Selected: i == m.session.Cursor}
 	}
-	if m.mode != settings.EditNone {
-		items[m.cursor].Editing = true
-		items[m.cursor].Value = m.input.Value()
+	if m.session.Editing() {
+		items[m.session.Cursor].Editing = true
+		items[m.session.Cursor].Value = m.session.Text
 	}
 	return outline.ScreenOutline{Title: "MVD · Advanced", ItemsLabel: "Settings", Items: items, Keys: outline.KeysOf(m.Hints())}
 }
 
 // Select puts the cursor on the setting drawn on row, when none is being edited.
 func (m Model) Select(row int) Model {
-	if m.mode == settings.EditNone && row >= 0 && row < len(advLabels) {
-		m.cursor = row
-	}
+	m.session.Select(row)
 	return m
-}
-
-// retryWaitText is the wait setting with what it comes to: the waits of the first
-// retries, since each is the setting times the number of the retry.
-func retryWaitText(seconds int) string {
-	return fmt.Sprintf("%d  (%ds, %ds, %ds, ...)", seconds, seconds, 2*seconds, 3*seconds)
 }

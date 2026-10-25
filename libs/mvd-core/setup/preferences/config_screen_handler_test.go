@@ -31,8 +31,8 @@ func TestAFolderSettingOpensTheHostsChooserAndTakesItsAnswer(t *testing.T) {
 		return "/music", true, nil
 	})
 
-	if m.mode != settings.EditPicking || cmd == nil {
-		t.Fatalf("mode %d, cmd %v: the chooser should be open", m.mode, cmd)
+	if m.session.Mode != settings.EditPicking || cmd == nil {
+		t.Fatalf("mode %d, cmd %v: the chooser should be open", m.session.Mode, cmd)
 	}
 	answer := cmd()
 	if startedAt != "/dl" {
@@ -40,8 +40,8 @@ func TestAFolderSettingOpensTheHostsChooserAndTakesItsAnswer(t *testing.T) {
 	}
 
 	m, _, _, _ = m.Update(answer)
-	if m.mode != settings.EditNone || m.cfg.OutputDir != "/music" {
-		t.Errorf("mode %d, output dir %q", m.mode, m.cfg.OutputDir)
+	if m.session.Mode != settings.EditNone || m.session.Cfg.OutputDir != "/music" {
+		t.Errorf("mode %d, output dir %q", m.session.Mode, m.session.Cfg.OutputDir)
 	}
 }
 
@@ -49,8 +49,8 @@ func TestCancellingTheChooserChangesNothing(t *testing.T) {
 	m, cmd := chooseOnFirstSetting(t, func(string) (string, bool, error) { return "", false, nil })
 	m, _, _, _ = m.Update(cmd())
 
-	if m.mode != settings.EditNone || m.cfg.OutputDir != "/dl" {
-		t.Errorf("mode %d, output dir %q", m.mode, m.cfg.OutputDir)
+	if m.session.Mode != settings.EditNone || m.session.Cfg.OutputDir != "/dl" {
+		t.Errorf("mode %d, output dir %q", m.session.Mode, m.session.Cfg.OutputDir)
 	}
 }
 
@@ -58,16 +58,16 @@ func TestWithoutAChooserOnTheMachineTheBuiltInBrowserOpens(t *testing.T) {
 	m, cmd := chooseOnFirstSetting(t, func(string) (string, bool, error) { return "", false, errors.New("no desktop") })
 	m, _, _, _ = m.Update(cmd())
 
-	if m.mode != settings.EditFolder {
-		t.Errorf("mode %d, want the built-in folder browser", m.mode)
+	if m.session.Mode != settings.EditFolder {
+		t.Errorf("mode %d, want the built-in folder browser", m.session.Mode)
 	}
 }
 
 func TestWithoutAHostChooserTheBuiltInBrowserOpensAtOnce(t *testing.T) {
 	m, cmd := chooseOnFirstSetting(t, nil)
 
-	if m.mode != settings.EditFolder || cmd != nil {
-		t.Errorf("mode %d, cmd %v", m.mode, cmd)
+	if m.session.Mode != settings.EditFolder || cmd != nil {
+		t.Errorf("mode %d, cmd %v", m.session.Mode, cmd)
 	}
 }
 
@@ -75,12 +75,12 @@ func TestTheLogFolderUsesTheChooserToo(t *testing.T) {
 	m := New(config.Default("/app", "/dl")).WithFolderPicker(func(start string) (string, bool, error) {
 		return "/logs", true, nil
 	}).SetSize(100, 30)
-	m.cursor = 9
+	m.session.Cursor = 9
 	m, cmd, _, _ := m.Update(keys.Press("enter"))
 	m, _, _, _ = m.Update(cmd())
 
-	if m.cfg.LogDir != "/logs" {
-		t.Errorf("log dir %q", m.cfg.LogDir)
+	if m.session.Cfg.LogDir != "/logs" {
+		t.Errorf("log dir %q", m.session.Cfg.LogDir)
 	}
 }
 
@@ -89,8 +89,8 @@ func TestWhileTheChooserIsOpenKeysAreIgnoredAndTheScreenSaysWhy(t *testing.T) {
 
 	m, _, _, _ = m.Update(keys.Press("esc"))
 	m, _, out, _ := m.Update(keys.Press("s"))
-	if m.mode != settings.EditPicking || out != None {
-		t.Errorf("mode %d, outcome %d: keys should wait for the chooser", m.mode, out)
+	if m.session.Mode != settings.EditPicking || out != None {
+		t.Errorf("mode %d, outcome %d: keys should wait for the chooser", m.session.Mode, out)
 	}
 	if got := m.Outline().Prompt; got != "Choose a folder in the window that opened" {
 		t.Errorf("prompt %q", got)
@@ -125,12 +125,12 @@ func TestTheMoveKeyAsksAndSaysHowItWent(t *testing.T) {
 		m := preferencesThatMove(moveAnswering(c.outcome, c.err))
 
 		m, cmd, _, _ := m.Update(keys.Press("m"))
-		if m.mode != settings.EditConfirming || cmd == nil {
-			t.Fatalf("%s: mode %d, cmd %v: the questions should be open", c.name, m.mode, cmd)
+		if m.session.Mode != settings.EditConfirming || cmd == nil {
+			t.Fatalf("%s: mode %d, cmd %v: the questions should be open", c.name, m.session.Mode, cmd)
 		}
 		m, _, _, _ = m.Update(cmd())
-		if m.mode != settings.EditNone || m.status != c.want {
-			t.Errorf("%s: mode %d, status %q, want %q", c.name, m.mode, m.status, c.want)
+		if m.session.Mode != settings.EditNone || m.session.Status != c.want {
+			t.Errorf("%s: mode %d, status %q, want %q", c.name, m.session.Mode, m.session.Status, c.want)
 		}
 		if view := m.View(140, 30); !strings.Contains(view, c.want[:min(len(c.want), 15)]) {
 			t.Errorf("%s: the screen should show the status", c.name)
@@ -142,8 +142,8 @@ func TestWithoutAMoverThereIsNoMoveKeyAndNoHint(t *testing.T) {
 	m := New(config.Default("/app", "/dl")).SetSize(100, 30)
 
 	m, cmd, _, _ := m.Update(keys.Press("m"))
-	if cmd != nil || m.mode != settings.EditNone {
-		t.Errorf("mode %d, cmd %v: nothing should happen", m.mode, cmd)
+	if cmd != nil || m.session.Mode != settings.EditNone {
+		t.Errorf("mode %d, cmd %v: nothing should happen", m.session.Mode, cmd)
 	}
 	for _, h := range m.Hints() {
 		if h.Key == "m" {
@@ -192,12 +192,12 @@ func TestTheUninstallKeyAsksAndSaysHowItWent(t *testing.T) {
 		m := preferencesWith(uninstallAnswering(c.outcome, c.err))
 
 		m, cmd, _, _ := m.Update(keys.Press("u"))
-		if m.mode != settings.EditConfirming || cmd == nil {
-			t.Fatalf("%s: mode %d, cmd %v: the questions should be open", c.name, m.mode, cmd)
+		if m.session.Mode != settings.EditConfirming || cmd == nil {
+			t.Fatalf("%s: mode %d, cmd %v: the questions should be open", c.name, m.session.Mode, cmd)
 		}
 		m, _, _, _ = m.Update(cmd())
-		if m.mode != settings.EditNone || m.status != c.want {
-			t.Errorf("%s: mode %d, status %q, want %q", c.name, m.mode, m.status, c.want)
+		if m.session.Mode != settings.EditNone || m.session.Status != c.want {
+			t.Errorf("%s: mode %d, status %q, want %q", c.name, m.session.Mode, m.session.Status, c.want)
 		}
 		if got := m.Outline().Prompt; got != c.want {
 			t.Errorf("%s: the outline should say it too, got %q", c.name, got)
@@ -213,8 +213,8 @@ func TestWhileTheQuestionsAreOpenKeysAreIgnored(t *testing.T) {
 	m, _, _, _ = m.Update(keys.Press("u"))
 
 	m, _, out, _ := m.Update(keys.Press("s"))
-	if m.mode != settings.EditConfirming || out != None {
-		t.Errorf("mode %d, outcome %d: keys should wait for the answers", m.mode, out)
+	if m.session.Mode != settings.EditConfirming || out != None {
+		t.Errorf("mode %d, outcome %d: keys should wait for the answers", m.session.Mode, out)
 	}
 	if m.Outline().Prompt == "" || len(m.Hints()) != 0 {
 		t.Errorf("prompt %q, hints %v", m.Outline().Prompt, m.Hints())
@@ -227,8 +227,8 @@ func TestAnyKeyClearsTheStatus(t *testing.T) {
 	m, _, _, _ = m.Update(cmd())
 	m, _, _, _ = m.Update(keys.Press("down"))
 
-	if m.status != "" {
-		t.Errorf("status %q", m.status)
+	if m.session.Status != "" {
+		t.Errorf("status %q", m.session.Status)
 	}
 }
 
@@ -236,8 +236,8 @@ func TestWithoutAnUninstallerThereIsNoKeyAndNoHint(t *testing.T) {
 	m := preferencesWith(nil)
 
 	m, cmd, _, _ := m.Update(keys.Press("u"))
-	if m.mode != settings.EditNone || cmd != nil {
-		t.Errorf("mode %d, cmd %v", m.mode, cmd)
+	if m.session.Mode != settings.EditNone || cmd != nil {
+		t.Errorf("mode %d, cmd %v", m.session.Mode, cmd)
 	}
 	for _, h := range m.Hints() {
 		if h.Key == "u" {
@@ -248,31 +248,31 @@ func TestWithoutAnUninstallerThereIsNoKeyAndNoHint(t *testing.T) {
 
 func TestConfigModelRadioAndSave(t *testing.T) {
 	m := New(config.Default("/app", "/dl"))
-	if m.cfg.OfficialVideo != config.OfficialYes {
-		t.Fatalf("the official video setting should start as yes, it is %q", m.cfg.OfficialVideo)
+	if m.session.Cfg.OfficialVideo != config.OfficialYes {
+		t.Fatalf("the official video setting should start as yes, it is %q", m.session.Cfg.OfficialVideo)
 	}
 
 	// Move to "Download Official Music Video" (index 6), open it and choose "only".
-	for m.cursor < 6 {
+	for m.session.Cursor < 6 {
 		m, _, _, _ = m.Update(keys.Press("down"))
 	}
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.mode != settings.EditRadio {
-		t.Fatalf("enter should open the choices, mode %d", m.mode)
+	if m.session.Mode != settings.EditRadio {
+		t.Fatalf("enter should open the choices, mode %d", m.session.Mode)
 	}
 	m, _, _, _ = m.Update(keys.Press("down"))
 	m, _, _, _ = m.Update(keys.Press("down"))
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.cfg.OfficialVideo != config.OfficialOnly {
-		t.Errorf("the choice should be only, it is %q", m.cfg.OfficialVideo)
+	if m.session.Cfg.OfficialVideo != config.OfficialOnly {
+		t.Errorf("the choice should be only, it is %q", m.session.Cfg.OfficialVideo)
 	}
 
 	// The next item saves the songs with no official video.
-	for m.cursor < 10 {
+	for m.session.Cursor < 10 {
 		m, _, _, _ = m.Update(keys.Press("down"))
 	}
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.cfg.SaveNotFound {
+	if m.session.Cfg.SaveNotFound {
 		t.Error("enter on the toggle should flip it (it starts as yes)")
 	}
 
@@ -288,81 +288,81 @@ func TestConfigModelRadioAndSave(t *testing.T) {
 
 func TestConfigModelRadio(t *testing.T) {
 	m := New(config.Default("/app", "/dl"))
-	m.cursor = 1 // Video Quality
+	m.session.Cursor = 1 // Video Quality
 
 	m, _, _, _ = m.Update(keys.Press("enter")) // open radio
-	if m.mode != settings.EditRadio {
+	if m.session.Mode != settings.EditRadio {
 		t.Fatalf("enter on a radio item should open the selector")
 	}
-	start := m.radioIdx
+	start := m.session.RadioIdx
 	m, _, _, _ = m.Update(keys.Press("down"))
-	if m.radioIdx != start+1 {
+	if m.session.RadioIdx != start+1 {
 		t.Errorf("down should move the radio cursor")
 	}
 	m, _, _, _ = m.Update(keys.Press("enter")) // commit
-	if m.mode != settings.EditNone {
+	if m.session.Mode != settings.EditNone {
 		t.Error("enter should close the selector")
 	}
-	if m.cfg.VideoQuality != config.VideoPresets[start+1] {
-		t.Errorf("video quality should be %q, got %q", config.VideoPresets[start+1], m.cfg.VideoQuality)
+	if m.session.Cfg.VideoQuality != config.VideoPresets[start+1] {
+		t.Errorf("video quality should be %q, got %q", config.VideoPresets[start+1], m.session.Cfg.VideoQuality)
 	}
 }
 
 func TestConfigModelNumber(t *testing.T) {
 	m := New(config.Default("/app", "/dl"))
-	m.cursor = 5 // Max Concurrent Downloads
-	before := m.cfg.MaxConcurrentDownloads
+	m.session.Cursor = 5 // Max Concurrent Downloads
+	before := m.session.Cfg.MaxConcurrentDownloads
 
 	m, _, _, _ = m.Update(keys.Press("enter")) // edit
-	if m.mode != settings.EditNumber {
+	if m.session.Mode != settings.EditNumber {
 		t.Fatalf("enter should start number edit")
 	}
 	m, _, _, _ = m.Update(keys.Press("up")) // increment
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.cfg.MaxConcurrentDownloads != before+1 {
-		t.Errorf("up then enter should increment to %d, got %d", before+1, m.cfg.MaxConcurrentDownloads)
+	if m.session.Cfg.MaxConcurrentDownloads != before+1 {
+		t.Errorf("up then enter should increment to %d, got %d", before+1, m.session.Cfg.MaxConcurrentDownloads)
 	}
 }
 
 func TestConfigModelTextCommit(t *testing.T) {
 	m := New(config.Default("/app", "/dl"))
-	m.cursor = 4 // Output Template
+	m.session.Cursor = 4 // Output Template
 
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.mode != settings.EditText {
+	if m.session.Mode != settings.EditText {
 		t.Fatalf("enter should start text edit")
 	}
 	m.input.SetValue("%(title)s.%(ext)s")
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.cfg.OutputTemplate != "%(title)s.%(ext)s" {
-		t.Errorf("text edit should commit, got %q", m.cfg.OutputTemplate)
+	if m.session.Cfg.OutputTemplate != "%(title)s.%(ext)s" {
+		t.Errorf("text edit should commit, got %q", m.session.Cfg.OutputTemplate)
 	}
 }
 
 func TestConfigModelFolderPicker(t *testing.T) {
 	dir := t.TempDir()
 	m := New(config.Default(dir, dir))
-	m.cursor = 0 // Output Folder -> folder picker
+	m.session.Cursor = 0 // Output Folder -> folder picker
 
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.mode != settings.EditFolder {
+	if m.session.Mode != settings.EditFolder {
 		t.Fatalf("enter on Output Folder should open the folder picker")
 	}
 	// Choosing the current folder commits it.
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	if m.mode != settings.EditNone {
+	if m.session.Mode != settings.EditNone {
 		t.Fatalf("enter should choose and close the picker")
 	}
-	if m.cfg.OutputDir != folderpage.ResolveDir(dir) {
-		t.Errorf("output dir should be the chosen folder, got %q", m.cfg.OutputDir)
+	if m.session.Cfg.OutputDir != folderpage.ResolveDir(dir) {
+		t.Errorf("output dir should be the chosen folder, got %q", m.session.Cfg.OutputDir)
 	}
 
 	// Esc cancels without changing.
-	m.cursor = 9 // Log File Location
+	m.session.Cursor = 9 // Log File Location
 	m, _, _, _ = m.Update(keys.Press("enter"))
-	before := m.cfg.LogDir
+	before := m.session.Cfg.LogDir
 	m, _, _, _ = m.Update(keys.Press("esc"))
-	if m.mode != settings.EditNone || m.cfg.LogDir != before {
+	if m.session.Mode != settings.EditNone || m.session.Cfg.LogDir != before {
 		t.Errorf("esc should cancel the picker without changing the dir")
 	}
 }
@@ -371,25 +371,6 @@ func TestConfigAdvancedTransition(t *testing.T) {
 	m := New(config.Default("/app", "/dl"))
 	if _, _, out, _ := m.Update(keys.Press("a")); out != Advanced {
 		t.Errorf("'a' should request the advanced screen, got %d", out)
-	}
-}
-
-func TestCookieChoice(t *testing.T) {
-	cfg := config.Default("/app", "/dl")
-	applyCookieChoice(&cfg, "firefox")
-	if cfg.CookiesFromBrowser != "firefox" || cfg.AutoCookies {
-		t.Errorf("pin wrong: %+v", cfg)
-	}
-	if currentCookieChoice(cfg) != "firefox" {
-		t.Error("currentCookieChoice should report the pin")
-	}
-	applyCookieChoice(&cfg, "off")
-	if cfg.AutoCookies || cfg.CookiesFromBrowser != "" || currentCookieChoice(cfg) != "off" {
-		t.Errorf("off wrong: %+v", cfg)
-	}
-	applyCookieChoice(&cfg, "all")
-	if !cfg.AutoCookies || currentCookieChoice(cfg) != "all" {
-		t.Errorf("all wrong: %+v", cfg)
 	}
 }
 
