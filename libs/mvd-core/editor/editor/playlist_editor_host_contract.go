@@ -2,6 +2,7 @@ package editor
 
 import (
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/editor/review"
 	"youtube-downloader/libs/mvd-core/engine"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
@@ -9,22 +10,13 @@ import (
 // Live is a run that holds each song for review (engine.Options.HoldForReview): the
 // editor shows its songs as they are looked up, and a song the person has dealt with is
 // sent to download at once, while the others are still being looked up or looked at.
-type Live interface {
-	// Snapshot is every song the run has listed, in the order it listed them.
-	Snapshot() []engine.EntrySnapshot
-	// Release sends song entry to download: as proposed when videoID is "", else that video.
-	Release(entry int, videoID string) bool
-	// ReleaseAll sends every song that is held, as proposed.
-	ReleaseAll() int
-}
+type Live = review.Live
 
 // PlanDownloadStarter starts a run that downloads exactly what a plan names.
 type PlanDownloadStarter func(cfg config.Config, plan []engine.PlannedEntry) (downloadpage.Run, error)
 
 // Planner is what a plan-only run offers once it has dealt with every song.
-type Planner interface {
-	Plan() []engine.PlannedEntry
-}
+type Planner = review.Planner
 
 // EditorHost is what the playlist editor needs from the machine it runs on. Every field
 // is optional: without Plan the editor can only open files, without PlanDownload it can
