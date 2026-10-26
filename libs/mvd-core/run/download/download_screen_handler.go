@@ -86,6 +86,8 @@ type Model struct {
 	embedded bool
 	// playlistsTop and entriesTop are how many rows the links and the songs are scrolled down.
 	playlistsTop, entriesTop int
+	// barDrag is the scrollbar being dragged.
+	barDrag barKind
 	// colWidth are the widths the person gave to columns by carrying their borders. They are
 	// replaced, never changed, so a copy of the screen keeps its own.
 	colWidth   map[string]int
