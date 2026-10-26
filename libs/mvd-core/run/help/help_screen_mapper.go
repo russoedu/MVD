@@ -76,7 +76,7 @@ func helpLines(o Options) []string {
 		lines = append(lines, look.Key.Render("f1") + "          every keyboard shortcut of the app")
 	} else {
 		lines = append(lines,
-			look.Key.Render("a")+"           add more links to this run",
+			look.Key.Render("a")+"           add more sources to this run",
 			look.Key.Render("q")+"           quit (asks for confirmation while running)",
 			look.Key.Render("ctrl+c")+"      quit immediately",
 			look.Key.Render("ctrl+l")+"      redraw the screen",

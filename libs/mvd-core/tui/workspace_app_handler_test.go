@@ -114,7 +114,7 @@ func TestTheWorkspaceBehindThePreferencesOfTheFirstStartIsDrawn(t *testing.T) {
 	})
 	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	screen := ansi.Strip(next.View().Content)
-	if strings.Contains(screen, "starting...") || !strings.Contains(screen, "Preferences") || !strings.Contains(screen, "Add link") {
+	if strings.Contains(screen, "starting...") || !strings.Contains(screen, "Preferences") || !strings.Contains(screen, "Add source") {
 		t.Errorf("the first start shows\n%s", screen)
 	}
 }

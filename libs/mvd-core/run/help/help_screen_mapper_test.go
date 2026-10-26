@@ -11,7 +11,7 @@ func plain(lines []string) string { return ansi.Strip(strings.Join(lines, "\n"))
 
 func TestTheDesktopHelpDoesNotTellAboutKeysItDoesNotHave(t *testing.T) {
 	text := plain(helpLines(Options{Hosted: true}))
-	for _, gone := range []string{"quit", "ctrl+c", "redraw", "add more links"} {
+	for _, gone := range []string{"quit", "ctrl+c", "redraw", "add more sources"} {
 		if strings.Contains(text, gone) {
 			t.Errorf("the desktop help mentions %q", gone)
 		}
@@ -23,7 +23,7 @@ func TestTheDesktopHelpDoesNotTellAboutKeysItDoesNotHave(t *testing.T) {
 
 func TestTheTerminalHelpStillTellsAboutQuitAndRedraw(t *testing.T) {
 	text := plain(helpLines(Options{}))
-	for _, want := range []string{"quit (asks for confirmation", "ctrl+c", "redraw the screen", "add more links"} {
+	for _, want := range []string{"quit (asks for confirmation", "ctrl+c", "redraw the screen", "add more sources"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the terminal help lacks %q", want)
 		}

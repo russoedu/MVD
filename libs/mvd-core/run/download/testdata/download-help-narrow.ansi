@@ -6,7 +6,7 @@
  [38;2;0;240;255m│[38;2;255;230;0;1mf[m           show only failed entries                              [38;2;0;240;255m│[m 
  [38;2;0;240;255m│[38;2;255;230;0;1mr[m retry the selected failed entry, or all failed in the playlist  [38;2;0;240;255m│[m 
  [38;2;0;240;255m│[38;2;255;230;0;1ml[m           toggle full screen output                             [38;2;0;240;255m│[m 
- [38;2;0;240;255m│[38;2;255;230;0;1ma[m           add more links to this run                            [38;2;0;240;255m│[m 
+ [38;2;0;240;255m│[38;2;255;230;0;1ma[m           add more sources to this run                          [38;2;0;240;255m│[m 
  [38;2;0;240;255m│[38;2;255;230;0;1mq[m           quit (asks for confirmation while running)            [38;2;0;240;255m│[m 
  [38;2;0;240;255m│[38;2;255;230;0;1mctrl+c[m      quit immediately                                      [38;2;0;240;255m│[m 
  [38;2;0;240;255m│[38;2;255;230;0;1mctrl+l[m      redraw the screen                                     [38;2;0;240;255m│[m 

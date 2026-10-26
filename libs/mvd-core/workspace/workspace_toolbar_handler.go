@@ -15,7 +15,7 @@ const topRows = 1
 // The buttons of the toolbar, and the Run menu entries that do the same.
 const (
 	entryStart       = "Load playlists"
-	entryAddLink     = "Add link…"
+	entryAddLink     = "Add source…"
 	entryPause       = "Stop downloads"
 	entryResume      = "Download"
 	entryStop        = "Stop"
@@ -41,14 +41,14 @@ func (m Model) buttons() []button {
 			out = append(out, button{"Retry failed", entryRetry, busy})
 		}
 
-		return append(out, button{"+ Add link", entryAddLink, busy})
+		return append(out, button{"+ Add source", entryAddLink, busy})
 	}
 	if !m.running() {
 		_, waiting := m.toolsWaiting()
 		nothing := busy || waiting || len(m.session.Sources()) == 0 // there is nothing to download, or no tool to do it with
 		return []button{
 			{"► Load playlists", entryStart, nothing},
-			{"+ Add link", entryAddLink, busy},
+			{"+ Add source", entryAddLink, busy},
 		}
 	}
 	// Download starts the downloads of what was accepted, and Stop downloads holds them again: the
@@ -57,7 +57,7 @@ func (m Model) buttons() []button {
 	if !m.run.Paused() {
 		download = button{"■ Stop downloads", entryPause, busy}
 	}
-	out := []button{download, {"Retry failed", entryRetry, busy}, {"+ Add link", entryAddLink, busy}}
+	out := []button{download, {"Retry failed", entryRetry, busy}, {"+ Add source", entryAddLink, busy}}
 	return out
 }
 
@@ -192,7 +192,7 @@ func (m Model) disabledReason() string {
 			if state, waiting := m.toolsWaiting(); waiting {
 				return state.Message
 			}
-			return "Add a link first."
+			return "Add a source first."
 		}
 	}
 	return ""

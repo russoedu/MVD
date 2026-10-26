@@ -7,7 +7,7 @@ import "youtube-downloader/libs/mvd-core/run/downloadsession"
 func EmptyEntriesText(s downloadsession.Session) string {
 	switch {
 	case len(s.State.Playlists) == 0:
-		return "The songs of each link show here, once you add one."
+		return "The songs of each source show here, once you add one."
 	case s.Editable:
 		return "Nothing loaded yet. Press Load playlists (Ctrl+R) to see the songs of each playlist, then choose what to download."
 	case s.SelPlaylist < len(s.State.Playlists) && !s.State.Playlists[s.SelPlaylist].Listed:

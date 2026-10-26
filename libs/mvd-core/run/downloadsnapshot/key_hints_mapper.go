@@ -27,7 +27,7 @@ func HintsOf(s downloadsession.Session) []Hint {
 		return hints
 	}
 	if s.CanAdd() {
-		hints = append(hints, Hint{"a", "add links"})
+		hints = append(hints, Hint{"a", "add sources"})
 	}
 	if !s.State.Idle {
 		hints = append(hints, Hint{"?", "help"})
