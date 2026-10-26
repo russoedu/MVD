@@ -28,7 +28,7 @@ func (m Model) render() string {
 	}
 
 	view := screenview.Padded(View(m.downloadProps(m.width, m.height), m.width, m.height).View, m.width)
-	view = m.withTableControls(m.withChoiceButtons(view))
+	view = m.withTableControls(m.withScrollbars(m.withChoiceButtons(view)))
 
 	if m.session.Adding {
 		return m.renderAddBox()
