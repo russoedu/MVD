@@ -143,22 +143,22 @@ func TestClosingAsksOnlyWhileSongsAreDownloading(t *testing.T) {
 	// Songs wait to be chosen: nothing downloads, so nothing is asked.
 	m.screen.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "abc12345678"})
 	next, cmd := m.Update(CloseRequestedMsg{})
-	if next.(Model).closing.on || cmd == nil {
-		t.Fatalf("a close with nothing downloading asked %v, cmd %v", next.(Model).closing.on, cmd != nil)
+	if next.(Model).closing.On || cmd == nil {
+		t.Fatalf("a close with nothing downloading asked %v, cmd %v", next.(Model).closing.On, cmd != nil)
 	}
 
 	// A song downloads: the app asks, in its own screen.
 	m.screen.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading, TargetID: "abc12345678"})
 	next, cmd = m.Update(CloseRequestedMsg{})
 	m = next.(Model)
-	if !m.closing.on || cmd != nil {
+	if !m.closing.On || cmd != nil {
 		t.Fatalf("a close while downloading did not ask")
 	}
 	if screen := ansi.Strip(m.render()); !strings.Contains(screen, "1 song is still downloading") || !strings.Contains(screen, "Keep downloading") {
 		t.Errorf("the question is not on the screen:\n%s", screen)
 	}
 	next, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if next.(Model).closing.on {
+	if next.(Model).closing.On {
 		t.Error("esc did not keep the downloads")
 	}
 }

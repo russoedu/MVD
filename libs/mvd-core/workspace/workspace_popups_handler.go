@@ -25,7 +25,7 @@ func (m Model) Caution(text string) Model {
 
 // WindowOpen reports whether a window of the workspace (About, Keyboard shortcuts) is showing
 // over the screen, which the page around the terminal dims itself for.
-func (m Model) WindowOpen() bool { return m.about || m.shortcuts || m.closing.on }
+func (m Model) WindowOpen() bool { return m.about || m.shortcuts || m.closing.On }
 
 // shortcutsKey works a key press while the Keyboard shortcuts window is showing: it scrolls,
 // or it closes.
@@ -109,7 +109,7 @@ func (m Model) popupMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, false
 	}
 	switch {
-	case m.closing.on:
+	case m.closing.On:
 		next, cmd := m.closeMouse(msg)
 		return next, cmd, true
 	case m.about:
@@ -158,8 +158,8 @@ func (m Model) refreshMenus() Model {
 	m.bar.SetEnabled(entryCopy, writing && m.inline.line.HasSelection())
 	m.bar.SetEnabled(entryPaste, free || live)
 	m.bar.SetEnabled(entryDelete, live && !writing && m.screen.SelectedPlaylist() >= 0)
-	m.bar.SetEnabled(entryUndo, free && !writing && len(m.undone) > 0)
-	m.bar.SetEnabled(entryRedo, free && !writing && len(m.redone) > 0)
+	m.bar.SetEnabled(entryUndo, free && !writing && m.history.CanUndo())
+	m.bar.SetEnabled(entryRedo, free && !writing && m.history.CanRedo())
 	if free {
 		m.bar.SetEnabled(entryDelete, !writing && has)
 	}
