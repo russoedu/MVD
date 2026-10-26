@@ -115,19 +115,11 @@ func (m Model) whyDisabled() string {
 	return "Add a source first."
 }
 
-// windowStatus is the line at the bottom: what was just said, or how the run is going, and the
-// keys of the screen.
+// windowStatus is the line at the bottom: what was just said, or how the run is going. The
+// terminal look's key hints (move, pane, follow) are its own: a classic window has its menus and
+// their shortcuts instead.
 func (m Model) windowStatus() windowsnapshot.Status {
-	status := windowsnapshot.Status{Summary: m.statusSummary()}
-	s := m.screen.Session()
-	if s.State == nil {
-		return status
-	}
-	for _, hint := range downloadsnapshot.HintsOf(s) {
-		status.Hints = append(status.Hints, windowsnapshot.KeyHint{Shortcut: windowsnapshot.Shortcut{Key: hint.Key}, Label: hint.Desc})
-	}
-
-	return status
+	return windowsnapshot.Status{Summary: m.statusSummary(), Hints: []windowsnapshot.KeyHint{}}
 }
 
 // statusSummary is the notice, the warning or the news of the workspace, else the counts of the run.
