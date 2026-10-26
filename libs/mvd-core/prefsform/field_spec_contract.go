@@ -65,6 +65,8 @@ type Capabilities struct {
 	CanMove bool
 	// CanUninstall says the host can remove the app.
 	CanUninstall bool
+	// CanStyleWindow says the host draws its window in the classic systems' looks too.
+	CanStyleWindow bool
 }
 
 // OptionText is how an option of a field reads.

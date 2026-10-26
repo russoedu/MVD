@@ -1,0 +1,43 @@
+/*
+ * A screen only the terminal draws so far, in a dialog of the theme: the dialog covers the window
+ * and its body is left empty, for the terminal to be shown above it (see main.terminal-window
+ * [data-look='inset'] in the page's style).
+ */
+.classic-covered-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 25%);
+}
+
+.classic-covered {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: min(1000px, calc(100% - 48px));
+  height: min(680px, calc(100% - 48px));
+  padding: var(--frame-padding);
+  border: var(--frame-border);
+  border-radius: var(--frame-radius);
+  background: var(--frame-bg);
+  box-shadow: var(--frame-shadow);
+  backdrop-filter: var(--frame-backdrop);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: var(--ui-size);
+  -webkit-font-smoothing: var(--smoothing);
+}
+
+[data-family='windows-classic'] .classic-covered {
+  padding: 3px;
+}
+
+.classic-covered-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: 2px;
+  background: #000000;
+  box-shadow: var(--sunken);
+}

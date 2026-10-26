@@ -377,5 +377,31 @@ func IsLeftover(msg tea.Msg) bool {
 // State is what the run has reported so far.
 func (m Model) State() *runstate.State { return m.session.State }
 
+// Session is what the screen shows, for a window drawn by something other than the terminal.
+func (m Model) Session() downloadsession.Session { return m.session }
+
+// ChoosePlaylist puts the cursor on playlist i, as a click on it does.
+func (m Model) ChoosePlaylist(i int) Model {
+	m.session.ChoosePlaylist(i)
+
+	return m
+}
+
+// ChooseEntry puts the cursor on the song at row i of the songs shown, as a click on it does.
+func (m Model) ChooseEntry(i int) Model {
+	m.session.ChooseEntry(i)
+
+	return m
+}
+
+// SetTicked ticks or unticks the song id, as a click on its box does.
+func (m Model) SetTicked(id int, on bool) Model {
+	if m.session.Picked[id] != on {
+		m.session.TickSong(id, false)
+	}
+
+	return m
+}
+
 // Render draws the screen, for an app model that shows it under its own notice.
 func (m Model) Render() string { return m.render() }

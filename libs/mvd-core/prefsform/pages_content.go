@@ -58,6 +58,22 @@ func colourField(label string, slot func(*config.ThemeColors) *string) Field {
 	}
 }
 
+// windowStyleField is the choice of how the window looks: MVD's terminal look, or one of the
+// classic systems. The colours below are the terminal look's.
+func windowStyleField() Field {
+	return Field{
+		Label: "Window style", Kind: KindChoice, Options: config.WindowStyleIDs(), Show: config.WindowStyleName,
+		Hint: "The terminal look, or the look of a classic Windows or Mac. The colours below are the terminal look's",
+		Get: func(c config.Config) string {
+			if config.ValidWindowStyle(c.WindowStyle) {
+				return c.WindowStyle
+			}
+			return config.WindowStyleDOS
+		},
+		Set: func(c *config.Config, v string) { c.WindowStyle = v },
+	}
+}
+
 // themeField is the choice of theme: each of the themes of the app, and the person's own.
 func themeField() Field {
 	return Field{
@@ -107,6 +123,25 @@ func Pages(caps Capabilities) []Page {
 	if caps.CanUninstall {
 		advanced = append(advanced, Field{Label: "Uninstall MVD", Kind: KindAction, Action: ActionUninstall})
 	}
+	theme := []Field{
+		themeField(),
+		func() Field {
+			f := colourField("Background", func(t *config.ThemeColors) *string { return &t.Background })
+			f.Optional = true
+			return f
+		}(),
+		colourField("Accent (title)", func(t *config.ThemeColors) *string { return &t.Accent }),
+		colourField("Focus (active border)", func(t *config.ThemeColors) *string { return &t.Focus }),
+		colourField("Highlight (keys, bars)", func(t *config.ThemeColors) *string { return &t.Highlight }),
+		colourField("Success", func(t *config.ThemeColors) *string { return &t.Success }),
+		colourField("Error", func(t *config.ThemeColors) *string { return &t.Error }),
+		colourField("Dim (borders, hints)", func(t *config.ThemeColors) *string { return &t.Dim }),
+		colourField("Text", func(t *config.ThemeColors) *string { return &t.Text }),
+		colourField("Selected row (background)", func(t *config.ThemeColors) *string { return &t.Selected }),
+	}
+	if caps.CanStyleWindow {
+		theme = append([]Field{windowStyleField()}, theme...)
+	}
 	return []Page{
 		{Name: "Output", Fields: []Field{
 			{Label: "Videos Output Folder", Hint: "Where the downloaded videos are saved.", Kind: KindFolder,
@@ -143,21 +178,6 @@ func Pages(caps Capabilities) []Page {
 				Set: func(c *config.Config, v string) { c.RetryWaitSeconds = parseInt(v) }},
 		}},
 		{Name: "Advanced", Fields: advanced},
-		{Name: "Theme", Fields: []Field{
-			themeField(),
-			func() Field {
-				f := colourField("Background", func(t *config.ThemeColors) *string { return &t.Background })
-				f.Optional = true
-				return f
-			}(),
-			colourField("Accent (title)", func(t *config.ThemeColors) *string { return &t.Accent }),
-			colourField("Focus (active border)", func(t *config.ThemeColors) *string { return &t.Focus }),
-			colourField("Highlight (keys, bars)", func(t *config.ThemeColors) *string { return &t.Highlight }),
-			colourField("Success", func(t *config.ThemeColors) *string { return &t.Success }),
-			colourField("Error", func(t *config.ThemeColors) *string { return &t.Error }),
-			colourField("Dim (borders, hints)", func(t *config.ThemeColors) *string { return &t.Dim }),
-			colourField("Text", func(t *config.ThemeColors) *string { return &t.Text }),
-			colourField("Selected row (background)", func(t *config.ThemeColors) *string { return &t.Selected }),
-		}},
+		{Name: "Theme", Fields: theme},
 	}
 }

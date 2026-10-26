@@ -1,0 +1,93 @@
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { sampleWorkspace } from '../theme-preview/sample-workspace.content'
+import { AppWindow } from './app-window.component'
+
+jest.mock('../terminal-window', () => ({
+  TerminalWindow:    ({ look }: { look: string }) => <main data-testid='terminal' data-look={look} />,
+  sendTerminalInput: jest.fn(),
+}))
+
+/** The program, as the page sees it: events it sends, and the ones the page sent it. */
+function fakeProgram () {
+  const listeners = new Map<string, ((...data: unknown[]) => void)[]>()
+  const sent: [string, unknown[]][] = []
+  Reflect.set(globalThis, 'runtime', {
+    EventsOn: (name: string, callback: (...data: unknown[]) => void) => {
+      listeners.set(name, [...listeners.get(name) ?? [], callback])
+
+      return () => listeners.set(name, (listeners.get(name) ?? []).filter(each => each !== callback))
+    },
+    EventsEmit: (name: string, ...data: unknown[]) => {
+      sent.push([name, data])
+    },
+  })
+
+  return {
+    sent,
+    send: (name: string, value: unknown) => act(() => {
+      const named = listeners.get(name) ?? []
+      for (const listener of named) listener(value)
+    }),
+  }
+}
+
+const look = (): string | undefined => screen.getByTestId('terminal').dataset.look
+
+describe('AppWindow', () => {
+  beforeEach(() => {
+    if (!('CSS' in globalThis)) Reflect.set(globalThis, 'CSS', { escape: (text: string) => text, supports: () => false })
+    // jsdom has no ResizeObserver, which the dialog of a covered screen watches itself with.
+    if (!('ResizeObserver' in globalThis)) Reflect.set(globalThis, 'ResizeObserver', class { observe (): void {} disconnect (): void {} })
+  })
+
+  afterEach(() => Reflect.deleteProperty(globalThis, 'runtime'))
+
+  it('asks the program for the style and stays the terminal look while it is the DOS one', () => {
+    const program = fakeProgram()
+    render(<AppWindow />)
+    expect(program.sent.map(([name]) => name)).toContain('mvd:style-request')
+
+    program.send('mvd:style', 'dos')
+    program.send('mvd:snapshot', JSON.stringify(sampleWorkspace))
+    expect(look()).toBe('page')
+    expect(document.querySelector('.classic-window')).toBeNull()
+  })
+
+  it('draws the classic window from what the program sends, with the terminal running behind it', async () => {
+    const program = fakeProgram()
+    render(<AppWindow />)
+    program.send('mvd:style', 'windows-95')
+    program.send('mvd:snapshot', JSON.stringify(sampleWorkspace))
+
+    // The classic look is loaded on demand, the first time slowly.
+    expect(await screen.findByRole('button', { name: '+ Add source' }, { timeout: 5000 })).toBeTruthy()
+    expect(look()).toBe('behind')
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Add source' }))
+    const intents = program.sent.filter(([name]) => name === 'mvd:intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
+    expect(intents).toContainEqual({ kind: 'button', id: 'add-source' })
+  })
+
+  it('sends a menu shortcut as the menu entry, and a plain letter as a key', async () => {
+    const program = fakeProgram()
+    render(<AppWindow />)
+    program.send('mvd:style', 'windows-xp')
+    program.send('mvd:snapshot', JSON.stringify(sampleWorkspace))
+    await screen.findByRole('button', { name: '+ Add source' }, { timeout: 5000 })
+
+    fireEvent.keyDown(document.body, { key: 'l', ctrlKey: true })
+    fireEvent.keyDown(document.body, { key: 'd' })
+    const intents = program.sent.filter(([name]) => name === 'mvd:intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
+    expect(intents).toEqual([{ kind: 'menu', id: 'add-source' }, { kind: 'key', key: 'd' }])
+  })
+
+  it('shows the terminal in a dialog of the theme for a screen the themes do not draw yet', async () => {
+    const program = fakeProgram()
+    render(<AppWindow />)
+    program.send('mvd:style', 'mac-os-9')
+    program.send('mvd:snapshot', JSON.stringify({ ...sampleWorkspace, covered: { title: 'Preferences' } }))
+
+    expect(await screen.findByRole('region', { name: 'Preferences' }, { timeout: 5000 })).toBeTruthy()
+    expect(look()).toBe('inset')
+  })
+})

@@ -1,6 +1,6 @@
 import { lazy, StrictMode, Suspense } from 'react'
 import * as ReactDOM from 'react-dom/client'
-import { TerminalWindow } from './terminal-window'
+import { AppWindow } from './app-window'
 
 // Loaded only on its own page, so the terminal page does not carry the classic themes.
 const ThemePreview = lazy(async () => {
@@ -13,9 +13,9 @@ const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement,
 )
 
-// The page is the terminal-style interface; the app serves it for every path. /themes shows the
-// classic themes with a sample list, until the program can draw its own window in them (#345).
-const page = location.pathname.replace(/\/+$/, '') === '/themes' ? <Suspense><ThemePreview /></Suspense> : <TerminalWindow />
+// The page is MVD's window, in the style the preferences say; the app serves it for every path.
+// /themes shows the classic themes with a sample list, to try them without the program.
+const page = location.pathname.replace(/\/+$/, '') === '/themes' ? <Suspense><ThemePreview /></Suspense> : <AppWindow />
 
 root.render(
   <StrictMode>

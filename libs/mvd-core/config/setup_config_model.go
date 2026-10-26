@@ -65,6 +65,11 @@ type Config struct {
 	// from: one of the themes of the app, or CustomTheme once the person changed a colour.
 	Colors    ThemeColors
 	ThemeName string
+
+	// WindowStyle is how the app's window is drawn: the terminal look (WindowStyleDOS) or one of
+	// the classic systems of WindowStyles. Only the app's window reads it; the terminal app is
+	// always the terminal look.
+	WindowStyle string
 }
 
 // Default returns the settings used on first run, with paths rooted at the
@@ -96,6 +101,7 @@ func Default(appDir, downloadsDir string) Config {
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno", "--js-runtimes", "node"},
 		Colors:                 DefaultThemeColors(),
 		ThemeName:              DefaultThemeName,
+		WindowStyle:            WindowStyleDOS,
 	}
 }
 

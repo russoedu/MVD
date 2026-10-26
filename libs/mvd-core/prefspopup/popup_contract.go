@@ -14,6 +14,9 @@ type Host struct {
 	Move func() (message string, err error)
 	// Uninstall asks to remove the app and says what came of it.
 	Uninstall func() (message string, err error)
+	// StylesWindow says the host draws its window in the classic systems' looks too, so the
+	// preferences offer the choice.
+	StylesWindow bool
 }
 
 // CloseMsg is sent when the person leaves the popup with esc.

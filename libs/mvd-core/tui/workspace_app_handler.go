@@ -13,6 +13,7 @@ import (
 	"youtube-downloader/libs/mvd-core/prefspopup"
 	"youtube-downloader/libs/mvd-core/screenview"
 	"youtube-downloader/libs/mvd-core/workspace"
+	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
 
 // WorkspaceInput seeds the workspace app.
@@ -26,6 +27,11 @@ type WorkspaceInput struct {
 	// Modal, when set, is called with true when a popup opens over the screen and false when
 	// the last one closes, so a host can dim what is around the terminal.
 	Modal func(open bool)
+	// Style, when set, is called with the window style of the settings when the app starts and
+	// whenever it changes, and the preferences offer the choice. Window is then called with what
+	// the window shows after every change while the style is a classic one, for the host to draw.
+	Style  func(style string)
+	Window func(windowsnapshot.Snapshot)
 }
 
 // NewWorkspaceApp returns the app whose main screen is the workspace: the download list
@@ -51,8 +57,10 @@ type workspaceApp struct {
 	shortcutsScroll int
 	width, height int
 	hoverX, hoverY int
-	// modal is whether a popup was last reported open to Modal.
+	// modal is whether a popup was last reported open to Modal, and style the window style
+	// last reported to Style.
 	modal *bool
+	style *string
 }
 
 func (a workspaceApp) Init() tea.Cmd {
@@ -72,7 +80,33 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		next = app
 	}
+	if app, ok := next.(workspaceApp); ok && app.in.Style != nil {
+		next = app.report()
+	}
 	return next, cmd
+}
+
+// report tells the host the window style when it changed, and what the window shows while the
+// style is a classic one; a screen only the terminal draws covers it, as the preferences do.
+func (a workspaceApp) report() workspaceApp {
+	style := a.cfg.WindowStyle
+	if !config.ValidWindowStyle(style) {
+		style = config.WindowStyleDOS
+	}
+	if a.style == nil || *a.style != style {
+		a.in.Style(style)
+		a.style = &style
+	}
+	if style == config.WindowStyleDOS || a.in.Window == nil {
+		return a
+	}
+	snap := a.ws.Window()
+	if a.inPrefs {
+		snap.Covered = &windowsnapshot.Covered{Title: "Preferences"}
+	}
+	a.in.Window(snap)
+
+	return a
 }
 
 func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -174,7 +208,7 @@ func (a workspaceApp) waitsForSave(chosen config.Config) bool {
 // removing the app.
 func (a workspaceApp) popupHost() prefspopup.Host {
 	in := a.in.Setup
-	host := prefspopup.Host{}
+	host := prefspopup.Host{StylesWindow: a.in.Style != nil}
 	if in.PickFolder != nil {
 		host.PickFolder = in.PickFolder
 	}
