@@ -1,0 +1,47 @@
+.theme-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* The bar for picking a theme is the page's own, not part of any theme. */
+.theme-preview-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #1b1b1f;
+  color: #e5e7eb;
+  font: 13px system-ui, sans-serif;
+}
+
+.theme-preview-bar button {
+  padding: 4px 10px;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  background: #27272a;
+  color: inherit;
+  font: inherit;
+}
+
+.theme-preview-bar button[aria-pressed='true'] {
+  border-color: #00f0ff;
+  color: #00f0ff;
+}
+
+.theme-preview-intent {
+  margin-left: auto;
+  overflow: hidden;
+  color: #9ca3af;
+  font: 12px ui-monospace, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-preview-desktop {
+  flex: 1;
+  min-height: 0;
+  padding: 24px;
+  background: var(--desktop);
+}

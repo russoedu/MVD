@@ -181,6 +181,27 @@ Everything here is in MVD today: the menu bar, the toolbar buttons (Start, Pause
 
 Each family is one PR or a small series. A theme is done when MVD's screens are drawn in it, every intent works by mouse and keyboard, and a screenshot test pins its look.
 
+## Built so far (#369)
+
+The first three themes have fonts that are free to use: Windows 95 (W95FA), Windows Vista (Segoe UI, or Selawik where it is missing) and Mac OS X 10.0 (the installed Lucida Grande, or Lucida Sans Unicode). They are built in `apps/mvd-web` and drawn from a sample snapshot at `/themes`, until the program sends its own (steps 1 and 3).
+
+| Slice | Holds |
+|---|---|
+| `workspace-snapshot/` | The contract: what the window shows (roles, not places) and the intents it sends back. |
+| `classic-themes/` | The theme list, each family's layout rules (`chrome-layout.policy.ts`), how shortcuts are written, the bundled fonts, one token file per theme and the shared controls. |
+| `classic-window/` | Frame, title bar, menu bar, toolbar and status line. |
+| `classic-panes/` | Sources list, songs table with progress bars, details pane. |
+| `add-music-window/` | The Add music window: a dialog on Windows, a sheet on a Mac. |
+| `theme-preview/` | The `/themes` page and its sample list. |
+
+How the CSS is split: a theme file sets custom properties on `:root[data-theme=...]` and styles that theme's scroll bars. Component stylesheets read only those properties, and put what differs in structure under `[data-family=...]`. The theme is set on the page root, so menus, which open outside the window, wear it too.
+
+Still to do for these three themes:
+- **Aqua scroll bars:** Chrome does not draw both arrows together at the end, so the Aqua bar has no arrows yet.
+- **Windows mnemonics** (underlined letters, Alt+letter) are not shown yet.
+- **Busy cursors:** the theme's own hourglass or spinning cursor is not drawn yet; the browser's busy cursor shows.
+- **Integer scaling** for Windows 95 is not done yet.
+
 ## Open questions
 
 - **Theme names.** "Windows" and "Mac OS" are trademarks. We could show neutral names in the picker ("Classic 95", "Platinum", "Aqua-style") and keep the OS names in the code and docs.

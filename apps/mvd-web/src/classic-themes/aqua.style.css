@@ -1,0 +1,212 @@
+/*
+ * Mac OS X 10.0 (Aqua): pinstriped windows and menus, Lucida Grande (Lucida Sans Unicode on
+ * Windows, the design it grew from), white and blue gel buttons, a default button that pulses,
+ * red, yellow and green window buttons, striped progress bars that keep moving, and dialogs that
+ * come down from the title bar as sheets.
+ */
+:root[data-theme='aqua'] {
+  --ui-font: 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', sans-serif;
+  --ui-size: 13px;
+  --title-font: var(--ui-font);
+  --title-size: 13px;
+  --title-weight: 400;
+  --mono-font: Monaco, 'Lucida Console', monospace;
+  --mono-size: 11px;
+  --smoothing: antialiased;
+
+  --pinstripes: repeating-linear-gradient(#f6f6f6 0 2px, #e9e9e9 2px 4px);
+  --gel-blue: linear-gradient(#cde6fd, #8fc2f2 48%, #5ea2e6 50%, #8ec7f7 85%, #b9e0fd);
+  --gel-graphite: linear-gradient(#ffffff, #f2f2f2 48%, #e1e1e1 50%, #ececec 85%, #ffffff);
+
+  --desktop: radial-gradient(ellipse at 70% 30%, #6fa8ec 0%, transparent 55%), radial-gradient(ellipse at 10% 90%, #1d4fa4 0%, transparent 60%), linear-gradient(170deg, #3a78d4, #2457b3 55%, #163e8c);
+  --face: var(--pinstripes);
+  --window: #ffffff;
+  --text: #000000;
+  --text-dim: #7a7a7a;
+  --text-good: #1f7a2e;
+  --text-bad: #c0281b;
+  --text-busy: #1d57b8;
+  --select-bg: #3875d7;
+  --select-text: #ffffff;
+  --focus-ring: 3px solid rgb(90 150 230 / 75%);
+
+  --raised: none;
+  --sunken: inset 0 1px 2px rgb(0 0 0 / 35%);
+  --pressed: inset 0 1px 3px rgb(0 0 0 / 45%);
+  --etched: inset 0 -1px #ffffff, inset 0 1px #c2c2c2;
+
+  --frame-bg: var(--pinstripes);
+  --frame-border: 1px solid rgb(0 0 0 / 35%);
+  --frame-shadow: 0 12px 32px rgb(0 0 0 / 50%);
+  --frame-radius: 7px 7px 3px 3px;
+  --frame-padding: 0;
+  --frame-backdrop: none;
+
+  --title-height: 22px;
+  --title-bg: var(--pinstripes);
+  --title-text: #000000;
+  --title-text-shadow: none;
+
+  --control-width: 14px;
+  --control-height: 14px;
+  --control-bg: var(--gel-graphite);
+  --control-shadow: inset 0 0 0 1px rgb(0 0 0 / 30%);
+  --control-pressed-shadow: inset 0 1px 3px rgb(0 0 0 / 55%);
+  --control-radius: 50%;
+  --control-text: rgb(0 0 0 / 60%);
+  --control-close-bg: radial-gradient(circle at 50% 30%, #ffd1c9 0 20%, #f0614c 55%, #b9301d);
+  --control-close-width: 14px;
+  --control-gap: 6px;
+  --control-close-gap: 6px;
+  --control-minimise-bg: radial-gradient(circle at 50% 30%, #fff1b8 0 20%, #f5be2b 55%, #b9850c);
+  --control-maximise-bg: radial-gradient(circle at 50% 30%, #d8f8c4 0 20%, #5fc444 55%, #2f8a1d);
+
+  --menubar-bg: var(--pinstripes);
+  --menu-bg: rgb(255 255 255 / 92%);
+  --menu-border: 1px solid rgb(0 0 0 / 15%);
+  --menu-shadow: 0 6px 18px rgb(0 0 0 / 35%);
+  --menu-radius: 0 0 5px 5px;
+  --menu-padding: 4px 0;
+  --menu-item-select-bg: var(--gel-blue);
+  --menu-item-select-text: #ffffff;
+  --menu-item-radius: 0;
+  --menu-separator: inset 0 -1px #e2e2e2;
+
+  --toolbar-bg: var(--pinstripes);
+
+  --button-height: 21px;
+  --button-padding: 0 18px;
+  --button-bg: var(--gel-graphite);
+  --button-text: #000000;
+  --button-border: 1px solid #8a8a8a;
+  --button-shadow: inset 0 1px #ffffff, 0 1px 2px rgb(0 0 0 / 20%);
+  --button-radius: 11px;
+  --button-hover-bg: var(--button-bg);
+  --button-hover-border: var(--button-border);
+  --button-pressed-bg: linear-gradient(#9cc8f2, #4e8fd8 48%, #2f73c8 50%, #5ea2e6 85%, #8ec3f2);
+  --button-pressed-shadow: inset 0 1px 3px rgb(0 0 0 / 40%);
+  --button-default-bg: var(--gel-blue);
+  --button-default-text: #000000;
+  --button-default-border: 1px solid #3c6fb4;
+  --button-default-shadow: inset 0 1px #e9f5ff, 0 1px 2px rgb(0 0 0 / 25%);
+  --button-default-animation: aqua-default-pulse 1.1s ease-in-out infinite alternate;
+  --button-transition: none;
+  --button-disabled-text: #a6a6a6;
+  --button-disabled-text-shadow: none;
+
+  --field-bg: #ffffff;
+  --field-border: 1px solid #8f8f8f;
+  --field-shadow: inset 0 1px 2px rgb(0 0 0 / 30%);
+  --field-radius: 0;
+  --field-padding: 3px 4px;
+
+  --pane-bg: #ffffff;
+  --pane-border: 1px solid #9c9c9c;
+  --pane-shadow: none;
+  --pane-radius: 0;
+  --pane-padding: 0;
+  --header-bg: linear-gradient(#ffffff, #f2f2f2 50%, #e2e2e2 50%, #ececec);
+  --header-border: 1px solid #a8a8a8;
+  --header-shadow: none;
+  --row-alt-bg: #edf3fe;
+
+  --progress-height: 14px;
+  --progress-trough: linear-gradient(#cfcfcf, #f7f7f7 60%, #ffffff);
+  --progress-trough-border: 1px solid #8f8f8f;
+  --progress-trough-shadow: inset 0 1px 2px rgb(0 0 0 / 25%);
+  --progress-radius: 7px;
+  --progress-padding: 0;
+  --progress-fill: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0%) 0 6px, rgb(255 255 255 / 28%) 6px 12px) 0 0 / 34px 100%, var(--gel-blue);
+  --progress-fill-radius: 7px;
+  --progress-unknown: repeating-linear-gradient(-45deg, #8fc2f2 0 6px, #ffffff 6px 12px) 0 0 / 34px 100%;
+  --progress-animation: aqua-progress-stripes 0.9s linear infinite;
+
+  --check-size: 14px;
+  --check-bg: var(--gel-graphite);
+  --check-border: 1px solid #7d7d7d;
+  --check-shadow: inset 0 1px #ffffff;
+  --check-radius: 3px;
+  --check-mark: #000000;
+  --check-on-bg: var(--gel-blue);
+  --radio-radius: 50%;
+
+  --status-bg: var(--pinstripes);
+  --status-shadow: inset 0 1px #c2c2c2;
+
+  --dialog-shadow: 0 10px 24px rgb(0 0 0 / 45%);
+  --dialog-animation: aqua-sheet-down 0.3s ease-out;
+}
+
+@keyframes aqua-default-pulse {
+  from { filter: brightness(0.96) saturate(1); }
+  to { filter: brightness(1.12) saturate(1.25); }
+}
+
+@keyframes aqua-progress-stripes {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 34px 0, 0 0; }
+}
+
+@keyframes aqua-sheet-down {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* Scroll bars: a grooved track, a blue gel thumb, and both arrows together at the far end. */
+:root[data-theme='aqua'] ::-webkit-scrollbar {
+  width: 15px;
+  height: 15px;
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, #c4c4c4, #eeeeee 35%, #f8f8f8 70%, #e6e6e6);
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-track:horizontal {
+  background: linear-gradient(#c4c4c4, #eeeeee 35%, #f8f8f8 70%, #e6e6e6);
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-thumb {
+  border: 1px solid #3c6fb4;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #5ea2e6, #8fc2f2 30%, #cde6fd 50%, #8fc2f2 70%, #5ea2e6);
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(#cde6fd, #8fc2f2 48%, #5ea2e6 50%, #8ec7f7 85%, #b9e0fd);
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-button {
+  display: none;
+  width: 15px;
+  height: 15px;
+  background-color: #eeeeee;
+  background-repeat: no-repeat;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px #a8a8a8;
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-button:end:decrement,
+:root[data-theme='aqua'] ::-webkit-scrollbar-button:end:increment {
+  display: block;
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-button:vertical:end:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='5'%3E%3Cpath d='M0 5L3.5 0 7 5z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-button:vertical:end:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='5'%3E%3Cpath d='M0 0L3.5 5 7 0z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-button:horizontal:end:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='7'%3E%3Cpath d='M5 0L0 3.5 5 7z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-button:horizontal:end:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='7'%3E%3Cpath d='M0 0L5 3.5 0 7z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='aqua'] ::-webkit-scrollbar-corner {
+  background: #eeeeee;
+}

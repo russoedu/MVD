@@ -1,0 +1,299 @@
+/* The frame of the window: it fills its parent and stacks title, menus, toolbar, panes and status. */
+.classic-window {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: var(--frame-padding);
+  border: var(--frame-border);
+  border-radius: var(--frame-radius);
+  background: var(--frame-bg);
+  box-shadow: var(--frame-shadow);
+  backdrop-filter: var(--frame-backdrop);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: var(--ui-size);
+  -webkit-font-smoothing: var(--smoothing);
+  cursor: default;
+  user-select: none;
+}
+
+.classic-window[data-busy] {
+  cursor: progress;
+}
+
+/* Title bar. */
+.classic-title-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: var(--title-height);
+  padding: 0 3px;
+  background: var(--title-bg);
+  color: var(--title-text);
+  font-family: var(--title-font);
+  font-size: var(--title-size);
+  font-weight: var(--title-weight);
+  text-shadow: var(--title-text-shadow);
+}
+
+.classic-title {
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classic-title-bar[data-align='center'] .classic-title {
+  text-align: center;
+}
+
+/* On a Mac the title stays centred on the whole bar: the buttons' width is mirrored on the right. */
+[data-family='aqua'] .classic-title-bar::after {
+  width: 60px;
+  content: '';
+}
+
+.classic-window-controls {
+  display: flex;
+  flex: none;
+  gap: var(--control-gap);
+}
+
+.classic-window-control {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--control-width);
+  height: var(--control-height);
+  padding: 0;
+  border: none;
+  border-radius: var(--control-radius);
+  background: var(--control-bg);
+  box-shadow: var(--control-shadow);
+  color: var(--control-text);
+  font: bold 12px/1 var(--ui-font);
+  text-shadow: none;
+  cursor: default;
+}
+
+.classic-window-control:active {
+  box-shadow: var(--control-pressed-shadow);
+}
+
+.classic-window-control[data-control='close'] {
+  width: var(--control-close-width);
+  margin-left: var(--control-close-gap);
+  background: var(--control-close-bg);
+}
+
+/* Windows classic: the glyphs are small and sit low, as the bitmaps did. */
+[data-family='windows-classic'] .classic-window-control {
+  align-items: end;
+  padding-bottom: 2px;
+  font-size: 14px;
+}
+
+/* Vista: the caption buttons are one glassy group hanging from the top edge. */
+[data-family='windows-themed'] .classic-title-bar {
+  align-items: flex-start;
+  padding: 0;
+}
+
+[data-family='windows-themed'] .classic-title {
+  align-self: center;
+  padding-left: 2px;
+}
+
+[data-family='windows-themed'] .classic-window-control {
+  font-size: 11px;
+}
+
+[data-family='windows-themed'] .classic-window-control:first-child {
+  border-bottom-left-radius: 4px;
+}
+
+[data-family='windows-themed'] .classic-window-control:last-child {
+  border-bottom-right-radius: 4px;
+}
+
+[data-family='windows-themed'] .classic-window-control:hover {
+  filter: brightness(1.15) drop-shadow(0 0 4px rgb(160 220 255 / 90%));
+}
+
+[data-family='windows-themed'] .classic-window-control[data-control='close']:hover {
+  filter: brightness(1.1) drop-shadow(0 0 5px rgb(255 120 90 / 90%));
+}
+
+/* Aqua: red, yellow and green lights; their symbols show when the pointer is over them. */
+[data-family='aqua'] .classic-window-control[data-control='minimise'] {
+  background: var(--control-minimise-bg);
+}
+
+[data-family='aqua'] .classic-window-control[data-control='maximise'] {
+  background: var(--control-maximise-bg);
+}
+
+[data-family='aqua'] .classic-window-control[data-control='close'] {
+  margin-left: 0;
+}
+
+[data-family='aqua'] .classic-window-control span {
+  visibility: hidden;
+  font-size: 10px;
+}
+
+[data-family='aqua'] .classic-window-controls:hover .classic-window-control span {
+  visibility: visible;
+}
+
+/* Menu bar. */
+.classic-menu-bar {
+  display: flex;
+  flex: none;
+  background: var(--menubar-bg);
+}
+
+.classic-menu-title {
+  padding: 2px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: default;
+  outline: none;
+}
+
+.classic-menu-title[data-pressed],
+.classic-menu-title[aria-expanded='true'] {
+  background: var(--menu-item-select-bg);
+  color: var(--menu-item-select-text);
+}
+
+[data-family='windows-classic'] .classic-menu-title[data-focus-visible] {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* Menus open outside the window, so they take the theme's fonts themselves. */
+.classic-menu-popover {
+  min-width: 200px;
+  padding: var(--menu-padding);
+  border: var(--menu-border);
+  border-radius: var(--menu-radius);
+  background: var(--menu-bg);
+  box-shadow: var(--menu-shadow);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: var(--ui-size);
+  -webkit-font-smoothing: var(--smoothing);
+  outline: none;
+}
+
+.classic-menu {
+  outline: none;
+}
+
+.classic-menu-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 2px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--menu-item-radius);
+  outline: none;
+  cursor: default;
+}
+
+[data-family='windows-themed'] .classic-menu-item {
+  padding-left: 32px;
+}
+
+.classic-menu-item[data-focused] {
+  background: var(--menu-item-select-bg);
+  color: var(--menu-item-select-text);
+}
+
+[data-family='windows-themed'] .classic-menu-item[data-focused] {
+  border-color: #a8d8eb;
+}
+
+.classic-menu-item[data-disabled] {
+  color: var(--button-disabled-text);
+  text-shadow: var(--button-disabled-text-shadow);
+}
+
+.classic-menu-shortcut {
+  font: inherit;
+}
+
+.classic-menu-separator {
+  height: 2px;
+  margin: 3px 2px;
+  border: none;
+  box-shadow: var(--menu-separator);
+}
+
+/* Toolbar. */
+.classic-tool-bar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 6px;
+  background: var(--toolbar-bg);
+}
+
+/* The panes: sources on the left, songs on the right, details along the bottom. */
+.classic-window-inside {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--face);
+}
+
+.classic-window-panes {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 2.4fr;
+  grid-template-rows: 1fr minmax(90px, 0.45fr);
+  gap: 6px;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 6px;
+}
+
+.classic-window-panes > :last-child {
+  grid-column: 1 / -1;
+}
+
+/* Status line. */
+.classic-status-line {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 6px;
+  background: var(--status-bg);
+  box-shadow: var(--status-shadow);
+  white-space: nowrap;
+}
+
+.classic-status-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.classic-status-hints {
+  display: flex;
+  gap: 12px;
+  color: var(--text-dim);
+}
+
+.classic-status-hint kbd {
+  font: inherit;
+  color: var(--text);
+}

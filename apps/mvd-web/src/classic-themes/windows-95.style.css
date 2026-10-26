@@ -1,0 +1,187 @@
+/*
+ * Windows 95: grey 3D bevels, a navy title bar, MS Sans Serif (W95FA) with no smoothing, and
+ * nothing that moves. Bevel values follow 98.css (MIT), which measured the real thing.
+ */
+:root[data-theme='windows-95'] {
+  --ui-font: 'WIN95FA', 'Microsoft Sans Serif', 'MS Sans Serif', sans-serif;
+  --ui-size: 16px;
+  --title-font: var(--ui-font);
+  --title-size: 16px;
+  --title-weight: 700;
+  --mono-font: 'Fixedsys Excelsior', 'Courier New', monospace;
+  --mono-size: 13px;
+  --smoothing: none;
+
+  --desktop: #008080;
+  --face: #c0c0c0;
+  --window: #ffffff;
+  --text: #000000;
+  --text-dim: #808080;
+  --text-good: #008000;
+  --text-bad: #800000;
+  --text-busy: #000080;
+  --select-bg: #000080;
+  --select-text: #ffffff;
+  --focus-ring: 1px dotted #000000;
+
+  --raised: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --sunken: inset -1px -1px #ffffff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a;
+  --pressed: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+  --etched: inset -1px -1px #ffffff, inset 1px 1px #808080;
+
+  --frame-bg: var(--face);
+  --frame-border: none;
+  --frame-shadow: var(--raised);
+  --frame-radius: 0;
+  --frame-padding: 3px;
+  --frame-backdrop: none;
+
+  --title-height: 22px;
+  --title-bg: #000080;
+  --title-text: #ffffff;
+  --title-text-shadow: none;
+
+  --control-width: 18px;
+  --control-height: 16px;
+  --control-bg: var(--face);
+  --control-shadow: var(--raised);
+  --control-pressed-shadow: var(--pressed);
+  --control-radius: 0;
+  --control-text: #000000;
+  --control-close-bg: var(--face);
+  --control-close-width: 18px;
+  --control-gap: 0;
+  --control-close-gap: 2px;
+
+  --menubar-bg: var(--face);
+  --menu-bg: var(--face);
+  --menu-border: none;
+  --menu-shadow: var(--raised);
+  --menu-radius: 0;
+  --menu-padding: 3px;
+  --menu-item-select-bg: var(--select-bg);
+  --menu-item-select-text: var(--select-text);
+  --menu-item-radius: 0;
+  --menu-separator: var(--etched);
+
+  --toolbar-bg: var(--face);
+
+  --button-height: 26px;
+  --button-padding: 0 12px;
+  --button-bg: var(--face);
+  --button-text: #000000;
+  --button-border: none;
+  --button-shadow: var(--raised);
+  --button-radius: 0;
+  --button-hover-bg: var(--face);
+  --button-hover-border: none;
+  --button-pressed-bg: var(--face);
+  --button-pressed-shadow: var(--pressed);
+  --button-default-bg: var(--face);
+  --button-default-text: #000000;
+  --button-default-border: none;
+  --button-default-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #0a0a0a, inset -2px -2px #0a0a0a, inset 2px 2px #ffffff, inset -3px -3px #808080, inset 3px 3px #dfdfdf;
+  --button-default-animation: none;
+  --button-transition: none;
+  --button-disabled-text: #808080;
+  --button-disabled-text-shadow: 1px 1px #ffffff;
+
+  --field-bg: var(--window);
+  --field-border: none;
+  --field-shadow: var(--sunken);
+  --field-radius: 0;
+  --field-padding: 3px 4px;
+
+  --pane-bg: var(--window);
+  --pane-border: none;
+  --pane-shadow: var(--sunken);
+  --pane-radius: 0;
+  --pane-padding: 2px;
+  --header-bg: var(--face);
+  --header-border: none;
+  --header-shadow: var(--raised);
+  --row-alt-bg: var(--window);
+
+  --progress-height: 18px;
+  --progress-trough: var(--window);
+  --progress-trough-border: none;
+  --progress-trough-shadow: var(--sunken);
+  --progress-radius: 0;
+  --progress-padding: 2px;
+  --progress-fill: repeating-linear-gradient(90deg, #000080 0 8px, transparent 8px 10px);
+  --progress-fill-radius: 0;
+  --progress-unknown: repeating-linear-gradient(90deg, #000080 0 8px, transparent 8px 10px);
+  --progress-animation: none;
+
+  --check-size: 13px;
+  --check-bg: var(--window);
+  --check-border: none;
+  --check-shadow: var(--sunken);
+  --check-radius: 0;
+  --check-mark: #000000;
+  --check-on-bg: var(--window);
+  --radio-radius: 50%;
+
+  --status-bg: var(--face);
+  --status-shadow: var(--etched);
+
+  --dialog-shadow: var(--raised);
+  --dialog-animation: none;
+}
+
+/* Scroll bars: square bevelled arrows at both ends and a dithered track. */
+:root[data-theme='windows-95'] ::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-track {
+  background-color: #dfdfdf;
+  background-image: conic-gradient(#ffffff 25%, transparent 0 50%, #ffffff 0 75%, transparent 0);
+  background-size: 2px 2px;
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #ffffff;
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-color: #c0c0c0;
+  background-repeat: no-repeat;
+  background-position: center;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #ffffff;
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button:active {
+  box-shadow: inset 0 0 0 1px #808080;
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h7v1H0zM1 1h5v1H1zM2 2h3v1H2zM3 3h1v1H3z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v7H3zM2 1h1v5H2zM1 2h1v3H1zM0 3h1v1H0z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v7H0zM1 1h1v5H1zM2 2h1v3H2zM3 3h1v1H3z'/%3E%3C/svg%3E");
+}
+
+/* One arrow at each end: Chrome would otherwise draw both arrows at both ends. */
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button:start:increment,
+:root[data-theme='windows-95'] ::-webkit-scrollbar-button:end:decrement {
+  display: none;
+}
+
+:root[data-theme='windows-95'] ::-webkit-scrollbar-corner {
+  background: #c0c0c0;
+}

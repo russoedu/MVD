@@ -1,0 +1,136 @@
+/*
+ * The controls every part of a classic window uses: buttons, text fields, check boxes and radio
+ * buttons. They read only the theme's tokens.
+ */
+.classic-button {
+  box-sizing: border-box;
+  min-width: 75px;
+  height: var(--button-height);
+  padding: var(--button-padding);
+  border: var(--button-border);
+  border-radius: var(--button-radius);
+  background: var(--button-bg);
+  box-shadow: var(--button-shadow);
+  color: var(--button-text);
+  font: inherit;
+  white-space: nowrap;
+  cursor: default;
+  transition: var(--button-transition);
+  outline: none;
+}
+
+.classic-button[data-hovered] {
+  border: var(--button-hover-border);
+  background: var(--button-hover-bg);
+}
+
+.classic-button[data-role='default'] {
+  border: var(--button-default-border);
+  background: var(--button-default-bg);
+  box-shadow: var(--button-default-shadow);
+  color: var(--button-default-text);
+  animation: var(--button-default-animation);
+}
+
+.classic-button[data-pressed] {
+  background: var(--button-pressed-bg);
+  box-shadow: var(--button-pressed-shadow);
+  animation: none;
+}
+
+.classic-button[data-disabled] {
+  color: var(--button-disabled-text);
+  text-shadow: var(--button-disabled-text-shadow);
+  animation: none;
+}
+
+.classic-button[data-focus-visible] {
+  outline: var(--focus-ring);
+  outline-offset: -5px;
+}
+
+[data-family='aqua'] .classic-button[data-focus-visible],
+.classic-sheet .classic-button[data-focus-visible] {
+  outline-offset: 1px;
+}
+
+.classic-field {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--field-padding);
+  border: var(--field-border);
+  border-radius: var(--field-radius);
+  background: var(--field-bg);
+  box-shadow: var(--field-shadow);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.classic-field[data-focused] {
+  outline: var(--focus-ring);
+  outline-offset: 0;
+}
+
+[data-family='windows-classic'] .classic-field[data-focused] {
+  outline: none;
+}
+
+.classic-check-box,
+.classic-radio-dot {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--check-size);
+  height: var(--check-size);
+  border: var(--check-border);
+  border-radius: var(--check-radius);
+  background: var(--check-bg);
+  box-shadow: var(--check-shadow);
+  vertical-align: middle;
+}
+
+.classic-radio-dot {
+  border-radius: var(--radio-radius);
+}
+
+[data-selected] > .classic-check-box,
+[data-selected] > .classic-radio-dot {
+  background: var(--check-on-bg);
+}
+
+/* The tick: two strokes drawn with borders. */
+[data-selected] > .classic-check-box::after {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  width: 3px;
+  height: 7px;
+  border: solid var(--check-mark);
+  border-width: 0 2px 2px 0;
+  content: '';
+  transform: rotate(40deg);
+}
+
+[data-selected] > .classic-radio-dot::after {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--check-mark);
+  content: '';
+}
+
+[data-focus-visible] > .classic-check-box,
+[data-focus-visible] > .classic-radio-dot {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classic-button,
+  .classic-button[data-role='default'] {
+    transition: none;
+    animation: none;
+  }
+}

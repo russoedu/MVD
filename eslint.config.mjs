@@ -14,6 +14,20 @@ export default [
     ignores: ['test_meta.json'],
   },
   {
+    // The classic themes set their tokens (custom properties) on :root[data-theme=...] in
+    // apps/mvd-web/src/classic-themes; the components' stylesheets in other files read them, so
+    // the linter cannot see where they are defined.
+    name:  'local/classic-theme-tokens',
+    files: [
+      'apps/mvd-web/src/classic-*/**/*.css',
+      'apps/mvd-web/src/add-music-window/**/*.css',
+      'apps/mvd-web/src/theme-preview/**/*.css',
+    ],
+    rules: {
+      'css/no-invalid-properties': ['error', { allowUnknownVariables: true }],
+    },
+  },
+  {
     ignores: [
       '**/vite.config.*.timestamp*',
     ],
