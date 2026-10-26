@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" shape-rendering="crispEdges">
+  <!-- Windows 95's hourglass, drawn for MVD: black caps, a white glass and black sand. -->
+  <path d="M9 7h14v4l-5 5 5 5v4H9v-4l5-5-5-5z" fill="#000"/>
+  <path d="M10 7h12v3l-5 6 5 6v3H10v-3l5-6-5-6z" fill="#fff"/>
+  <path d="M12 10h8l-3 4h-2zM15 19h2l3 3v2h-8v-2z" fill="#000"/>
+  <path d="M8 4h16v3H8zM8 25h16v3H8z" fill="#000"/>
+</svg>

@@ -127,6 +127,9 @@
 
   --dialog-shadow: var(--raised);
   --dialog-animation: none;
+
+  --cursor-wait: url('./cursors/windows-95-wait.svg') 16 16, wait;
+  --cursor-progress: url('./cursors/windows-95-progress.svg') 0 0, progress;
 }
 
 /* Scroll bars: square bevelled arrows at both ends and a dithered track. */

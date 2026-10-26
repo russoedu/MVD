@@ -31,7 +31,7 @@ So that themes can place things the way their OS did, the JSON snapshot describe
 - **Buttons carry a role** (`default`, `cancel`, `other`) and an enabled flag with the reason when disabled. Windows themes place them `[OK] [Cancel]`. Mac themes place them `[Cancel] [OK]`, with the default button rightmost.
 - **Menu entries carry their shortcut as data** (`{ctrl: true, key: "L"}`), not as text. Windows themes write `Ctrl+L` aligned right. Mac themes write `⌘L`.
 - **Mnemonics.** A menu entry carries its access letter, so Windows themes can underline it and handle Alt+letter. Mac themes ignore it.
-- **Busy state.** The snapshot says when MVD is busy, so each theme can show its own busy cursor: hourglass, watch, spinning wait cursor.
+- **Busy state.** The snapshot says what MVD is doing (`activity`: idle, working in the background, or keeping the user waiting), so each theme can show its own busy pointer: hourglass, watch, spinning wait cursor.
 - **Progress is a number**, or "unknown", which gets the theme's indeterminate bar.
 
 ## Behaviours that differ
@@ -196,11 +196,22 @@ The first three themes have fonts that are free to use: Windows 95 (W95FA), Wind
 
 How the CSS is split: a theme file sets custom properties on `:root[data-theme=...]` and styles that theme's scroll bars. Component stylesheets read only those properties, and put what differs in structure under `[data-family=...]`. The theme is set on the page root, so menus, which open outside the window, wear it too.
 
+Added in #371:
+- **Keyboard letters.** Menus, menu entries, dialog buttons, choices and fields can carry a `mnemonic`. Windows 95 always underlines it. Vista underlines it once Alt or F10 is pressed and hides it again on a click (the layout's `mnemonics`: `always`, `on-alt` or `none`). On Windows:
+  - Alt and a menu's letter opens that menu with its first entry lit.
+  - A letter in an open menu picks that entry, and Left or Right moves to the next menu.
+  - Alt or F10 alone puts the focus on the menu bar.
+  - In the dialog, Alt and a letter picks a choice, focuses a field or presses a button. The letter alone does the same when the focus is not in a text field.
+  - A Mac has none of this.
+- **Busy pointers.** The snapshot's `activity` is `idle`, `background` or `waiting`.
+  - Each theme draws its own pointers as SVG in `classic-themes/cursors/`, made for MVD: the Windows 95 hourglass and arrow-with-hourglass, the Vista ring and arrow-with-ring, and the Mac OS X spinning wheel. A Mac shows no pointer for work in the background.
+  - Browsers draw image pointers still, so the ring and the wheel do not turn.
+- **Sharp Windows 95.** The family's `pixelSnap` zooms the page so one CSS pixel is a whole number of screen pixels: 80 % on a screen at 125 %, 133 % at 150 %. It follows changes of scale.
+  - React Aria places menus by screen position, which the zoom would scale again. The menu's box therefore undoes the zoom (`--pixel-zoom`), and the panel inside puts it back.
+
 Still to do for these three themes:
 - **Aqua scroll bars:** Chrome does not draw both arrows together at the end, so the Aqua bar has no arrows yet.
-- **Windows mnemonics** (underlined letters, Alt+letter) are not shown yet.
-- **Busy cursors:** the theme's own hourglass or spinning cursor is not drawn yet; the browser's busy cursor shows.
-- **Integer scaling** for Windows 95 is not done yet.
+- **Menu bar tracking:** with a menu open, moving the pointer over another menu title does not open that menu yet.
 
 ## Open questions
 

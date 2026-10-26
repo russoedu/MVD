@@ -2,15 +2,15 @@ import type { AddMusicSnapshot, MenuEntrySnapshot, Shortcut, WorkspaceSnapshot }
 
 const ctrl = (key: string, shift = false): Shortcut => ({ ctrl: true, shift, key })
 
-const entry = (id: string, label: string, shortcut?: Shortcut, more: Partial<MenuEntrySnapshot> = {}): MenuEntrySnapshot =>
-  ({ id, label, shortcut, enabled: true, ...more })
+const entry = (id: string, label: string, mnemonic: string, shortcut?: Shortcut, more: Partial<MenuEntrySnapshot> = {}): MenuEntrySnapshot =>
+  ({ id, label, mnemonic, shortcut, enabled: true, ...more })
 
 /** The window for adding music, as it opens: the platform address chosen, nothing written yet. */
 export const sampleAdding: AddMusicSnapshot = {
   heading: 'Add music',
   mode:    'url',
-  modes:   [{ mode: 'url', label: 'Platform URL' }, { mode: 'search', label: 'Music search' }],
-  fields:  [{ field: 'url', label: 'URL', text: '' }],
+  modes:   [{ mode: 'url', label: 'Platform URL', mnemonic: 'U' }, { mode: 'search', label: 'Music search', mnemonic: 'M' }],
+  fields:  [{ field: 'url', label: 'URL', mnemonic: 'R', text: '' }],
   help:    [
     'YouTube playlist or video',
     'Spotify playlist or album',
@@ -18,7 +18,7 @@ export const sampleAdding: AddMusicSnapshot = {
     'Several at once, separated by spaces or new lines',
   ],
   buttons: [
-    { id: 'add', label: 'Add', role: 'default', enabled: true },
+    { id: 'add', label: 'Add', mnemonic: 'd', role: 'default', enabled: true },
     { id: 'cancel', label: 'Cancel', role: 'cancel', enabled: true },
   ],
 }
@@ -26,9 +26,9 @@ export const sampleAdding: AddMusicSnapshot = {
 /** The search fields and what they find, shown when Music search is chosen. */
 export const sampleSearch: Pick<AddMusicSnapshot, 'fields' | 'help'> = {
   fields: [
-    { field: 'artist', label: 'Artist', text: '' },
-    { field: 'album', label: 'Album', text: '' },
-    { field: 'song', label: 'Song', text: '' },
+    { field: 'artist', label: 'Artist', mnemonic: 'A', text: '' },
+    { field: 'album', label: 'Album', mnemonic: 'b', text: '' },
+    { field: 'song', label: 'Song', mnemonic: 'S', text: '' },
   ],
   help: [
     'An artist alone finds every song of the artist',
@@ -42,48 +42,52 @@ export const sampleWorkspace: WorkspaceSnapshot = {
   title: 'MVD - Music Video Downloader - my-list.mvd',
   menus: [
     {
-      label:   'File',
-      entries: [
-        entry('new', 'New list', ctrl('N')),
-        entry('open', 'Open list…', ctrl('O')),
-        entry('save', 'Save list', ctrl('S')),
-        entry('save-as', 'Save list as…', ctrl('S', true)),
-        entry('preferences', 'Preferences…', ctrl(','), { separatorBefore: true }),
-        entry('quit', 'Quit', ctrl('Q'), { separatorBefore: true }),
+      label:    'File',
+      mnemonic: 'F',
+      entries:  [
+        entry('new', 'New list', 'N', ctrl('N')),
+        entry('open', 'Open list…', 'O', ctrl('O')),
+        entry('save', 'Save list', 'S', ctrl('S')),
+        entry('save-as', 'Save list as…', 'A', ctrl('S', true)),
+        entry('preferences', 'Preferences…', 'P', ctrl(','), { separatorBefore: true }),
+        entry('quit', 'Quit', 'Q', ctrl('Q'), { separatorBefore: true }),
       ],
     },
     {
-      label:   'Edit',
-      entries: [
-        entry('undo', 'Undo', ctrl('Z')),
-        entry('redo', 'Redo', ctrl('Y'), { enabled: false }),
-        entry('cut', 'Cut', ctrl('X'), { separatorBefore: true }),
-        entry('copy', 'Copy', ctrl('C')),
-        entry('paste', 'Paste', ctrl('V')),
-        entry('delete', 'Delete', { key: 'Del' }),
-        entry('move-up', 'Move up', { shift: true, key: 'Up' }, { separatorBefore: true }),
-        entry('move-down', 'Move down', { shift: true, key: 'Down' }),
+      label:    'Edit',
+      mnemonic: 'E',
+      entries:  [
+        entry('undo', 'Undo', 'U', ctrl('Z')),
+        entry('redo', 'Redo', 'R', ctrl('Y'), { enabled: false }),
+        entry('cut', 'Cut', 't', ctrl('X'), { separatorBefore: true }),
+        entry('copy', 'Copy', 'C', ctrl('C')),
+        entry('paste', 'Paste', 'P', ctrl('V')),
+        entry('delete', 'Delete', 'D', { key: 'Del' }),
+        entry('move-up', 'Move up', 'M', { shift: true, key: 'Up' }, { separatorBefore: true }),
+        entry('move-down', 'Move down', 'w', { shift: true, key: 'Down' }),
       ],
     },
     {
-      label:   'Run',
-      entries: [
-        entry('load', 'Load playlists', ctrl('R')),
-        entry('pause', 'Stop downloads', ctrl('P'), { separatorBefore: true }),
-        entry('stop', 'Stop', ctrl('.')),
-        entry('retry', 'Retry failed', ctrl('T')),
-        entry('add-source', 'Add source…', ctrl('L'), { separatorBefore: true }),
-        entry('accept-all', 'Accept all songs', ctrl('D')),
-        entry('open-folder', 'Open folder', ctrl('O', true), { separatorBefore: true }),
+      label:    'Run',
+      mnemonic: 'R',
+      entries:  [
+        entry('load', 'Load playlists', 'L', ctrl('R')),
+        entry('pause', 'Stop downloads', 'd', ctrl('P'), { separatorBefore: true }),
+        entry('stop', 'Stop', 'S', ctrl('.')),
+        entry('retry', 'Retry failed', 'R', ctrl('T')),
+        entry('add-source', 'Add source…', 'A', ctrl('L'), { separatorBefore: true }),
+        entry('accept-all', 'Accept all songs', 'c', ctrl('D')),
+        entry('open-folder', 'Open folder', 'O', ctrl('O', true), { separatorBefore: true }),
       ],
     },
     {
-      label:   'Help',
-      entries: [
-        entry('shortcuts', 'Shortcuts', { key: 'F1' }),
-        entry('docs', 'Documentation'),
-        entry('report', 'Report a problem…'),
-        entry('about', 'About MVD', undefined, { separatorBefore: true }),
+      label:    'Help',
+      mnemonic: 'H',
+      entries:  [
+        entry('shortcuts', 'Shortcuts', 'S', { key: 'F1' }),
+        entry('docs', 'Documentation', 'D'),
+        entry('report', 'Report a problem…', 'R'),
+        entry('about', 'About MVD', 'A', undefined, { separatorBefore: true }),
       ],
     },
   ],
@@ -140,5 +144,5 @@ export const sampleWorkspace: WorkspaceSnapshot = {
       { shortcut: ctrl('P'), label: 'stop downloads' },
     ],
   },
-  busy: false,
+  activity: 'idle',
 }

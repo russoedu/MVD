@@ -4,10 +4,17 @@ import { classicThemeOf, classicThemes } from '../classic-themes'
 import { DetailsPane, SongsTable, SourcesPane } from '../classic-panes'
 import { ClassicWindow } from '../classic-window'
 import { askWindow } from '../window-actions'
-import type { WorkspaceIntent } from '../workspace-snapshot'
+import type { Activity, WorkspaceIntent } from '../workspace-snapshot'
 import { applyPreviewIntent } from './preview-intent.algorithm'
 import { sampleWorkspace } from './sample-workspace.content'
 import './theme-preview.style.css'
+
+/** What the pointer can be asked to show, to try each theme's busy pointers. */
+const activities: { activity: Activity, label: string }[] = [
+  { activity: 'idle', label: 'Idle' },
+  { activity: 'background', label: 'Working behind' },
+  { activity: 'waiting', label: 'Keeping you waiting' },
+]
 
 /** The theme named in the address (?theme=aqua), or the first one. */
 function themeInAddress () {
@@ -45,6 +52,15 @@ export function ThemePreview () {
             {each.label}
           </button>
         ))}
+        <label className='theme-preview-activity'>
+          Pointer
+          <select
+            value={snapshot.activity}
+            onChange={event => setSnapshot(current => ({ ...current, activity: event.target.value as Activity }))}
+          >
+            {activities.map(({ activity, label }) => <option key={activity} value={activity}>{label}</option>)}
+          </select>
+        </label>
         <output className='theme-preview-intent'>{last}</output>
       </div>
       <div className='theme-preview-desktop'>

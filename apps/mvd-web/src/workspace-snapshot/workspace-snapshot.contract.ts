@@ -7,18 +7,31 @@
  * preview draws a sample of it.
  */
 export interface WorkspaceSnapshot {
-  title:   string
-  menus:   MenuSnapshot[]
-  toolbar: ButtonSnapshot[]
-  sources: SourcesSnapshot
-  songs:   SongsSnapshot
-  details: DetailsSnapshot
-  status:  StatusSnapshot
-  /** True while MVD works in a way that keeps the user waiting: the theme shows its busy cursor. */
-  busy:    boolean
+  title:    string
+  menus:    MenuSnapshot[]
+  toolbar:  ButtonSnapshot[]
+  sources:  SourcesSnapshot
+  songs:    SongsSnapshot
+  details:  DetailsSnapshot
+  status:   StatusSnapshot
+  activity: Activity
   /** The window for adding music, when it is open. */
-  adding?: AddMusicSnapshot
+  adding?:  AddMusicSnapshot
 }
+
+/**
+ * What MVD is doing, for the theme's pointer: nothing; working while the user carries on (the
+ * arrow with a small hourglass on Windows); or keeping the user waiting (the hourglass, the ring
+ * or the spinning wheel).
+ */
+export type Activity = 'idle' | 'background' | 'waiting'
+
+/**
+ * The letter Windows underlines in a label and reaches with Alt and the letter, written as it
+ * appears in the label; the first time it appears, in either case, is the one underlined. Mac
+ * themes have no such letters and ignore it.
+ */
+export type Mnemonic = string
 
 /** A shortcut as keys, so each theme writes it its own way (Ctrl+L or ⌘L). */
 export interface Shortcut {
@@ -29,13 +42,15 @@ export interface Shortcut {
 }
 
 export interface MenuSnapshot {
-  label:   string
-  entries: MenuEntrySnapshot[]
+  label:     string
+  mnemonic?: Mnemonic
+  entries:   MenuEntrySnapshot[]
 }
 
 export interface MenuEntrySnapshot {
   id:               string
   label:            string
+  mnemonic?:        Mnemonic
   shortcut?:        Shortcut
   enabled:          boolean
   /** Draws a separator line above the entry. */
@@ -48,6 +63,7 @@ export type ButtonRole = 'default' | 'cancel' | 'other'
 export interface ButtonSnapshot {
   id:              string
   label:           string
+  mnemonic?:       Mnemonic
   role:            ButtonRole
   enabled:         boolean
   /** Why it cannot be used, when it cannot. */
@@ -110,9 +126,9 @@ export type AddMusicField = 'url' | 'artist' | 'album' | 'song'
 export interface AddMusicSnapshot {
   heading:  string
   mode:     AddMusicMode
-  modes:    { mode: AddMusicMode, label: string }[]
+  modes:    { mode: AddMusicMode, label: string, mnemonic?: Mnemonic }[]
   /** The fields of the chosen mode, in order, with their text. */
-  fields:   { field: AddMusicField, label: string, text: string }[]
+  fields:   { field: AddMusicField, label: string, mnemonic?: Mnemonic, text: string }[]
   /** What the chosen mode accepts, one line each. */
   help:     string[]
   /** What is wrong with what was written, when something is. */
