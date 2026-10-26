@@ -220,7 +220,7 @@ func PlaylistName(s downloadsession.Session, pl *runstate.Playlist) string {
 }
 
 // shortAddress is a web address without what a person does not read: the scheme and "www."; a search
-// by name is what it asks for, such as "Daft Punk – Discovery".
+// by name is what it asks for, such as "Daft Punk â€“ Discovery".
 func shortAddress(address string) string {
 	if q, ok := musicsearch.Parse(address); ok {
 		return q.Label()
