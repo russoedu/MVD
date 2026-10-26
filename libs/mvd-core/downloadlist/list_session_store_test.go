@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/musicsearch"
 	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
@@ -171,5 +172,24 @@ func TestThePreviewShowsEachSongInTheStateTheFileKept(t *testing.T) {
 	}
 	if state.Playlists[0].Title != "A" || state.Playlists[1].Title != "https://not.looked.at" {
 		t.Errorf("titles %q %q", state.Playlists[0].Title, state.Playlists[1].Title)
+	}
+}
+
+func TestTheAddressOfASearchIsKeptAsItIsAndComesBackToBeListed(t *testing.T) {
+	address := musicsearch.Query{Artist: "Florence + The Machine", Album: "Lungs"}.Address()
+	s := New([]string{address, "https://youtube.com/watch?v=x"})
+	path := filepath.Join(t.TempDir(), "list.mvd")
+	if err := s.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	back, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := back.Sources(); len(got) != 2 || got[0] != address {
+		t.Fatalf("sources %q", got)
+	}
+	if sources, plan := back.Inputs(); len(sources) != 2 || len(plan) != 0 || sources[0] != address {
+		t.Errorf("a search is to be listed by the run: %q, %v", sources, plan)
 	}
 }
