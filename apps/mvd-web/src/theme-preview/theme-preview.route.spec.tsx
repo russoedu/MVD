@@ -129,6 +129,6 @@ describe('ThemePreview', () => {
     render(<ThemePreview />)
     fireEvent.change(screen.getByRole('combobox', { name: 'Pointer' }), { target: { value: 'waiting' } })
 
-    expect(document.querySelector('.classic-window')?.dataset.activity).toBe('waiting')
+    expect(document.querySelector<HTMLElement>('.classic-window')?.dataset.activity).toBe('waiting')
   })
 })
