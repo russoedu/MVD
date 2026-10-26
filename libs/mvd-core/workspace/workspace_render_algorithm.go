@@ -22,6 +22,9 @@ func (m Model) render() string {
 	if m.width == 0 || m.height == 0 {
 		return "starting..."
 	}
+	if m.addOpen {
+		return m.addView()
+	}
 	below := m.screen.Render()
 	lines := strings.Split(below, "\n")
 	if len(lines) > m.height-topRows {

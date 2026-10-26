@@ -112,13 +112,13 @@ func TestOpeningAListIsAllowedAfterARunFinished(t *testing.T) {
 	}
 }
 
-func TestAddingALinkAfterARunFinishedOpensTheRowOnTheList(t *testing.T) {
+func TestAddingALinkAfterARunFinishedOpensTheWindowOnTheList(t *testing.T) {
 	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
 	next, _ := m.Update(menubar.SelectedMsg{Name: entryAddLink})
 	m = next.(Model)
-	if m.running() || !m.inline.on {
-		t.Errorf("running %v, row open %v", m.running(), m.inline.on)
+	if m.running() || !m.addOpen {
+		t.Errorf("running %v, window open %v", m.running(), m.addOpen)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"youtube-downloader/libs/mvd-core/musicsearch"
 	"youtube-downloader/libs/mvd-core/songfile"
 )
 
@@ -50,6 +51,13 @@ func notALink(text string) string {
 
 // notALinkWord says why one word is not a source, or "" when it is.
 func notALinkWord(word string, among bool) string {
+	if musicsearch.Is(word) {
+		if _, ok := musicsearch.Parse(word); !ok {
+			return "That search has no artist"
+		}
+
+		return ""
+	}
 	if strings.Contains(word, "://") {
 		u, err := url.Parse(word)
 		switch {

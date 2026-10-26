@@ -2,11 +2,14 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"youtube-downloader/libs/mvd-core/official/trackfind"
 	"youtube-downloader/libs/mvd-core/official/trackpick"
 
 	"youtube-downloader/libs/mvd-core/applemusic"
+	"youtube-downloader/libs/mvd-core/catalog"
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/musicsearch"
 	"youtube-downloader/libs/mvd-core/songfile"
 	"youtube-downloader/libs/mvd-core/spotify"
 )
@@ -33,6 +36,7 @@ func newPlaylistTrackSource(search trackpick.Searcher, sources trackfind.Sources
 			spotifyProvider{client: spotify.NewClient()},
 			appleMusicProvider{client: applemusic.NewClient()},
 			songFileProvider{},
+			searchProvider{finder: catalog.DefaultFinder()},
 		},
 		search:  search,
 		sources: sources,
@@ -124,4 +128,28 @@ func (songFileProvider) Tracks(_ context.Context, link string) (string, []engine
 		tracks[i] = engine.Track{Title: s.Title, Artist: s.Artist, DurationMs: s.DurationMs}
 	}
 	return list.Title, tracks, nil
+}
+
+// searchProvider lists the music a person asked for by name (see package musicsearch): the songs of an
+// artist, of an album, or the one song, as the catalogues name them. The video of each is found like
+// that of any other song.
+type searchProvider struct{ finder catalog.Finder }
+
+func (searchProvider) Handles(link string) bool { return musicsearch.Is(link) }
+
+func (p searchProvider) Tracks(ctx context.Context, link string) (string, []engine.Track, error) {
+	query, ok := musicsearch.Parse(link)
+	if !ok {
+		return "", nil, errors.New("this search is not an artist, an artist and an album, or an artist and a song")
+	}
+	found, err := p.finder.Find(ctx, query)
+	if err != nil {
+		return "", nil, err
+	}
+	tracks := make([]engine.Track, len(found.Tracks))
+	for i, t := range found.Tracks {
+		tracks[i] = engine.Track{Title: t.Title, Artist: t.Artist, DurationMs: t.DurationMs}
+	}
+
+	return found.Title, tracks, nil
 }

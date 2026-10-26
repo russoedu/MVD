@@ -3,6 +3,7 @@ package downloadsnapshot
 import (
 	"testing"
 
+	"youtube-downloader/libs/mvd-core/musicsearch"
 	"youtube-downloader/libs/mvd-core/runstate"
 )
 
@@ -13,5 +14,15 @@ func TestTheDownloadingSummaryGivesTheSongsAndTheSpeedAndNeverTheParts(t *testin
 	}
 	if got := downloadingSummary(runstate.Tally{Downloading: 1, Parts: 1, Speed: 0}); got != "Downloading 1 song" {
 		t.Errorf("one song with no known speed: %q", got)
+	}
+}
+
+func TestASearchByNameIsCalledWhatItAsksFor(t *testing.T) {
+	address := musicsearch.Query{Artist: "Daft Punk", Album: "Discovery"}.Address()
+	if got := shortAddress(address); got != "Daft Punk – Discovery" {
+		t.Errorf("a search is called %q", got)
+	}
+	if got := shortAddress("https://www.youtube.com/watch?v=x"); got != "youtube.com/watch?v=x" {
+		t.Errorf("a web address is called %q", got)
 	}
 }

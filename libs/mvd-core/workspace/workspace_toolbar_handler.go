@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
@@ -155,11 +154,8 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 		m.openFolder()
 		return m, nil, true
 	case entryAddLink:
-		if m.editable() || m.addable() {
-			next, cmd := m.startAdd()
-			return next, cmd, true
-		}
-		return m.ask(askAddLink, "Add a playlist or video link", ""), textinput.Blink, true
+		next, cmd := m.openAdd()
+		return next, cmd, true
 	case entryDownloadAll:
 		if m.running() {
 			n := m.run.ReleaseAll()

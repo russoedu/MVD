@@ -58,33 +58,25 @@ func TestAListThatWasStoppedIsNotLoadedAgainUntilItChanges(t *testing.T) {
 	}
 }
 
-func TestALinkAddedWhileLoadingIsWrittenInTheSameRowAndGoesToTheRun(t *testing.T) {
+func TestALinkAddedWhileLoadingGoesToTheRun(t *testing.T) {
 	run := &addingRun{fakeRun: newFakeRun()}
 	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, downloadlist.New([]string{"https://youtu.be/x"})))
 	m = m.runStartedFor(t, run)
 
 	m, _ = choose(m, entryAddLink)
-	if !m.inline.on || !m.inline.running {
-		t.Fatal("the row for the new link did not open")
+	if !m.addOpen {
+		t.Fatal("the window for adding did not open")
 	}
-	for _, r := range "https://youtu.be/second" {
-		next, _ := m.Update(tea.KeyPressMsg{Text: string(r), Code: r})
-		m = next.(Model)
-	}
-	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = next.(Model)
-	if m.inline.on || len(run.added) != 1 || run.added[0] != "https://youtu.be/second" {
-		t.Errorf("inline %v, added %v", m.inline.on, run.added)
-	}
-	if got := len(m.screen.State().Playlists); got != 0 {
-		t.Errorf("the row that was made up for writing is still there: %d playlists", got)
+	m = typeInto(m, "https://youtu.be/second")
+	m, _ = press(m, "enter")
+	if m.addOpen || len(run.added) != 1 || run.added[0] != "https://youtu.be/second" {
+		t.Errorf("window open %v, added %v", m.addOpen, run.added)
 	}
 	if got := addressesOf(m); len(got) != 2 {
 		t.Errorf("the list has %v", got)
 	}
 }
 
-// runStartedFor gives the model the run its start was waiting for.
 func (m Model) runStartedFor(t *testing.T, run ListRun) Model {
 	t.Helper()
 	next, _ := m.Update(runStartedMsg{run: run})
