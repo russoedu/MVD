@@ -52,8 +52,13 @@ const minWideWidth = 100
 const minPane = 20
 
 type (
-	evMsg    struct{ ev interface{} }
-	evClosed struct{}
+	// evMsg and evClosed say which run's events they came from, so what a run that was let go
+	// still says is not taken for what the run now shown says.
+	evMsg struct {
+		ev   interface{}
+		from <-chan interface{}
+	}
+	evClosed struct{ from <-chan interface{} }
 	tickMsg  time.Time
 )
 
@@ -112,9 +117,9 @@ func waitEvent(ch <-chan interface{}) tea.Cmd {
 	return func() tea.Msg {
 		ev, ok := <-ch
 		if !ok {
-			return evClosed{}
+			return evClosed{from: ch}
 		}
-		return evMsg{ev}
+		return evMsg{ev: ev, from: ch}
 	}
 }
 
@@ -154,6 +159,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tick()
 
 	case evMsg:
+		if msg.from != nil && msg.from != m.events {
+			return m, nil // a run that has been let go: its events are not the ones shown
+		}
 		m.session.Apply(msg.ev)
 		if added, ok := msg.ev.(engine.EvPlaylistAdded); ok && m.session.State.PlaylistPos(added.Source.Index) >= 0 {
 			// A link that was just added is the one the person looks at: its songs come in under it.
@@ -163,7 +171,10 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitEvent(m.events)
 
 	case evClosed:
-		eff := m.session.RunClosed()
+		if msg.from != nil && msg.from != m.events {
+			return m, nil
+		}
+		eff :=m.session.RunClosed()
 		if _, ended := eff.(downloadsession.RunEnded); ended {
 			m.events = nil
 		}
