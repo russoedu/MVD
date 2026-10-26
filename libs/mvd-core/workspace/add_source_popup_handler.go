@@ -140,8 +140,8 @@ func (m Model) addMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 	}
 	x, y := click.X-1, click.Y-1 // counted from the inside of the frame
 	l := m.addLayout()
-	switch {
-	case y == l.radioY:
+	switch y {
+	case l.radioY:
 		for i, span := range l.radio {
 			if span.Contains(x) {
 				m.add = m.add.WithMode(addsource.Mode(i)).Focused(addsource.FieldMode)
@@ -149,7 +149,7 @@ func (m Model) addMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 				return m.syncAddFocus(), nil, true
 			}
 		}
-	case y == l.buttonY:
+	case l.buttonY:
 		switch dialog.At(l.buttons, x) {
 		case 0:
 			next, cmd := m.submitAdd()
