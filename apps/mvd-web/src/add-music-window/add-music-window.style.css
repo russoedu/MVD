@@ -7,7 +7,8 @@
   justify-content: center;
 }
 
-.classic-dialog-overlay[data-style='window'] {
+.classic-dialog-overlay[data-style='window'],
+.classic-dialog-overlay[data-style='plain'] {
   align-items: center;
 }
 
@@ -37,6 +38,22 @@
 
 [data-family='windows-classic'] .classic-dialog {
   padding: 3px;
+}
+
+/* A classic Mac's modal dialog: no title bar, a double frame round its contents. */
+.classic-dialog[data-style='plain'] {
+  padding: var(--dialog-padding);
+  border: var(--dialog-border);
+  border-radius: 0;
+  background: var(--dialog-bg);
+  box-shadow: var(--dialog-shadow);
+  backdrop-filter: none;
+}
+
+.classic-dialog[data-style='plain'] .classic-dialog-body {
+  padding: 14px 16px;
+  border: var(--dialog-inner-border);
+  background: var(--dialog-bg);
 }
 
 .classic-sheet {

@@ -1,0 +1,231 @@
+/*
+ * Windows XP (Luna, blue): a deep blue title bar with rounded top corners and Trebuchet MS,
+ * Tahoma 8pt for the rest (both come with Windows; Verdana and DejaVu Sans stand in elsewhere),
+ * beige faces, rounded buttons that glow orange under the pointer, and green block progress bars.
+ */
+:root[data-theme='windows-xp'] {
+  --ui-font: Tahoma, Verdana, 'DejaVu Sans', sans-serif;
+  --ui-size: 11px;
+  --title-font: 'Trebuchet MS', 'Fira Sans', Tahoma, sans-serif;
+  --title-size: 13px;
+  --title-weight: 700;
+  --mono-font: 'Lucida Console', 'Courier New', monospace;
+  --mono-size: 11px;
+  --smoothing: auto;
+
+  --desktop: radial-gradient(ellipse 140% 55% at 30% 105%, #5fa83a 0 48%, #3f8a26 49%, transparent 50%), linear-gradient(#2a6fd6, #6aa6ee 55%, #b8d8f8);
+  --face: #ece9d8;
+  --window: #ffffff;
+  --text: #000000;
+  --text-dim: #808080;
+  --text-good: #1b7f1b;
+  --text-bad: #c1272d;
+  --text-busy: #0b4fbf;
+  --select-bg: #316ac5;
+  --select-text: #ffffff;
+  --focus-ring: 1px dotted #000000;
+
+  --raised: inset -1px -1px #aca899, inset 1px 1px #ffffff;
+  --sunken: inset 1px 1px #aca899, inset -1px -1px #ffffff;
+  --pressed: inset 1px 1px #aca899;
+  --etched: inset 0 -1px #ffffff, inset 0 1px #aca899;
+
+  --frame-bg: linear-gradient(90deg, #0831d9, #0058ee 3px, #0058ee calc(100% - 3px), #0831d9);
+  --frame-border: 1px solid #0019a6;
+  --frame-shadow: 2px 3px 8px rgb(0 0 0 / 35%);
+  --frame-radius: 8px 8px 0 0;
+  --frame-padding: 0 3px 3px;
+  --frame-backdrop: none;
+
+  --title-height: 29px;
+  --title-bg: linear-gradient(#0997ff, #0053ee 8%, #0050ee 40%, #0066ff 88%, #0066ff 93%, #005bff 95%, #003dd7 96%, #003dd7);
+  --title-text: #ffffff;
+  --title-text-shadow: 1px 1px #0f1089;
+
+  --control-width: 21px;
+  --control-height: 21px;
+  --control-bg: radial-gradient(circle at 90% 90%, #0054e9 0%, #2263d5 55%, #4479e4 90%, #a3bbec);
+  --control-shadow: inset 0 0 0 1px #ffffff;
+  --control-pressed-shadow: inset 0 0 0 1px #ffffff, inset 1px 1px 4px rgb(0 0 0 / 55%);
+  --control-radius: 3px;
+  --control-text: #ffffff;
+  --control-close-bg: radial-gradient(circle at 90% 90%, #cc4600 0%, #dc6527 55%, #cd7546 70%, #f0b49a);
+  --control-close-width: 21px;
+  --control-gap: 2px;
+  --control-close-gap: 2px;
+
+  --menubar-bg: var(--face);
+  --menu-bg: #ffffff;
+  --menu-border: 1px solid #aca899;
+  --menu-shadow: 2px 2px 2px rgb(0 0 0 / 30%);
+  --menu-radius: 0;
+  --menu-padding: 2px;
+  --menu-item-select-bg: var(--select-bg);
+  --menu-item-select-text: var(--select-text);
+  --menu-item-radius: 0;
+  --menu-separator: inset 0 1px #aca899;
+
+  --toolbar-bg: var(--face);
+
+  --button-height: 23px;
+  --button-padding: 0 12px;
+  --button-bg: linear-gradient(#ffffff, #ecebe6 86%, #d6d0c5);
+  --button-text: #000000;
+  --button-border: 1px solid #003c74;
+  --button-shadow: none;
+  --button-radius: 3px;
+  --button-hover-bg: var(--button-bg);
+  --button-hover-border: var(--button-border);
+  --button-hover-shadow: inset 0 -2px #e5a01a, inset 0 2px #fff0cf, inset 2px 0 #fbd277, inset -2px 0 #fbd277;
+  --button-pressed-bg: linear-gradient(#cdcac3, #e3e3db 8%, #e5e5de 94%, #f2f2f1);
+  --button-pressed-shadow: none;
+  --button-default-bg: var(--button-bg);
+  --button-default-text: #000000;
+  --button-default-border: var(--button-border);
+  --button-default-shadow: inset 0 -2px #98b8ea, inset 0 2px #cee7ff, inset 2px 0 #bcd4f6, inset -2px 0 #bcd4f6;
+  --button-default-animation: none;
+  --button-transition: none;
+  --button-disabled-text: #aca899;
+  --button-disabled-text-shadow: none;
+
+  --field-bg: #ffffff;
+  --field-border: 1px solid #7f9db9;
+  --field-shadow: none;
+  --field-radius: 0;
+  --field-padding: 3px 4px;
+
+  --pane-bg: #ffffff;
+  --pane-border: 1px solid #7f9db9;
+  --pane-shadow: none;
+  --pane-radius: 0;
+  --pane-padding: 0;
+  --header-bg: linear-gradient(#ffffff, #f8f8f3 60%, #ebeadb);
+  --header-border: 1px solid #d0cfc0;
+  --header-shadow: inset 0 -3px #e2decd;
+  --row-alt-bg: #ffffff;
+
+  --progress-height: 14px;
+  --progress-trough: #ffffff;
+  --progress-trough-border: 1px solid #686868;
+  --progress-trough-shadow: none;
+  --progress-radius: 3px;
+  --progress-padding: 1px;
+  --progress-fill: repeating-linear-gradient(90deg, transparent 0 8px, #ffffff 8px 10px), linear-gradient(#acedad, #7be47d 14%, #4cda50 28%, #2ed330 42%, #42d845 57%, #76e275 71%, #8fe791 85%, #ffffff);
+  --progress-fill-radius: 0;
+  --progress-unknown: repeating-linear-gradient(90deg, transparent 0 8px, #ffffff 8px 10px) -40px 0 / 30px 100% no-repeat, linear-gradient(#acedad, #4cda50 30%, #2ed330 50%, #76e275 80%, #ffffff) -40px 0 / 28px 100% no-repeat;
+  --progress-animation: none;
+  --progress-unknown-animation: xp-progress-marquee 2s linear infinite;
+
+  --check-size: 13px;
+  --check-bg: linear-gradient(135deg, #dcdcd7, #ffffff);
+  --check-border: 1px solid #1c5180;
+  --check-shadow: none;
+  --check-radius: 0;
+  --check-mark: #21a121;
+  --check-on-bg: var(--check-bg);
+  --radio-radius: 50%;
+
+  --status-bg: var(--face);
+  --status-shadow: inset 0 1px #ffffff;
+
+  --dialog-shadow: 2px 3px 8px rgb(0 0 0 / 35%);
+  --dialog-animation: none;
+
+  --cursor-wait: url('./cursors/windows-xp-wait.svg') 16 16, wait;
+  --cursor-progress: url('./cursors/windows-xp-progress.svg') 1 1, progress;
+}
+
+@keyframes xp-progress-marquee {
+  from { background-position: -40px 0, -40px 0; }
+  to { background-position: calc(100% + 40px) 0, calc(100% + 40px) 0; }
+}
+
+/* XP shares Vista's family, but its caption buttons are separate rounded squares, centred. */
+:root[data-theme='windows-xp'] .classic-title-bar {
+  align-items: center;
+  padding: 0 4px 0 6px;
+}
+
+:root[data-theme='windows-xp'] .classic-window-control:first-child,
+:root[data-theme='windows-xp'] .classic-window-control:last-child {
+  border-radius: var(--control-radius);
+}
+
+:root[data-theme='windows-xp'] .classic-window-control {
+  font-size: 13px;
+}
+
+:root[data-theme='windows-xp'] .classic-window-control:hover {
+  filter: brightness(1.15);
+}
+
+:root[data-theme='windows-xp'] .classic-window-control[data-control='close']:hover {
+  filter: brightness(1.1);
+}
+
+:root[data-theme='windows-xp'] .classic-row[data-selected] {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Scroll bars: pale blue rounded thumb and buttons with dark blue arrows. */
+:root[data-theme='windows-xp'] ::-webkit-scrollbar {
+  width: 17px;
+  height: 17px;
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, #f3f1ec, #fefefb);
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-track:horizontal {
+  background: linear-gradient(#f3f1ec, #fefefb);
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-thumb,
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button {
+  border: 1px solid #ffffff;
+  border-radius: 3px;
+  background-color: #c4d4fc;
+  background-image: linear-gradient(90deg, #b8cbf6, #cbdafc 50%, #b4c8f6);
+  box-shadow: inset 0 0 0 1px #a4bdf4;
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-thumb:hover,
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button:hover {
+  background-image: linear-gradient(90deg, #cadafe, #ddeaff 50%, #c6d8fe);
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button {
+  display: block;
+  width: 17px;
+  height: 17px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M1 4.5L4.5 1 8 4.5' fill='none' stroke='%234d6185' stroke-width='1.6'/%3E%3C/svg%3E"), linear-gradient(90deg, #b8cbf6, #cbdafc 50%, #b4c8f6);
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M1 0.5L4.5 4 8 0.5' fill='none' stroke='%234d6185' stroke-width='1.6'/%3E%3C/svg%3E"), linear-gradient(90deg, #b8cbf6, #cbdafc 50%, #b4c8f6);
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='9'%3E%3Cpath d='M4.5 1L1 4.5 4.5 8' fill='none' stroke='%234d6185' stroke-width='1.6'/%3E%3C/svg%3E"), linear-gradient(#b8cbf6, #cbdafc 50%, #b4c8f6);
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='9'%3E%3Cpath d='M0.5 1L4 4.5 0.5 8' fill='none' stroke='%234d6185' stroke-width='1.6'/%3E%3C/svg%3E"), linear-gradient(#b8cbf6, #cbdafc 50%, #b4c8f6);
+}
+
+/* One arrow at each end: Chrome would otherwise draw both arrows at both ends. */
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button:start:increment,
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-button:end:decrement {
+  display: none;
+}
+
+:root[data-theme='windows-xp'] ::-webkit-scrollbar-corner {
+  background: var(--face);
+}

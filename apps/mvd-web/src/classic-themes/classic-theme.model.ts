@@ -2,9 +2,16 @@
  * The chrome families: themes in one family share the structure of their window frame, menus,
  * dialogs and controls, and differ in colours, sizes and fonts.
  */
-export type ChromeFamily = 'windows-classic' | 'windows-themed' | 'aqua'
+export type ChromeFamily = 'windows-classic' | 'windows-themed' | 'mac-classic' | 'aqua'
 
-export type ClassicThemeId = 'windows-95' | 'windows-vista' | 'aqua'
+export type ClassicThemeId =
+  | 'windows-3-1' |
+  'windows-95' |
+  'windows-xp' |
+  'windows-vista' |
+  'mac-os-7' |
+  'mac-os-9' |
+  'aqua'
 
 export interface ClassicTheme {
   id:     ClassicThemeId
@@ -13,17 +20,18 @@ export interface ClassicTheme {
   family: ChromeFamily
 }
 
-/**
- * The classic themes built so far: the ones whose fonts are free to use (#369). Windows 3.1,
- * XP and Mac OS 7 and 9 follow once their fonts are cleared (see docs/architecture/classic-themes-plan.md).
- */
+/** The classic themes, Windows first and then the Mac, each side oldest first. */
 export const classicThemes: readonly ClassicTheme[] = [
+  { id: 'windows-3-1', label: 'Windows 3.1', family: 'windows-classic' },
   { id: 'windows-95', label: 'Windows 95', family: 'windows-classic' },
+  { id: 'windows-xp', label: 'Windows XP', family: 'windows-themed' },
   { id: 'windows-vista', label: 'Windows Vista', family: 'windows-themed' },
+  { id: 'mac-os-7', label: 'Mac OS 7', family: 'mac-classic' },
+  { id: 'mac-os-9', label: 'Mac OS 9', family: 'mac-classic' },
   { id: 'aqua', label: 'Mac OS X 10.0', family: 'aqua' },
 ]
 
-/** The theme with this id, or the first one when the id names none. */
+/** The theme with this id, or Windows 95 when the id names none. */
 export function classicThemeOf (id: string | null | undefined): ClassicTheme {
-  return classicThemes.find(theme => theme.id === id) ?? classicThemes[0]
+  return classicThemes.find(theme => theme.id === id) ?? classicThemes[1]
 }

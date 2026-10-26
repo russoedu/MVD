@@ -1,0 +1,10 @@
+The FontStruction "Monaco" by Jamie Place (2012), built with FontStruct
+(https://fontstruct.com), is licensed under a Creative Commons Attribution
+Share Alike 3.0 licence: http://creativecommons.org/licenses/by-sa/3.0/
+
+The copyright, author and licence are stored in the font's own name table.
+MVD converts it to woff2 unchanged in its shapes; the converted file is shared
+under the same licence.
+
+"Monaco" is the name of Apple's typeface; this is an independent pixel
+recreation and is not made or endorsed by Apple.

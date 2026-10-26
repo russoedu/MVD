@@ -137,6 +137,7 @@
 
 .classic-progress-fill[data-unknown] {
   background: var(--progress-unknown);
+  animation: var(--progress-unknown-animation, var(--progress-animation));
 }
 
 .classic-log {

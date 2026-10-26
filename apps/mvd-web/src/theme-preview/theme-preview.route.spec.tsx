@@ -42,6 +42,28 @@ describe('ThemePreview', () => {
     expect(document.querySelector('.classic-title-bar')?.firstElementChild?.className).toBe('classic-window-controls')
   })
 
+  it('puts the control-menu box of Windows 3.1 and the close box of a classic Mac on the left, the rest on the right', () => {
+    render(<ThemePreview />)
+    choose('Windows 3.1')
+    expect(controls()).toEqual(['Close', 'Minimise', 'Maximise'])
+
+    choose('Mac OS 7')
+    expect(controls()).toEqual(['Close', 'Maximise'])
+
+    choose('Mac OS 9')
+    expect(controls()).toEqual(['Close', 'Maximise', 'Minimise'])
+  })
+
+  it('draws the window for adding music on a classic Mac as a plain box with its heading inside', () => {
+    render(<ThemePreview />)
+    choose('Mac OS 9')
+    fireEvent.click(screen.getByRole('button', { name: '+ Add source' }))
+
+    expect(screen.getByRole('dialog', { name: 'Add music' })).toBeTruthy()
+    expect(document.querySelector('.classic-dialog[data-style="plain"] .classic-title-bar')).toBeNull()
+    expect(within(screen.getByRole('dialog')).getAllByRole('button').map(button => button.textContent)).toEqual(['Cancel', 'Add'])
+  })
+
   it('writes the key hints the way each family does', () => {
     render(<ThemePreview />)
     choose('Windows 95')

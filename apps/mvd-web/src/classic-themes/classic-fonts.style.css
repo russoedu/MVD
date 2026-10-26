@@ -4,6 +4,15 @@
  *
  * W95FA (OFL 1.1) comes from @fontsource/win95fa.
  * Selawik (OFL 1.1, Microsoft's open fallback for Segoe UI): fonts/selawik-license.txt.
+ * Pixel MS Sans Serif Bold, standing in for Windows 3.1's System font (CC BY-SA 3.0, by lou, via
+ * 98.css): fonts/ms-sans-serif-license.txt, -readme.txt and -note.txt.
+ * Fixedsys Excelsior (public domain, by Darien Valentine): fonts/fixedsys-excelsior-license.txt.
+ * Chicago Kare, for Mac OS 7's Chicago and Mac OS 9's Charcoal (MIT, by Duane King):
+ * fonts/chicago-kare-license.txt.
+ * FontStruct Monaco (CC BY-SA 3.0, by Jamie Place): fonts/monaco-fontstruct-license.txt.
+ *
+ * The pixel fonts are drawn on a 16px grid, so the themes use them at 16px. The bold-only faces
+ * cover every weight, so the browser never thickens them again.
  */
 @import '@fontsource/win95fa/latin-400.css';
 
@@ -19,4 +28,32 @@
   font-weight: 700;
   font-display: swap;
   src: url('./fonts/selawik-bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Pixel MS Sans Serif Bold';
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/ms-sans-serif-bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fixedsys Excelsior';
+  font-weight: 100 900;
+  font-display: swap;
+  src: local('Fixedsys Excelsior 3.01'), url('./fonts/fixedsys-excelsior.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Chicago Kare';
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/chicago-kare.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'FontStruct Monaco';
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/monaco-fontstruct.woff2') format('woff2');
 }

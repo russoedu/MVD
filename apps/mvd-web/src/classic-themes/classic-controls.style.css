@@ -22,6 +22,7 @@
 .classic-button[data-hovered] {
   border: var(--button-hover-border);
   background: var(--button-hover-bg);
+  box-shadow: var(--button-hover-shadow, var(--button-shadow));
 }
 
 .classic-button[data-role='default'] {
@@ -35,6 +36,7 @@
 .classic-button[data-pressed] {
   background: var(--button-pressed-bg);
   box-shadow: var(--button-pressed-shadow);
+  color: var(--button-pressed-text, var(--button-text));
   animation: none;
 }
 
@@ -111,6 +113,19 @@
   border-width: 0 2px 2px 0;
   content: '';
   transform: rotate(40deg);
+}
+
+/* Windows 3.1 and the classic Mac cross the box instead. */
+:root[data-theme='windows-3-1'] [data-selected] > .classic-check-box::after,
+:root[data-family='mac-classic'] [data-selected] > .classic-check-box::after {
+  inset: 0;
+  width: auto;
+  height: auto;
+  border: none;
+  background:
+    linear-gradient(45deg, transparent calc(50% - 0.75px), var(--check-mark) calc(50% - 0.75px) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+    linear-gradient(-45deg, transparent calc(50% - 0.75px), var(--check-mark) calc(50% - 0.75px) calc(50% + 0.75px), transparent calc(50% + 0.75px));
+  transform: none;
 }
 
 [data-selected] > .classic-radio-dot::after {

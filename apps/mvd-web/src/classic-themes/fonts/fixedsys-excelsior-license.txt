@@ -1,0 +1,7 @@
+Fixedsys Excelsior 3.01 was made by Darien Valentine and released into the
+public domain. For jurisdictions where this is not permitted, it is released
+under the terms of the Creative Commons Zero Dedication
+(https://creativecommons.org/publicdomain/zero/1.0/).
+
+Source of this note: https://github.com/kika/fixedsys (README). MVD converts
+the TrueType file from the fixedsys-css npm package (MIT) to woff2.

@@ -139,15 +139,17 @@ MVD runs on the user's own computer, so each font stack tries the installed syst
 
 | Theme | UI text (original) | Titles and menus (original) | Log pane (original) | Bundled open fallback |
 |---|---|---|---|---|
-| Win 3.1 | MS Sans Serif 8 | System (bold) | Fixedsys | W95FA, OFL 1.1. No open recreation of the bold System font is confirmed yet. Fixedsys Excelsior, public domain, for the log. |
+| Win 3.1 | System (bold) | System (bold) | Fixedsys | **Pixel MS Sans Serif Bold**, the FontStruct by "lou" that 98.css ships (CC BY-SA 3.0), stands in for System. **Fixedsys Excelsior** by Darien Valentine (public domain) for the log. |
 | Win 95 | MS Sans Serif 8 | MS Sans Serif 8 bold | Courier New / Fixedsys | **W95FA** (OFL 1.1, also on Fontsource as `win95fa`). Fixedsys Excelsior. |
-| XP | Tahoma 8 | Trebuchet MS 10 bold | Lucida Console | Installed fonts on Windows. **Wine Tahoma** (LGPL) elsewhere: check whether LGPL allows embedding it as a web font. |
+| XP | Tahoma 8 | Trebuchet MS 10 bold | Lucida Console | Nothing bundled: Windows has Tahoma and Trebuchet MS, macOS has Verdana and Trebuchet MS; DejaVu Sans and Fira Sans are named after them. Wine Tahoma (LGPL) is only metric-compatible, so it is not used. |
 | Vista | Segoe UI 9 | Segoe UI 9 | Consolas | Installed on Windows. **Selawik** (Microsoft's open Segoe UI fallback, OFL 1.1) elsewhere. |
-| Mac 7.0 | Geneva 9 | Chicago 12 | Monaco 9 | **ChicagoFLF**, public domain, a vector Chicago. Sysfont (Alina Sava) and Chicago Kare are closer to the bitmap: licences to check. Geneva: no open recreation confirmed yet. Monaco is installed on macOS. |
-| Mac 9 | Geneva 10 | Charcoal 12 | Monaco 9 | **Virtue**, a free Charcoal look-alike: licence to check. Geneva and Monaco as for Mac 7. |
+| Mac 7.0 | Geneva 9 | Chicago 12 | Monaco 9 | **Chicago Kare** by Duane King (MIT), a pixel copy of Chicago 12, for all the interface text: no Geneva recreation has a usable licence. **FontStruct Monaco** by Jamie Place (CC BY-SA 3.0) for the log, at twice its pixels so it can be read. |
+| Mac 9 | Geneva 10 | Charcoal 12 | Monaco 9 | **Chicago Kare** stands in for Charcoal, which has the same spacing; no Charcoal recreation has a usable licence (Virtue has none on record). Monaco as for Mac 7. |
 | Aqua 10.0 | Lucida Grande 13 / 11 | Lucida Grande 13 | Monaco 10 | Lucida Grande is installed on macOS. On Windows, **Lucida Sans Unicode** is installed and is the design Lucida Grande grew from, so the stack is `local("Lucida Grande"), local("Lucida Sans Unicode")`. |
 
-Before any font is bundled, its licence file goes into the repo beside it and is listed in the About window's credits.
+Every bundled font has its licence or note in `apps/mvd-web/src/classic-themes/fonts/`, and the CC BY-SA ones keep the FontStruct readme with them. The About window's credits should list them once the themes reach the app.
+
+Not usable, found in #373: ChiKareGo2 and FindersKeepers (system.css ships them with no licence), ChicagoFLF (its own copyright field says "All Rights Reserved"), Virtue, Perfect DOS VGA, and Apple's own bitmaps extracted from System 6.
 
 ## Colours (starting values)
 
@@ -181,9 +183,9 @@ Everything here is in MVD today: the menu bar, the toolbar buttons (Start, Pause
 
 Each family is one PR or a small series. A theme is done when MVD's screens are drawn in it, every intent works by mouse and keyboard, and a screenshot test pins its look.
 
-## Built so far (#369)
+## Built so far (#369, #371, #374)
 
-The first three themes have fonts that are free to use: Windows 95 (W95FA), Windows Vista (Segoe UI, or Selawik where it is missing) and Mac OS X 10.0 (the installed Lucida Grande, or Lucida Sans Unicode). They are built in `apps/mvd-web` and drawn from a sample snapshot at `/themes`, until the program sends its own (steps 1 and 3).
+All seven themes are built in `apps/mvd-web` and drawn from a sample snapshot at `/themes`, until the program sends its own (steps 1 and 3). Windows 95, Vista and Mac OS X 10.0 came first (#369); Windows 3.1, XP, Mac OS 7 and Mac OS 9 followed once their fonts were found (#374).
 
 | Slice | Holds |
 |---|---|
@@ -191,10 +193,12 @@ The first three themes have fonts that are free to use: Windows 95 (W95FA), Wind
 | `classic-themes/` | The theme list, each family's layout rules (`chrome-layout.policy.ts`), how shortcuts are written, the bundled fonts, one token file per theme and the shared controls. |
 | `classic-window/` | Frame, title bar, menu bar, toolbar and status line. |
 | `classic-panes/` | Sources list, songs table with progress bars, details pane. |
-| `add-music-window/` | The Add music window: a dialog on Windows, a sheet on a Mac. |
+| `add-music-window/` | The Add music window: a dialog on Windows, a plain framed box on a classic Mac, a sheet on Mac OS X. |
 | `theme-preview/` | The `/themes` page and its sample list. |
 
-How the CSS is split: a theme file sets custom properties on `:root[data-theme=...]` and styles that theme's scroll bars. Component stylesheets read only those properties, and put what differs in structure under `[data-family=...]`. The theme is set on the page root, so menus, which open outside the window, wear it too.
+How the CSS is split: a theme file sets custom properties on `:root[data-theme=...]` and styles that theme's scroll bars. Component stylesheets read only those properties, and put what differs in structure under `[data-family=...]`. Where one theme differs from its family (Windows 3.1's control-menu box and black lines, XP's separate caption buttons), its own file says so under `:root[data-theme=...]`. The theme is set on the page root, so menus, which open outside the window, wear it too.
+
+The layout rules (`layoutOf(theme)`) are the family's, with a theme's own differences on top: Windows 3.1 centres its title and has the control-menu box on the left and ▼ ▲ on the right; Mac OS 7.0 has no collapse box, nothing on a title double click, and menus that stay open only while the mouse button is held.
 
 Added in #371:
 - **Keyboard letters.** Menus, menu entries, dialog buttons, choices and fields can carry a `mnemonic`. Windows 95 always underlines it. Vista underlines it once Alt or F10 is pressed and hides it again on a click (the layout's `mnemonics`: `always`, `on-alt` or `none`). On Windows:
@@ -209,13 +213,16 @@ Added in #371:
 - **Sharp Windows 95.** The family's `pixelSnap` zooms the page so one CSS pixel is a whole number of screen pixels: 80 % on a screen at 125 %, 133 % at 150 %. It follows changes of scale.
   - React Aria places menus by screen position, which the zoom would scale again. The menu's box therefore undoes the zoom (`--pixel-zoom`), and the panel inside puts it back.
 
-Still to do for these three themes:
+Still to do:
 - **Aqua scroll bars:** Chrome does not draw both arrows together at the end, so the Aqua bar has no arrows yet.
 - **Menu bar tracking:** with a menu open, moving the pointer over another menu title does not open that menu yet.
+- **Fixed scroll thumbs:** Windows 3.1 and Mac OS 7 had a square thumb of one size; Chrome always sizes it to the view.
+- **Control menu:** Windows 3.1's control-menu box closes the window at once instead of opening its menu.
+- **Mac OS 7 colour:** it is drawn in black and white; System 7's colour mode (grey frames) is not done.
 
 ## Open questions
 
 - **Theme names.** "Windows" and "Mac OS" are trademarks. We could show neutral names in the picker ("Classic 95", "Platinum", "Aqua-style") and keep the OS names in the code and docs.
 - **Mac 9 collapse:** minimise the window, or shrink it to its title bar?
-- **Fonts still to find or clear:** an open Geneva 9 recreation, an open bold Windows 3.1 System font, and the licences of Virtue, Sysfont and Chicago Kare.
+- **Fonts still to find:** an open Geneva recreation and an open Charcoal, if they ever appear; Chicago Kare stands in for both.
 - **Sounds** (Chimes, Sosumi): out of scope unless wanted.

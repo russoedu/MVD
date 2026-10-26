@@ -1,0 +1,246 @@
+/*
+ * Windows 3.1: flat grey and white with black outlines, a navy title bar with its title centred,
+ * the bold System font everywhere (the pixel MS Sans Serif Bold stands in), a white menu bar, the
+ * control-menu box on the left and ▼ ▲ on the right, crossed check boxes, and nothing that moves.
+ */
+:root[data-theme='windows-3-1'] {
+  --ui-font: 'Pixel MS Sans Serif Bold', 'WIN95FA', sans-serif;
+  --ui-size: 11px;
+  --title-font: var(--ui-font);
+  --title-size: 11px;
+  --title-weight: 400;
+  --mono-font: 'Fixedsys Excelsior', 'Courier New', monospace;
+  --mono-size: 16px;
+  --smoothing: none;
+
+  --desktop: #c0c0c0;
+  --face: #c0c0c0;
+  --window: #ffffff;
+  --text: #000000;
+  --text-dim: #808080;
+  --text-good: #008000;
+  --text-bad: #800000;
+  --text-busy: #000080;
+  --select-bg: #000080;
+  --select-text: #ffffff;
+  --focus-ring: 1px dotted #000000;
+
+  --raised: inset -1px -1px #808080, inset 1px 1px #ffffff, inset -2px -2px #808080, inset 2px 2px #ffffff;
+  --sunken: inset 0 0 0 1px #000000;
+  --pressed: inset 1px 1px #808080;
+  --etched: inset 0 1px #000000;
+
+  --frame-bg: var(--face);
+  --frame-border: 1px solid #000000;
+  --frame-shadow: none;
+  --frame-radius: 0;
+  --frame-padding: 3px;
+  --frame-backdrop: none;
+
+  --title-height: 20px;
+  --title-bg: #000080;
+  --title-text: #ffffff;
+  --title-text-shadow: none;
+
+  --control-width: 20px;
+  --control-height: 20px;
+  --control-bg: var(--face);
+  --control-shadow: inset 1px 0 #000000, inset -1px -1px #808080, inset 2px 1px #ffffff;
+  --control-pressed-shadow: inset 1px 0 #000000, inset 2px 1px #808080;
+  --control-radius: 0;
+  --control-text: #000000;
+  --control-close-bg: var(--face);
+  --control-close-width: 20px;
+  --control-gap: 0;
+  --control-close-gap: 0;
+
+  --menubar-bg: #ffffff;
+  --menubar-shadow: inset 0 -1px #000000;
+  --menu-bg: #ffffff;
+  --menu-border: 1px solid #000000;
+  --menu-shadow: none;
+  --menu-radius: 0;
+  --menu-padding: 0;
+  --menu-item-select-bg: var(--select-bg);
+  --menu-item-select-text: var(--select-text);
+  --menu-item-radius: 0;
+  --menu-separator: inset 0 1px #000000;
+
+  --toolbar-bg: var(--face);
+
+  --button-height: 26px;
+  --button-padding: 0 12px;
+  --button-bg: var(--face);
+  --button-text: #000000;
+  --button-border: 1px solid #000000;
+  --button-shadow: inset -2px -2px #808080, inset 2px 2px #ffffff;
+  --button-radius: 3px;
+  --button-hover-bg: var(--face);
+  --button-hover-border: var(--button-border);
+  --button-pressed-bg: var(--face);
+  --button-pressed-shadow: inset 2px 2px #808080;
+  --button-default-bg: var(--face);
+  --button-default-text: #000000;
+  --button-default-border: 2px solid #000000;
+  --button-default-shadow: var(--button-shadow);
+  --button-default-animation: none;
+  --button-transition: none;
+  --button-disabled-text: #808080;
+  --button-disabled-text-shadow: none;
+
+  --field-bg: var(--window);
+  --field-border: 1px solid #000000;
+  --field-shadow: none;
+  --field-radius: 0;
+  --field-padding: 3px 4px;
+
+  --pane-bg: var(--window);
+  --pane-border: 1px solid #000000;
+  --pane-shadow: none;
+  --pane-radius: 0;
+  --pane-padding: 0;
+  --header-bg: var(--face);
+  --header-border: 1px solid #000000;
+  --header-shadow: inset -1px -1px #808080, inset 1px 1px #ffffff;
+  --row-alt-bg: var(--window);
+
+  --progress-height: 16px;
+  --progress-trough: var(--window);
+  --progress-trough-border: 1px solid #000000;
+  --progress-trough-shadow: none;
+  --progress-radius: 0;
+  --progress-padding: 0;
+  --progress-fill: #000080;
+  --progress-fill-radius: 0;
+  --progress-unknown: repeating-linear-gradient(90deg, #000080 0 6px, transparent 6px 12px);
+  --progress-animation: none;
+
+  --check-size: 13px;
+  --check-bg: var(--window);
+  --check-border: 1px solid #000000;
+  --check-shadow: none;
+  --check-radius: 0;
+  --check-mark: #000000;
+  --check-on-bg: var(--window);
+  --radio-radius: 50%;
+
+  --status-bg: var(--face);
+  --status-shadow: inset 0 1px #000000;
+
+  --dialog-shadow: none;
+  --dialog-animation: none;
+
+  --cursor-wait: url('./cursors/windows-95-wait.svg') 16 16, wait;
+  --cursor-progress: url('./cursors/windows-95-progress.svg') 0 0, progress;
+}
+
+/* The title bar: no gap round the control-menu box and the ▼ ▲ buttons. */
+:root[data-theme='windows-3-1'] .classic-title-bar {
+  gap: 0;
+  padding: 0;
+}
+
+/* The black lines between the frame and what it holds. */
+:root[data-theme='windows-3-1'] .classic-window > .classic-title-bar {
+  border: 1px solid #000000;
+}
+
+:root[data-theme='windows-3-1'] .classic-window > :not(.classic-title-bar) {
+  border-right: 1px solid #000000;
+  border-left: 1px solid #000000;
+}
+
+:root[data-theme='windows-3-1'] .classic-window > .classic-status-line {
+  border-bottom: 1px solid #000000;
+}
+
+/* The control-menu box: a white bar with a dark shadow. ▼ and ▲ for minimise and maximise. */
+:root[data-theme='windows-3-1'] .classic-window-control span {
+  font-size: 0;
+}
+
+:root[data-theme='windows-3-1'] .classic-window-control[data-control='close'] {
+  align-items: center;
+  padding: 0;
+  box-shadow: inset -1px 0 #000000;
+}
+
+:root[data-theme='windows-3-1'] .classic-window-control[data-control='close'] span::before {
+  display: block;
+  width: 11px;
+  height: 3px;
+  border: 1px solid #808080;
+  background: #ffffff;
+  box-shadow: 1px 1px #000000;
+  content: '';
+}
+
+:root[data-theme='windows-3-1'] .classic-window-control[data-control='minimise'] span::before {
+  font-size: 9px;
+  content: '▼';
+}
+
+:root[data-theme='windows-3-1'] .classic-window-control[data-control='maximise'] span::before {
+  font-size: 9px;
+  content: '▲';
+}
+
+/* Scroll bars: a grey track, a bevelled square thumb and boxed arrows, each outlined in black. */
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar {
+  width: 17px;
+  height: 17px;
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-track {
+  background: #c0c0c0;
+  box-shadow: inset 1px 0 #000000;
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-track:horizontal {
+  box-shadow: inset 0 1px #000000;
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  box-shadow: inset 0 0 0 1px #000000, inset -2px -2px #808080, inset 2px 2px #ffffff;
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button {
+  display: block;
+  width: 17px;
+  height: 17px;
+  background-color: #c0c0c0;
+  background-repeat: no-repeat;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px #000000, inset -2px -2px #808080, inset 2px 2px #ffffff;
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button:active {
+  box-shadow: inset 0 0 0 1px #000000, inset 2px 2px #808080;
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h7v1H0zM1 1h5v1H1zM2 2h3v1H2zM3 3h1v1H3z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v7H3zM2 1h1v5H2zM1 2h1v3H1zM0 3h1v1H0z'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v7H0zM1 1h1v5H1zM2 2h1v3H2zM3 3h1v1H3z'/%3E%3C/svg%3E");
+}
+
+/* One arrow at each end: Chrome would otherwise draw both arrows at both ends. */
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button:start:increment,
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-button:end:decrement {
+  display: none;
+}
+
+:root[data-theme='windows-3-1'] ::-webkit-scrollbar-corner {
+  background: #c0c0c0;
+}
