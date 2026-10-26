@@ -11,7 +11,7 @@ func TestTheEmptyPlaylistsPaneSaysWhatToDoFirstHowAndWhatWorks(t *testing.T) {
 		text = append(text, r.Title)
 	}
 	all := strings.Join(strings.Fields(strings.Join(text, " ")), " ")
-	for _, want := range []string{"Add the songs you want as music videos.", "Click + Add link below, press Ctrl+L, or paste links with Ctrl+V.", "YouTube videos and playlists", "Spotify and Apple Music playlists"} {
+	for _, want := range []string{"Add the songs you want as music videos.", "Click + Add source below, press Ctrl+L, or paste links with Ctrl+V.", "YouTube videos and playlists", "Spotify and Apple Music playlists"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("the pane lacks %q: %q", want, all)
 		}

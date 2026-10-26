@@ -111,7 +111,7 @@ func TestViewContent(t *testing.T) {
 	m.session.Pane = paneEntries
 	m.session.SelEntry = 4
 	frame := ansi.Strip(m.View().Content)
-	for _, want := range []string{"Waiting 1", "Downloading 3", "Done 1", "Official video 1", "Already had 1", "Failed 2", "90s UK Dance Hits", "Música Eletrônica 1", "3/6", "████████ 100%", "███░░░░░  34%", "failed", "have it", "finding", "joining", "official", "Details", "6 songs", "3 links"} {
+	for _, want := range []string{"Waiting 1", "Downloading 3", "Done 1", "Official video 1", "Already had 1", "Failed 2", "90s UK Dance Hits", "Música Eletrônica 1", "3/6", "████████ 100%", "███░░░░░  34%", "failed", "have it", "finding", "joining", "official", "Details", "6 songs", "3 sources"} {
 		if !strings.Contains(frame, want) {
 			t.Errorf("frame missing %q\n%s", want, frame)
 		}

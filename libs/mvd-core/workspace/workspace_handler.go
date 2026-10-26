@@ -194,7 +194,7 @@ func (m Model) addToRun(links []string) Model {
 	if len(links) == 1 {
 		m.done = "Added: its songs are loading"
 	} else {
-		m.done = fmt.Sprintf("Added %d links: their songs are loading", len(links))
+		m.done = fmt.Sprintf("Added %d sources: their songs are loading", len(links))
 	}
 
 	return m
@@ -610,7 +610,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		m.notice = "The downloads are already going"
 		return m, nil
 	case len(m.session.Sources()) == 0:
-		m.notice = "The list is empty: add a link first (Ctrl+L)"
+		m.notice = "The list is empty: add a source first (Ctrl+L)"
 		return m, nil
 	case m.host.Start == nil:
 		m.notice = "Downloading is not available here"

@@ -52,7 +52,7 @@ func (m Model) downloadProps(w, h int) Props {
 	p.PlaylistsRows = func(w, h int) ([]PlaylistsRow, int) {
 		return scrolled(m.playlistRows(w), m.playlistsTop, h)
 	}
-	p.PlaylistsTitle = counted(len(m.session.State.Playlists), "link")
+	p.PlaylistsTitle = counted(len(m.session.State.Playlists), "source")
 	p.PlaylistsRight = ""
 	p.PlaylistsFocus = m.session.Pane == paneLists
 
@@ -376,7 +376,7 @@ func emptyPlaylistRows(w int) []PlaylistsRow {
 	blank := func() { rows = append(rows, PlaylistsRow{Mark: " ", Sp: " ", Title: " "}) }
 	say("Add the songs you want as music videos.", CellStyle{Fg: look.Colours.Text, Bold: true})
 	blank()
-	say("Click + Add link below, press Ctrl+L, or paste links with Ctrl+V.", CellStyle{Fg: look.Colours.Text})
+	say("Click + Add source below, press Ctrl+L, or paste links with Ctrl+V.", CellStyle{Fg: look.Colours.Text})
 	blank()
 	say("Works with YouTube videos and playlists, and with Spotify and Apple Music playlists.", CellStyle{Fg: look.Colours.Dim})
 	return rows

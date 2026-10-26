@@ -58,18 +58,18 @@ func TestPointingAtAButtonThatCannotBeUsedSaysWhy(t *testing.T) {
 		t.Fatal("no buttons")
 	}
 	next, _ := m.Update(tea.MouseMotionMsg{X: x + w/2, Y: y}) // Start
-	if screen := screenOf(next.(Model)); !strings.Contains(screen, "Add a link first.") {
+	if screen := screenOf(next.(Model)); !strings.Contains(screen, "Add a source first.") {
 		t.Errorf("the disabled Start does not say why:\n%s", screen)
 	}
 	next, _ = m.Update(tea.MouseMotionMsg{X: x + w/2, Y: y + 2}) // Add link, which can be used
-	if screen := screenOf(next.(Model)); strings.Contains(screen, "Add a link first.") {
+	if screen := screenOf(next.(Model)); strings.Contains(screen, "Add a source first.") {
 		t.Error("a button that works should not say it cannot")
 	}
 }
 
 func TestWhileNothingRunsTheBottomLineListsTheKeysThatStartTheWork(t *testing.T) {
 	screen := screenOf(listOf("https://a"))
-	for _, want := range []string{"F1 shortcuts", "Ctrl+L add link", "Ctrl+R load playlists", "Ctrl+O open list"} {
+	for _, want := range []string{"F1 shortcuts", "Ctrl+L add source", "Ctrl+R load playlists", "Ctrl+O open list"} {
 		if !strings.Contains(screen, want) {
 			t.Errorf("the key hints lack %q: %s", want, screen)
 		}

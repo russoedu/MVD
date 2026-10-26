@@ -120,7 +120,7 @@ func (m Model) idleHints() string {
 	}
 	return strings.Join([]string{
 		menubar.ShortcutLabel("F1") + " shortcuts",
-		menubar.ShortcutLabel("Ctrl+L") + " add link",
+		menubar.ShortcutLabel("Ctrl+L") + " add source",
 		menubar.ShortcutLabel("Ctrl+R") + " load playlists",
 		menubar.ShortcutLabel("Ctrl+O") + " open list",
 		menubar.ShortcutLabel("Ctrl+,") + " preferences",
@@ -160,7 +160,7 @@ func (m Model) summaryLine() string {
 		line += "  " + look.Red.Render(failed)
 	}
 	if unread := m.unreadLinks(); unread > 0 {
-		said := fmt.Sprintf("✗ %d %s could not be read", unread, plural("link", unread))
+		said := fmt.Sprintf("✗ %d %s could not be read", unread, plural("source", unread))
 		plain += "  " + said
 		line += "  " + look.Red.Render(said)
 	}
