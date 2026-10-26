@@ -204,7 +204,7 @@ func TestKeyHandling(t *testing.T) {
 	}
 
 	m.session.Follow = true
-	mm, _ := m.Update(evMsg{engine.EvEntryState{Entry: 6, State: engine.StateDownloading, TargetID: "Jb6gcoR266U"}})
+	mm, _ := m.Update(evMsg{ev: engine.EvEntryState{Entry: 6, State: engine.StateDownloading, TargetID: "Jb6gcoR266U"}})
 	m = mm.(Model)
 	if m.session.SelPlaylist != 1 || m.session.SelectedEntry().ID != 6 {
 		t.Fatalf("follow should jump to playlist 1 entry 6, got playlist %d entry %d", m.session.SelPlaylist, m.session.SelectedEntry().ID)

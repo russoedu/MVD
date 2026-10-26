@@ -372,6 +372,11 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.bar = bar
 		return m, cmd
 	}
+	if downloadpage.IsLeftover(msg) {
+		// The screen's own events and ticks go to it whatever is open: if one is taken by the menu
+		// the screen is never asked for the next, and the run's events pile up until it stops.
+		return m.toScreen(msg)
+	}
 	if m.bar.Open() >= 0 {
 		bar, cmd := m.bar.Update(msg)
 		m.bar = bar
