@@ -165,11 +165,70 @@
   visibility: visible;
 }
 
+/*
+ * Classic Mac: stripes across the bar with a margin round them, the title on a plain label in
+ * the middle, the close box on the left and the zoom (and collapse) box on the right, each cut
+ * out of the stripes.
+ */
+[data-family='mac-classic'] .classic-title-bar {
+  position: relative;
+  justify-content: space-between;
+  padding: 0 8px;
+  background-clip: content-box;
+  box-shadow: inset 0 -1px var(--title-rule);
+}
+
+[data-family='mac-classic'] .classic-title {
+  position: absolute;
+  left: 50%;
+  flex: none;
+  max-width: calc(100% - 96px);
+  padding: 0 8px;
+  background: var(--title-label-bg);
+  line-height: calc(var(--title-height) - 1px);
+  transform: translateX(-50%);
+}
+
+[data-family='mac-classic'] .classic-window-controls {
+  gap: 6px;
+}
+
+[data-family='mac-classic'] .classic-window-control {
+  position: relative;
+}
+
+[data-family='mac-classic'] .classic-window-control span {
+  display: none;
+}
+
+/* The zoom box: a small box in the corner of the big one. */
+[data-family='mac-classic'] .classic-window-control[data-control='maximise']::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  box-shadow: inset -1px -1px currentcolor;
+  content: '';
+}
+
+/* The collapse box: a bar across the middle. */
+[data-family='mac-classic'] .classic-window-control[data-control='minimise']::before {
+  position: absolute;
+  top: 4px;
+  right: 1px;
+  left: 1px;
+  height: 3px;
+  box-shadow: inset 0 1px currentcolor, inset 0 -1px currentcolor;
+  content: '';
+}
+
 /* Menu bar. */
 .classic-menu-bar {
   display: flex;
   flex: none;
   background: var(--menubar-bg);
+  box-shadow: var(--menubar-shadow, none);
 }
 
 .classic-menu-title {

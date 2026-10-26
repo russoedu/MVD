@@ -21,7 +21,9 @@ interface OpenMenu {
 /**
  * The menu bar inside the window, with each menu's entries and their shortcuts written the
  * family's way. On Windows, Alt and a menu's letter opens it, a letter in an open menu picks the
- * entry, and Alt or F10 alone puts the focus on the bar. Left and right move between menus.
+ * entry, and Alt or F10 alone puts the focus on the bar. Left and right move between menus. On
+ * Mac OS 7 a menu opened with the mouse stays open only while the button is held: releasing it
+ * over an entry picks the entry, anywhere else closes the menu.
  */
 export function MenuBar ({ menus, layout, onEntry, blocked }: MenuBarProps) {
   const [open, setOpen] = useState<OpenMenu | null>(null)
@@ -72,6 +74,20 @@ export function MenuBar ({ menus, layout, onEntry, blocked }: MenuBarProps) {
       document.removeEventListener('pointerdown', onPointer, { capture: true })
     }
   })
+
+  const held = layout.menuStyle === 'hold' && open !== null && !open.byKey
+  useEffect(() => {
+    if (!held) return
+    // After the menu has seen the release, so an entry under the pointer is picked first.
+    let closing: ReturnType<typeof setTimeout> | undefined
+    const onRelease = (): void => { closing = setTimeout(() => setOpen(null), 0) }
+    document.addEventListener('pointerup', onRelease)
+
+    return () => {
+      document.removeEventListener('pointerup', onRelease)
+      clearTimeout(closing)
+    }
+  }, [held])
 
   const onMenuKey = (event: ReactKeyboardEvent, menu: MenuSnapshot): void => {
     if (event.ctrlKey || event.metaKey) return

@@ -27,7 +27,7 @@ interface ClassicWindowProps {
  * outside the window wear the theme too.
  */
 export function ClassicWindow ({ theme, snapshot, onIntent, children, overlay }: ClassicWindowProps) {
-  const layout = layoutOf(theme.family)
+  const layout = layoutOf(theme)
   const [inside, setInside] = useState<HTMLDivElement | null>(null)
 
   // Before the browser lays the panes out: Chrome styles a scroll bar's parts when it creates the

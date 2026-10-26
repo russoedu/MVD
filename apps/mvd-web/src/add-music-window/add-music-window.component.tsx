@@ -16,10 +16,12 @@ interface AddMusicWindowProps {
 
 /**
  * The window for adding music: a platform address, or a search by artist, album and song. On
- * Windows it is a dialog with its own title bar; on Mac OS X it is a sheet under the title bar.
+ * Windows it is a dialog with its own title bar; on a classic Mac a plain framed box with its
+ * heading inside; on Mac OS X a sheet under the title bar.
  */
 export function AddMusicWindow ({ adding, layout, container, onMode, onText, onButton }: AddMusicWindowProps) {
   const sheet = layout.dialogStyle === 'sheet'
+  const titled = layout.dialogStyle === 'window'
   const cancel = adding.buttons.find(button => button.role === 'cancel')
   const primary = adding.buttons.find(button => button.role === 'default')
 
@@ -55,9 +57,9 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
       UNSTABLE_portalContainer={container}
       onOpenChange={open => { if (!open && cancel) onButton(cancel.id) }}
     >
-      <Modal className={sheet ? 'classic-sheet' : 'classic-dialog'}>
-        <Dialog className='classic-dialog-content' aria-label={sheet ? adding.heading : undefined}>
-          {!sheet && (
+      <Modal className={sheet ? 'classic-sheet' : 'classic-dialog'} data-style={layout.dialogStyle}>
+        <Dialog className='classic-dialog-content' aria-label={titled ? undefined : adding.heading}>
+          {titled && (
             <TitleBar
               title={<Heading slot='title' className='classic-title'>{adding.heading}</Heading>}
               layout={layout}
@@ -73,7 +75,7 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
               if (primary?.enabled) onButton(primary.id)
             }}
           >
-            {sheet && <Heading slot='title' className='classic-sheet-heading'>{adding.heading}</Heading>}
+            {!titled && <Heading slot='title' className='classic-sheet-heading'>{adding.heading}</Heading>}
             <RadioGroup
               className='classic-radio-group'
               aria-label='What to add'

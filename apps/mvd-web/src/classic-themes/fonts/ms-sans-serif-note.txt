@@ -1,0 +1,8 @@
+ms-sans-serif-bold.woff2 is the FontStruction "MS Sans Serif" (bold) by "lou",
+as converted to woff2 by 98.css (https://github.com/jdan/98.css). Its licence
+is ms-sans-serif-license.txt (CC BY-SA 3.0) and FontStruct asks for
+ms-sans-serif-readme.txt to travel with it; both are copied from 98.css
+unchanged.
+
+"MS Sans Serif" is the name of Microsoft's typeface; this is an independent
+pixel recreation and is not made or endorsed by Microsoft.

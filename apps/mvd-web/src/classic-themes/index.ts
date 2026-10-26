@@ -5,8 +5,12 @@
  * properties, and put what differs in structure under [data-family=...].
  */
 import './classic-fonts.style.css'
+import './windows-3-1.style.css'
 import './windows-95.style.css'
+import './windows-xp.style.css'
 import './windows-vista.style.css'
+import './mac-os-7.style.css'
+import './mac-os-9.style.css'
 import './aqua.style.css'
 import './classic-controls.style.css'
 
