@@ -1,0 +1,202 @@
+/*
+ * Windows Vista (Aero): a blurred glass frame, Segoe UI (Selawik where Segoe UI is missing),
+ * glossy two-tone buttons that fade to blue on hover, a glowing default button, green progress
+ * bars with a light sweeping across them.
+ */
+:root[data-theme='windows-vista'] {
+  --ui-font: 'Segoe UI', 'Selawik', sans-serif;
+  --ui-size: 12px;
+  --title-font: var(--ui-font);
+  --title-size: 12px;
+  --title-weight: 400;
+  --mono-font: Consolas, 'Lucida Console', monospace;
+  --mono-size: 12px;
+  --smoothing: auto;
+
+  --desktop: radial-gradient(ellipse at 20% 120%, #3fae4f 0%, transparent 55%), radial-gradient(ellipse at 90% 0%, #2a83c7 0%, transparent 60%), linear-gradient(160deg, #0b3d6e, #1a6f9c 45%, #0e5235);
+  --face: #f0f0f0;
+  --window: #ffffff;
+  --text: #000000;
+  --text-dim: #6d6d6d;
+  --text-good: #1e7b1e;
+  --text-bad: #c42b1c;
+  --text-busy: #1c5fa8;
+  --select-bg: linear-gradient(#dcebfc, #c1dbfc);
+  --select-text: #000000;
+  --focus-ring: 1px dotted #000000;
+
+  --raised: inset 0 0 0 1px #ffffff;
+  --sunken: none;
+  --pressed: none;
+  --etched: inset 0 -1px #ffffff, inset 0 1px #d5d5d5;
+
+  --frame-bg: rgb(146 184 222 / 72%);
+  --frame-border: 1px solid rgb(0 0 0 / 70%);
+  --frame-shadow: inset 0 0 0 1px rgb(255 255 255 / 55%), 0 8px 28px rgb(0 0 0 / 55%);
+  --frame-radius: 7px 7px 4px 4px;
+  --frame-padding: 0 7px 7px;
+  --frame-backdrop: blur(10px) saturate(1.4);
+
+  --title-height: 30px;
+  --title-bg: transparent;
+  --title-text: #000000;
+  --title-text-shadow: 0 0 8px #ffffff, 0 0 12px #ffffff;
+
+  --control-width: 26px;
+  --control-height: 18px;
+  --control-bg: linear-gradient(rgb(255 255 255 / 60%), rgb(255 255 255 / 25%) 50%, rgb(0 0 0 / 8%) 50%, rgb(255 255 255 / 30%));
+  --control-shadow: inset 0 0 0 1px rgb(255 255 255 / 55%), 0 0 0 1px rgb(0 0 0 / 55%);
+  --control-pressed-shadow: inset 0 0 6px rgb(0 0 0 / 50%), 0 0 0 1px rgb(0 0 0 / 55%);
+  --control-radius: 0;
+  --control-text: #ffffff;
+  --control-close-bg: linear-gradient(#e8a493, #c75050 50%, #b02b17 50%, #d0482f);
+  --control-close-width: 43px;
+  --control-gap: 0;
+  --control-close-gap: 0;
+
+  --menubar-bg: linear-gradient(#f9fcfd, #e6eef7);
+  --menu-bg: linear-gradient(90deg, #f1f1f1 26px, #e2e3e3 26px 27px, #ffffff 27px 28px, #f0f0f0 28px);
+  --menu-border: 1px solid #979797;
+  --menu-shadow: 2px 2px 3px rgb(0 0 0 / 30%);
+  --menu-radius: 0;
+  --menu-padding: 2px;
+  --menu-item-select-bg: linear-gradient(#f2f8fe, #dcebfc);
+  --menu-item-select-text: #000000;
+  --menu-item-radius: 3px;
+  --menu-separator: inset 0 1px #e0e0e0, inset 0 2px #ffffff;
+
+  --toolbar-bg: linear-gradient(#fdfeff, #e8eef5 50%, #dbe5ef 50%, #e4ecf5);
+
+  --button-height: 23px;
+  --button-padding: 0 14px;
+  --button-bg: linear-gradient(#f2f2f2 0 45%, #ebebeb 45%, #dddddd 50%, #cfcfcf);
+  --button-text: #000000;
+  --button-border: 1px solid #707070;
+  --button-shadow: inset 0 0 0 1px rgb(255 255 255 / 70%);
+  --button-radius: 3px;
+  --button-hover-bg: linear-gradient(#eaf6fd 0 45%, #d9f0fc 45%, #bee6fd 50%, #a7d9f5);
+  --button-hover-border: 1px solid #3c7fb1;
+  --button-pressed-bg: linear-gradient(#e5f4fc 0 45%, #c4e5f6 45%, #98d1ef 50%, #68b3db);
+  --button-pressed-shadow: inset 1px 1px 3px rgb(0 0 0 / 30%);
+  --button-default-bg: var(--button-bg);
+  --button-default-text: #000000;
+  --button-default-border: 1px solid #3399ff;
+  --button-default-shadow: inset 0 0 0 1px #9ad0f8;
+  --button-default-animation: vista-default-glow 1.6s ease-in-out infinite alternate;
+  --button-transition: background 150ms ease-out, border-color 150ms ease-out;
+  --button-disabled-text: #a0a0a0;
+  --button-disabled-text-shadow: none;
+
+  --field-bg: #ffffff;
+  --field-border: 1px solid #abadb3;
+  --field-shadow: inset 0 1px #e3e9ef;
+  --field-radius: 2px;
+  --field-padding: 3px 4px;
+
+  --pane-bg: #ffffff;
+  --pane-border: 1px solid #828790;
+  --pane-shadow: none;
+  --pane-radius: 0;
+  --pane-padding: 0;
+  --header-bg: linear-gradient(#ffffff, #f2f2f2 50%, #e9e9e9);
+  --header-border: 1px solid #d5d5d5;
+  --header-shadow: none;
+  --row-alt-bg: #ffffff;
+
+  --progress-height: 15px;
+  --progress-trough: linear-gradient(#f3f3f3, #e2e2e2 50%, #d9d9d9 50%, #eeeeee);
+  --progress-trough-border: 1px solid #bcbcbc;
+  --progress-trough-shadow: inset 0 0 0 1px rgb(255 255 255 / 70%);
+  --progress-radius: 3px;
+  --progress-padding: 0;
+  --progress-fill: linear-gradient(90deg, transparent 0 40%, rgb(255 255 255 / 55%) 50%, transparent 60% 100%) no-repeat -200% 0 / 50% 100%, linear-gradient(#cdffcd, #67c46a 50%, #36a33c 50%, #5ccc5c);
+  --progress-fill-radius: 2px;
+  --progress-unknown: linear-gradient(90deg, transparent, #67c46a 30% 70%, transparent) no-repeat -50% 0 / 40% 100%;
+  --progress-animation: vista-progress-sweep 2.2s linear infinite;
+
+  --check-size: 13px;
+  --check-bg: linear-gradient(135deg, #dcdcdc, #ffffff);
+  --check-border: 1px solid #8e8f8f;
+  --check-shadow: inset 0 0 0 2px #f4f4f4;
+  --check-radius: 0;
+  --check-mark: #4a5f97;
+  --check-on-bg: var(--check-bg);
+  --radio-radius: 50%;
+
+  --status-bg: linear-gradient(#f5f8fb, #e1e8f0);
+  --status-shadow: inset 0 1px #c5cdd8;
+
+  --dialog-shadow: 0 8px 28px rgb(0 0 0 / 55%);
+  --dialog-animation: none;
+}
+
+@keyframes vista-default-glow {
+  from { box-shadow: inset 0 0 0 1px #9ad0f8; }
+  to { box-shadow: inset 0 0 0 1px #c9e7fc, 0 0 4px #66b8f5; }
+}
+
+@keyframes vista-progress-sweep {
+  from { background-position: -200% 0, 0 0; }
+  to { background-position: 300% 0, 0 0; }
+}
+
+/* Scroll bars: a light track with a glassy rounded thumb and arrow buttons at both ends. */
+:root[data-theme='windows-vista'] ::-webkit-scrollbar {
+  width: 17px;
+  height: 17px;
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, #e3e3e3, #f5f5f5 30%, #f5f5f5 70%, #e3e3e3);
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-thumb {
+  border: 1px solid #959595;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #f3f3f3, #e8e8e8 50%, #d6d6d6 50%, #e0e0e0);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 80%);
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-thumb:hover {
+  border-color: #3c7fb1;
+  background: linear-gradient(90deg, #e3f4fc, #d6eefb 50%, #a9dbf6 50%, #c3e6f9);
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button {
+  display: block;
+  width: 17px;
+  height: 17px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button:hover {
+  background-color: #dcecfc;
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 4L3.5 0 7 4z' fill='%234d6185'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0L3.5 4 7 0z' fill='%234d6185'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7'%3E%3Cpath d='M4 0L0 3.5 4 7z' fill='%234d6185'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7'%3E%3Cpath d='M0 0L4 3.5 0 7z' fill='%234d6185'/%3E%3C/svg%3E");
+}
+
+/* One arrow at each end: Chrome would otherwise draw both arrows at both ends. */
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button:start:increment,
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-button:end:decrement {
+  display: none;
+}
+
+:root[data-theme='windows-vista'] ::-webkit-scrollbar-corner {
+  background: #f0f0f0;
+}

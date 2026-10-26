@@ -1,0 +1,152 @@
+.classic-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.classic-pane-heading {
+  margin: 0 0 3px;
+  font: inherit;
+  font-weight: var(--title-weight);
+}
+
+.classic-pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pane-padding);
+  border: var(--pane-border);
+  border-radius: var(--pane-radius);
+  background: var(--pane-bg);
+  box-shadow: var(--pane-shadow);
+  outline: none;
+}
+
+[data-tone='dim'] { color: var(--text-dim); }
+[data-tone='good'] { color: var(--text-good); }
+[data-tone='bad'] { color: var(--text-bad); }
+[data-tone='busy'] { color: var(--text-busy); }
+
+/* Rows of the sources list and the songs table. */
+.classic-row {
+  outline: none;
+  cursor: default;
+}
+
+.classic-row:nth-child(even) {
+  background: var(--row-alt-bg);
+}
+
+.classic-row[data-selected] {
+  background: var(--select-bg);
+  color: var(--select-text);
+}
+
+.classic-row[data-selected] [data-tone] {
+  color: inherit;
+}
+
+.classic-row[data-focus-visible] {
+  outline: var(--focus-ring);
+  outline-offset: -1px;
+}
+
+[data-family='windows-themed'] .classic-row[data-selected] {
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px #7da2ce;
+}
+
+.classic-list .classic-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.classic-source-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classic-source-detail {
+  flex: none;
+}
+
+/* The songs table. */
+.classic-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.classic-column {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 2px 6px;
+  border: var(--header-border);
+  border-top: none;
+  background: var(--header-bg);
+  box-shadow: var(--header-shadow);
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.classic-column-tick {
+  width: 22px;
+}
+
+.classic-column-progress {
+  width: 30%;
+}
+
+.classic-cell {
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.classic-check {
+  display: inline-flex;
+}
+
+/* Progress bars. */
+.classic-progress {
+  min-width: 80px;
+}
+
+.classic-progress-trough {
+  box-sizing: border-box;
+  height: var(--progress-height);
+  overflow: hidden;
+  padding: var(--progress-padding);
+  border: var(--progress-trough-border);
+  border-radius: var(--progress-radius);
+  background: var(--progress-trough);
+  box-shadow: var(--progress-trough-shadow);
+}
+
+.classic-progress-fill {
+  height: 100%;
+  border-radius: var(--progress-fill-radius);
+  background: var(--progress-fill);
+  animation: var(--progress-animation);
+}
+
+.classic-progress-fill[data-unknown] {
+  background: var(--progress-unknown);
+}
+
+.classic-log {
+  font-family: var(--mono-font);
+  font-size: var(--mono-size);
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classic-progress-fill {
+    animation: none;
+  }
+}

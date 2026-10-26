@@ -1,0 +1,22 @@
+/*
+ * The fonts the classic themes bundle. Each theme's stack names the installed system font first
+ * (local()), then one of these, then a generic family.
+ *
+ * W95FA (OFL 1.1) comes from @fontsource/win95fa.
+ * Selawik (OFL 1.1, Microsoft's open fallback for Segoe UI): fonts/selawik-license.txt.
+ */
+@import '@fontsource/win95fa/latin-400.css';
+
+@font-face {
+  font-family: 'Selawik';
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/selawik-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Selawik';
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/selawik-bold.woff2') format('woff2');
+}
