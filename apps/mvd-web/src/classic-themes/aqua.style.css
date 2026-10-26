@@ -135,6 +135,10 @@
 
   --dialog-shadow: 0 10px 24px rgb(0 0 0 / 45%);
   --dialog-animation: aqua-sheet-down 0.3s ease-out;
+
+  /* A Mac shows the wheel only when the program keeps the user waiting, never for work behind. */
+  --cursor-wait: url('./cursors/aqua-wait.svg') 16 16, wait;
+  --cursor-progress: default;
 }
 
 @keyframes aqua-default-pulse {

@@ -18,9 +18,19 @@ export interface ChromeLayout {
   shortcutStyle:    'windows' | 'mac'
   /** A dialog is a window of its own, or a sheet that comes down from the window's title bar. */
   dialogStyle:      'window' | 'sheet'
+  /**
+   * When the keyboard letters are underlined: always (Windows 95), once Alt is pressed (Windows
+   * 2000 onwards), or never, since a Mac has none.
+   */
+  mnemonics:        'always' | 'on-alt' | 'none'
+  /**
+   * Whether the window is scaled by whole screen pixels only, so a bitmap font and one-pixel
+   * bevels stay sharp on a screen scaled by 125 % or 150 %.
+   */
+  pixelSnap:        boolean
 }
 
-const windows: ChromeLayout = {
+const windows: Omit<ChromeLayout, 'mnemonics' | 'pixelSnap'> = {
   titleAlign:       'left',
   controlsSide:     'right',
   controls:         ['minimise', 'maximise', 'close'],
@@ -31,8 +41,8 @@ const windows: ChromeLayout = {
 }
 
 const layouts: Record<ChromeFamily, ChromeLayout> = {
-  'windows-classic': windows,
-  'windows-themed':  windows,
+  'windows-classic': { ...windows, mnemonics: 'always', pixelSnap: true },
+  'windows-themed':  { ...windows, mnemonics: 'on-alt', pixelSnap: false },
   'aqua':            {
     titleAlign:       'center',
     controlsSide:     'left',
@@ -41,6 +51,8 @@ const layouts: Record<ChromeFamily, ChromeLayout> = {
     defaultButton:    'last',
     shortcutStyle:    'mac',
     dialogStyle:      'sheet',
+    mnemonics:        'none',
+    pixelSnap:        false,
   },
 }
 

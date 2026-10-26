@@ -19,8 +19,22 @@
   user-select: none;
 }
 
-.classic-window[data-busy] {
-  cursor: progress;
+/* The theme's pointers while MVD works: over every part of the window, whatever its own pointer. */
+.classic-window[data-activity='background'],
+.classic-window[data-activity='background'] * {
+  cursor: var(--cursor-progress);
+}
+
+.classic-window[data-activity='waiting'],
+.classic-window[data-activity='waiting'] * {
+  cursor: var(--cursor-wait);
+}
+
+/* Keyboard letters: underlined while the root says so (always on Windows 95, after Alt on Vista). */
+:root[data-mnemonics='shown'] .classic-mnemonic {
+  text-decoration: underline;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 2px;
 }
 
 /* Title bar. */
@@ -179,8 +193,18 @@
   outline-offset: -2px;
 }
 
-/* Menus open outside the window, so they take the theme's fonts themselves. */
+/*
+ * React Aria places the menu by screen position, which the page's zoom (sharp Windows 95 on a
+ * scaled screen) would scale again: the box that is placed undoes the zoom, the panel inside
+ * puts it back.
+ */
 .classic-menu-popover {
+  zoom: calc(1 / var(--pixel-zoom, 1));
+}
+
+/* Menus open outside the window, so they take the theme's fonts themselves. */
+.classic-menu-panel {
+  zoom: var(--pixel-zoom, 1);
   min-width: 200px;
   padding: var(--menu-padding);
   border: var(--menu-border);

@@ -1,4 +1,5 @@
 export type {
+  Activity,
   AddMusicField,
   AddMusicMode,
   AddMusicSnapshot,
@@ -8,6 +9,7 @@ export type {
   KeyHint,
   MenuEntrySnapshot,
   MenuSnapshot,
+  Mnemonic,
   Progress,
   Shortcut,
   SongRow,

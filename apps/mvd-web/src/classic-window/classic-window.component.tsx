@@ -2,6 +2,8 @@ import { useLayoutEffect, useState, type ReactNode } from 'react'
 import { layoutOf, type ClassicTheme, type ChromeLayout, type WindowControl } from '../classic-themes'
 import type { WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
 import { MenuBar } from './menu-bar.component'
+import { useMnemonicCues } from './mnemonic-cues.hook'
+import { usePixelSnap } from './pixel-snap.hook'
 import { StatusLine } from './status-line.component'
 import { TitleBar } from './title-bar.component'
 import { ActionsToolbar } from './actions-toolbar.component'
@@ -40,18 +42,21 @@ export function ClassicWindow ({ theme, snapshot, onIntent, children, overlay }:
       delete root.dataset.family
     }
   }, [theme])
+  useMnemonicCues(layout.mnemonics)
+  usePixelSnap(layout.pixelSnap)
 
+  const covering = inside ? overlay?.(inside, layout) : undefined
   const onWindow = (action: WindowControl) => onIntent({ kind: 'window', action })
 
   return (
-    <div className='classic-window' data-family={theme.family} data-busy={snapshot.busy || undefined}>
+    <div className='classic-window' data-family={theme.family} data-activity={snapshot.activity}>
       <TitleBar title={snapshot.title} layout={layout} onWindow={onWindow} />
-      <MenuBar menus={snapshot.menus} layout={layout} onEntry={id => onIntent({ kind: 'menu', id })} />
+      <MenuBar menus={snapshot.menus} layout={layout} blocked={Boolean(covering)} onEntry={id => onIntent({ kind: 'menu', id })} />
       <ActionsToolbar buttons={snapshot.toolbar} onButton={id => onIntent({ kind: 'button', id })} />
       {/* Drawn again for each theme, so the scroll bars are made in the new theme's style. */}
       <div key={theme.id} ref={setInside} className='classic-window-inside'>
         <div className='classic-window-panes'>{children}</div>
-        {inside && overlay?.(inside, layout)}
+        {covering}
       </div>
       <StatusLine status={snapshot.status} layout={layout} />
     </div>

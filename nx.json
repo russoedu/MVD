@@ -83,6 +83,7 @@
     },
     "version": {
       "conventionalCommits": true,
+      "adjustSemverBumpsForZeroMajorVersion": false,
       "fallbackCurrentVersionResolver": "disk",
       "preVersionCommand": "npx nx run-many -t build --projects=packages/*,python-packages/*,tag:type:vscode-extension",
       "versionActionsOptions": {

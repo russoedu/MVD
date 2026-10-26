@@ -128,6 +128,9 @@
 
   --dialog-shadow: 0 8px 28px rgb(0 0 0 / 55%);
   --dialog-animation: none;
+
+  --cursor-wait: url('./cursors/windows-vista-wait.svg') 16 16, wait;
+  --cursor-progress: url('./cursors/windows-vista-progress.svg') 2 2, progress;
 }
 
 @keyframes vista-default-glow {

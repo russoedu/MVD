@@ -30,6 +30,22 @@
   color: #00f0ff;
 }
 
+.theme-preview-activity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.theme-preview-bar select {
+  padding: 3px 6px;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  background: #27272a;
+  color: inherit;
+  font: inherit;
+}
+
 .theme-preview-intent {
   margin-left: auto;
   overflow: hidden;

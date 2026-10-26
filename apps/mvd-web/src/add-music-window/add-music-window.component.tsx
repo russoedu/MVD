@@ -1,6 +1,7 @@
 import { Button, Dialog, Heading, Input, Label, Modal, ModalOverlay, Radio, RadioGroup, TextField } from 'react-aria-components'
-import { orderDialogButtons, type ChromeLayout } from '../classic-themes'
-import { TitleBar } from '../classic-window'
+import { useEffect, useRef } from 'react'
+import { isMnemonic, orderDialogButtons, pressedLetter, type ChromeLayout } from '../classic-themes'
+import { MnemonicLabel, TitleBar } from '../classic-window'
 import type { AddMusicField, AddMusicMode, AddMusicSnapshot } from '../workspace-snapshot'
 
 interface AddMusicWindowProps {
@@ -20,6 +21,31 @@ interface AddMusicWindowProps {
 export function AddMusicWindow ({ adding, layout, container, onMode, onText, onButton }: AddMusicWindowProps) {
   const sheet = layout.dialogStyle === 'sheet'
   const cancel = adding.buttons.find(button => button.role === 'cancel')
+  const primary = adding.buttons.find(button => button.role === 'default')
+
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Windows: Alt and a letter reaches the choice, field or button with that letter; so does the
+  // letter alone when the focus is not in a text field. The dialog is modal, so every key is its.
+  useEffect(() => {
+    if (layout.mnemonics === 'none') return
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const typing = event.target instanceof HTMLInputElement && event.target.type === 'text'
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || (typing && !event.altKey)) return
+      const letter = pressedLetter(event)
+      const mode = adding.modes.find(each => isMnemonic(letter, each.mnemonic))
+      const field = adding.fields.find(each => isMnemonic(letter, each.mnemonic))
+      const button = adding.buttons.find(each => each.enabled && isMnemonic(letter, each.mnemonic))
+      if (mode) onMode(mode.mode)
+      else if (field) formRef.current?.querySelector<HTMLInputElement>(`[data-field='${CSS.escape(field.field)}'] input`)?.focus()
+      else if (button) onButton(button.id)
+      else return
+      event.preventDefault()
+    }
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => document.removeEventListener('keydown', onKeyDown)
+  })
 
   return (
     <ModalOverlay
@@ -40,10 +66,10 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
             />
           )}
           <form
+            ref={formRef}
             className='classic-dialog-body'
             onSubmit={event => {
               event.preventDefault()
-              const primary = adding.buttons.find(button => button.role === 'default')
               if (primary?.enabled) onButton(primary.id)
             }}
           >
@@ -55,16 +81,16 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
               value={adding.mode}
               onChange={mode => onMode(mode as AddMusicMode)}
             >
-              {adding.modes.map(({ mode, label }) => (
+              {adding.modes.map(({ mode, label, mnemonic }) => (
                 <Radio key={mode} value={mode} className='classic-radio'>
                   <span className='classic-radio-dot' aria-hidden='true' />
-                  {label}
+                  <MnemonicLabel label={label} mnemonic={mnemonic} />
                 </Radio>
               ))}
             </RadioGroup>
-            {adding.fields.map(({ field, label, text }) => (
-              <TextField key={field} className='classic-text-field' value={text} onChange={value => onText(field, value)}>
-                <Label className='classic-field-label'>{label}</Label>
+            {adding.fields.map(({ field, label, mnemonic, text }) => (
+              <TextField key={field} className='classic-text-field' data-field={field} value={text} onChange={value => onText(field, value)}>
+                <Label className='classic-field-label'><MnemonicLabel label={label} mnemonic={mnemonic} /></Label>
                 <Input className='classic-field' />
               </TextField>
             ))}
@@ -82,7 +108,7 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
                   isDisabled={!button.enabled}
                   onPress={button.role === 'default' ? undefined : () => onButton(button.id)}
                 >
-                  {button.label}
+                  <MnemonicLabel label={button.label} mnemonic={button.mnemonic} />
                 </Button>
               ))}
             </div>

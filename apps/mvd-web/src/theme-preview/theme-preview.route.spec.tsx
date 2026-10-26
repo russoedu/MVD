@@ -17,6 +17,10 @@ describe('ThemePreview', () => {
     Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true)
     // jsdom has no CSS object, which React Aria reads.
     if (!('CSS' in globalThis)) Reflect.set(globalThis, 'CSS', { escape: (text: string) => text, supports: () => false })
+    // jsdom draws every element as a block unless told, which would read "File" as "F ile".
+    if (!document.querySelector('style[data-inline-letters]')) {
+      document.head.insertAdjacentHTML('beforeend', '<style data-inline-letters>.classic-mnemonic { display: inline }</style>')
+    }
   })
 
   it('sets the theme and its family on the page root, so menus outside the window wear it too', () => {
@@ -73,5 +77,58 @@ describe('ThemePreview', () => {
     expect(screen.getByRole('textbox', { name: 'Album' })).toBeTruthy()
     fireEvent.submit(document.querySelector('.classic-dialog-body') as HTMLFormElement)
     expect(screen.getByRole('alert').textContent).toBe('Write the artist')
+  })
+  it('underlines the keyboard letters always on Windows 95, after Alt on Vista, and never on a Mac', () => {
+    render(<ThemePreview />)
+    choose('Windows 95')
+    expect(document.documentElement.dataset.mnemonics).toBe('shown')
+    expect(screen.getByRole('button', { name: 'File' }).querySelector('.classic-mnemonic')?.textContent).toBe('F')
+
+    choose('Windows Vista')
+    expect(document.documentElement.dataset.mnemonics).toBe('hidden')
+    fireEvent.keyDown(document.body, { key: 'Alt', code: 'AltLeft', altKey: true })
+    expect(document.documentElement.dataset.mnemonics).toBe('shown')
+    fireEvent.pointerDown(document.body)
+    expect(document.documentElement.dataset.mnemonics).toBe('hidden')
+
+    choose('Mac OS X 10.0')
+    fireEvent.keyDown(document.body, { key: 'Alt', code: 'AltLeft', altKey: true })
+    expect(document.documentElement.dataset.mnemonics).toBe('hidden')
+  })
+
+  it('opens a menu with Alt and its letter, and picks an entry with its letter', () => {
+    render(<ThemePreview />)
+    choose('Windows 95')
+    fireEvent.keyDown(document.body, { key: 'f', code: 'KeyF', altKey: true })
+    const menu = screen.getByRole('menu', { name: 'File' })
+
+    fireEvent.keyDown(within(menu).getAllByRole('menuitem')[0], { key: 's', code: 'KeyS' })
+    expect(screen.getByText('{"kind":"menu","id":"save"}')).toBeTruthy()
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('leaves Alt and a letter to the Mac, which has no keyboard letters', () => {
+    render(<ThemePreview />)
+    choose('Mac OS X 10.0')
+    fireEvent.keyDown(document.body, { key: 'f', code: 'KeyF', altKey: true })
+
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('reaches the choices of the window for adding music with Alt and their letter', () => {
+    render(<ThemePreview />)
+    choose('Windows 95')
+    fireEvent.click(screen.getByRole('button', { name: '+ Add source' }))
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'URL' }), { key: 'm', code: 'KeyM', altKey: true })
+
+    expect(screen.getByRole('textbox', { name: 'Artist' })).toBeTruthy()
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it("shows the theme's busy pointers for the activity the snapshot names", () => {
+    render(<ThemePreview />)
+    fireEvent.change(screen.getByRole('combobox', { name: 'Pointer' }), { target: { value: 'waiting' } })
+
+    expect(document.querySelector<HTMLElement>('.classic-window')?.dataset.activity).toBe('waiting')
   })
 })

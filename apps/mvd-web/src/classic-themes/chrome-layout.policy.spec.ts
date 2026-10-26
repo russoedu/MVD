@@ -26,4 +26,10 @@ describe('layoutOf', () => {
     expect(layoutOf('aqua')).toMatchObject({ controlsSide: 'left', controls: ['close', 'minimise', 'maximise'] })
     expect(layoutOf('windows-themed')).toMatchObject({ controlsSide: 'right', controls: ['minimise', 'maximise', 'close'] })
   })
+
+  it('underlines keyboard letters always on Windows 95, after Alt on Vista, never on a Mac, and keeps only bitmap themes sharp', () => {
+    expect(layoutOf('windows-classic')).toMatchObject({ mnemonics: 'always', pixelSnap: true })
+    expect(layoutOf('windows-themed')).toMatchObject({ mnemonics: 'on-alt', pixelSnap: false })
+    expect(layoutOf('aqua')).toMatchObject({ mnemonics: 'none', pixelSnap: false })
+  })
 })
