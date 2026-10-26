@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"youtube-downloader/libs/mvd-core/workspace/addsource"
 	"youtube-downloader/libs/mvd-core/workspace/listhistory"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
@@ -91,6 +92,10 @@ type Model struct {
 	loadedKey string
 
 	about bool
+	// add is the window for adding music, when addOpen; addBoxes are its text fields, by field.
+	add      addsource.State
+	addOpen  bool
+	addBoxes [addsource.FieldSong + 1]textinput.Model
 	// closing is the question asked before the app closes while songs download.
 	closing closequestion.State
 	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
@@ -297,9 +302,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.editList(msg)
 
 	case tea.ClipboardMsg:
+		if m.addOpen {
+			return m.addPaste(msg.Content), nil
+		}
 		return m.pasted(msg.Content), nil
 
 	case tea.PasteMsg:
+		if m.addOpen {
+			return m.addPaste(msg.Content), nil
+		}
 		if m.inline.on {
 			return m.pasteInline(msg.Content), nil
 		}
@@ -323,6 +334,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok {
+		if m.addOpen {
+			return m.addKey(key)
+		}
 		if m.closing.On {
 			return m.closeKey(key)
 		}

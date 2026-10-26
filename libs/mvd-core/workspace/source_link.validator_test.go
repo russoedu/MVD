@@ -47,22 +47,19 @@ func TestWhatIsNotASourceOfSongsSaysWhy(t *testing.T) {
 	}
 }
 
-func TestALineThatIsNotALinkIsNotAddedAndTheRowStaysOpenWithTheReason(t *testing.T) {
+func TestALineThatIsNotALinkIsNotAddedAndTheWindowStaysOpenWithTheReason(t *testing.T) {
 	m := listOf()
-	next, _ := m.Update(menubar.SelectedMsg{Name: entryAddLink})
-	m = next.(Model)
-	m, _ = pressKey(m, tea.KeyPressMsg{Text: "h", Code: 'h'})
-	m, _ = pressKey(m, tea.KeyPressMsg{Text: " ", Code: ' '})
-	m, _ = pressKey(m, tea.KeyPressMsg{Text: "x", Code: 'x'})
-	m, _ = pressKey(m, tea.KeyPressMsg{Code: tea.KeyEnter})
-	if !m.inline.on {
-		t.Error("the row closed on a line that is not a link")
+	m, _ = choose(m, entryAddLink)
+	m = typeInto(m, "h x")
+	m, _ = press(m, "enter")
+	if !m.addOpen {
+		t.Error("the window closed on a line that is not a link")
 	}
 	if len(m.session.Sources()) != 0 {
 		t.Errorf("a line that is not a link was added: %v", m.session.Sources())
 	}
 	if screen := ansi.Strip(m.render()); !strings.Contains(screen, "not links") {
-		t.Errorf("the reason is not shown:\n%s", screen)
+		t.Errorf("the reason is not shown: %s", screen)
 	}
 }
 

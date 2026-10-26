@@ -33,23 +33,21 @@ func TestALinkThatWasNotLookedUpYetSaysHowToGoOn(t *testing.T) {
 	}
 }
 
-func TestTheRowBeingWrittenSaysWhatToTypeAndTheBottomLineHowToFinish(t *testing.T) {
+func TestTheWindowForAddingSaysWhatLinksAreTakenAndOffersASearch(t *testing.T) {
 	m := listOf()
 	next, _ := m.Update(menubar.SelectedMsg{Name: entryAddLink})
 	m = next.(Model)
-	if !m.inline.on {
-		t.Fatal("adding a link did not open the row")
+	if !m.addOpen {
+		t.Fatal("adding did not open the window")
 	}
 	screen := screenOf(m)
-	if !strings.Contains(screen, "Paste a link here") {
-		t.Errorf("the empty row has no placeholder:\n%s", screen)
+	for _, want := range []string{"Add music", "Platform URL", "Music search", "YouTube playlist", "Spotify", "Apple Music"} {
+		if !strings.Contains(screen, want) {
+			t.Errorf("the window does not say %q: %s", want, screen)
+		}
 	}
-	if !strings.Contains(screen, "then press Enter. Esc cancels.") {
-		t.Errorf("the bottom line does not say how to finish:\n%s", screen)
-	}
-	m, _ = pressKey(m, tea.KeyPressMsg{Text: "h", Code: 'h'})
-	if screen := screenOf(m); strings.Contains(screen, "Paste a link here") {
-		t.Error("the placeholder should go once something is typed")
+	if !strings.Contains(screen, "(•) Platform URL") {
+		t.Errorf("the platform address is not the one chosen at first: %s", screen)
 	}
 }
 

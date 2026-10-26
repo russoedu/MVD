@@ -117,11 +117,11 @@ func TestChangingAnAddressIsDoneInItsRow(t *testing.T) {
 	}
 }
 
-func TestAddingALinkOpensARowAfterTheSelectedOneAndEscDropsIt(t *testing.T) {
+func TestAddingALinkPutsItAfterTheSelectedOneAndEscAddsNothing(t *testing.T) {
 	m := listOf("https://a", "https://b")
 	m, _ = choose(m, entryAddLink)
-	if !m.inline.on || !m.inline.adding || m.inline.index != 1 {
-		t.Fatalf("inline %+v", m.inline)
+	if !m.addOpen {
+		t.Fatal("the window did not open")
 	}
 	m = typeInto(m, "https://new")
 	m, _ = press(m, "enter")
@@ -131,8 +131,8 @@ func TestAddingALinkOpensARowAfterTheSelectedOneAndEscDropsIt(t *testing.T) {
 	m, _ = choose(m, entryAddLink)
 	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m = next.(Model)
-	if got := addressesOf(m); len(got) != 3 || m.inline.on {
-		t.Errorf("after esc %v, inline %v", got, m.inline.on)
+	if got := addressesOf(m); len(got) != 3 || m.addOpen {
+		t.Errorf("after esc %v, window open %v", got, m.addOpen)
 	}
 }
 

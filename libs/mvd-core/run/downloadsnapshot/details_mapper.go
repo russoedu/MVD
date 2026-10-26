@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/musicsearch"
 	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"youtube-downloader/libs/mvd-core/runstate"
 	"youtube-downloader/libs/mvd-core/songlist"
@@ -218,8 +219,13 @@ func PlaylistName(s downloadsession.Session, pl *runstate.Playlist) string {
 	return shortAddress(pl.URL)
 }
 
-// shortAddress is a web address without what a person does not read: the scheme and "www.".
+// shortAddress is a web address without what a person does not read: the scheme and "www."; a search
+// by name is what it asks for, such as "Daft Punk – Discovery".
 func shortAddress(address string) string {
+	if q, ok := musicsearch.Parse(address); ok {
+		return q.Label()
+	}
+
 	for _, prefix := range []string{"https://", "http://"} {
 		address = strings.TrimPrefix(address, prefix)
 	}

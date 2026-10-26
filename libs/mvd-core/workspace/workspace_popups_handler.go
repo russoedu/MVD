@@ -25,7 +25,7 @@ func (m Model) Caution(text string) Model {
 
 // WindowOpen reports whether a window of the workspace (About, Keyboard shortcuts) is showing
 // over the screen, which the page around the terminal dims itself for.
-func (m Model) WindowOpen() bool { return m.about || m.shortcuts || m.closing.On }
+func (m Model) WindowOpen() bool { return m.about || m.shortcuts || m.closing.On || m.addOpen }
 
 // shortcutsKey works a key press while the Keyboard shortcuts window is showing: it scrolls,
 // or it closes.
@@ -104,6 +104,9 @@ func (m Model) aboutOrigin() (int, int) {
 // popupMouse gives a mouse event to the popup that is open, if there is one. A click on the
 // menu bar is left to the bar, which is over the popups.
 func (m Model) popupMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
+	if m.addOpen {
+		return m.addMouse(msg)
+	}
 	click, isClick := msg.(tea.MouseClickMsg)
 	if isClick && click.Y == 0 {
 		return m, nil, false
