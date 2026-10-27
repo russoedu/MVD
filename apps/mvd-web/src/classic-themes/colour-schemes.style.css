@@ -1,0 +1,308 @@
+/*
+ * The colour schemes of the classic styles, as each system offered them in its Display or
+ * Appearance settings. A scheme changes the theme's colours only, never its shapes; a theme's first
+ * scheme is the theme itself and has no rule here. The ids are libs/mvd-core/config's WindowSchemes.
+ */
+
+/* Windows 3.1 */
+:root[data-theme='windows-3-1'][data-scheme='hot-dog-stand'] {
+  --desktop: #ffff00;
+  --face: #ff0000;
+  --window: #ffff00;
+  --text: #000000;
+  --text-dim: #800000;
+  --title-bg: #000000;
+  --title-text: #ffffff;
+  --menubar-bg: #ffff00;
+  --menu-bg: #ffff00;
+  --select-bg: #000000;
+  --select-text: #ffffff;
+  --button-text: #ffffff;
+  --button-disabled-text: #800000;
+  --control-text: #ffffff;
+}
+
+:root[data-theme='windows-3-1'][data-scheme='ocean'] {
+  --desktop: #008080;
+  --title-bg: #008080;
+  --select-bg: #008080;
+  --text-busy: #008080;
+}
+
+:root[data-theme='windows-3-1'][data-scheme='monochrome'] {
+  --desktop: #ffffff;
+  --face: #ffffff;
+  --title-bg: #000000;
+  --select-bg: #000000;
+  --text-good: #000000;
+  --text-bad: #000000;
+  --text-busy: #000000;
+  --progress-fill: #000000;
+}
+
+/* Windows 95 */
+:root[data-theme='windows-95'][data-scheme='high-contrast-black'] {
+  --desktop: #000000;
+  --face: #000000;
+  --window: #000000;
+  --text: #ffffff;
+  --text-dim: #00ff00;
+  --text-good: #00ff00;
+  --text-bad: #ff0000;
+  --text-busy: #00ffff;
+  --title-bg: #800080;
+  --title-text: #ffffff;
+  --select-bg: #800080;
+  --select-text: #ffffff;
+  --focus-ring: 1px dotted #ffffff;
+  --raised: inset 0 0 0 1px #ffffff;
+  --sunken: inset 0 0 0 1px #ffffff;
+  --pressed: inset 0 0 0 2px #ffffff;
+  --etched: inset 0 1px #ffffff;
+  --button-text: #ffffff;
+  --button-default-shadow: inset 0 0 0 2px #ffffff;
+  --button-disabled-text: #00ff00;
+  --button-disabled-text-shadow: none;
+  --control-text: #ffffff;
+  --check-mark: #ffffff;
+  --progress-fill: #800080;
+  --progress-unknown: repeating-linear-gradient(90deg, #800080 0 8px, transparent 8px 10px);
+}
+
+:root[data-theme='windows-95'][data-scheme='high-contrast-white'] {
+  --desktop: #ffffff;
+  --face: #ffffff;
+  --window: #ffffff;
+  --text: #000000;
+  --text-dim: #808080;
+  --text-good: #000000;
+  --text-bad: #000000;
+  --text-busy: #000000;
+  --title-bg: #000000;
+  --title-text: #ffffff;
+  --select-bg: #000000;
+  --select-text: #ffffff;
+  --raised: inset 0 0 0 1px #000000;
+  --sunken: inset 0 0 0 1px #000000;
+  --pressed: inset 0 0 0 2px #000000;
+  --etched: inset 0 1px #000000;
+  --button-default-shadow: inset 0 0 0 2px #000000;
+  --button-disabled-text-shadow: none;
+  --progress-fill: #000000;
+  --progress-unknown: repeating-linear-gradient(90deg, #000000 0 8px, transparent 8px 10px);
+}
+
+:root[data-theme='windows-95'][data-scheme='rainy-day'] {
+  --desktop: #405060;
+  --face: #a4b4c4;
+  --title-bg: #485870;
+  --select-bg: #485870;
+  --text-busy: #485870;
+  --progress-fill: repeating-linear-gradient(90deg, #485870 0 8px, transparent 8px 10px);
+  --progress-unknown: var(--progress-fill);
+}
+
+:root[data-theme='windows-95'][data-scheme='brick'] {
+  --desktop: #400000;
+  --face: #c2bfa5;
+  --title-bg: #800000;
+  --select-bg: #800000;
+  --text-busy: #800000;
+  --progress-fill: repeating-linear-gradient(90deg, #800000 0 8px, transparent 8px 10px);
+  --progress-unknown: var(--progress-fill);
+}
+
+/* Windows XP */
+:root[data-theme='windows-xp'][data-scheme='olive-green'] {
+  --desktop: radial-gradient(ellipse 140% 55% at 30% 105%, #7f9a48 0 48%, #6a8238 49%, transparent 50%), linear-gradient(#8aa35c, #b5c98a 55%, #dbe5c2);
+  --select-bg: #93a070;
+  --frame-bg: linear-gradient(90deg, #6a7f40, #8ba169 3px, #8ba169 calc(100% - 3px), #6a7f40);
+  --frame-border: 1px solid #5f7038;
+  --title-bg: linear-gradient(#b8c99a, #8ea760 8%, #7f9a48 40%, #92ac64 88%, #7f9a48 96%, #6d8a3e);
+  --title-text-shadow: 1px 1px #4b5e27;
+  --control-bg: radial-gradient(circle at 90% 90%, #6c8a3e 0%, #8aa35c 55%, #a8bd82 90%, #d4e0bf);
+}
+
+:root[data-theme='windows-xp'][data-scheme='silver'] {
+  --desktop: radial-gradient(ellipse 140% 55% at 30% 105%, #9fa3b0 0 48%, #868a99 49%, transparent 50%), linear-gradient(#b8bcc8, #dadce4 55%, #f0f0f4);
+  --select-bg: #b2b4bf;
+  --select-text: #000000;
+  --frame-bg: linear-gradient(90deg, #a8a8b8, #c8c8d8 3px, #c8c8d8 calc(100% - 3px), #a8a8b8);
+  --frame-border: 1px solid #8e8fa3;
+  --title-bg: linear-gradient(#ffffff, #e2e2ec 8%, #cfd0dc 40%, #b9bacb 88%, #a8a9bd 96%, #9a9bb0);
+  --title-text: #000000;
+  --title-text-shadow: none;
+  --control-bg: radial-gradient(circle at 90% 90%, #a8a9bd 0%, #c9cad8 55%, #e4e4ee 90%, #ffffff);
+  --control-text: #3f3f52;
+}
+
+/* Windows Vista */
+:root[data-theme='windows-vista'][data-scheme='high-contrast-black'] {
+  --desktop: #000000;
+  --face: #000000;
+  --window: #000000;
+  --text: #ffffff;
+  --text-dim: #00ff00;
+  --text-good: #00ff00;
+  --text-bad: #ff0000;
+  --text-busy: #1aebff;
+  --select-bg: #1aebff;
+  --select-text: #000000;
+  --focus-ring: 1px dotted #ffffff;
+  --frame-bg: #000000;
+  --frame-border: 2px solid #ffffff;
+  --frame-shadow: none;
+  --frame-backdrop: none;
+  --title-text: #ffffff;
+  --title-text-shadow: none;
+  --control-bg: #000000;
+  --control-shadow: inset 0 0 0 1px #ffffff;
+  --control-close-bg: #000000;
+  --menubar-bg: #000000;
+  --menu-bg: #000000;
+  --menu-border: 1px solid #ffffff;
+  --menu-item-select-bg: #1aebff;
+  --menu-item-select-text: #000000;
+  --toolbar-bg: #000000;
+  --button-bg: #000000;
+  --button-text: #ffffff;
+  --button-border: 1px solid #ffffff;
+  --button-shadow: none;
+  --button-hover-bg: #000000;
+  --button-hover-border: 1px solid #ffff00;
+  --button-pressed-bg: #1aebff;
+  --button-pressed-text: #000000;
+  --button-default-bg: #000000;
+  --button-default-text: #ffffff;
+  --button-default-border: 2px solid #ffffff;
+  --button-default-shadow: none;
+  --button-default-animation: none;
+  --button-disabled-text: #00ff00;
+  --field-bg: #000000;
+  --field-border: 1px solid #ffffff;
+  --field-shadow: none;
+  --pane-bg: #000000;
+  --pane-border: 1px solid #ffffff;
+  --header-bg: #000000;
+  --header-border: 1px solid #ffffff;
+  --row-alt-bg: #000000;
+  --progress-trough: #000000;
+  --progress-trough-border: 1px solid #ffffff;
+  --progress-trough-shadow: none;
+  --progress-fill: #00ff00;
+  --progress-unknown: linear-gradient(90deg, transparent, #00ff00 30% 70%, transparent) no-repeat -50% 0 / 40% 100%;
+  --check-bg: #000000;
+  --check-border: 1px solid #ffffff;
+  --check-shadow: none;
+  --check-mark: #ffffff;
+  --status-bg: #000000;
+  --status-shadow: inset 0 1px #ffffff;
+}
+
+/* Mac OS 7.6: the Color control panel's window colour and highlight colour. */
+:root[data-theme='mac-os-7'][data-scheme='black-and-white'] {
+  --desktop: conic-gradient(#000000 25%, #ffffff 0 50%, #000000 0 75%, #ffffff 0) 0 0 / 2px 2px;
+  --frame-bg: #ffffff;
+  --title-bg: linear-gradient(#ffffff 0 3px, transparent 3px calc(100% - 4px), #ffffff calc(100% - 4px)), repeating-linear-gradient(#ffffff 0 1px, #000000 1px 2px);
+  --title-label-bg: #ffffff;
+  --control-bg: #ffffff;
+  --control-close-bg: #ffffff;
+  --text-good: #000000;
+  --text-bad: #000000;
+  --text-busy: #000000;
+  --progress-fill: #000000;
+  --progress-unknown: repeating-linear-gradient(-45deg, #000000 0 4px, #ffffff 4px 8px) 0 0 / 11.3px 100%;
+}
+
+:root[data-theme='mac-os-7'][data-scheme='teal'] {
+  --desktop: #3f7f7f;
+  --frame-bg: #cce6e6;
+  --title-bg: linear-gradient(#cce6e6 0 3px, transparent 3px calc(100% - 4px), #cce6e6 calc(100% - 4px)), repeating-linear-gradient(#eef7f7 0 1px, #6fa3a3 1px 2px);
+  --title-label-bg: #cce6e6;
+  --control-bg: #cce6e6;
+  --control-close-bg: #cce6e6;
+  --select-bg: #99cccc;
+  --select-text: #000000;
+  --progress-fill: linear-gradient(#6fa3a3, #3f7f7f);
+}
+
+:root[data-theme='mac-os-7'][data-scheme='rose'] {
+  --desktop: #9f6f7f;
+  --frame-bg: #f2d9df;
+  --title-bg: linear-gradient(#f2d9df 0 3px, transparent 3px calc(100% - 4px), #f2d9df calc(100% - 4px)), repeating-linear-gradient(#fbf1f3 0 1px, #b98393 1px 2px);
+  --title-label-bg: #f2d9df;
+  --control-bg: #f2d9df;
+  --control-close-bg: #f2d9df;
+  --select-bg: #ffcccc;
+  --select-text: #000000;
+  --progress-fill: linear-gradient(#c9909f, #9f6f7f);
+}
+
+/* Mac OS 9: the Appearance control panel's accent colour (highlight, menus, scroll thumbs, bars). */
+:root[data-theme='mac-os-9'][data-scheme='bondi-blue'] {
+  --desktop: #3f8fa8;
+  --select-bg: #b3e0ec;
+  --menu-item-select-bg: #2f8fae;
+  --text-busy: #1f6f8a;
+  --focus-ring: 2px solid #5fb6d0;
+  --progress-fill: linear-gradient(#a6dceb, #3aa3c4 35%, #2286a6 60%, #3aa3c4);
+  --progress-unknown: repeating-linear-gradient(-45deg, #2f8fae 0 5px, #b3e0ec 5px 10px) 0 0 / 14.1px 100%;
+  --scheme-thumb: linear-gradient(90deg, #b3e0ec, #7fc6dc);
+}
+
+:root[data-theme='mac-os-9'][data-scheme='grape'] {
+  --desktop: #6b4f8f;
+  --select-bg: #dccbee;
+  --menu-item-select-bg: #6b3fa0;
+  --text-busy: #5a2f8a;
+  --focus-ring: 2px solid #a37fd0;
+  --progress-fill: linear-gradient(#d4bdf0, #8a5cc4 35%, #6b3fa0 60%, #8a5cc4);
+  --progress-unknown: repeating-linear-gradient(-45deg, #6b3fa0 0 5px, #dccbee 5px 10px) 0 0 / 14.1px 100%;
+  --scheme-thumb: linear-gradient(90deg, #dccbee, #b79ade);
+}
+
+:root[data-theme='mac-os-9'][data-scheme='tangerine'] {
+  --desktop: #cf7f3f;
+  --select-bg: #ffd9b3;
+  --menu-item-select-bg: #e07020;
+  --text-busy: #b05a10;
+  --focus-ring: 2px solid #f0a050;
+  --progress-fill: linear-gradient(#ffd0a0, #f08a30 35%, #d86d10 60%, #f08a30);
+  --progress-unknown: repeating-linear-gradient(-45deg, #e07020 0 5px, #ffd9b3 5px 10px) 0 0 / 14.1px 100%;
+  --scheme-thumb: linear-gradient(90deg, #ffd9b3, #f5b070);
+}
+
+:root[data-theme='mac-os-9'][data-scheme='graphite'] {
+  --desktop: #7a7f88;
+  --select-bg: #d4d6da;
+  --menu-item-select-bg: #5f6670;
+  --text-busy: #4a4f58;
+  --focus-ring: 2px solid #8f959e;
+  --progress-fill: linear-gradient(#d8dade, #8f959e 35%, #6f757e 60%, #8f959e);
+  --progress-unknown: repeating-linear-gradient(-45deg, #6f757e 0 5px, #d4d6da 5px 10px) 0 0 / 14.1px 100%;
+  --scheme-thumb: linear-gradient(90deg, #d4d6da, #a8acb3);
+}
+
+:root[data-theme='mac-os-9'][data-scheme] ::-webkit-scrollbar-thumb {
+  background: var(--scheme-thumb, linear-gradient(90deg, #ccccff, #aaaaee));
+}
+
+/* Mac OS X: Graphite, the grey of the Appearance pane, for the gel, the lights and the bars. */
+:root[data-theme='aqua'][data-scheme='graphite'],
+:root[data-theme='mac-os-x-10-4'][data-scheme='graphite'] {
+  --gel-blue: linear-gradient(#e6e9ec, #b9c0c8 48%, #96a0aa 50%, #b4bcc5 85%, #dde1e5);
+  --select-bg: #7f8c99;
+  --menu-item-select-bg: linear-gradient(#97a2ae, #6f7c8a);
+  --text-busy: #4f5b66;
+  --focus-ring: 3px solid rgb(127 140 153 / 70%);
+  --control-close-bg: radial-gradient(circle at 50% 30%, #f2f4f6 0 20%, #a3acb5 55%, #6d7680);
+  --control-minimise-bg: var(--control-close-bg);
+  --control-maximise-bg: var(--control-close-bg);
+  --progress-unknown: repeating-linear-gradient(-45deg, #b9c0c8 0 6px, #ffffff 6px 12px) 0 0 / 34px 100%;
+}
+
+:root[data-theme='aqua'][data-scheme='graphite'] ::-webkit-scrollbar-thumb,
+:root[data-theme='mac-os-x-10-4'][data-scheme='graphite'] ::-webkit-scrollbar-thumb {
+  border-color: #6f7c8a;
+  background: linear-gradient(90deg, #96a0aa, #b9c0c8 30%, #e6e9ec 50%, #b9c0c8 70%, #96a0aa);
+}

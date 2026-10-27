@@ -20,6 +20,7 @@ const prefs: PreferencesSnapshot = {
     { label: 'Retry Attempts', kind: 'number', value: '3', min: 1, max: 999, step: 1 },
     { label: 'Window style', kind: 'choice', value: 'dos', options: [{ value: 'dos', label: 'MVD terminal (DOS)' }, { value: 'aqua', label: 'Mac OS X 10.0' }] },
     { label: 'Accent (title)', kind: 'colour', value: '#ff2a6d' },
+    { label: 'Theme', kind: 'choice', value: 'MVD Neon', hidden: true },
     { label: 'Uninstall MVD', kind: 'action', value: '' },
   ],
   colours: { background: '', accent: '#ff2a6d', focus: '#05d9e8', highlight: '#f9f871', success: '#01ff89', error: '#ff4365', dim: '#7a7aa8', text: '#e0e0ff', selected: '#2a1b5e' },
@@ -45,6 +46,7 @@ describe('PreferencesWindow', () => {
     const footer = within(dialog).getAllByRole('button').map(button => button.textContent).filter(text => text === 'Save' || text === 'Close')
     expect(footer).toEqual(['Save', 'Close'])
     expect(document.documentElement.dataset.theme).toBe('windows-95')
+    expect(within(dialog).queryByText('Theme', { selector: '.preferences-label' })).toBeNull()
   })
 
   it('sends the tab chosen, a folder typed, Browse…, a block added and Save', () => {

@@ -70,6 +70,13 @@
   white-space: nowrap;
 }
 
+/* Where a source's own menu opens: the point clicked. */
+.classic-menu-anchor {
+  position: fixed;
+  width: 0;
+  height: 0;
+}
+
 .classic-source-detail {
   flex: none;
 }

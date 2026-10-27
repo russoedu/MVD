@@ -44,6 +44,9 @@ type WindowField struct {
 	Off         string         `json:"off,omitempty"`
 	Placeholder string         `json:"placeholder,omitempty"`
 	Optional    bool           `json:"optional,omitempty"`
+	// Hidden is a setting that does not apply to the settings as they are; it keeps its place, so
+	// the intents of the others keep their numbers.
+	Hidden bool `json:"hidden,omitempty"`
 	// Units, Blocks and Example are the name pattern's: its pieces, the blocks that can be added,
 	// and the name it gives a sample song.
 	Units   []WindowUnit `json:"units,omitempty"`

@@ -56,12 +56,13 @@ describe('AppWindow', () => {
   it('draws the classic window from what the program sends, with the terminal running behind it', async () => {
     const program = fakeProgram()
     render(<AppWindow />)
-    program.send('mvd:style', 'windows-95')
+    program.send('mvd:style', JSON.stringify({ style: 'windows-95', scheme: 'brick' }))
     program.send('mvd:snapshot', JSON.stringify(sampleWorkspace))
 
     // The classic look is loaded on demand, the first time slowly.
     expect(await screen.findByRole('button', { name: '+ Add source' }, { timeout: 5000 })).toBeTruthy()
     expect(look()).toBe('behind')
+    expect(document.documentElement.dataset.scheme).toBe('brick')
 
     fireEvent.click(screen.getByRole('button', { name: '+ Add source' }))
     const intents = program.sent.filter(([name]) => name === 'mvd:intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)

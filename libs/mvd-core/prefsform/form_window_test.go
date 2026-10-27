@@ -45,8 +45,11 @@ func TestTheWindowShowsTheTabsAndTheSettingsOfTheOneShown(t *testing.T) {
 	if style.Kind != WindowChoice || style.Value != config.WindowStyleDOS || style.Options[1].Label != "Windows 3.1" {
 		t.Fatalf("window style = %+v", style)
 	}
-	theme := w.Fields[1]
-	if theme.Kind != WindowChoice || len(theme.Options[0].Swatches) == 0 {
+	if scheme := w.Fields[1]; scheme.Label != "Colour scheme" || !scheme.Hidden {
+		t.Errorf("the terminal look shows a classic colour scheme: %+v", scheme)
+	}
+	theme := w.Fields[2]
+	if theme.Kind != WindowChoice || theme.Hidden || len(theme.Options[0].Swatches) == 0 {
 		t.Errorf("the theme's options have no colours: %+v", theme.Options[0])
 	}
 	if w.Colours.Accent == "" {
@@ -114,5 +117,25 @@ func TestAFolderAsksTheHostForItsChooser(t *testing.T) {
 	}
 	if f.Apply(WindowIntent{Kind: IntentTab, Index: 0}) != nil || f.Tab != 0 {
 		t.Error("the form did something while the host's window was open")
+	}
+}
+
+func TestAClassicStyleOffersItsOwnColourSchemesInsteadOfTheTerminalThemes(t *testing.T) {
+	f := formOn(t, "Theme", Capabilities{CanStyleWindow: true})
+	f.Apply(WindowIntent{Kind: IntentSet, Field: 0, Text: "windows-95"})
+	w := f.Window()
+	scheme := w.Fields[1]
+	if scheme.Hidden || scheme.Value != "standard" || len(scheme.Options) != 5 || scheme.Options[1].Label != "High Contrast Black" {
+		t.Fatalf("scheme = %+v", scheme)
+	}
+	for _, field := range w.Fields[2:] {
+		if !field.Hidden {
+			t.Errorf("%q still shows for a classic style", field.Label)
+		}
+	}
+	f.Apply(WindowIntent{Kind: IntentSet, Field: 1, Text: "high-contrast-black"})
+	f.Apply(WindowIntent{Kind: IntentSet, Field: 0, Text: "mac-os-9"})
+	if got := f.Window().Fields[1]; got.Value != "default" || got.Options[1].Label != "Bondi Blue" {
+		t.Errorf("another style kept the old scheme: %+v", got)
 	}
 }

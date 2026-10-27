@@ -27,16 +27,17 @@ func (f *Form) ClearStatus() { f.Status = "" }
 func (f *Form) Change(by int) {
 	field := f.Current()
 	value := field.Get(f.Cfg)
+	options := field.OptionsFor(f.Cfg)
 	switch field.Kind {
 	case KindChoice:
 		at := 0
-		for i, o := range field.Options {
+		for i, o := range options {
 			if o == value {
 				at = i
 			}
 		}
-		if next := at + by; next >= 0 && next < len(field.Options) {
-			field.Set(&f.Cfg, field.Options[next])
+		if next := at + by; next >= 0 && next < len(options) {
+			field.Set(&f.Cfg, options[next])
 		}
 	case KindStepper:
 		n := min(max(parseInt(value)+by*field.Step, field.Min), field.Max)
@@ -47,7 +48,7 @@ func (f *Form) Change(by int) {
 // ChooseOption sets the setting the cursor is on to its option i.
 func (f *Form) ChooseOption(i int) {
 	field := f.Current()
-	field.Set(&f.Cfg, field.Options[i])
+	field.Set(&f.Cfg, field.OptionsFor(f.Cfg)[i])
 }
 
 // Activate does what Enter does on the setting: another option, text to type, a folder to
@@ -56,13 +57,14 @@ func (f *Form) Activate() Effect {
 	field := f.Current()
 	switch field.Kind {
 	case KindChoice:
+		options := field.OptionsFor(f.Cfg)
 		at := 0
-		for i, o := range field.Options {
+		for i, o := range options {
 			if o == field.Get(f.Cfg) {
 				at = i
 			}
 		}
-		field.Set(&f.Cfg, field.Options[(at+1)%len(field.Options)])
+		field.Set(&f.Cfg, options[(at+1)%len(options)])
 	case KindText, KindTemplate, KindColour:
 		f.Edit()
 	case KindFolder:

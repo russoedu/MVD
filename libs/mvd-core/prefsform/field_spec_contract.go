@@ -48,7 +48,36 @@ type Field struct {
 	Optional bool
 	// Swatches, for a choice, are the colours shown beside an option.
 	Swatches func(option string) []string
+	// Choices, when set, are the options of a choice as they depend on the other settings (the
+	// colour schemes of the window style chosen); Options is then not used. ShowWith, when set,
+	// is how one of them reads, for those settings.
+	Choices  func(config.Config) []string
+	ShowWith func(cfg config.Config, option string) string
+	// Shown, when set, says whether the setting applies to the settings as they are (the terminal
+	// look's colours only for the terminal look); a window leaves out one that does not.
+	Shown func(config.Config) bool
 }
+
+// OptionsFor are the options of a choice for the settings cfg.
+func (f Field) OptionsFor(cfg config.Config) []string {
+	if f.Choices != nil {
+		return f.Choices(cfg)
+	}
+
+	return f.Options
+}
+
+// OptionTextFor is how an option of a field reads for the settings cfg.
+func (f Field) OptionTextFor(cfg config.Config, option string) string {
+	if f.ShowWith != nil {
+		return f.ShowWith(cfg, option)
+	}
+
+	return f.OptionText(option)
+}
+
+// ShownFor says whether the setting applies to the settings cfg.
+func (f Field) ShownFor(cfg config.Config) bool { return f.Shown == nil || f.Shown(cfg) }
 
 // Page is a tab: its name and the settings under it.
 type Page struct {

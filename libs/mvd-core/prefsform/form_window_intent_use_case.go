@@ -46,7 +46,7 @@ func (f *Form) Apply(in WindowIntent) Effect {
 func (f *Form) set(field Field, value string) {
 	switch field.Kind {
 	case KindChoice:
-		for i, option := range field.Options {
+		for i, option := range field.OptionsFor(f.Cfg) {
 			if option == value {
 				f.ChooseOption(i)
 			}

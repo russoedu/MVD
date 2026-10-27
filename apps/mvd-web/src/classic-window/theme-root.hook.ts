@@ -1,25 +1,50 @@
 import { useLayoutEffect } from 'react'
 import type { ClassicTheme } from '../classic-themes'
 
+/** A window's claim on the page's root: the theme it wears, and its colour scheme. */
+interface Claim {
+  theme:   ClassicTheme
+  scheme?: string
+}
+
 /**
- * Wears a theme on the page's root, so what opens outside a window (its menus, a dialog) wears it
- * too, and puts back what the root wore before when it goes: a dialog over a themed window leaves
- * the window's theme in place. It runs before the browser lays the page out: Chrome styles a scroll
- * bar's parts when it creates the scroll bar, and does not restyle them when the theme changes
- * later.
+ * The windows that wear a theme now, oldest first. The root wears the newest one's: a dialog over
+ * a window wears the dialog's, and once it goes the window's comes back, whichever of them was
+ * opened or changed first.
  */
-export function useThemeOnRoot (theme: ClassicTheme): void {
+const claims: Claim[] = []
+
+/** Puts the newest claim's theme on the root, or none when no window has one. */
+function wearNewest (): void {
+  const root = document.documentElement
+  const [newest] = claims.slice(-1) as (Claim | undefined)[]
+  if (newest) {
+    root.dataset.theme = newest.theme.id
+    root.dataset.family = newest.theme.family
+    if (newest.scheme) root.dataset.scheme = newest.scheme
+    else delete root.dataset.scheme
+  } else {
+    delete root.dataset.theme
+    delete root.dataset.family
+    delete root.dataset.scheme
+  }
+}
+
+/**
+ * Wears a theme, and its colour scheme, on the page's root while the window is open, so what opens
+ * outside it (its menus, a dialog) wears them too. It runs before the browser lays the page out:
+ * Chrome styles a scroll bar's parts when it creates the scroll bar, and does not restyle them when
+ * the theme changes later.
+ */
+export function useThemeOnRoot (theme: ClassicTheme, scheme?: string): void {
   useLayoutEffect(() => {
-    const root = document.documentElement
-    const before = { theme: root.dataset.theme, family: root.dataset.family }
-    root.dataset.theme = theme.id
-    root.dataset.family = theme.family
+    const claim: Claim = { theme, scheme }
+    claims.push(claim)
+    wearNewest()
 
     return () => {
-      for (const [key, value] of Object.entries(before)) {
-        if (value === undefined) delete root.dataset[key]
-        else root.dataset[key] = value
-      }
+      claims.splice(claims.indexOf(claim), 1)
+      wearNewest()
     }
-  }, [theme])
+  }, [theme, scheme])
 }

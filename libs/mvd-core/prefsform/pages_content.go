@@ -70,7 +70,26 @@ func windowStyleField() Field {
 			}
 			return config.WindowStyleDOS
 		},
-		Set: func(c *config.Config, v string) { c.WindowStyle = v },
+		// Another style starts with its own first scheme.
+		Set: func(c *config.Config, v string) { c.WindowStyle, c.WindowScheme = v, "" },
+	}
+}
+
+// classicStyle says whether the settings draw the window in a classic system's look.
+func classicStyle(c config.Config) bool {
+	return config.ValidWindowStyle(c.WindowStyle) && c.WindowStyle != config.WindowStyleDOS
+}
+
+// windowSchemeField is the colour scheme of the classic style chosen, as the system offered them.
+func windowSchemeField() Field {
+	return Field{
+		Label: "Colour scheme", Kind: KindChoice,
+		Hint:     "The colours of the window, as the system offered them",
+		Choices:  func(c config.Config) []string { return config.WindowSchemeIDs(c.WindowStyle) },
+		ShowWith: func(c config.Config, v string) string { return config.WindowSchemeName(c.WindowStyle, v) },
+		Shown:    classicStyle,
+		Get:      func(c config.Config) string { return config.WindowSchemeOf(c.WindowStyle, c.WindowScheme) },
+		Set:      func(c *config.Config, v string) { c.WindowScheme = v },
 	}
 }
 
@@ -140,7 +159,12 @@ func Pages(caps Capabilities) []Page {
 		colourField("Selected row (background)", func(t *config.ThemeColors) *string { return &t.Selected }),
 	}
 	if caps.CanStyleWindow {
-		theme = append([]Field{windowStyleField()}, theme...)
+		// The terminal look's themes and colours are for the terminal look only.
+		terminalOnly := func(c config.Config) bool { return !classicStyle(c) }
+		for i := range theme {
+			theme[i].Shown = terminalOnly
+		}
+		theme = append([]Field{windowStyleField(), windowSchemeField()}, theme...)
 	}
 	return []Page{
 		{Name: "Output", Fields: []Field{

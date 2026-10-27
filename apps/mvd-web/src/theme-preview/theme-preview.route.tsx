@@ -25,6 +25,7 @@ function themeInAddress () {
  */
 export function ThemePreview () {
   const [theme, setTheme] = useState(themeInAddress)
+  const [scheme, setScheme] = useState('')
   const [snapshot, setSnapshot] = useState(sampleWorkspace)
   const [last, setLast] = useState('')
 
@@ -44,12 +45,19 @@ export function ThemePreview () {
             aria-pressed={each.id === theme.id}
             onClick={() => {
               setTheme(each)
+              setScheme('')
               globalThis.history?.replaceState(null, '', `?theme=${each.id}`)
             }}
           >
             {each.label}
           </button>
         ))}
+        <label className='theme-preview-activity'>
+          Scheme
+          <select value={scheme} onChange={event => setScheme(event.target.value)}>
+            {(theme.schemes ?? []).map((each, index) => <option key={each.id} value={index === 0 ? '' : each.id}>{each.label}</option>)}
+          </select>
+        </label>
         <label className='theme-preview-activity'>
           Pointer
           <select
@@ -62,7 +70,7 @@ export function ThemePreview () {
         <output className='theme-preview-intent'>{last}</output>
       </div>
       <div className='theme-preview-desktop'>
-        <ClassicApp theme={theme} snapshot={snapshot} onIntent={onIntent} />
+        <ClassicApp theme={theme} scheme={scheme || undefined} snapshot={snapshot} onIntent={onIntent} />
       </div>
     </div>
   )
