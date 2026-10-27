@@ -29,26 +29,25 @@ func legacyCases() []legacyCase {
 	editor := func(steps func(f *editorFixture)) func(t *testing.T) string {
 		return func(t *testing.T) string {
 			ApplyTheme(config.DefaultThemeColors())
-			f := newEditorFixture(t, []string{"https://a"}, samePlan())
+			f := newEditorFixture(t, samePlan())
 			steps(f)
 			return f.screen()
 		}
 	}
 	cases = append(cases,
-		legacyCase{"editor-planning", 120, 30, editor(func(f *editorFixture) { f.press("ctrl+e") })},
-		legacyCase{"editor-first", 120, 30, editor(func(f *editorFixture) { f.press("ctrl+e"); f.planDone() })},
+		legacyCase{"editor-planning", 120, 30, editor(func(f *editorFixture) {})},
+		legacyCase{"editor-first", 120, 30, editor(func(f *editorFixture) { f.planDone() })},
 		legacyCase{"editor-decided", 120, 30, editor(func(f *editorFixture) {
-			f.press("ctrl+e")
 			f.planDone()
 			f.press("c")
-			f.m = drive(f.t, f.m, key("r"))
-			f.m = drive(f.t, f.m, tea.PasteMsg{Content: "https://www.youtube.com/watch?v=CHOSEN00001"})
-			f.m = drive(f.t, f.m, key("enter"))
+			f.drive(key("r"))
+			f.drive(tea.PasteMsg{Content: "https://www.youtube.com/watch?v=CHOSEN00001"})
+			f.drive(key("enter"))
 			f.skipNote()
 			f.press("up", "up")
 		})},
-		legacyCase{"editor-replace-prompt", 120, 30, editor(func(f *editorFixture) { f.press("ctrl+e"); f.planDone(); f.press("r") })},
-		legacyCase{"editor-ask-download", 120, 30, editor(func(f *editorFixture) { f.press("ctrl+e"); f.planDone(); f.press("c", "d") })},
+		legacyCase{"editor-replace-prompt", 120, 30, editor(func(f *editorFixture) { f.planDone(); f.press("r") })},
+		legacyCase{"editor-ask-download", 120, 30, editor(func(f *editorFixture) { f.planDone(); f.press("c", "d") })},
 	)
 	return cases
 }

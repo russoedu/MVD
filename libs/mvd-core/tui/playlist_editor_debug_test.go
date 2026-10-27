@@ -18,24 +18,23 @@ import (
 // These tests run only in a build made for testing (go test -tags mvddebug), the only one
 // that asks why a decision was changed.
 func TestAChangedDecisionAsksWhyAndTheAnswerIsLogged(t *testing.T) {
-	f := newEditorFixture(t, []string{"https://a"}, samePlan())
-	f.press("ctrl+e")
+	f := newEditorFixture(t, samePlan())
 	f.planDone()
 
 	// Skipping goes against the proposal, so it asks.
 	f.press("x")
-	if f.app().editor.Mode() != editorpage.Input || !strings.Contains(f.screen(), "Why?") {
+	if f.editor.Mode() != editorpage.Input || !strings.Contains(f.screen(), "Why?") {
 		t.Fatalf("the reason should be asked for:\n%s", f.screen())
 	}
-	f.m = drive(t, f.m, tea.PasteMsg{Content: "this is a live version"})
-	f.m = drive(t, f.m, key("enter"))
-	if f.app().editor.Mode() != editorpage.Browsing {
+	f.drive(tea.PasteMsg{Content: "this is a live version"})
+	f.drive(key("enter"))
+	if f.editor.Mode() != editorpage.Browsing {
 		t.Fatal("the question should close")
 	}
 
 	// Confirming agrees with the proposal: nothing to ask.
 	f.press("down", "c")
-	if f.app().editor.Mode() != editorpage.Browsing {
+	if f.editor.Mode() != editorpage.Browsing {
 		t.Error("confirming should not ask why")
 	}
 
