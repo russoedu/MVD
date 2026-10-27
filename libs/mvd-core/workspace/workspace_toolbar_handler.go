@@ -33,7 +33,7 @@ type button struct {
 // buttons are the toolbar's buttons for what the workspace is doing: the list can be started
 // or edited while nothing runs; a run can be paused, stopped, retried and reviewed.
 func (m Model) buttons() []button {
-	busy := m.starting || m.stopping
+	busy := m.life.Busy()
 	if m.finished() {
 		// The work is over: show where it went, and offer what comes next.
 		out := []button{{"Open folder", entryOpenFolder, false}, {"► Load playlists again", entryStart, busy}}

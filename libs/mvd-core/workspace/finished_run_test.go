@@ -130,7 +130,7 @@ func TestStartAgainEndsTheFinishedRunAndBeginsAnother(t *testing.T) {
 	if !fake.closed {
 		t.Error("the finished run was not closed")
 	}
-	if cmd == nil || !m.starting {
+	if cmd == nil || !m.life.Starting {
 		t.Error("another run did not begin to start")
 	}
 }

@@ -106,7 +106,7 @@ func (m Model) windowButtons() []windowsnapshot.Button {
 
 // whyDisabled is why a button of the toolbar cannot be used now.
 func (m Model) whyDisabled() string {
-	if m.starting || m.stopping {
+	if m.life.Busy() {
 		return "One moment..."
 	}
 	if state, waiting := m.toolsWaiting(); waiting {
@@ -153,7 +153,7 @@ func (m Model) statusSummary() string {
 func (m Model) windowActivity() windowsnapshot.Activity {
 	f := m.facts()
 	switch {
-	case m.starting || m.stopping:
+	case m.life.Busy():
 		return windowsnapshot.ActivityWaiting
 	case m.running() && !f.AllListed:
 		return windowsnapshot.ActivityBackground

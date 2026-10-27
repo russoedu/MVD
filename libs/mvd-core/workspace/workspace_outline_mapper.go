@@ -10,7 +10,7 @@ import (
 func (m Model) Outline() outline.ScreenOutline {
 	var out outline.ScreenOutline
 	switch {
-	case m.stopping:
+	case m.life.Stopping:
 		return outline.ScreenOutline{Title: "MVD · Stopping the downloads"}
 	default:
 		out = m.screen.Outline()

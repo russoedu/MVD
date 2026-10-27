@@ -37,8 +37,8 @@ func TestAListOpensWhileTheRunOnlyHoldsTheSongsForChoosing(t *testing.T) {
 
 	next, cmd := m.Update(OpenListMsg{Path: path})
 	m = next.(Model)
-	if !m.stopping || cmd == nil {
-		t.Fatalf("the run that only holds the list should be stopped first: stopping %v, notice %q", m.stopping, m.notice)
+	if !m.life.Stopping || cmd == nil {
+		t.Fatalf("the run that only holds the list should be stopped first: stopping %v, notice %q", m.life.Stopping, m.notice)
 	}
 	next, cmd = m.Update(cmd())
 	m = next.(Model)
@@ -62,7 +62,7 @@ func TestAListOpensWhileTheDownloadsAreStopped(t *testing.T) {
 
 	next, cmd := m.Update(OpenListMsg{Path: path})
 	m = next.(Model)
-	if !m.stopping || cmd == nil {
+	if !m.life.Stopping || cmd == nil {
 		t.Fatalf("stopped downloads should not block opening another list: notice %q", m.notice)
 	}
 	next, _ = m.Update(cmd())
@@ -78,7 +78,7 @@ func TestAListIsNotOpenedOverSongsThatAreComingIn(t *testing.T) {
 
 	next, cmd := m.Update(OpenListMsg{Path: otherList(t)})
 	m = next.(Model)
-	if m.stopping || cmd != nil || fake.closed {
+	if m.life.Stopping || cmd != nil || fake.closed {
 		t.Error("a run that is downloading was stopped without being asked")
 	}
 	if !strings.Contains(m.notice, "Stop the downloads") {
@@ -90,7 +90,7 @@ func TestTheOpenAndNewEntriesStopARunThatIsOnlyHoldingTheList(t *testing.T) {
 	for _, entry := range []string{entryOpen, entryNew} {
 		m, _ := started(t)
 		m, cmd := choose(m, entry)
-		if !m.stopping || cmd == nil {
+		if !m.life.Stopping || cmd == nil {
 			t.Errorf("%s: the held run should be stopped, notice %q", entry, m.notice)
 		}
 	}
