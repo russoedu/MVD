@@ -31,10 +31,11 @@ describe('layoutOf', () => {
     expect(of('mac-os-7')).toMatchObject({ controlsLeft: ['close'], controlsRight: ['maximise'] })
     expect(of('mac-os-9')).toMatchObject({ controlsLeft: ['close'], controlsRight: ['maximise', 'minimise'] })
     expect(of('aqua')).toMatchObject({ controlsLeft: ['close', 'minimise', 'maximise'], controlsRight: [] })
+    expect(of('mac-os-x-10-4')).toMatchObject({ controlsLeft: ['close', 'minimise', 'maximise'], dialogStyle: 'sheet' })
   })
 
-  it('opens menus only while held on Mac OS 7, and collapses on a double click only from Mac OS 8', () => {
-    expect(of('mac-os-7')).toMatchObject({ menuStyle: 'hold', titleDoubleClick: null })
+  it('opens menus only while held on Mac OS 7.6, and rolls the window up on a double click of its title', () => {
+    expect(of('mac-os-7')).toMatchObject({ menuStyle: 'hold', titleDoubleClick: 'minimise' })
     expect(of('mac-os-9')).toMatchObject({ menuStyle: 'sticky', titleDoubleClick: 'minimise' })
   })
 

@@ -224,6 +224,19 @@ In the app (#376): Preferences > Theme > **Window style** chooses the terminal l
 - **Screens the themes do not draw yet** (Preferences, About, keyboard shortcuts, the quit question, the one-line questions, the address editor) show the terminal inside a dialog of the theme, and its close button sends Esc.
 - **Keyboard.** A menu entry's shortcut chooses it. A plain letter goes to MVD as a key (d accepts a song, x rejects it, as in the terminal look).
 
+Mac refresh (#378), from Infinite Mac screenshots of each system:
+- **Mac OS 7.6** replaces 7.0 (same id, `mac-os-7`). It is System 7 in colour:
+  - a plain grey desktop and white windows in a thin black line;
+  - a light grey title bar with fine dark stripes, and bevelled close and zoom boxes;
+  - grey bevelled scroll bars and dark grey progress bars.
+  - Menus still open only while held. A double click on the title rolls the window up (WindowShade, minimise here).
+- **Mac OS 9** has the solid periwinkle desktop, a platinum menu bar that fades down, and a deeper blue-purple progress bar.
+- **Mac OS X 10.4** (`mac-os-x-10-4`) joins 10.0 in the Aqua family. Its look:
+  - the blue aurora desktop;
+  - light grey title bars that fade down, with only the faintest pinstripes;
+  - glossy window buttons and a white menu bar;
+  - the same gel buttons, sheets and spinning wheel as 10.0.
+
 Still to do:
 - **Aqua scroll bars:** Chrome does not draw both arrows together at the end, so the Aqua bar has no arrows yet.
 - **Menu bar tracking:** with a menu open, moving the pointer over another menu title does not open that menu yet.

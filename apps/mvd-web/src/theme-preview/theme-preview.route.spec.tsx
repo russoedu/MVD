@@ -47,7 +47,7 @@ describe('ThemePreview', () => {
     choose('Windows 3.1')
     expect(controls()).toEqual(['Close', 'Minimise', 'Maximise'])
 
-    choose('Mac OS 7')
+    choose('Mac OS 7.6')
     expect(controls()).toEqual(['Close', 'Maximise'])
 
     choose('Mac OS 9')

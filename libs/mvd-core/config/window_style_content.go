@@ -17,9 +17,10 @@ var WindowStyles = []WindowStyle{
 	{"windows-95", "Windows 95"},
 	{"windows-xp", "Windows XP"},
 	{"windows-vista", "Windows Vista"},
-	{"mac-os-7", "Mac OS 7"},
+	{"mac-os-7", "Mac OS 7.6"},
 	{"mac-os-9", "Mac OS 9"},
 	{"aqua", "Mac OS X 10.0"},
+	{"mac-os-x-10-4", "Mac OS X 10.4"},
 }
 
 // WindowStyleIDs are the ids of WindowStyles, in order.

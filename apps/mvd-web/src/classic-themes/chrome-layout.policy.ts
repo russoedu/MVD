@@ -14,7 +14,7 @@ export interface ChromeLayout {
    */
   controlsLeft:     readonly WindowControl[]
   controlsRight:    readonly WindowControl[]
-  /** What a double click on the title bar does: Windows maximises, a Mac minimises or collapses, Mac OS 7.0 nothing. */
+  /** What a double click on the title bar does: Windows maximises, a Mac minimises or collapses it (WindowShade). */
   titleDoubleClick: WindowControl | null
   /** Windows puts the default button first ([OK] [Cancel]); a Mac puts it last ([Cancel] [OK]). */
   defaultButton:    'first' | 'last'
@@ -27,7 +27,7 @@ export interface ChromeLayout {
   dialogStyle:      'window' | 'plain' | 'sheet'
   /**
    * How a menu stays open: until a choice or a click elsewhere, or only while the mouse button
-   * is held down, as on Mac OS 7.
+   * is held down, as up to Mac OS 7.6.
    */
   menuStyle:        'sticky' | 'hold'
   /**
@@ -95,8 +95,9 @@ const families: Record<ChromeFamily, ChromeLayout> = {
 const themes: Partial<Record<ClassicThemeId, Partial<ChromeLayout>>> = {
   // A centred title, the control-menu box on the left and ▼ ▲ on the right; no close button.
   'windows-3-1': { titleAlign: 'center', controlsLeft: ['close'], controlsRight: ['minimise', 'maximise'] },
-  // Mac OS 7.0: no collapse box yet (WindowShade came with 7.5), and menus open only while held.
-  'mac-os-7':    { controlsRight: ['maximise'], titleDoubleClick: null, menuStyle: 'hold' },
+  // Mac OS 7.6: no collapse box (WindowShade rolls the window up on a double click of its title),
+  // and menus open only while held.
+  'mac-os-7':    { controlsRight: ['maximise'], titleDoubleClick: 'minimise', menuStyle: 'hold' },
 }
 
 /** The layout of a theme: its family's, with what the theme does its own way. */
