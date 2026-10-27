@@ -152,7 +152,7 @@ func TestAQuestionWithALineToWriteTakesTheTextAndOK(t *testing.T) {
 
 func TestAMenuEntryThatCannotBeChosenDoesNothing(t *testing.T) {
 	m := intent(listOf(), windowsnapshot.Intent{Kind: windowsnapshot.IntentMenu, ID: entryStart})
-	if m.starting || m.running() {
+	if m.life.Starting || m.running() {
 		t.Error("a list with no sources was started from a greyed entry")
 	}
 }

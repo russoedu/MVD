@@ -68,9 +68,9 @@ func (m Model) bottomLine() string {
 	switch {
 	case m.asking != askNone:
 		return cells.Fit(" "+look.Key.Render(m.input.View()), m.width)
-	case m.starting:
+	case m.life.Starting:
 		return cells.Fit(" "+look.Dim.Render("Getting ready..."), m.width)
-	case m.stopping:
+	case m.life.Stopping:
 		return cells.Fit(" "+look.Dim.Render("Stopping the downloads..."), m.width)
 	case m.notice != "":
 		return cells.Fit(" "+look.Red.Render(m.notice), m.width)

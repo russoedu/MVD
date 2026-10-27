@@ -82,12 +82,9 @@ type Model struct {
 	bar    menubar.Model
 	screen downloadpage.Model
 
-	run      ListRun
-	starting bool
-	stopping bool
-	// afterStop is what the person asked for while a run only held the list: it is done once the run
-	// has been stopped.
-	afterStop tea.Msg
+	run ListRun
+	// life is whether the run is being started or wound down, and what waits for that.
+	life runcontrol.Lifecycle
 	// loadedKey is the list of addresses the last run was started on (or taken in), so a list is
 	// loaded in the background only when it has changed since.
 	loadedKey string
@@ -150,7 +147,7 @@ func (m Model) sourcesKey() string { return strings.Join(m.session.Sources(), "\
 // wantsLoading says whether the songs of the list are to be loaded now, in the background: the list
 // has addresses nobody has loaded, nothing is being written or asked, and the tools are there.
 func (m Model) wantsLoading() bool {
-	if !m.host.AutoLoad || m.host.Start == nil || m.running() || m.starting || m.stopping {
+	if !m.host.AutoLoad || m.host.Start == nil || m.running() || m.life.Busy() {
 		return false
 	}
 	if m.inline.on || m.asking != askNone || m.about || m.shortcuts || len(m.session.Sources()) == 0 {
@@ -165,7 +162,7 @@ func (m Model) wantsLoading() bool {
 
 // facts are what the run is doing, for the decisions of package runcontrol.
 func (m Model) facts() runcontrol.Facts {
-	f := runcontrol.Facts{HasRun: m.run != nil, Starting: m.starting, Stopping: m.stopping}
+	f := runcontrol.Facts{HasRun: m.run != nil, Starting: m.life.Starting, Stopping: m.life.Stopping}
 	if m.run != nil {
 		f.Paused = m.run.Paused()
 		_, f.CanAddLinks = m.run.(downloadpage.SourceAdder)
@@ -246,7 +243,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case runClosedMsg:
 		left := m.screen.State().Tally()
-		m.run, m.stopping = nil, false
+		m.run = nil
 		m.screen = m.screen.Detach().WithState(m.session.Preview())
 		if unfinished := left.Queued + left.Running; unfinished > 0 && !msg.quit {
 			m.done = fmt.Sprintf("Stopped: %d saved, %d not downloaded. Load the playlists again to carry on.", left.Done, unfinished)
@@ -254,8 +251,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.quit {
 			return m, m.quit()
 		}
-		if next := m.afterStop; next != nil {
-			m.afterStop = nil
+		if next := m.life.Closed(); next != nil {
 			return m.Update(next)
 		}
 		return m, nil
@@ -271,7 +267,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case OpenListMsg:
 		m = m.settle()
-		if m.starting || m.stopping {
+		if m.life.Busy() {
 			m.notice = "One moment..."
 			return m, nil
 		}
@@ -349,7 +345,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.asking != askNone {
 			return m.answer(key)
 		}
-		if m.stopping || m.starting {
+		if m.life.Busy() {
 			return m, nil
 		}
 		if m.inline.on && m.bar.Open() < 0 {
@@ -408,7 +404,7 @@ func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // choose does what a menu entry says.
 func (m Model) choose(name string) (tea.Model, tea.Cmd) {
-	if m.stopping || m.starting {
+	if m.life.Busy() {
 		return m, nil
 	}
 	if settles(name) {
@@ -637,7 +633,8 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		return m, nil
 	}
 	sources, plan := m.session.Inputs()
-	m.starting, m.notice = true, ""
+	m.life.BeginStart()
+	m.notice = ""
 	host, cfg := m.host, m.cfg
 	return m, func() tea.Msg {
 		run, err := host.Start(cfg, sources, plan, review)
@@ -646,7 +643,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 }
 
 func (m Model) runStarted(msg runStartedMsg) (tea.Model, tea.Cmd) {
-	m.starting = false
+	m.life.Started()
 	if msg.err != nil {
 		m.notice = "Cannot start the downloads: " + msg.err.Error()
 		return m, nil
@@ -683,7 +680,7 @@ func (m Model) stop(quit bool) (Model, tea.Cmd) {
 		return m, nil
 	}
 	m.syncList()
-	m.stopping = true
+	m.life.BeginStop()
 	run, session := m.run, m.session
 	return m, func() tea.Msg {
 		run.Close()
@@ -773,7 +770,7 @@ func (m Model) holdsOnlyTheList() bool { return m.facts().HoldsOnlyTheList() }
 
 // stopThen stops the run, and does what msg asks once it has wound down.
 func (m Model) stopThen(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m.afterStop = msg
+	m.life.WaitThen(msg)
 
 	return m.stop(false)
 }

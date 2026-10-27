@@ -37,11 +37,11 @@ func autoLoadHost(t *testing.T, run ListRun) Host {
 
 func TestALinkIsLoadedInTheBackgroundAsSoonAsItIsThere(t *testing.T) {
 	m := sized(New(autoLoadHost(t, newFakeRun()), config.Config{OutputDir: t.TempDir()}, downloadlist.New([]string{"https://youtu.be/x"})))
-	if !m.starting {
+	if !m.life.Starting {
 		t.Fatal("a list with a link did not begin to load by itself")
 	}
 	empty := sized(New(autoLoadHost(t, newFakeRun()), config.Config{OutputDir: t.TempDir()}, downloadlist.New(nil)))
-	if empty.starting {
+	if empty.life.Starting {
 		t.Error("an empty list began to load")
 	}
 }
@@ -53,7 +53,7 @@ func TestAListThatWasStoppedIsNotLoadedAgainUntilItChanges(t *testing.T) {
 	m, _ = m.stop(false)
 	next, _ := m.Update(runClosedMsg{})
 	m = next.(Model)
-	if m.starting || m.running() {
+	if m.life.Starting || m.running() {
 		t.Error("a stopped list began to load again by itself")
 	}
 }
@@ -113,7 +113,7 @@ func TestALinkCanBeTakenOutWhileTheRunGoesOn(t *testing.T) {
 	if got := addressesOf(m); len(got) != 1 || got[0] != "https://youtu.be/a" {
 		t.Errorf("the list has %v", got)
 	}
-	if m.starting || !m.running() {
+	if m.life.Starting || !m.running() {
 		t.Error("taking a link out must not restart the run")
 	}
 }

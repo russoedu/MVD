@@ -55,7 +55,7 @@ func started(t *testing.T) (Model, *fakeRun) {
 	cfg := config.Config{OutputDir: t.TempDir()}
 	m := sized(New(host, cfg, list))
 	m, cmd := choose(m, entryStart)
-	if cmd == nil || !m.starting {
+	if cmd == nil || !m.life.Starting {
 		t.Fatal("the run did not begin to start")
 	}
 	next, _ := m.Update(cmd())
@@ -91,14 +91,14 @@ func TestLoadingThePlaylistsHoldsTheSongsForChoosing(t *testing.T) {
 func TestStoppingClosesTheRunAndKeepsTheList(t *testing.T) {
 	m, fake := started(t)
 	m, cmd := choose(m, entryStop)
-	if !m.stopping || cmd == nil {
+	if !m.life.Stopping || cmd == nil {
 		t.Fatal("not stopping")
 	}
 	msg := cmd()
 	next, _ := m.Update(msg)
 	m = next.(Model)
-	if !fake.closed || m.running() || m.stopping {
-		t.Errorf("closed %v running %v stopping %v", fake.closed, m.running(), m.stopping)
+	if !fake.closed || m.running() || m.life.Stopping {
+		t.Errorf("closed %v running %v stopping %v", fake.closed, m.running(), m.life.Stopping)
 	}
 	if _, ok := msg.(runClosedMsg); !ok {
 		t.Errorf("msg %T", msg)

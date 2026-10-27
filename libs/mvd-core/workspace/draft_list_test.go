@@ -22,8 +22,8 @@ func TestStartingANewListKeepsADraftAndStartsAtOnce(t *testing.T) {
 	host, dir := newListHost(t, newFakeRun())
 	m := sized(New(host, config.Config{OutputDir: t.TempDir()}, downloadlist.New([]string{"https://youtu.be/x"})))
 	m, cmd := choose(m, entryStart)
-	if cmd == nil || !m.starting {
-		t.Fatalf("the run did not begin to start: asking %v, starting %v", m.asking, m.starting)
+	if cmd == nil || !m.life.Starting {
+		t.Fatalf("the run did not begin to start: asking %v, starting %v", m.asking, m.life.Starting)
 	}
 	if m.asking != askNone {
 		t.Errorf("a question was asked before starting: %v", m.asking)
