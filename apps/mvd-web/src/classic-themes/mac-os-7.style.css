@@ -1,8 +1,9 @@
 /*
- * Mac OS 7.0: black on white, one-pixel lines, a striped title bar with a close box on the left
- * and a zoom box on the right, Chicago 12 everywhere (Chicago Kare) and Monaco for fixed width,
- * a grey dithered desktop, inverted selections, a thick ring round the default button, and menus
- * that stay open only while the mouse button is held.
+ * Mac OS 7.6: System 7 in colour. A plain grey desktop, white windows in a thin black line with a
+ * light grey title bar of fine dark stripes and bevelled close and zoom boxes, Chicago 12
+ * everywhere (Chicago Kare) and Monaco for fixed width, a white menu bar with inverted
+ * highlights, grey bevelled scroll bars, dark grey progress bars, a thick ring round the default
+ * button, and menus that stay open only while the mouse button is held.
  */
 :root[data-theme='mac-os-7'] {
   --ui-font: 'Chicago Kare', Chicago, sans-serif;
@@ -15,7 +16,7 @@
   --mono-size: 32px;
   --smoothing: none;
 
-  --desktop: conic-gradient(#000000 25%, #ffffff 0 50%, #000000 0 75%, #ffffff 0) 0 0 / 2px 2px;
+  --desktop: #a3a3a3;
   --face: #ffffff;
   --window: #ffffff;
   --text: #000000;
@@ -27,33 +28,33 @@
   --select-text: #ffffff;
   --focus-ring: 2px solid #000000;
 
-  --raised: none;
+  --raised: inset -1px -1px #888888, inset 1px 1px #ffffff;
   --sunken: none;
   --pressed: none;
   --etched: inset 0 1px #000000;
 
-  --frame-bg: #ffffff;
+  --frame-bg: #dddddd;
   --frame-border: 1px solid #000000;
-  --frame-shadow: 1px 1px 0 #000000;
+  --frame-shadow: 1px 1px 0 #555555;
   --frame-radius: 0;
   --frame-padding: 0;
   --frame-backdrop: none;
 
   --title-height: 19px;
-  --title-bg: linear-gradient(#ffffff 0 3px, transparent 3px calc(100% - 4px), #ffffff calc(100% - 4px)), repeating-linear-gradient(#ffffff 0 1px, #000000 1px 2px);
-  --title-label-bg: #ffffff;
+  --title-bg: linear-gradient(#dddddd 0 3px, transparent 3px calc(100% - 4px), #dddddd calc(100% - 4px)), repeating-linear-gradient(#f4f4f4 0 1px, #8a8a8a 1px 2px);
+  --title-label-bg: #dddddd;
   --title-rule: #000000;
   --title-text: #000000;
   --title-text-shadow: none;
 
   --control-width: 11px;
   --control-height: 11px;
-  --control-bg: #ffffff;
-  --control-shadow: inset 0 0 0 1px #000000, 0 0 0 1px #ffffff;
-  --control-pressed-shadow: inset 0 0 0 1px #000000, inset 0 0 0 3px #ffffff, inset 0 0 0 11px #000000, 0 0 0 1px #ffffff;
+  --control-bg: #dddddd;
+  --control-shadow: inset 0 0 0 1px #000000, inset -2px -2px #999999, inset 2px 2px #ffffff, 0 0 0 1px #dddddd;
+  --control-pressed-shadow: inset 0 0 0 1px #000000, inset 2px 2px #777777, 0 0 0 1px #dddddd;
   --control-radius: 0;
   --control-text: #000000;
-  --control-close-bg: #ffffff;
+  --control-close-bg: #dddddd;
   --control-close-width: 11px;
   --control-gap: 0;
   --control-close-gap: 0;
@@ -112,12 +113,12 @@
   --progress-height: 12px;
   --progress-trough: #ffffff;
   --progress-trough-border: 1px solid #000000;
-  --progress-trough-shadow: none;
+  --progress-trough-shadow: inset 1px 1px #bbbbbb;
   --progress-radius: 0;
   --progress-padding: 0;
-  --progress-fill: #000000;
+  --progress-fill: linear-gradient(#888888, #555555);
   --progress-fill-radius: 0;
-  --progress-unknown: repeating-linear-gradient(-45deg, #000000 0 4px, #ffffff 4px 8px) 0 0 / 11.3px 100%;
+  --progress-unknown: repeating-linear-gradient(-45deg, #555555 0 4px, #dddddd 4px 8px) 0 0 / 11.3px 100%;
   --progress-animation: none;
   --progress-unknown-animation: mac-progress-barber 0.6s linear infinite;
 
@@ -130,8 +131,8 @@
   --check-on-bg: #ffffff;
   --radio-radius: 50%;
 
-  --status-bg: #ffffff;
-  --status-shadow: inset 0 1px #000000;
+  --status-bg: #dddddd;
+  --status-shadow: inset 0 1px #000000, inset 0 2px #ffffff;
 
   --dialog-border: 1px solid #000000;
   --dialog-padding: 1px;
@@ -150,50 +151,55 @@
   to { background-position: 11.3px 0; }
 }
 
-/* Scroll bars: a grey dithered track, a white box for a thumb, and outlined arrows in boxes. */
+/* Scroll bars: a light grey track, a bevelled grey thumb, and bevelled grey arrow boxes. */
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar {
   width: 16px;
   height: 16px;
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-track {
-  background: conic-gradient(#000000 25%, #ffffff 0 50%, #000000 0 75%, #ffffff 0) 0 0 / 2px 2px;
-  box-shadow: inset 1px 0 #000000;
+  background: #cccccc;
+  box-shadow: inset 1px 0 #000000, inset 2px 1px #999999;
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-track:horizontal {
-  box-shadow: inset 0 1px #000000;
+  box-shadow: inset 0 1px #000000, inset 1px 2px #999999;
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-thumb {
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #000000;
+  background: #dddddd;
+  box-shadow: inset 0 0 0 1px #000000, inset -2px -2px #999999, inset 2px 2px #ffffff;
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-button {
   display: block;
   width: 16px;
   height: 16px;
-  background-color: #ffffff;
+  background-color: #dddddd;
   background-repeat: no-repeat;
   background-position: center;
-  box-shadow: inset 0 0 0 1px #000000;
+  box-shadow: inset 0 0 0 1px #000000, inset -2px -2px #999999, inset 2px 2px #ffffff;
+}
+
+:root[data-theme='mac-os-7'] ::-webkit-scrollbar-button:active {
+  background-color: #999999;
+  box-shadow: inset 0 0 0 1px #000000, inset 2px 2px #666666;
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-button:vertical:decrement {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='10' shape-rendering='crispEdges'%3E%3Cpath d='M5.5 0.5L10.5 5.5H7.5V9.5H3.5V5.5H0.5Z' fill='white' stroke='black'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z'/%3E%3C/svg%3E");
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-button:vertical:increment {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='10' shape-rendering='crispEdges'%3E%3Cpath d='M5.5 9.5L10.5 4.5H7.5V0.5H3.5V4.5H0.5Z' fill='white' stroke='black'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h7v1H0zM1 1h5v1H1zM2 2h3v1H2zM3 3h1v1H3z'/%3E%3C/svg%3E");
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-button:horizontal:decrement {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='11' shape-rendering='crispEdges'%3E%3Cpath d='M0.5 5.5L5.5 0.5V3.5H9.5V7.5H5.5V10.5Z' fill='white' stroke='black'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v7H3zM2 1h1v5H2zM1 2h1v3H1zM0 3h1v1H0z'/%3E%3C/svg%3E");
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-button:horizontal:increment {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='11' shape-rendering='crispEdges'%3E%3Cpath d='M9.5 5.5L4.5 0.5V3.5H0.5V7.5H4.5V10.5Z' fill='white' stroke='black'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v7H0zM1 1h1v5H1zM2 2h1v3H2zM3 3h1v1H3z'/%3E%3C/svg%3E");
 }
 
 /* One arrow at each end: Chrome would otherwise draw both arrows at both ends. */
@@ -203,6 +209,6 @@
 }
 
 :root[data-theme='mac-os-7'] ::-webkit-scrollbar-corner {
-  background: #ffffff;
+  background: #dddddd;
   box-shadow: inset 1px 1px #000000;
 }

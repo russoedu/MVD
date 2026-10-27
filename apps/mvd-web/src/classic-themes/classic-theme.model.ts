@@ -12,7 +12,8 @@ export type ClassicThemeId =
   'windows-vista' |
   'mac-os-7' |
   'mac-os-9' |
-  'aqua'
+  'aqua' |
+  'mac-os-x-10-4'
 
 export interface ClassicTheme {
   id:     ClassicThemeId
@@ -27,9 +28,10 @@ export const classicThemes: readonly ClassicTheme[] = [
   { id: 'windows-95', label: 'Windows 95', family: 'windows-classic' },
   { id: 'windows-xp', label: 'Windows XP', family: 'windows-themed' },
   { id: 'windows-vista', label: 'Windows Vista', family: 'windows-themed' },
-  { id: 'mac-os-7', label: 'Mac OS 7', family: 'mac-classic' },
+  { id: 'mac-os-7', label: 'Mac OS 7.6', family: 'mac-classic' },
   { id: 'mac-os-9', label: 'Mac OS 9', family: 'mac-classic' },
   { id: 'aqua', label: 'Mac OS X 10.0', family: 'aqua' },
+  { id: 'mac-os-x-10-4', label: 'Mac OS X 10.4', family: 'aqua' },
 ]
 
 /**

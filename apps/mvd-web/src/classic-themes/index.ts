@@ -12,6 +12,7 @@ import './windows-vista.style.css'
 import './mac-os-7.style.css'
 import './mac-os-9.style.css'
 import './aqua.style.css'
+import './mac-os-x-10-4.style.css'
 import './dos.style.css'
 import './classic-controls.style.css'
 
