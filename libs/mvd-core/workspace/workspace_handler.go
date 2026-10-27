@@ -4,6 +4,7 @@ import (
 	"youtube-downloader/libs/mvd-core/workspace/addsource"
 	"youtube-downloader/libs/mvd-core/workspace/listhistory"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
+	"youtube-downloader/libs/mvd-core/workspace/linequestion"
 	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 	"fmt"
@@ -509,17 +510,14 @@ func (m Model) ask(p purpose, prompt, value string) Model {
 }
 
 func (m Model) answer(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch key.String() {
-	case "esc":
+	outcome, text := linequestion.Decide(key.String(), m.input.Value())
+	p := m.asking
+	switch outcome {
+	case linequestion.Cancelled, linequestion.Empty:
 		m.asking = askNone
 		return m, nil
-	case "enter":
-		text := strings.TrimSpace(m.input.Value())
-		p := m.asking
+	case linequestion.Answered:
 		m.asking = askNone
-		if text == "" {
-			return m, nil
-		}
 		return m.answered(p, text)
 	}
 	in, cmd := m.input.Update(key)
@@ -549,12 +547,7 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 	case askAddLink, askChangeLink:
 		if reason := notALink(text); reason != "" {
 			m.notice = reason
-			prompt := "Add a playlist or video link"
-			if p == askChangeLink {
-				prompt = "Change the link"
-			}
-
-			return m.ask(p, prompt, text), textinput.Blink // asked again, with what was typed
+			return m.ask(p, linequestion.LinkPrompt(p == askChangeLink), text), textinput.Blink // asked again, with what was typed
 		}
 		links, _ := parseLinks(text)
 		return m.answeredLink(p, strings.Join(links, "\n"))
