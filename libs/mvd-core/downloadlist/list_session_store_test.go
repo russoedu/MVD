@@ -51,14 +51,17 @@ func TestADownloadedSongIsNotGivenAgainButTheOthersAre(t *testing.T) {
 		snap("one", 1, engine.StateDone, "one"),
 		snap("two", 2, engine.StateDownloading, "two"),
 		snap("three", 3, engine.StateFailed, "three"),
-		snap("four", 4, engine.StateQueued, ""), // not looked up yet: nothing to download
+		snap("four", 4, engine.StateQueued, ""), // not looked up yet: to be looked up
 	})
 	sources, plan := s.Inputs()
 	if len(sources) != 0 {
 		t.Errorf("a listed item must not be listed again: %v", sources)
 	}
-	if len(plan) != 2 || plan[0].Upload.ID != "two" || plan[1].Upload.ID != "three" {
-		t.Fatalf("plan %+v, want the unfinished songs that have a video", plan)
+	if len(plan) != 3 || plan[0].Upload.ID != "two" || plan[1].Upload.ID != "three" {
+		t.Fatalf("plan %+v, want the unfinished songs", plan)
+	}
+	if plan[2].Upload.ID != "four" || plan[2].TargetID != "" {
+		t.Errorf("a song not looked up yet is to be looked up, without a video: %+v", plan[2])
 	}
 	song := s.File().Songs()
 	if !song[0].Downloaded || song[0].State != playlistfile.StateDone || song[2].State != playlistfile.StateFailed {
@@ -191,5 +194,36 @@ func TestTheAddressOfASearchIsKeptAsItIsAndComesBackToBeListed(t *testing.T) {
 	}
 	if sources, plan := back.Inputs(); len(sources) != 2 || len(plan) != 0 || sources[0] != address {
 		t.Errorf("a search is to be listed by the run: %q, %v", sources, plan)
+	}
+}
+
+func TestTheSongsASearchFoundAreKeptAndOnlyTheOnesNotFoundYetAreSearchedForAgain(t *testing.T) {
+	address := musicsearch.Query{Artist: "Daft Punk"}.Address()
+	found := engine.EntrySnapshot{
+		PlannedEntry: engine.PlannedEntry{Playlist: "Daft Punk", PlaylistURL: address, TargetID: "vid1", Kind: engine.KindOfficial,
+			Upload: ytdlp.PlaylistEntry{Title: "One More Time", Channel: "Daft Punk", PlaylistIndex: 1}},
+		State: engine.StateQueued,
+	}
+	finding := engine.EntrySnapshot{
+		PlannedEntry: engine.PlannedEntry{Playlist: "Daft Punk", PlaylistURL: address,
+			Upload: ytdlp.PlaylistEntry{Title: "Aerodynamic", Channel: "Daft Punk", PlaylistIndex: 2}},
+		State: engine.StateResolving,
+	}
+	s := New([]string{address})
+	s.Apply([]engine.EntrySnapshot{found, finding})
+	path := filepath.Join(t.TempDir(), "list.mvd")
+	if err := s.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	back, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, plan := back.Inputs()
+	if len(sources) != 0 {
+		t.Fatalf("the search was to be done again: %q", sources)
+	}
+	if len(plan) != 2 || plan[0].TargetID != "vid1" || plan[1].TargetID != "" || plan[1].Upload.Title != "Aerodynamic" {
+		t.Errorf("plan %+v", plan)
 	}
 }

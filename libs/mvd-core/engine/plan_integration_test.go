@@ -125,6 +125,67 @@ func TestARunFromAPlanDownloadsTheVideosItNamesAndLooksForNothing(t *testing.T) 
 	}
 }
 
+// A list kept the songs a search found, and one whose video the run that stopped had not found
+// yet: carrying it on downloads the found one as planned and searches for the other alone, from
+// its title and artist, instead of searching for the whole list again.
+func TestASongOfAPlanWithNoVideoYetIsSearchedForAndTheOthersAreNot(t *testing.T) {
+	t.Setenv("MVD_STUB_YTDLP", "1")
+	searched := []string{}
+	var mu sync.Mutex
+	tracks := recordingTracks{fakeTrackSource{}, func(title string) {
+		mu.Lock()
+		searched = append(searched, title)
+		mu.Unlock()
+	}}
+	address := "https://music.test/search"
+	eng, err := New(Options{
+		YtDlp:             os.Args[0],
+		OutputDir:         t.TempDir(),
+		OutputTemplate:    "%(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s",
+		Quality:           "best",
+		MergeOutputFormat: "mp4",
+		Workers:           2,
+		Tracks:            tracks,
+		Plan: []PlannedEntry{
+			{Playlist: "Road trip", PlaylistURL: address, Upload: ytdlp.PlaylistEntry{Title: "Official Song", Channel: "Band", PlaylistIndex: 1}, TargetID: "officialvid1", Kind: KindOfficial},
+			{Playlist: "Road trip", PlaylistURL: address, Upload: ytdlp.PlaylistEntry{Title: "Lyric Only Song", Channel: "Band", PlaylistIndex: 2}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	events := collect(t, eng)
+	cancel()
+	<-done
+
+	states := final(events)
+	if st := states[0]; st.State != StateDone || st.TargetID != "officialvid1" {
+		t.Errorf("the song found before: %+v", st)
+	}
+	if st := states[1]; st.State != StateDone || st.TargetID != "lyricvideo1" {
+		t.Errorf("the song not found before: %+v", st)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(searched) != 1 || searched[0] != "Lyric Only Song" {
+		t.Errorf("searched for %q, want only the song with no video yet", searched)
+	}
+}
+
+// recordingTracks is a track source that says which songs it was asked to find.
+type recordingTracks struct {
+	fakeTrackSource
+	found func(title string)
+}
+
+func (r recordingTracks) Find(ctx context.Context, track Track, logf func(string, ...interface{})) (string, bool, error) {
+	r.found(track.Title)
+	return r.fakeTrackSource.Find(ctx, track, logf)
+}
+
 // onceAgain is a resolver that can search again: it knows a second better version.
 type onceAgain struct{ fakeResolver }
 
