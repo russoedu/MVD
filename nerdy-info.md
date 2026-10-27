@@ -156,7 +156,7 @@ To change how a screen looks, edit its `<page>_page.go` (or the shared drawing c
 
 **A page folder holds the page and what is its own.** `run/help/` is the first: `help_page.go` is the page and `help_screen_mapper.go` fills it (`help.Screen(width, height, logPath)` fills the page and pads it). The model in `tui` only asks for the screen. The other pages follow as their models are separated from the shared state of `tui`.
 
-**The download screen is a slice too.** `run/download/` holds the page (`download_page.go`) and everything that makes it work: the model (`Model`, `New`, `NewEmbedded`), the mapper that fills the page's props, the add links box, the mouse handler, the outline and their tests and reference drawings. `tui` keeps the router (`NewAppModel`, the setup screens' router) and type aliases (`Controller`, `RunDownload`, ...) so hosts do not change.
+**The download screen is a slice too.** `run/download/` holds the page (`download_page.go`) and everything that makes it work: the model (`Model`, `New`, `NewEmbedded`), the mapper that fills the page's props, the add links box, the mouse handler, the outline and their tests and reference drawings. `tui` keeps the setup screens' router and type aliases (`Controller`, `RunDownload`, ...) so hosts do not change.
 
 **The playlist editor is a slice too.** `editor/editor/` holds the page (`editor_page.go`) and the editor's model (`Model`, `NewFromRows`, `NewPlanning`), its key handling, its mapper and the host contract (`EditorHost`, `Planner`, `PlanDownloadStarter`); it draws the planning page of `editor/editorplanning` while a plan runs. `tui` keeps aliases of the contracts and the app model that moves between the setup screens, the editor and the download screen.
 
