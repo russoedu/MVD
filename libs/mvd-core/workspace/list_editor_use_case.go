@@ -27,13 +27,13 @@ func (m Model) showItems(items []playlistfile.Item, sel int) Model {
 	if err := m.session.Replace(items); err != nil {
 		m.notice = "Cannot save the list: " + err.Error()
 	}
-	m.screen = m.screen.WithState(m.session.Preview()).SelectPlaylist(sel)
+	m.show(m.view().WithState(m.session.Preview()).SelectPlaylist(sel))
 	return m
 }
 
 // selected is the playlist the cursor is on, as an index of the list, and whether there is one.
 func (m Model) selected() (int, bool) {
-	i := m.screen.SelectedPlaylist()
+	i := m.dl.SelPlaylist
 	return i, i >= 0 && i < len(m.session.File().Items)
 }
 

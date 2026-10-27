@@ -71,7 +71,7 @@ func (m Model) startAdd() (Model, tea.Cmd) {
 		at, before = i+1, i
 	}
 	shown := append(append(append([]playlistfile.Item(nil), items[:at]...), playlistfile.Item{}), items[at:]...)
-	m.screen = m.screen.WithState(downloadlist.PreviewOf(playlistfile.File{Items: shown})).SelectPlaylist(at)
+	m.show(m.view().WithState(downloadlist.PreviewOf(playlistfile.File{Items: shown})).SelectPlaylist(at))
 	m.inline = inlineEdit{on: true, adding: true, index: at, before: before}
 	return m.sizeInline(""), nil
 }
@@ -80,11 +80,11 @@ func (m Model) startAdd() (Model, tea.Cmd) {
 // same place and the same way as when the list is only being made.
 func (m Model) startAddToRun() Model {
 	m = m.stopInline(false)
-	state := m.screen.State()
-	before := m.screen.SelectedPlaylist()
+	state := m.dl.State
+	before := m.dl.SelPlaylist
 	state.Playlists = append(state.Playlists, &runstate.Playlist{Index: -1, Listed: true})
 	at := len(state.Playlists) - 1
-	m.screen = m.screen.SelectPlaylist(at)
+	m.show(m.view().SelectPlaylist(at))
 	m.inline = inlineEdit{on: true, adding: true, running: true, index: at, before: before}
 
 	return m.sizeInline("")
@@ -97,7 +97,7 @@ func (m Model) startChange(i int) (Model, tea.Cmd) {
 		return m, nil
 	}
 	m = m.stopInline(false)
-	m.screen = m.screen.SelectPlaylist(i)
+	m.show(m.view().SelectPlaylist(i))
 	m.inline = inlineEdit{on: true, index: i, before: i}
 	return m.sizeInline(items[i].Source), nil
 }
@@ -105,7 +105,7 @@ func (m Model) startChange(i int) (Model, tea.Cmd) {
 // sizeInline makes the editor for text as wide as its row.
 func (m Model) sizeInline(text string) Model {
 	width := 20
-	if _, _, w, ok := m.screen.PlaylistRow(m.inline.index); ok {
+	if _, _, w, ok := m.view().PlaylistRow(m.inline.index); ok {
 		width = max(w-gripCells, 1)
 	}
 	m.inline.line = lineedit.New(text, width)
@@ -123,7 +123,7 @@ func (m Model) stopInline(keep bool) Model {
 	text := strings.TrimSpace(e.line.Value())
 	if e.running && !e.adding {
 		// Another address for a link of the run: the old one is taken out, the new one loaded.
-		m.screen = m.screen.SelectPlaylist(e.before)
+		m.show(m.view().SelectPlaylist(e.before))
 		if keep && text != "" {
 			if old, ok := m.runLinkAt(e.index); !ok || old != text {
 				links, _ := parseLinks(text)
@@ -134,11 +134,11 @@ func (m Model) stopInline(keep bool) Model {
 		return m
 	}
 	if e.running {
-		state := m.screen.State()
+		state := m.dl.State
 		if n := len(state.Playlists); n > 0 && n-1 == e.index {
 			state.Playlists = state.Playlists[:n-1]
 		}
-		m.screen = m.screen.SelectPlaylist(e.before)
+		m.show(m.view().SelectPlaylist(e.before))
 		if keep && text != "" {
 			links, _ := parseLinks(text)
 			m = m.addToRun(links)
@@ -159,13 +159,13 @@ func (m Model) stopInline(keep bool) Model {
 	case keep && text != "":
 		return m.changeAddress(e.index, text)
 	}
-	m.screen = m.screen.WithState(m.session.Preview()).SelectPlaylist(e.before)
+	m.show(m.view().WithState(m.session.Preview()).SelectPlaylist(e.before))
 	return m
 }
 
 // inlineRow is where the row being written is, on the screen.
 func (m Model) inlineRow() (x, y, w int, ok bool) {
-	x, y, w, ok = m.screen.PlaylistRow(m.inline.index)
+	x, y, w, ok = m.view().PlaylistRow(m.inline.index)
 	return x, y + topRows, w, ok
 }
 
@@ -268,7 +268,7 @@ func (m Model) listMouse(msg tea.MouseMsg) (Model, tea.Cmd, bool) {
 	if !double || (!m.editable() && !m.addable()) || pos.Y == 0 {
 		return m, nil, false
 	}
-	index, inside := m.screen.PlaylistAt(pos.X, pos.Y-topRows)
+	index, inside := m.view().PlaylistAt(pos.X, pos.Y-topRows)
 	switch {
 	case !inside:
 		return m, nil, false

@@ -158,7 +158,7 @@ func (m Model) refreshMenus() Model {
 	menu := runcontrol.EditMenuOf(m.facts(), runcontrol.EditFacts{
 		WritingAddress:   m.inline.on,
 		HasSelection:     m.inline.line.HasSelection(),
-		PlaylistSelected: m.screen.SelectedPlaylist() >= 0,
+		PlaylistSelected: m.dl.SelPlaylist >= 0,
 		CanUndo:          m.history.CanUndo(),
 		CanRedo:          m.history.CanRedo(),
 		Selected:         i,

@@ -11,7 +11,7 @@ import (
 
 // runLinkAt is the address of the link the screen shows at place pos, and whether there is one.
 func (m Model) runLinkAt(pos int) (string, bool) {
-	playlists := m.screen.State().Playlists
+	playlists := m.dl.State.Playlists
 	if pos < 0 || pos >= len(playlists) {
 		return "", false
 	}
@@ -22,7 +22,7 @@ func (m Model) runLinkAt(pos int) (string, bool) {
 // removeFromRun takes the link at place pos of the screen out of the run and out of the list.
 func (m Model) removeFromRun(pos int) Model {
 	remover, ok := m.run.(downloadpage.SourceRemover)
-	playlists := m.screen.State().Playlists
+	playlists := m.dl.State.Playlists
 	if !ok || pos < 0 || pos >= len(playlists) {
 		return m
 	}
@@ -74,7 +74,7 @@ func (m Model) editRunCommand(name string) (tea.Model, tea.Cmd) {
 	case entryCut:
 		return m.copy(true)
 	case entryDelete:
-		return m.removeFromRun(m.screen.SelectedPlaylist()), nil
+		return m.removeFromRun(m.dl.SelPlaylist), nil
 	}
 	m.notice = "That waits until the songs have loaded"
 
@@ -88,7 +88,7 @@ func (m Model) startChangeRun(pos int) Model {
 		return m
 	}
 	m = m.stopInline(false)
-	m.screen = m.screen.SelectPlaylist(pos)
+	m.show(m.view().SelectPlaylist(pos))
 	m.inline = inlineEdit{on: true, running: true, index: pos, before: pos}
 
 	return m.sizeInline(link)

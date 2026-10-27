@@ -380,6 +380,15 @@ func (m Model) State() *runstate.State { return m.session.State }
 // Session is what the screen shows, for a window drawn by something other than the terminal.
 func (m Model) Session() downloadsession.Session { return m.session }
 
+// WithSession shows session, which another part owns: the screen keeps only what the terminal
+// knows (sizes, scroll offsets, the dragging of borders), so the same screen can be drawn from any
+// session.
+func (m Model) WithSession(session downloadsession.Session) Model {
+	m.session = session
+
+	return m
+}
+
 // ChoosePlaylist puts the cursor on playlist i, as a click on it does.
 func (m Model) ChoosePlaylist(i int) Model {
 	m.session.ChoosePlaylist(i)

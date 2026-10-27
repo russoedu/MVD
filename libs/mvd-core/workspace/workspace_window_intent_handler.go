@@ -28,12 +28,12 @@ func (m Model) windowIntent(in windowsnapshot.Intent) (tea.Model, tea.Cmd) {
 			}
 		}
 	case windowsnapshot.IntentSelectSource:
-		m.screen = m.screen.ChoosePlaylist(in.Index)
+		m.show(m.view().ChoosePlaylist(in.Index))
 	case windowsnapshot.IntentSelectSong:
-		m.screen = m.screen.ChooseEntry(in.Index)
+		m.show(m.view().ChooseEntry(in.Index))
 	case windowsnapshot.IntentTickSong:
-		if ids := m.screen.Session().VisibleEntries(); in.Index >= 0 && in.Index < len(ids) {
-			m.screen = m.screen.SetTicked(ids[in.Index], in.Ticked)
+		if ids := m.dl.VisibleEntries(); in.Index >= 0 && in.Index < len(ids) {
+			m.show(m.view().SetTicked(ids[in.Index], in.Ticked))
 		}
 	case windowsnapshot.IntentAddingMode, windowsnapshot.IntentAddingText, windowsnapshot.IntentAddingButton:
 		if m.addOpen {

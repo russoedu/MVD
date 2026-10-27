@@ -25,7 +25,7 @@ func (m Model) render() string {
 	if m.addOpen {
 		return m.addView()
 	}
-	below := m.screen.Render()
+	below := m.view().Render()
 	lines := strings.Split(below, "\n")
 	if len(lines) > m.height-topRows {
 		lines = lines[:m.height-topRows]
@@ -150,7 +150,7 @@ func (m Model) toolsLine() string {
 // summaryLine is how a finished run went and where its videos are, in a line the width of the
 // screen: the folder is shortened in the middle, so its end, which names it, stays.
 func (m Model) summaryLine() string {
-	t := m.screen.State().Tally()
+	t := m.dl.State.Tally()
 	head := fmt.Sprintf("✓ %d downloaded", t.Done)
 	plain := head
 	line := look.Green.Render(head)
@@ -183,7 +183,7 @@ func (m Model) summaryLine() string {
 // that failed: nothing of them was listed.
 func (m Model) unreadLinks() int {
 	n := 0
-	for _, pl := range m.screen.State().Playlists {
+	for _, pl := range m.dl.State.Playlists {
 		if pl.Err != "" {
 			n++
 		}
