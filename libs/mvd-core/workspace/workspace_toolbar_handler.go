@@ -37,7 +37,7 @@ func (m Model) buttons() []button {
 	if m.finished() {
 		// The work is over: show where it went, and offer what comes next.
 		out := []button{{"Open folder", entryOpenFolder, false}, {"► Load playlists again", entryStart, busy}}
-		if m.screen.State().Tally().Failed > 0 {
+		if m.dl.State.Tally().Failed > 0 {
 			out = append(out, button{"Retry failed", entryRetry, busy})
 		}
 
@@ -65,7 +65,7 @@ func (m Model) buttons() []button {
 // counted on the screen, with the left column and the width of the buttons. ok is false
 // when the screen has no such column (a narrow window), and the Run menu is the way then.
 func (m Model) buttonRows() (x, y, w int, ok bool) {
-	cx, cy, cw, ch, reserve, drawn := m.screen.LeftColumn()
+	cx, cy, cw, ch, reserve, drawn := m.view().LeftColumn()
 	if !drawn || reserve == 0 {
 		return 0, 0, 0, false
 	}
@@ -166,7 +166,7 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 // keepRoomForButtons tells the screen how many rows under the playlists the buttons take, and
 // whether the list can be changed on it.
 func (m Model) keepRoomForButtons() Model {
-	m.screen = m.screen.WithReserve(len(m.buttons())).WithEditable(m.editable()).WithLinkEditing(m.addable())
+	m.show(m.view().WithReserve(len(m.buttons())).WithEditable(m.editable()).WithLinkEditing(m.addable()))
 	return m
 }
 

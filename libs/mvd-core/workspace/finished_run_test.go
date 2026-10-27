@@ -15,7 +15,7 @@ import (
 // the engine would have left them in, and it has said it is idle.
 func finishRun(t *testing.T, m Model, done, failed int) Model {
 	t.Helper()
-	state := m.screen.State()
+	state := m.dl.State
 	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(state.Playlists), URL: "https://a"}})
 	state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "a", Entries: entriesOf(done + failed)})
 	for i := 0; i < done+failed; i++ {
@@ -199,7 +199,7 @@ func TestWhenARunEndsWhatWasSaidAtItsStartMakesRoomForHowItWent(t *testing.T) {
 func TestTheSummaryMentionsALinkThatCouldNotBeReadAtAll(t *testing.T) {
 	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
-	state := m.screen.State()
+	state := m.dl.State
 	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(state.Playlists), URL: "https://bad"}})
 	state.Apply(engine.EvPlaylistFailed{Playlist: len(state.Playlists) - 1, Err: "not a valid URL"})
 	state.Apply(engine.EvIdle{})
@@ -213,7 +213,7 @@ func TestTheSummaryMentionsALinkThatCouldNotBeReadAtAll(t *testing.T) {
 
 func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
 	m, _ := started(t)
-	state := m.screen.State()
+	state := m.dl.State
 	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: 0, URL: "https://a"}})
 	state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "a", Entries: entriesOf(5)})
 	state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone})

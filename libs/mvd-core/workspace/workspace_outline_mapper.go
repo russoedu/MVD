@@ -13,7 +13,7 @@ func (m Model) Outline() outline.ScreenOutline {
 	case m.life.Stopping:
 		return outline.ScreenOutline{Title: "MVD · Stopping the downloads"}
 	default:
-		out = m.screen.Outline()
+		out = m.view().Outline()
 		if !m.running() {
 			n := len(m.session.Sources())
 			out.Title = fmt.Sprintf("MVD · Download list (%d items)", n)

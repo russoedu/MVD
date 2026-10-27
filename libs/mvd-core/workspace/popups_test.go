@@ -138,7 +138,7 @@ func TestAddingALinkPutsItAfterTheSelectedOneAndEscAddsNothing(t *testing.T) {
 
 func TestADoubleClickOnARowChangesItAndOnTheEmptyRoomAddsOne(t *testing.T) {
 	m := listOf("https://a", "https://b")
-	x, y, _, _, _, _ := m.screen.LeftColumn()
+	x, y, _, _, _, _ := m.view().LeftColumn()
 	row := y + 1 + topRows // the first playlist
 	m = click(m, x+4, row)
 	m = click(m, x+4, row)
@@ -209,7 +209,7 @@ func TestPastedLinesBecomePlaylistsAfterTheSelectedOne(t *testing.T) {
 
 func TestTheIconsOnARowChangeAndRemoveIt(t *testing.T) {
 	m := listOf("https://a", "https://b")
-	x, y, w, _, _, ok := m.screen.LeftColumn()
+	x, y, w, _, _, ok := m.view().LeftColumn()
 	if !ok {
 		t.Fatal("no column of playlists")
 	}

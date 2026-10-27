@@ -17,7 +17,7 @@ func TestTheRunsEventsKeepComingWhileAMenuIsOpen(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("the screen was not asked for the next event: the run's events pile up until it stops")
 	}
-	if got := len(next.(Model).screen.State().Playlists); got != 1 {
+	if got := len(next.(Model).dl.State.Playlists); got != 1 {
 		t.Errorf("the event was not taken by the screen: %d playlists", got)
 	}
 }
@@ -36,10 +36,10 @@ func TestWhatAnEarlierRunStillSaysIsNotTakenForTheRunNow(t *testing.T) {
 	m = next.(Model)
 	next, _ = m.Update(closed)
 	m = next.(Model)
-	if !m.running() || !m.screen.Running() {
+	if !m.running() || m.dl.Ctrl == nil {
 		t.Error("the closing of an earlier run ended the run that is shown")
 	}
-	if got := len(m.screen.State().Playlists); got != 0 {
+	if got := len(m.dl.State.Playlists); got != 0 {
 		t.Errorf("an event of an earlier run reached the run that is shown: %d playlists", got)
 	}
 	_ = fake

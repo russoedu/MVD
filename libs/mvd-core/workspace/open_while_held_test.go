@@ -24,7 +24,7 @@ func otherList(t *testing.T) string {
 // download makes the run report one song that is coming in now.
 func download(m Model) Model {
 	state := runstate.New([]engine.PlaylistSource{{Index: 0, URL: "https://youtu.be/x"}})
-	m.screen = m.screen.WithState(state)
+	m.dl.Show(state)
 	state.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "list", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, VideoID: "a", Title: "A"}}})
 	state.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading})
 

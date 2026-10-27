@@ -130,17 +130,17 @@ func TestClosingAsksOnlyWhileSongsAreDownloading(t *testing.T) {
 	list := downloadlist.New([]string{"https://youtu.be/a"})
 	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
 	m = m.runStartedFor(t, run)
-	m.screen.State().Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1}}})
+	m.dl.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1}}})
 
 	// Songs wait to be chosen: nothing downloads, so nothing is asked.
-	m.screen.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "abc12345678"})
+	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "abc12345678"})
 	next, cmd := m.Update(CloseRequestedMsg{})
 	if next.(Model).closing.On || cmd == nil {
 		t.Fatalf("a close with nothing downloading asked %v, cmd %v", next.(Model).closing.On, cmd != nil)
 	}
 
 	// A song downloads: the app asks, in its own screen.
-	m.screen.State().Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading, TargetID: "abc12345678"})
+	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading, TargetID: "abc12345678"})
 	next, cmd = m.Update(CloseRequestedMsg{})
 	m = next.(Model)
 	if !m.closing.On || cmd != nil {
@@ -161,9 +161,9 @@ func TestShiftAndTheArrowsTickSongsEvenThoughTheMenuHasThemForMovingLinks(t *tes
 	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
 	m = m.runStartedFor(t, run)
 	entries := []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "one"}, {ID: 1, Playlist: 0, Index: 2, Title: "two"}, {ID: 2, Playlist: 0, Index: 3, Title: "three"}}
-	m.screen.State().Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: entries})
+	m.dl.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: entries})
 	for i := range entries {
-		m.screen.State().Apply(engine.EvEntryState{Entry: i, State: engine.StatePlanned, TargetID: "abc12345678"})
+		m.dl.State.Apply(engine.EvEntryState{Entry: i, State: engine.StatePlanned, TargetID: "abc12345678"})
 	}
 	press := func(m Model, key tea.KeyPressMsg) Model {
 		next, _ := m.Update(key)

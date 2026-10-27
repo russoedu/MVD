@@ -17,7 +17,7 @@ import (
 // Window is what the workspace shows, for a classic themed window to draw: the same menus,
 // buttons, lists and words the terminal look draws, as roles and tones.
 func (m Model) Window() windowsnapshot.Snapshot {
-	s := m.screen.Session()
+	s := m.dl
 	snap := windowsnapshot.Snapshot{
 		Title:    m.windowTitle(),
 		Menus:    m.windowMenus(),
@@ -130,7 +130,7 @@ func (m Model) statusSummary() string {
 			return said
 		}
 	}
-	s := m.screen.Session()
+	s := m.dl
 	if s.State == nil {
 		return ""
 	}

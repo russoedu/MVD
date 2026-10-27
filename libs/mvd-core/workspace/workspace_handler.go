@@ -24,6 +24,7 @@ import (
 	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/pointer"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"youtube-downloader/libs/mvd-core/screenview"
 )
 
@@ -80,7 +81,11 @@ type Model struct {
 	cfg     config.Config
 	session *downloadlist.Session
 
-	bar    menubar.Model
+	bar menubar.Model
+	// dl is what the download screen shows and does: the workspace owns it, whichever look draws
+	// it. screen is the terminal's view of it, holding only what the terminal knows, and is used
+	// through view and show.
+	dl     downloadsession.Session
 	screen downloadpage.Model
 
 	run ListRun
@@ -131,9 +136,16 @@ func New(host Host, cfg config.Config, list *downloadlist.Session) Model {
 	}
 	bar := menubar.New(menubar.WithMenus(menus()...), menubar.WithTitle("MVD"))
 	m := Model{hoverX: -1, hoverY: -1, host: host, cfg: cfg, session: list, bar: bar, screen: downloadpage.NewHosted()}
-	m.screen = m.screen.WithState(list.Preview())
+	m.dl = m.screen.Session()
+	m.dl.Show(list.Preview())
 	return m
 }
+
+// view is the terminal's screen showing the session the workspace owns.
+func (m Model) view() downloadpage.Model { return m.screen.WithSession(m.dl) }
+
+// show takes back the session a screen changed, along with the screen's own terminal state.
+func (m *Model) show(v downloadpage.Model) { m.screen, m.dl = v, v.Session() }
 
 // Session is the list that is open.
 func (m Model) Session() *downloadlist.Session { return m.session }
@@ -168,7 +180,7 @@ func (m Model) facts() runcontrol.Facts {
 		f.Paused = m.run.Paused()
 		_, f.CanAddLinks = m.run.(downloadpage.SourceAdder)
 	}
-	if state := m.screen.State(); state != nil {
+	if state := m.dl.State; state != nil {
 		f.Idle, f.AllListed, f.Tally = state.Idle, state.AllListed(), state.Tally()
 	}
 
@@ -243,9 +255,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.runStarted(msg)
 
 	case runClosedMsg:
-		left := m.screen.State().Tally()
+		left := m.dl.State.Tally()
 		m.run = nil
-		m.screen = m.screen.Detach().WithState(m.session.Preview())
+		m.show(m.view().Detach().WithState(m.session.Preview()))
 		if unfinished := left.Queued + left.Running; unfinished > 0 && !msg.quit {
 			m.done = fmt.Sprintf("Stopped: %d saved, %d not downloaded. Load the playlists again to carry on.", left.Done, unfinished)
 		}
@@ -398,8 +410,8 @@ func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if mouse, ok := msg.(tea.MouseMsg); ok {
 		msg = pointer.Shift(mouse, 0, -topRows)
 	}
-	next, cmd := m.screen.Update(msg)
-	m.screen = next.(downloadpage.Model)
+	next, cmd := m.view().Update(msg)
+	m.show(next.(downloadpage.Model))
 	return m, cmd
 }
 
@@ -425,7 +437,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.session = downloadlist.New(nil)
-		m.screen = m.screen.WithState(m.session.Preview())
+		m.show(m.view().WithState(m.session.Preview()))
 		m.notice = ""
 	case entryOpen:
 		if m.running() {
@@ -534,7 +546,7 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.session = list
-		m.screen = m.screen.WithState(list.Preview())
+		m.show(m.view().WithState(list.Preview()))
 		m.done = "Opened " + cells.TruncateMiddle(list.Path(), max(m.width-14, 20))
 	case askSaveAs:
 		m.save(withExtension(text))
@@ -642,8 +654,8 @@ func (m Model) runStarted(msg runStartedMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.run = msg.run
-	screen, cmd := m.screen.Attach(msg.run)
-	m.screen = screen.WithPaused(msg.run.Paused())
+	screen, cmd := m.view().Attach(msg.run)
+	m.show(screen.WithPaused(msg.run.Paused()))
 	cmds := []tea.Cmd{cmd, saveTick()}
 	return m, tea.Batch(cmds...)
 }
@@ -704,7 +716,7 @@ func (m Model) togglePause() Model {
 		m.run.Pause()
 	}
 	m.done = runcontrol.PauseNotice(!held)
-	m.screen = m.screen.WithPaused(m.run.Paused())
+	m.show(m.view().WithPaused(m.run.Paused()))
 
 	return m
 }
@@ -753,7 +765,7 @@ func (m Model) settle() Model {
 	m.syncList()
 	m.run.Close()
 	m.run = nil
-	m.screen = m.screen.Detach().WithState(m.session.Preview())
+	m.show(m.view().Detach().WithState(m.session.Preview()))
 
 	return m
 }
