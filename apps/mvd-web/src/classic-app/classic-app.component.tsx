@@ -6,6 +6,7 @@ import { ClassicWindow } from '../classic-window'
 import type { MenuSnapshot, WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
 import { CoveredScreen } from './covered-screen.component'
 import { useKeyboardIntents } from './keyboard-intents.hook'
+import { QuestionWindow } from './question-window.component'
 
 interface ClassicAppProps {
   theme:           ClassicTheme
@@ -38,8 +39,8 @@ function sourceActions (menus: MenuSnapshot[]): SourceAction[] {
  * person does; MVD decides the rest.
  */
 export function ClassicApp ({ theme, scheme, snapshot, onIntent, onCloseCovered }: ClassicAppProps) {
-  const { covered, adding } = snapshot
-  useKeyboardIntents(snapshot.menus, onIntent, !covered && !adding)
+  const { covered, adding, question } = snapshot
+  useKeyboardIntents(snapshot.menus, onIntent, !covered && !adding && !question)
 
   return (
     <>
@@ -48,16 +49,26 @@ export function ClassicApp ({ theme, scheme, snapshot, onIntent, onCloseCovered 
         scheme={scheme}
         snapshot={snapshot}
         onIntent={onIntent}
-        overlay={(container, layout): ReactNode => adding && (
-          <AddMusicWindow
-            adding={adding}
-            layout={layout}
-            container={container}
-            onMode={mode => onIntent({ kind: 'adding-mode', mode })}
-            onText={(field, text) => onIntent({ kind: 'adding-text', field, text })}
-            onButton={id => onIntent({ kind: 'adding-button', id })}
-          />
-        )}
+        overlay={(container, layout): ReactNode => question
+          ? (
+              <QuestionWindow
+                question={question}
+                layout={layout}
+                container={container}
+                onButton={id => onIntent({ kind: 'question-button', id })}
+                onText={text => onIntent({ kind: 'question-text', text })}
+              />
+            )
+          : adding && (
+            <AddMusicWindow
+              adding={adding}
+              layout={layout}
+              container={container}
+              onMode={mode => onIntent({ kind: 'adding-mode', mode })}
+              onText={(field, text) => onIntent({ kind: 'adding-text', field, text })}
+              onButton={id => onIntent({ kind: 'adding-button', id })}
+            />
+          )}
       >
         <SourcesPane
           sources={snapshot.sources}

@@ -41,3 +41,96 @@
   background: #000000;
   box-shadow: var(--sunken);
 }
+
+/* A question or note: its mark beside what it says, a table of keys, a line to write in. */
+.classic-question {
+  width: min(520px, calc(100% - 32px));
+}
+
+.classic-question-body {
+  display: flex;
+  gap: 14px;
+  min-height: 0;
+}
+
+.classic-question-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-height: 60vh;
+  overflow: auto;
+  user-select: text;
+}
+
+.classic-question-line {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The marks: a caution triangle, a note and a question, in each system's colours. */
+.classic-question-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font: bold 20px/1 var(--ui-font);
+}
+
+.classic-question-mark[data-tone='caution'] {
+  background: #ffcc00;
+  clip-path: polygon(50% 2%, 98% 96%, 2% 96%);
+  color: #000000;
+}
+
+.classic-question-mark[data-tone='caution']::before {
+  padding-top: 8px;
+  content: '!';
+}
+
+.classic-question-mark[data-tone='note'],
+.classic-question-mark[data-tone='ask'] {
+  border-radius: 50%;
+  background: var(--select-bg);
+  color: var(--select-text);
+}
+
+.classic-question-mark[data-tone='note']::before {
+  content: 'i';
+}
+
+.classic-question-mark[data-tone='ask']::before {
+  content: '?';
+}
+
+.classic-question-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.classic-question-table caption {
+  padding: 6px 0 2px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.classic-question-table th {
+  width: 9em;
+  padding: 1px 12px 1px 0;
+  font-weight: 400;
+  text-align: left;
+  vertical-align: top;
+}
+
+.classic-question-table kbd {
+  font: inherit;
+}
+
+.classic-question-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}

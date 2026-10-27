@@ -1,12 +1,16 @@
 import { shortcutLabel, type ChromeLayout } from '../classic-themes'
 import type { StatusSnapshot } from '../workspace-snapshot'
+import { SizeGrip } from './size-grip.component'
 
 interface StatusLineProps {
   status: StatusSnapshot
   layout: ChromeLayout
 }
 
-/** The line at the foot of the window: how the run is going, and the keys that do the most. */
+/**
+ * The line at the foot of the window: how the run is going, the keys that do the most, and the
+ * corner that resizes the window.
+ */
 export function StatusLine ({ status, layout }: StatusLineProps) {
   return (
     <div className='classic-status-line'>
@@ -18,6 +22,7 @@ export function StatusLine ({ status, layout }: StatusLineProps) {
           </span>
         ))}
       </span>
+      <SizeGrip />
     </div>
   )
 }

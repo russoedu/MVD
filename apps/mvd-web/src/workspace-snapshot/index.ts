@@ -11,6 +11,8 @@ export type {
   MenuSnapshot,
   Mnemonic,
   Progress,
+  QuestionSnapshot,
+  QuestionTone,
   Shortcut,
   SongRow,
   SongsSnapshot,

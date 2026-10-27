@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/musicsearch"
+	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
 
@@ -102,10 +103,50 @@ func TestARefusedAdditionKeepsTheWindowOpenWithTheReason(t *testing.T) {
 	}
 }
 
-func TestAScreenOnlyTheTerminalDrawsSaysItCoversTheWindow(t *testing.T) {
+func TestAboutAndTheShortcutsAreNotesOfTheThemeThatOKCloses(t *testing.T) {
 	m := intent(listOf(), windowsnapshot.Intent{Kind: windowsnapshot.IntentMenu, ID: entryAbout})
-	if covered := m.Window().Covered; covered == nil || covered.Title != entryAbout {
-		t.Fatalf("covered = %+v", covered)
+	about := m.Window().Question
+	if about == nil || about.ID != windowsnapshot.QuestionAbout || !strings.HasPrefix(about.Lines[1], "Version ") || m.Window().Covered != nil {
+		t.Fatalf("about = %+v", about)
+	}
+	m = intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionButton, ID: questionOK})
+	if m.Window().Question != nil {
+		t.Fatal("OK did not close About")
+	}
+	m = intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentMenu, ID: entryShortcuts})
+	keys := m.Window().Question
+	if keys == nil || keys.Sections[0].Heading != "File" || keys.Sections[0].Rows[0].Does != entryNew {
+		t.Fatalf("shortcuts = %+v", keys)
+	}
+}
+
+func TestTheQuitQuestionIsAskedInTheThemeWithKeepingAsTheSafeAnswer(t *testing.T) {
+	m := listOf()
+	m.closing = closequestion.Ask()
+	quit := m.Window().Question
+	if quit == nil || quit.Tone != windowsnapshot.ToneCaution || quit.Buttons[1].Role != windowsnapshot.RoleDefault || quit.Buttons[1].ID != questionKeep {
+		t.Fatalf("quit = %+v", quit)
+	}
+	m = intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionButton, ID: questionKeep})
+	if m.closing.On {
+		t.Error("Keep downloading did not answer the question")
+	}
+}
+
+func TestAQuestionWithALineToWriteTakesTheTextAndOK(t *testing.T) {
+	m := listOf()
+	m = m.ask(askAddLink, "Add a playlist or video link", "")
+	ask := m.Window().Question
+	if ask == nil || ask.Field == nil || ask.Title != "Add a playlist or video link" {
+		t.Fatalf("ask = %+v", ask)
+	}
+	m = intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionText, Text: "https://www.youtube.com/playlist?list=a"})
+	if m.Window().Question.Field.Text != "https://www.youtube.com/playlist?list=a" {
+		t.Fatalf("field = %+v", m.Window().Question.Field)
+	}
+	m = intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionButton, ID: questionOK})
+	if got := addressesOf(m); m.asking != askNone || len(got) != 1 {
+		t.Errorf("asking %v, list %v", m.asking, got)
 	}
 }
 

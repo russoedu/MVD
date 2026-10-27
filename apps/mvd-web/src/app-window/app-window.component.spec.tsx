@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { sampleWorkspace } from '../theme-preview/sample-workspace.content'
 import { AppWindow } from './app-window.component'
 
@@ -34,6 +34,12 @@ function fakeProgram () {
 const look = (): string | undefined => screen.getByTestId('terminal').dataset.look
 
 describe('AppWindow', () => {
+  // The classic look and the preferences are loaded on demand; loading them once first keeps the
+  // first test from waiting on it.
+  beforeAll(async () => {
+    await Promise.all([import('../classic-app'), import('../preferences-window'), import('../classic-themes')])
+  })
+
   beforeEach(() => {
     if (!('CSS' in globalThis)) Reflect.set(globalThis, 'CSS', { escape: (text: string) => text, supports: () => false })
     // jsdom has no ResizeObserver, which the dialog of a covered screen watches itself with.
@@ -113,5 +119,29 @@ describe('AppWindow', () => {
 
     program.send('mvd:prefs', 'null')
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('asks the quit question as an alert of the theme, with Keep downloading the safe answer', async () => {
+    const program = fakeProgram()
+    render(<AppWindow />)
+    program.send('mvd:style', JSON.stringify({ style: 'mac-os-9', scheme: 'default' }))
+    program.send('mvd:snapshot', JSON.stringify({
+      ...sampleWorkspace,
+      question: {
+        id:      'quit',
+        title:   'Quit MVD?',
+        tone:    'caution',
+        lines:   ['59 songs are still downloading.', 'Quit and stop them?'],
+        buttons: [{ id: 'quit', label: 'Quit', role: 'other', enabled: true }, { id: 'keep', label: 'Keep downloading', role: 'default', enabled: true }],
+      },
+    }))
+
+    const alert = await screen.findByRole('alertdialog', { name: 'Quit MVD?' }, { timeout: 5000 })
+    expect(look()).toBe('behind')
+    // A Mac puts the default button last.
+    expect(within(alert).getAllByRole('button').map(button => button.textContent)).toEqual(['Quit', 'Keep downloading'])
+    fireEvent.click(within(alert).getByRole('button', { name: 'Quit' }))
+    const intents = program.sent.filter(([name]) => name === 'mvd:intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
+    expect(intents).toContainEqual({ kind: 'question-button', id: 'quit' })
   })
 })

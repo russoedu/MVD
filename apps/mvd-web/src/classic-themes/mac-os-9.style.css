@@ -10,7 +10,7 @@
   --title-font: var(--ui-font);
   --title-size: 16px;
   --title-weight: 400;
-  --mono-font: 'FontStruct Monaco', Monaco, monospace;
+  --mono-font: 'FontStruct Monaco', 'Monaco Gaps', 'Monaco Rest', monospace;
   /* Monaco 9 drawn at twice its pixels: at its own size it is too small to read beside Chicago 12. */
   --mono-size: 32px;
   --smoothing: none;

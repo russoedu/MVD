@@ -39,14 +39,19 @@ func shortcutRow(keys, does string) string {
 	return "  " + look.Key.Render(keys) + pad + look.Text.Render(does)
 }
 
-// shortcutLines are the lines of the Keyboard shortcuts window: every shortcut of every menu,
+// shortcutSection is a heading of the Keyboard shortcuts window and its keys.
+type shortcutSection struct {
+	heading string
+	keys    []screenKey
+}
+
+// shortcutSections are what the Keyboard shortcuts window lists: every shortcut of every menu,
 // read from the menus themselves so the window cannot say anything the menus do not, then the
 // keys of the download screen. Two entries that share a key (Download and Stop downloads) are said once.
-func shortcutLines() []string {
-	var lines []string
+func shortcutSections() []shortcutSection {
+	var sections []shortcutSection
 	for _, menu := range menus() {
-		var names []string // what each shortcut of the menu does, in order
-		var keys []string
+		var keys []screenKey
 		at := map[string]int{}
 		for _, e := range menu.Entries {
 			if e.Separator || e.Shortcut == "" {
@@ -54,24 +59,28 @@ func shortcutLines() []string {
 			}
 			label := menubar.ShortcutLabel(e.Shortcut)
 			if i, ok := at[label]; ok {
-				names[i] += " / " + e.Name
+				keys[i].does += " / " + e.Name
 				continue
 			}
 			at[label] = len(keys)
-			keys = append(keys, label)
-			names = append(names, e.Name)
+			keys = append(keys, screenKey{label, e.Name})
 		}
-		if len(keys) == 0 {
-			continue
-		}
-		lines = append(lines, "", " "+look.Title.Render(menu.Name))
-		for i := range keys {
-			lines = append(lines, shortcutRow(keys[i], names[i]))
+		if len(keys) > 0 {
+			sections = append(sections, shortcutSection{menu.Name, keys})
 		}
 	}
-	lines = append(lines, "", " "+look.Title.Render("While downloading"))
-	for _, k := range downloadKeys {
-		lines = append(lines, shortcutRow(k.keys, k.does))
+
+	return append(sections, shortcutSection{"While downloading", downloadKeys})
+}
+
+// shortcutLines are the lines of the Keyboard shortcuts window, drawn for the terminal.
+func shortcutLines() []string {
+	var lines []string
+	for _, section := range shortcutSections() {
+		lines = append(lines, "", " "+look.Title.Render(section.heading))
+		for _, k := range section.keys {
+			lines = append(lines, shortcutRow(k.keys, k.does))
+		}
 	}
 	return lines
 }

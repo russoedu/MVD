@@ -12,6 +12,9 @@ type Snapshot struct {
 	Activity Activity `json:"activity"`
 	// Adding is the window for adding music, when it is open.
 	Adding *AddMusic `json:"adding,omitempty"`
+	// Question is the question or note open over the window: quitting, a line to write, About,
+	// the keyboard shortcuts.
+	Question *Question `json:"question,omitempty"`
 	// Covered is a screen only the terminal look draws so far (the preferences, a question...),
 	// when one is open over the window: the theme shows the terminal for it.
 	Covered *Covered `json:"covered,omitempty"`
