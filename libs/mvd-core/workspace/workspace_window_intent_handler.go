@@ -39,6 +39,8 @@ func (m Model) windowIntent(in windowsnapshot.Intent) (tea.Model, tea.Cmd) {
 		if m.addOpen {
 			return m.windowAddIntent(in)
 		}
+	case windowsnapshot.IntentQuestionButton, windowsnapshot.IntentQuestionText:
+		return m.questionIntent(in)
 	case windowsnapshot.IntentKey:
 		if key, ok := keyPress(in.Key); ok {
 			return m.update(key)

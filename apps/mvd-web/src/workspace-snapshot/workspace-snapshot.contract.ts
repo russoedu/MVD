@@ -7,21 +7,23 @@
  * the same shapes) while a classic window style is chosen; the theme preview draws a sample.
  */
 export interface WorkspaceSnapshot {
-  title:    string
-  menus:    MenuSnapshot[]
-  toolbar:  ButtonSnapshot[]
-  sources:  SourcesSnapshot
-  songs:    SongsSnapshot
-  details:  DetailsSnapshot
-  status:   StatusSnapshot
-  activity: Activity
+  title:     string
+  menus:     MenuSnapshot[]
+  toolbar:   ButtonSnapshot[]
+  sources:   SourcesSnapshot
+  songs:     SongsSnapshot
+  details:   DetailsSnapshot
+  status:    StatusSnapshot
+  activity:  Activity
   /** The window for adding music, when it is open. */
-  adding?:  AddMusicSnapshot
+  adding?:   AddMusicSnapshot
+  /** The question or note open over the window: quitting, a line to write, About, the shortcuts. */
+  question?: QuestionSnapshot
   /**
    * A screen only the terminal look draws so far (the preferences, a question...), when one is
    * open over the window: the theme shows the terminal for it, under this title.
    */
-  covered?: { title: string }
+  covered?:  { title: string }
 }
 
 /**
@@ -141,6 +143,25 @@ export interface AddMusicSnapshot {
   buttons:  ButtonSnapshot[]
 }
 
+/** The mark a dialog wears: a caution for a choice that loses something, a note, a question. */
+export type QuestionTone = 'caution' | 'note' | 'ask'
+
+/**
+ * A question or note over the window, which a theme draws as its system's dialog. A button sends
+ * back its id; the field, what is written in it.
+ */
+export interface QuestionSnapshot {
+  id:        'quit' | 'ask' | 'about' | 'shortcuts'
+  title:     string
+  tone:      QuestionTone
+  lines?:    string[]
+  /** A table of keys and what they do, under headings. */
+  sections?: { heading: string, rows: { keys: string, does: string }[] }[]
+  /** The line the question asks to write in. */
+  field?:    { label: string, text: string }
+  buttons:   ButtonSnapshot[]
+}
+
 /** What the user did in a theme, for the program to act on. */
 export type WorkspaceIntent =
   | { kind: 'menu', id: string } |
@@ -152,5 +173,7 @@ export type WorkspaceIntent =
   { kind: 'adding-mode', mode: AddMusicMode } |
   { kind: 'adding-text', field: AddMusicField, text: string } |
   { kind: 'adding-button', id: string } |
+  { kind: 'question-button', id: string } |
+  { kind: 'question-text', text: string } |
   /** A key the window does not use itself, such as a letter that accepts a song. */
   { kind: 'key', key: string }

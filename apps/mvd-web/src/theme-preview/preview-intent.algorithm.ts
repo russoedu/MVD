@@ -48,7 +48,9 @@ export function applyPreviewIntent (snapshot: WorkspaceSnapshot, intent: Workspa
       return addingButton(snapshot, intent.id)
     }
     case 'window':
-    case 'key': {
+    case 'key':
+    case 'question-button':
+    case 'question-text': {
       return snapshot
     }
   }
