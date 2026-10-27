@@ -14,10 +14,12 @@ const ownsKeyboard = (target: Element | null): boolean => target?.closest('dialo
  * from firing while the window is focused, and hands the keys to the terminal
  * interface instead, even when the terminal itself does not have the focus
  * (after a click on the header, say). The terminal takes the focus back
- * whenever the window gains it.
+ * whenever the window gains it. Off (enabled false) while a classic window has the keyboard.
  */
-export function useCaptureBrowserShortcuts (): void {
+export function useCaptureBrowserShortcuts (enabled = true): void {
   useEffect(() => {
+    if (!enabled) return
+
     const focusTerminal = (): void => {
       if (document.querySelector('dialog[open]')) return
       terminalInput()?.focus()
@@ -67,5 +69,5 @@ export function useCaptureBrowserShortcuts (): void {
       globalThis.removeEventListener('keydown', onKeyDown, true)
       window.removeEventListener('focus', focusTerminal)
     }
-  }, [])
+  }, [enabled])
 }

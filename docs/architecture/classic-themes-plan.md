@@ -213,6 +213,17 @@ Added in #371:
 - **Sharp Windows 95.** The family's `pixelSnap` zooms the page so one CSS pixel is a whole number of screen pixels: 80 % on a screen at 125 %, 133 % at 150 %. It follows changes of scale.
   - React Aria places menus by screen position, which the zoom would scale again. The menu's box therefore undoes the zoom (`--pixel-zoom`), and the panel inside puts it back.
 
+In the app (#376): Preferences > Theme > **Window style** chooses the terminal look or a classic system, saved as `window_style` in `config.conf`.
+- **Program to page.** The workspace builds its window as a snapshot (`libs/mvd-core/workspace/windowsnapshot`, renderer-neutral). The snapshot carries:
+  - menus with their enabled entries, shortcuts and keyboard letters;
+  - toolbar buttons with their roles and why one is off;
+  - sources, songs, details and status;
+  - the Add music window.
+- **Events.** The host sends the style and each changed snapshot to the page (`mvd:style`, `mvd:snapshot`). The page sends back what the person does (`mvd:intent`). The workspace handles each intent with the same code a click or key runs in the terminal look, so behaviour stays in Go.
+- **The terminal stays running.** It keeps running behind a classic window, so the program has one connection.
+- **Screens the themes do not draw yet** (Preferences, About, keyboard shortcuts, the quit question, the one-line questions, the address editor) show the terminal inside a dialog of the theme, and its close button sends Esc.
+- **Keyboard.** A menu entry's shortcut chooses it. A plain letter goes to MVD as a key (d accepts a song, x rejects it, as in the terminal look).
+
 Still to do:
 - **Aqua scroll bars:** Chrome does not draw both arrows together at the end, so the Aqua bar has no arrows yet.
 - **Menu bar tracking:** with a menu open, moving the pointer over another menu title does not open that menu yet.

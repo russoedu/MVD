@@ -27,6 +27,23 @@ main.terminal-window {
   background: var(--terminal-background, #000);
 }
 
+/* Behind a classic window the terminal keeps running, full size, out of sight. */
+main.terminal-window[data-look='behind'] {
+  position: fixed;
+  inset: 0;
+  visibility: hidden;
+}
+
+/* Inset in a classic window's dialog: where the dialog says, above the classic window. */
+main.terminal-window[data-look='inset'] {
+  position: fixed;
+  top: var(--terminal-inset-top, 10%);
+  left: var(--terminal-inset-left, 10%);
+  z-index: 30;
+  width: var(--terminal-inset-width, 80%);
+  height: var(--terminal-inset-height, 80%);
+}
+
 /* The terminal is whole cells, so a strip is left beside the last column and under the last
    row. The page wears the colour the program drew there (see useFollowTerminalBackground). */
 main.terminal-window .xterm-viewport {

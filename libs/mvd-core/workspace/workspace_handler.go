@@ -5,6 +5,7 @@ import (
 	"youtube-downloader/libs/mvd-core/workspace/listhistory"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
+	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -225,7 +226,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
-	case tea.KeyPressMsg, tea.MouseClickMsg:
+	case tea.KeyPressMsg, tea.MouseClickMsg, WindowIntentMsg:
 		m.done, m.caution, m.notice = "", "", ""
 	}
 	if mouse, ok := msg.(tea.MouseMsg); ok {
@@ -243,6 +244,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case menubar.SelectedMsg:
 		return m.choose(msg.Name)
+
+	case WindowIntentMsg:
+		return m.windowIntent(windowsnapshot.Intent(msg))
 
 	case runStartedMsg:
 		return m.runStarted(msg)

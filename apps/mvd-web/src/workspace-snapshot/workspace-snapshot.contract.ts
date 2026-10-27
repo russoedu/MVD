@@ -3,8 +3,8 @@
  * theme sends back. It describes roles, not places: a theme decides where a default button
  * or a shortcut goes, so the same snapshot draws as Windows or as a Mac.
  *
- * The program does not send it yet (the JSON channel of #345 comes after #344); the theme
- * preview draws a sample of it.
+ * The program sends it over the mvd:snapshot event (libs/mvd-core/workspace/windowsnapshot has
+ * the same shapes) while a classic window style is chosen; the theme preview draws a sample.
  */
 export interface WorkspaceSnapshot {
   title:    string
@@ -17,6 +17,11 @@ export interface WorkspaceSnapshot {
   activity: Activity
   /** The window for adding music, when it is open. */
   adding?:  AddMusicSnapshot
+  /**
+   * A screen only the terminal look draws so far (the preferences, a question...), when one is
+   * open over the window: the theme shows the terminal for it, under this title.
+   */
+  covered?: { title: string }
 }
 
 /**
@@ -146,4 +151,6 @@ export type WorkspaceIntent =
   { kind: 'window', action: 'minimise' | 'maximise' | 'close' } |
   { kind: 'adding-mode', mode: AddMusicMode } |
   { kind: 'adding-text', field: AddMusicField, text: string } |
-  { kind: 'adding-button', id: string }
+  { kind: 'adding-button', id: string } |
+  /** A key the window does not use itself, such as a letter that accepts a song. */
+  { kind: 'key', key: string }

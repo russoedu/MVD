@@ -21,11 +21,11 @@ export function focusTerminal (host: ParentNode): void {
   host.querySelector<HTMLElement>(keyboardInput)?.focus()
 }
 
-export function useFocusTerminal (host: React.RefObject<HTMLElement | null>): void {
+export function useFocusTerminal (host: React.RefObject<HTMLElement | null>, enabled = true): void {
   useEffect(() => {
     const element = host.current
 
-    if (element === null) {
+    if (element === null || !enabled) {
       return nothing
     }
 
@@ -42,5 +42,5 @@ export function useFocusTerminal (host: React.RefObject<HTMLElement | null>): vo
       globalThis.removeEventListener('focus', focus)
       document.removeEventListener('visibilitychange', focus)
     }
-  }, [host])
+  }, [host, enabled])
 }

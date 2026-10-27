@@ -30,6 +30,7 @@ import (
 	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/tui"
 	"youtube-downloader/libs/mvd-core/workspace"
+	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 	"youtube-downloader/libs/mvd-core/ytdlp"
 )
 
@@ -124,6 +125,9 @@ func run(movedFrom string, askToMove bool, review string) error {
 
 	// The page around the terminal dims with a popup, and is told when one is open.
 	backdrop := &appwindow.Backdrop{}
+	// The window can be drawn in the classic systems' looks: the program says what it shows,
+	// and the page sends back what the person does.
+	classic := &appwindow.ClassicWindow{}
 	removal := uninstall.Here(version, appDir, terminalui.ConfigPath(appDir), stop)
 	// Moving is only offered while the app has not been moved yet.
 	var move tui.Mover
@@ -157,6 +161,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 		Version:    version,
 		Clipboard:  terminalui.SystemClipboard{},
 		Modal:      backdrop.Set,
+		Style:      classic.SetStyle,
+		Window:     classic.Show,
 		Tools:      toolsState(tools),
 		OpenFolder: openfolder.Open,
 		Uninstall:  terminalui.Uninstall(removal),
@@ -182,8 +188,9 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// The window runs on this goroutine (macOS needs the main thread) until it is closed,
 	// and closing it ends the app. A second start does not get past appwindow.Run: it
 	// raises the first window and ends.
+	classic.OnIntent = func(in windowsnapshot.Intent) { program.Send(workspace.WindowIntentMsg(in)) }
 	err = appwindow.Run(ctx, appwindow.Options{
-		Program: program, DataDir: appDir, Backdrop: backdrop,
+		Program: program, DataDir: appDir, Backdrop: backdrop, Classic: classic,
 		OnCloseRequest: func() { program.Send(workspace.CloseRequestedMsg{}) },
 		// A list double clicked while the app is open is opened in the window that is.
 		OnSecondStart: func(args []string) {

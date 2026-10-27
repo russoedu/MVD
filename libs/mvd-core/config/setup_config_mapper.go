@@ -117,6 +117,10 @@ func applyKey(cfg *Config, key, val, path string) {
 		if val != "" {
 			cfg.ThemeName = val
 		}
+	case "window_style":
+		if ValidWindowStyle(val) {
+			cfg.WindowStyle = val
+		}
 	case "extra_args":
 		if val != "" {
 			cfg.ExtraArgs = strings.Fields(val)
@@ -182,6 +186,7 @@ func configText(cfg Config) string {
 	w("log_dir", cfg.LogDir)
 	w("extra_args", strings.Join(cfg.ExtraArgs, " "))
 	w("theme", cfg.ThemeName)
+	w("window_style", cfg.WindowStyle)
 	w("color_accent", cfg.Colors.Accent)
 	w("color_focus", cfg.Colors.Focus)
 	w("color_highlight", cfg.Colors.Highlight)

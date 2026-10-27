@@ -37,8 +37,10 @@
   text-underline-offset: 2px;
 }
 
-/* Title bar. */
+/* Title bar: the window is dragged by it, not by its buttons. */
 .classic-title-bar {
+  --wails-draggable: drag;
+
   display: flex;
   flex: none;
   align-items: center;
@@ -73,6 +75,8 @@
 }
 
 .classic-window-controls {
+  --wails-draggable: no-drag;
+
   display: flex;
   flex: none;
   gap: var(--control-gap);

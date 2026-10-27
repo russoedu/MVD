@@ -1,8 +1,6 @@
-import { useState, type ReactNode } from 'react'
-import { AddMusicWindow } from '../add-music-window'
+import { useState } from 'react'
+import { ClassicApp } from '../classic-app'
 import { classicThemeOf, classicThemes } from '../classic-themes'
-import { DetailsPane, SongsTable, SourcesPane } from '../classic-panes'
-import { ClassicWindow } from '../classic-window'
 import { askWindow } from '../window-actions'
 import type { Activity, WorkspaceIntent } from '../workspace-snapshot'
 import { applyPreviewIntent } from './preview-intent.algorithm'
@@ -64,29 +62,7 @@ export function ThemePreview () {
         <output className='theme-preview-intent'>{last}</output>
       </div>
       <div className='theme-preview-desktop'>
-        <ClassicWindow
-          theme={theme}
-          snapshot={snapshot}
-          onIntent={onIntent}
-          overlay={(container, layout): ReactNode => snapshot.adding && (
-            <AddMusicWindow
-              adding={snapshot.adding}
-              layout={layout}
-              container={container}
-              onMode={mode => onIntent({ kind: 'adding-mode', mode })}
-              onText={(field, text) => onIntent({ kind: 'adding-text', field, text })}
-              onButton={id => onIntent({ kind: 'adding-button', id })}
-            />
-          )}
-        >
-          <SourcesPane sources={snapshot.sources} onSelect={index => onIntent({ kind: 'select-source', index })} />
-          <SongsTable
-            songs={snapshot.songs}
-            onSelect={index => onIntent({ kind: 'select-song', index })}
-            onTick={(index, ticked) => onIntent({ kind: 'tick-song', index, ticked })}
-          />
-          <DetailsPane details={snapshot.details} />
-        </ClassicWindow>
+        <ClassicApp theme={theme} snapshot={snapshot} onIntent={onIntent} />
       </div>
     </div>
   )

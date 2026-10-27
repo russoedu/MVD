@@ -45,13 +45,15 @@ type Options struct {
 	OnSecondStart func(args []string)
 	// Backdrop, when set, is told by the program when a popup is open, and tells the page.
 	Backdrop *Backdrop
+	// Classic, when set, carries the classic themed window between the program and the page.
+	Classic *ClassicWindow
 }
 
 // Run opens the window and returns when it is closed. A second start of the app does not
 // open a second window: it raises the first one and ends. Cancelling ctx closes the window.
 func Run(ctx context.Context, opts Options) error {
 	var windowCtx context.Context
-	var unbind, stopWindowEvents func()
+	var unbind, stopWindowEvents, stopClassic func()
 	var quitting atomic.Bool // the close button has asked, and been answered
 
 	err := wails.Run(&options.App{
@@ -89,6 +91,9 @@ func Run(ctx context.Context, opts Options) error {
 			if opts.Backdrop != nil {
 				opts.Backdrop.attach(c)
 			}
+			if opts.Classic != nil {
+				stopClassic = opts.Classic.attach(c)
+			}
 			unbind = ttygo.BindShared(c, opts.Program, wailsEvents{ctx: c}, ttygo.BindOptions{})
 			go func() {
 				<-ctx.Done()
@@ -99,6 +104,9 @@ func Run(ctx context.Context, opts Options) error {
 		OnShutdown: func(context.Context) {
 			if stopWindowEvents != nil {
 				stopWindowEvents()
+			}
+			if stopClassic != nil {
+				stopClassic()
 			}
 			if unbind != nil {
 				unbind()

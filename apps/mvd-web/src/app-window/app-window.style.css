@@ -1,0 +1,7 @@
+/* A classic window fills MVD's window, above the terminal that keeps running behind it. */
+.app-window-classic {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+}
