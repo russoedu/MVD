@@ -7,7 +7,7 @@ import { sendTerminalInput } from './terminal-socket.client'
 const terminalInput = (): HTMLElement | null => document.querySelector<HTMLElement>('.xterm-helper-textarea')
 
 /** Places that use the keyboard for themselves: the About window and form fields. */
-const ownsKeyboard = (target: Element | null): boolean => target?.closest('dialog, input, textarea, select, [contenteditable]') != null
+const ownsKeyboard = (target: Element | null): boolean => target?.closest('dialog, [role="dialog"], input, textarea, select, [contenteditable]') != null
 
 /**
  * Keeps the browser's own shortcuts (Ctrl+P prints, Ctrl+S saves the page...)

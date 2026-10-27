@@ -1,9 +1,10 @@
-import { useLayoutEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { layoutOf, type ClassicTheme, type ChromeLayout, type WindowControl } from '../classic-themes'
 import type { WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
 import { MenuBar } from './menu-bar.component'
 import { useMnemonicCues } from './mnemonic-cues.hook'
 import { usePixelSnap } from './pixel-snap.hook'
+import { useThemeOnRoot } from './theme-root.hook'
 import { StatusLine } from './status-line.component'
 import { TitleBar } from './title-bar.component'
 import { ActionsToolbar } from './actions-toolbar.component'
@@ -30,18 +31,7 @@ export function ClassicWindow ({ theme, snapshot, onIntent, children, overlay }:
   const layout = layoutOf(theme)
   const [inside, setInside] = useState<HTMLDivElement | null>(null)
 
-  // Before the browser lays the panes out: Chrome styles a scroll bar's parts when it creates the
-  // scroll bar, and does not restyle them when the theme changes later.
-  useLayoutEffect(() => {
-    const root = document.documentElement
-    root.dataset.theme = theme.id
-    root.dataset.family = theme.family
-
-    return () => {
-      delete root.dataset.theme
-      delete root.dataset.family
-    }
-  }, [theme])
+  useThemeOnRoot(theme)
   useMnemonicCues(layout.mnemonics)
   usePixelSnap(layout.pixelSnap)
 

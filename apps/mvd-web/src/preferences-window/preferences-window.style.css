@@ -1,0 +1,276 @@
+/* The preferences: a window of the theme in the middle of MVD's window, over everything. */
+.preferences-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 30%);
+}
+
+.preferences-window {
+  box-sizing: border-box;
+  width: min(820px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: var(--frame-padding);
+  border: var(--frame-border);
+  border-radius: var(--frame-radius);
+  background: var(--frame-bg);
+  box-shadow: var(--frame-shadow);
+  backdrop-filter: var(--frame-backdrop);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: var(--ui-size);
+  -webkit-font-smoothing: var(--smoothing);
+  cursor: default;
+  user-select: none;
+  outline: none;
+}
+
+.preferences-window[data-family='windows-classic'] {
+  padding: 3px;
+}
+
+.preferences-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 64px);
+  outline: none;
+}
+
+.preferences-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  background: var(--face);
+}
+
+.preferences-welcome {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--select-bg);
+  color: var(--select-text);
+}
+
+/* Tabs: the page's settings sit in a panel the tab in front opens onto. */
+.preferences-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.preferences-tab-list {
+  display: flex;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+.preferences-tab {
+  position: relative;
+  top: 1px;
+  padding: 3px 12px;
+  border: var(--button-border);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: var(--face);
+  box-shadow: var(--raised);
+  outline: none;
+  cursor: default;
+}
+
+.preferences-tab[data-selected] {
+  z-index: 1;
+  padding-bottom: 5px;
+  margin-top: -2px;
+  background: var(--face);
+  font-weight: 700;
+}
+
+.preferences-tab[data-focus-visible] {
+  outline: var(--focus-ring);
+  outline-offset: -4px;
+}
+
+.preferences-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  max-height: 52vh;
+  overflow: auto;
+  padding: 12px;
+  border: var(--pane-border);
+  background: var(--face);
+  box-shadow: var(--raised);
+  outline: none;
+}
+
+.preferences-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.preferences-label {
+  font-weight: 700;
+}
+
+.preferences-hint {
+  color: var(--text-dim);
+}
+
+.preferences-row,
+.preferences-number,
+.preferences-pattern-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.preferences-row .classic-field {
+  flex: 1;
+  width: auto;
+}
+
+.preferences-number .classic-field {
+  width: 80px;
+  text-align: right;
+}
+
+.preferences-step,
+.preferences-small-button {
+  min-width: 0;
+}
+
+.preferences-off {
+  color: var(--text-dim);
+}
+
+.preferences-select {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 360px;
+  text-align: left;
+  cursor: default;
+}
+
+.preferences-select-popover {
+  min-width: var(--trigger-width);
+}
+
+.preferences-swatches {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.preferences-swatches span {
+  width: 10px;
+  height: 10px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 40%);
+}
+
+.preferences-colour {
+  width: 22px;
+  height: 22px;
+  box-shadow: var(--sunken), inset 0 0 0 1px rgb(0 0 0 / 40%);
+}
+
+/* The name pattern: blocks with a button to take each out, and the text between them. */
+.preferences-pattern {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preferences-pattern-units {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--field-bg);
+  box-shadow: var(--field-shadow);
+  border: var(--field-border);
+}
+
+.preferences-pattern-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 2px 1px 6px;
+  background: var(--select-bg);
+  color: var(--select-text);
+}
+
+.preferences-pattern-remove {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+
+.preferences-pattern-text {
+  white-space: pre;
+}
+
+.preferences-pattern-typed .classic-field {
+  width: 120px;
+}
+
+.preferences-example {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.preferences-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.preferences-status {
+  flex: 1;
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.preferences-status[data-bad] {
+  color: var(--text-bad);
+}
+
+.preferences-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* MVD's terminal look: the tabs are words in a row, the one shown inverted. */
+[data-family='dos'] .preferences-tab {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--text-dim);
+}
+
+[data-family='dos'] .preferences-tab[data-selected] {
+  margin-top: 0;
+  padding-bottom: 3px;
+  background: var(--select-bg);
+  color: var(--select-text);
+}
+
+[data-family='dos'] .preferences-page {
+  border: 1px solid var(--text-dim);
+  box-shadow: none;
+}
+
+[data-family='dos'] .preferences-label {
+  color: var(--text-busy);
+  font-weight: 400;
+}

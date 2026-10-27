@@ -15,6 +15,7 @@ import (
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/openurl"
 	"youtube-downloader/libs/mvd-core/playlistfile"
+	"youtube-downloader/libs/mvd-core/prefsform"
 	"youtube-downloader/libs/mvd-core/runner"
 	"youtube-downloader/libs/mvd-core/sourcelist"
 	"youtube-downloader/libs/mvd-core/tui"
@@ -66,8 +67,9 @@ type Host struct {
 	Modal func(open bool)
 	// Style is told the window style of the settings, and Window what the window shows while
 	// the style is a classic one; nil for a host that draws only the terminal look.
-	Style  func(style string)
-	Window func(windowsnapshot.Snapshot)
+	Style       func(style string)
+	Window      func(windowsnapshot.Snapshot)
+	Preferences func(*prefsform.Window)
 	// OpenFolder shows a folder in the system's file manager; nil for none.
 	OpenFolder func(path string) error
 	// Tools says whether the tools of the downloads are ready: on the first start they are
@@ -103,12 +105,13 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 		}
 
 		return accessibleApp{tui.NewWorkspaceApp(tui.WorkspaceInput{
-			Setup:  tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
-			List:   list,
-			Live:   runner.LiveSettings,
-			Modal:  host.Modal,
-			Style:  host.Style,
-			Window: host.Window,
+			Setup:       tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
+			List:        list,
+			Live:        runner.LiveSettings,
+			Modal:       host.Modal,
+			Style:       host.Style,
+			Window:      host.Window,
+			Preferences: host.Preferences,
 			Host: workspace.Host{
 				AutoLoad: true,
 				Start:    host.StartList,

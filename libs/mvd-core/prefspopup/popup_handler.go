@@ -82,6 +82,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case WindowIntentMsg:
+		return m.windowIntent(prefsform.WindowIntent(msg))
 	case pickedMsg:
 		return m.picked(msg)
 	case doneMsg:
@@ -180,6 +182,31 @@ func (m Model) hostDoes(effect prefsform.Effect, wasEditing bool) (Model, tea.Cm
 	}
 
 	return m, nil
+}
+
+// WindowIntentMsg is what the person did in a preferences window the page draws. It goes through
+// the same steps as the keys, so both ways of showing the preferences behave alike.
+type WindowIntentMsg prefsform.WindowIntent
+
+// Window is the preferences as a window draws them.
+func (m Model) Window() prefsform.Window { return m.form.Window() }
+
+// windowIntent does what the person did in the window; the host's part (a folder chooser, an
+// action) is run as a key would run it.
+func (m Model) windowIntent(in prefsform.WindowIntent) (Model, tea.Cmd) {
+	switch in.Kind {
+	case prefsform.IntentSave:
+		return m, func() tea.Msg { return SaveMsg{} }
+	case prefsform.IntentClose:
+		return m, func() tea.Msg { return CloseMsg{} }
+	}
+	was := m.form.Editing
+	effect := m.form.Apply(in)
+	if in.Kind == prefsform.IntentTab {
+		m.scroll = 0
+	}
+
+	return m.hostDoes(effect, was)
 }
 
 // startTyping fills the text box with the value being changed.
