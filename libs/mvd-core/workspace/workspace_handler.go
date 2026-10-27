@@ -192,17 +192,10 @@ func (m Model) addToRun(links []string) Model {
 	}
 	m.loadedKey = m.sourcesKey()
 	m.syncFile()
-	if len(links) == 1 {
-		m.done = "Added: its songs are loading"
-	} else {
-		m.done = fmt.Sprintf("Added %d sources: their songs are loading", len(links))
-	}
+	m.done = runcontrol.AddedNotice(len(links))
 
 	return m
 }
-
-// waiting says whether some song of the run waits for the person to choose it.
-func (m Model) waiting() bool { return m.facts().Waiting() }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
@@ -609,15 +602,8 @@ func (m *Model) syncFile() {
 // start begins the downloads of the list, or its review. A list with no file is saved
 // first, so what happens to it is never lost.
 func (m Model) start(review bool) (Model, tea.Cmd) {
-	switch {
-	case m.running():
-		m.notice = "The downloads are already going"
-		return m, nil
-	case len(m.session.Sources()) == 0:
-		m.notice = "The list is empty: add a source first (Ctrl+L)"
-		return m, nil
-	case m.host.Start == nil:
-		m.notice = "Downloading is not available here"
+	if refusal := runcontrol.Refusal(m.facts(), len(m.session.Sources()), m.host.Start != nil); refusal != "" {
+		m.notice = refusal
 		return m, nil
 	}
 	if state, waiting := m.toolsWaiting(); waiting {
@@ -693,7 +679,7 @@ func (m Model) stop(quit bool) (Model, tea.Cmd) {
 		if quit {
 			return m, m.quit()
 		}
-		m.notice = "Nothing is running"
+		m.notice = runcontrol.NothingRunning
 		return m, nil
 	}
 	m.syncList()
@@ -718,16 +704,16 @@ func (m Model) quit() tea.Cmd {
 
 func (m Model) togglePause() Model {
 	if m.run == nil {
-		m.notice = "Nothing is running"
+		m.notice = runcontrol.NothingRunning
 		return m
 	}
-	if m.run.Paused() {
+	held := m.run.Paused()
+	if held {
 		m.run.Resume()
-		m.done = "Downloading: what you accept goes on from here"
 	} else {
 		m.run.Pause()
-		m.done = "Stopped: the songs on their way finish, and nothing else begins"
 	}
+	m.done = runcontrol.PauseNotice(!held)
 	m.screen = m.screen.WithPaused(m.run.Paused())
 
 	return m
@@ -735,10 +721,10 @@ func (m Model) togglePause() Model {
 
 func (m Model) retryAll() Model {
 	if m.run == nil {
-		m.notice = "Nothing is running"
+		m.notice = runcontrol.NothingRunning
 		return m
 	}
-	m.done = fmt.Sprintf("%d songs queued again", m.run.RetryAll())
+	m.done = runcontrol.RetryNotice(m.run.RetryAll())
 	return m
 }
 
