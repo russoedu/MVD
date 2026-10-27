@@ -40,7 +40,10 @@ type PlannedEntry struct {
 }
 
 // planSources gives each playlist of Options.Plan its source, in the order they appear,
-// and builds the entries. The playlists are not listed: Run announces them.
+// and builds the entries. The playlists are not listed: Run announces them. An entry with its
+// video is fixed: it is downloaded as planned. One without (a song a run stopped before its
+// video was found) goes through the lookup as a listed song does; a song of another service
+// or of a search by name is searched for again from its title and artist.
 func (e *Engine) planSources() {
 	if len(e.opts.Plan) == 0 {
 		return
@@ -67,6 +70,7 @@ func (e *Engine) planSources() {
 			idx = len(e.entries) + 1
 		}
 		target := p.TargetID
+		fixed := target != ""
 		en := &engineEntry{
 			info:        EntryInfo{ID: len(e.entries), Playlist: pl, Index: idx, VideoID: p.Upload.ID, Title: p.Upload.Title, Channel: p.Upload.Channel},
 			raw:         p.Upload,
@@ -76,8 +80,11 @@ func (e *Engine) planSources() {
 			better:      p.Kind == KindBetter,
 			ownOfficial: p.Kind == KindOwnOfficial,
 			reason:      p.Reason,
-			fixed:       true,
+			fixed:       fixed,
 			userChose:   p.Kind == KindChosen,
+		}
+		if !fixed && p.Upload.ID == "" {
+			en.track = &Track{Title: p.Upload.Title, Artist: p.Upload.Channel, DurationMs: int(p.Upload.Duration * 1000)}
 		}
 		if p.Artist != "" && p.Title != "" {
 			en.named = &namedSong{artist: p.Artist, title: p.Title}
@@ -94,9 +101,11 @@ func (e *Engine) seedPlan() {
 	e.mu.Lock()
 	byPlaylist := map[int][]EntryInfo{}
 	var ids []int
+	lookup := map[int]bool{} // the entries that still need their video found
 	for _, en := range e.entries {
 		byPlaylist[en.info.Playlist] = append(byPlaylist[en.info.Playlist], en.info)
 		ids = append(ids, en.info.ID)
+		lookup[en.info.ID] = !en.fixed
 	}
 	e.pending += len(ids)
 	sources := append([]PlaylistSource(nil), e.sources...)
@@ -106,7 +115,11 @@ func (e *Engine) seedPlan() {
 		e.emit(EvPlaylistListed{Playlist: src.Index, Title: e.playlistTitles[src.Index], Entries: byPlaylist[src.Index]})
 	}
 	for _, id := range ids {
-		e.queue.Push(id)
+		if lookup[id] {
+			e.nameQueue.Push(id)
+		} else {
+			e.queue.Push(id)
+		}
 	}
 }
 
