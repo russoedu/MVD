@@ -11,6 +11,8 @@ import { ActionsToolbar } from './actions-toolbar.component'
 
 interface ClassicWindowProps {
   theme:    ClassicTheme
+  /** The theme's colour scheme; none for its first, the system's own. */
+  scheme?:  string
   snapshot: WorkspaceSnapshot
   onIntent: (intent: WorkspaceIntent) => void
   /** The panes inside the window. */
@@ -27,11 +29,11 @@ interface ClassicWindowProps {
  * around the panes it is given. The theme's tokens are set on the page's root, so menus that open
  * outside the window wear the theme too.
  */
-export function ClassicWindow ({ theme, snapshot, onIntent, children, overlay }: ClassicWindowProps) {
+export function ClassicWindow ({ theme, scheme, snapshot, onIntent, children, overlay }: ClassicWindowProps) {
   const layout = layoutOf(theme)
   const [inside, setInside] = useState<HTMLDivElement | null>(null)
 
-  useThemeOnRoot(theme)
+  useThemeOnRoot(theme, scheme)
   useMnemonicCues(layout.mnemonics)
   usePixelSnap(layout.pixelSnap)
 

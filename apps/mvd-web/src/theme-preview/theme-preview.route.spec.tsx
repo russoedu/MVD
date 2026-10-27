@@ -153,4 +153,14 @@ describe('ThemePreview', () => {
 
     expect(document.querySelector<HTMLElement>('.classic-window')?.dataset.activity).toBe('waiting')
   })
+
+  it("opens a source's own menu with a right click, to remove it or move it", () => {
+    render(<ThemePreview />)
+    fireEvent.contextMenu(screen.getByRole('option', { name: /90s UK Dance Hits/ }))
+    const menu = screen.getByRole('menu', { name: 'Source' })
+    expect(within(menu).getAllByRole('menuitem').map(item => item.textContent)).toEqual(['Remove source', 'Move up', 'Move down'])
+
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Remove source' }))
+    expect(screen.getByText('{"kind":"menu","id":"delete"}')).toBeTruthy()
+  })
 })

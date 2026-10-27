@@ -112,10 +112,10 @@ func (m Model) layout() pageLayout {
 				addHint(focused, f.Hint)
 			}
 			current := value
-			for j, option := range f.Options {
-				text := "  " + look.Text.Render(f.OptionText(option))
+			for j, option := range f.OptionsFor(m.form.Cfg) {
+				text := "  " + look.Text.Render(f.OptionTextFor(m.form.Cfg, option))
 				if option == current {
-					text = look.Yellow.Render("› ") + look.Text.Bold(true).Render(f.OptionText(option))
+					text = look.Yellow.Render("› ") + look.Text.Bold(true).Render(f.OptionTextFor(m.form.Cfg, option))
 				}
 				if f.Swatches != nil {
 					text += "  " + swatchRow(f.Swatches(option))

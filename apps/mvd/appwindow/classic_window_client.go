@@ -36,7 +36,7 @@ type ClassicWindow struct {
 
 	mu       sync.Mutex
 	ctx      context.Context
-	style    string
+	style    string // the style and its scheme, as the JSON the page reads
 	snapshot string
 	prefs    string
 }
@@ -75,14 +75,18 @@ func (w *ClassicWindow) attach(ctx context.Context) func() {
 	}
 }
 
-// SetStyle says which window style the settings have.
-func (w *ClassicWindow) SetStyle(style string) {
+// SetStyle says which window style the settings have, and its colour scheme.
+func (w *ClassicWindow) SetStyle(style, scheme string) {
+	data, err := json.Marshal(map[string]string{"style": style, "scheme": scheme})
+	if err != nil {
+		return
+	}
 	w.mu.Lock()
-	w.style = style
+	w.style = string(data)
 	ctx := w.ctx
 	w.mu.Unlock()
 	if ctx != nil {
-		wailsruntime.EventsEmit(ctx, styleEvent, style)
+		wailsruntime.EventsEmit(ctx, styleEvent, string(data))
 	}
 }
 

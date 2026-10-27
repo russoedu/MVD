@@ -17,7 +17,7 @@ func styledApp(t *testing.T, style string) (workspaceApp, *[]string, *[]windowsn
 	styles, windows := &[]string{}, &[]windowsnapshot.Snapshot{}
 	a := NewWorkspaceApp(WorkspaceInput{
 		Setup:  SetupInput{Cfg: config.Config{OutputDir: "/music", WindowStyle: style}, CfgPath: filepath.Join(t.TempDir(), "config.conf")},
-		Style:  func(s string) { *styles = append(*styles, s) },
+		Style:  func(s, scheme string) { *styles = append(*styles, s+"/"+scheme) },
 		Window: func(s windowsnapshot.Snapshot) { *windows = append(*windows, s) },
 	}).(workspaceApp)
 	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -27,14 +27,14 @@ func styledApp(t *testing.T, style string) (workspaceApp, *[]string, *[]windowsn
 
 func TestTheTerminalLookIsReportedAndDrawsNoWindow(t *testing.T) {
 	_, styles, windows := styledApp(t, "")
-	if len(*styles) != 1 || (*styles)[0] != config.WindowStyleDOS || len(*windows) != 0 {
+	if len(*styles) != 1 || (*styles)[0] != config.WindowStyleDOS+"/" || len(*windows) != 0 {
 		t.Errorf("styles %v, %d windows", *styles, len(*windows))
 	}
 }
 
 func TestAClassicStyleGetsWhatTheWindowShowsAndThePreferencesCoverIt(t *testing.T) {
 	a, styles, windows := styledApp(t, "mac-os-9")
-	if len(*styles) != 1 || (*styles)[0] != "mac-os-9" || len(*windows) != 1 || (*windows)[0].Covered != nil {
+	if len(*styles) != 1 || (*styles)[0] != "mac-os-9/default" || len(*windows) != 1 || (*windows)[0].Covered != nil {
 		t.Fatalf("styles %v, windows %+v", *styles, *windows)
 	}
 	next, _ := a.Update(workspace.PreferencesRequestedMsg{})
@@ -48,7 +48,7 @@ func TestAClassicStyleGetsWhatTheWindowShowsAndThePreferencesCoverIt(t *testing.
 	changed := app.cfg
 	changed.WindowStyle = config.WindowStyleDOS
 	app.apply(changed, false).Update(tea.KeyPressMsg{})
-	if (*styles)[len(*styles)-1] != config.WindowStyleDOS {
+	if (*styles)[len(*styles)-1] != config.WindowStyleDOS+"/" {
 		t.Errorf("styles %v", *styles)
 	}
 }

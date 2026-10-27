@@ -23,9 +23,10 @@ func (m Model) Outline() outline.ScreenOutline {
 		case m.form.Editing && i == m.form.Cursor:
 			item.Editing = true
 		case f.Kind == prefsform.KindChoice:
-			item.Choices = make([]string, len(f.Options))
-			for j, o := range f.Options {
-				item.Choices[j] = f.OptionText(o)
+			options := f.OptionsFor(m.form.Cfg)
+			item.Choices = make([]string, len(options))
+			for j, o := range options {
+				item.Choices[j] = f.OptionTextFor(m.form.Cfg, o)
 				if o == f.Get(m.form.Cfg) {
 					item.Chosen = j
 				}

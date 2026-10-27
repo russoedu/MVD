@@ -40,12 +40,13 @@ func (f Form) windowField(field Field) WindowField {
 	out := WindowField{
 		Label: field.Label, Hint: field.Hint, Kind: windowKinds[field.Kind], Placeholder: field.Placeholder,
 		Min: field.Min, Max: field.Max, Step: field.Step, Off: field.Off, Optional: field.Optional,
+		Hidden: !field.ShownFor(f.Cfg),
 	}
 	if field.Get != nil {
 		out.Value = field.Get(f.Cfg)
 	}
-	for _, option := range field.Options {
-		o := WindowOption{Value: option, Label: field.OptionText(option)}
+	for _, option := range field.OptionsFor(f.Cfg) {
+		o := WindowOption{Value: option, Label: field.OptionTextFor(f.Cfg, option)}
 		if field.Swatches != nil {
 			o.Swatches = field.Swatches(option)
 		}

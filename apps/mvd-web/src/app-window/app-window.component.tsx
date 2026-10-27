@@ -43,7 +43,9 @@ const escape = '\u{1B}'
  * preferences are a window of the style in every case, the terminal look's own included.
  */
 export function AppWindow () {
-  const style = useWindowStyle()
+  const chosen = useWindowStyle()
+  const style = chosen?.style ?? null
+  const scheme = chosen?.scheme || undefined
   const [snapshot, send] = useLiveSnapshot()
   const [prefs, sendPrefs] = useLivePreferences()
   const classic = style !== null && style !== 'dos' && snapshot !== null
@@ -65,13 +67,13 @@ export function AppWindow () {
       {classic && (
         <div className='app-window-classic' inert={prefs !== null}>
           <Suspense>
-            <ClassicLook style={style} snapshot={snapshot} onIntent={onIntent} onCloseCovered={() => sendTerminalInput(escape)} />
+            <ClassicLook style={style} scheme={scheme} snapshot={snapshot} onIntent={onIntent} onCloseCovered={() => sendTerminalInput(escape)} />
           </Suspense>
         </div>
       )}
       {prefs && (
         <Suspense>
-          <PreferencesLook style={style ?? 'dos'} prefs={prefs} onIntent={sendPrefs} />
+          <PreferencesLook style={style ?? 'dos'} scheme={scheme} prefs={prefs} onIntent={sendPrefs} />
         </Suspense>
       )}
     </>

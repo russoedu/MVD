@@ -67,7 +67,7 @@ type Host struct {
 	Modal func(open bool)
 	// Style is told the window style of the settings, and Window what the window shows while
 	// the style is a classic one; nil for a host that draws only the terminal look.
-	Style       func(style string)
+	Style       func(style, scheme string)
 	Window      func(windowsnapshot.Snapshot)
 	Preferences func(*prefsform.Window)
 	// OpenFolder shows a folder in the system's file manager; nil for none.

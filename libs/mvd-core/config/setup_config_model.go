@@ -70,6 +70,9 @@ type Config struct {
 	// the classic systems of WindowStyles. Only the app's window reads it; the terminal app is
 	// always the terminal look.
 	WindowStyle string
+	// WindowScheme is the colour scheme of the classic style, one of WindowSchemes; "" or one the
+	// style has not is the style's first (see WindowSchemeOf).
+	WindowScheme string
 }
 
 // Default returns the settings used on first run, with paths rooted at the

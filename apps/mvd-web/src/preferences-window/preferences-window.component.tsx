@@ -8,6 +8,8 @@ import type { PreferencesIntent, PreferencesSnapshot, TerminalColours } from './
 
 interface PreferencesWindowProps {
   theme:    ClassicTheme
+  /** The theme's colour scheme; none for its first, the system's own. */
+  scheme?:  string
   prefs:    PreferencesSnapshot
   onIntent: (intent: PreferencesIntent) => void
 }
@@ -43,8 +45,8 @@ function useTerminalColours (theme: ClassicTheme, colours: TerminalColours): voi
  * and sends back each change; the program keeps the settings and runs what a button asks (the
  * folder chooser, moving or removing the app).
  */
-export function PreferencesWindow ({ theme, prefs, onIntent }: PreferencesWindowProps) {
-  useThemeOnRoot(theme)
+export function PreferencesWindow ({ theme, scheme, prefs, onIntent }: PreferencesWindowProps) {
+  useThemeOnRoot(theme, scheme)
   useTerminalColours(theme, prefs.colours)
   const layout = layoutOf(theme)
   const close = (): void => onIntent({ kind: 'prefs-close' })
@@ -65,7 +67,7 @@ export function PreferencesWindow ({ theme, prefs, onIntent }: PreferencesWindow
                 {prefs.tabs.map((tab, index) => <Tab key={tab} id={String(index)} className='preferences-tab'>{tab}</Tab>)}
               </TabList>
               <TabPanel id={String(prefs.tab)} className='preferences-page'>
-                {prefs.fields.map((field, index) => <PreferenceField key={field.label} field={field} index={index} onIntent={onIntent} />)}
+                {prefs.fields.map((field, index) => field.hidden ? null : <PreferenceField key={field.label} field={field} index={index} onIntent={onIntent} />)}
               </TabPanel>
             </Tabs>
             <div className='preferences-footer'>

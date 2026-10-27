@@ -1,18 +1,34 @@
 import type { ReactNode } from 'react'
 import { AddMusicWindow } from '../add-music-window'
 import { layoutOf, type ClassicTheme } from '../classic-themes'
-import { DetailsPane, SongsTable, SourcesPane } from '../classic-panes'
+import { DetailsPane, SongsTable, SourcesPane, type SourceAction } from '../classic-panes'
 import { ClassicWindow } from '../classic-window'
-import type { WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
+import type { MenuSnapshot, WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
 import { CoveredScreen } from './covered-screen.component'
 import { useKeyboardIntents } from './keyboard-intents.hook'
 
 interface ClassicAppProps {
   theme:           ClassicTheme
+  /** The theme's colour scheme; none for its first, the system's own. */
+  scheme?:         string
   snapshot:        WorkspaceSnapshot
   onIntent:        (intent: WorkspaceIntent) => void
   /** Closes a screen only the terminal draws, as Esc does there; nil where none is drawn. */
   onCloseCovered?: () => void
+}
+
+/** The Edit menu's entries that act on the source chosen, by their label, as its own menu calls them. */
+const sourceEntries = new Map([['Delete', 'Remove source'], ['Move up', 'Move up'], ['Move down', 'Move down']])
+
+/** What a source's own menu offers: the Edit menu's entries for it, as the program enables them. */
+function sourceActions (menus: MenuSnapshot[]): SourceAction[] {
+  const edit = menus.find(menu => menu.label === 'Edit')?.entries ?? []
+
+  return edit.flatMap(entry => {
+    const label = sourceEntries.get(entry.label)
+
+    return label ? [{ id: entry.id, label, enabled: entry.enabled }] : []
+  })
 }
 
 /**
@@ -21,7 +37,7 @@ interface ClassicAppProps {
  * screen the themes do not draw yet. It draws what the snapshot says and sends back what the
  * person does; MVD decides the rest.
  */
-export function ClassicApp ({ theme, snapshot, onIntent, onCloseCovered }: ClassicAppProps) {
+export function ClassicApp ({ theme, scheme, snapshot, onIntent, onCloseCovered }: ClassicAppProps) {
   const { covered, adding } = snapshot
   useKeyboardIntents(snapshot.menus, onIntent, !covered && !adding)
 
@@ -29,6 +45,7 @@ export function ClassicApp ({ theme, snapshot, onIntent, onCloseCovered }: Class
     <>
       <ClassicWindow
         theme={theme}
+        scheme={scheme}
         snapshot={snapshot}
         onIntent={onIntent}
         overlay={(container, layout): ReactNode => adding && (
@@ -42,7 +59,12 @@ export function ClassicApp ({ theme, snapshot, onIntent, onCloseCovered }: Class
           />
         )}
       >
-        <SourcesPane sources={snapshot.sources} onSelect={index => onIntent({ kind: 'select-source', index })} />
+        <SourcesPane
+          sources={snapshot.sources}
+          onSelect={index => onIntent({ kind: 'select-source', index })}
+          actions={sourceActions(snapshot.menus)}
+          onAction={id => onIntent({ kind: 'menu', id })}
+        />
         <SongsTable
           songs={snapshot.songs}
           onSelect={index => onIntent({ kind: 'select-song', index })}

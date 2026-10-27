@@ -28,10 +28,10 @@ type WorkspaceInput struct {
 	// Modal, when set, is called with true when a popup opens over the screen and false when
 	// the last one closes, so a host can dim what is around the terminal.
 	Modal func(open bool)
-	// Style, when set, is called with the window style of the settings when the app starts and
-	// whenever it changes, and the preferences offer the choice. Window is then called with what
+	// Style, when set, is called with the window style of the settings and its colour scheme when
+	// the app starts and whenever either changes, and the preferences offer the choice. Window is then called with what
 	// the window shows after every change while the style is a classic one, for the host to draw.
-	Style  func(style string)
+	Style  func(style, scheme string)
 	Window func(windowsnapshot.Snapshot)
 	// Preferences, when set, is called after every change with the preferences as a window draws
 	// them while they are open, and nil once they close: the host draws them, in every style,
@@ -98,9 +98,10 @@ func (a workspaceApp) report() workspaceApp {
 	if !config.ValidWindowStyle(style) {
 		style = config.WindowStyleDOS
 	}
-	if a.style == nil || *a.style != style {
-		a.in.Style(style)
-		a.style = &style
+	scheme := config.WindowSchemeOf(style, a.cfg.WindowScheme)
+	if reported := style + "/" + scheme; a.style == nil || *a.style != reported {
+		a.in.Style(style, scheme)
+		a.style = &reported
 	}
 	if a.in.Preferences != nil {
 		if a.inPrefs {

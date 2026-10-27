@@ -32,6 +32,8 @@ export interface PreferenceField {
   placeholder?: string
   /** A colour that may be left empty, for the terminal's own. */
   optional?:    boolean
+  /** A setting that does not apply to the settings as they are; it keeps its number for the intents. */
+  hidden?:      boolean
   /** The name pattern's pieces, the blocks that can be added, and the name it gives a sample song. */
   units?:       PatternUnit[]
   blocks?:      string[]
