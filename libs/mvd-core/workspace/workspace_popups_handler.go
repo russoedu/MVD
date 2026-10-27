@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
+	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
@@ -153,22 +154,25 @@ func (m Model) aboutMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 // for the address being written, and Copy needs something selected; the other commands work
 // on the playlist the cursor is on, and wait for the downloads to stop.
 func (m Model) refreshMenus() Model {
-	free := m.editable()
-	live := m.addable()
-	writing := (free || live) && m.inline.on
 	i, has := m.selected()
-	n := len(m.session.File().Items)
-	m.bar.SetEnabled(entryCut, writing && m.inline.line.HasSelection())
-	m.bar.SetEnabled(entryCopy, writing && m.inline.line.HasSelection())
-	m.bar.SetEnabled(entryPaste, free || live)
-	m.bar.SetEnabled(entryDelete, live && !writing && m.screen.SelectedPlaylist() >= 0)
-	m.bar.SetEnabled(entryUndo, free && !writing && m.history.CanUndo())
-	m.bar.SetEnabled(entryRedo, free && !writing && m.history.CanRedo())
-	if free {
-		m.bar.SetEnabled(entryDelete, !writing && has)
-	}
-	m.bar.SetEnabled(entryMoveUp, free && !writing && has && i > 0)
-	m.bar.SetEnabled(entryMoveDown, free && !writing && has && i < n-1)
+	menu := runcontrol.EditMenuOf(m.facts(), runcontrol.EditFacts{
+		WritingAddress:   m.inline.on,
+		HasSelection:     m.inline.line.HasSelection(),
+		PlaylistSelected: m.screen.SelectedPlaylist() >= 0,
+		CanUndo:          m.history.CanUndo(),
+		CanRedo:          m.history.CanRedo(),
+		Selected:         i,
+		HasCursor:        has,
+		Count:            len(m.session.File().Items),
+	})
+	m.bar.SetEnabled(entryCut, menu.Cut)
+	m.bar.SetEnabled(entryCopy, menu.Copy)
+	m.bar.SetEnabled(entryPaste, menu.Paste)
+	m.bar.SetEnabled(entryDelete, menu.Delete)
+	m.bar.SetEnabled(entryUndo, menu.Undo)
+	m.bar.SetEnabled(entryRedo, menu.Redo)
+	m.bar.SetEnabled(entryMoveUp, menu.MoveUp)
+	m.bar.SetEnabled(entryMoveDown, menu.MoveDown)
 	return m
 }
 

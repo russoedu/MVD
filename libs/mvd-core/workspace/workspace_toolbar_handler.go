@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
+	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
 )
 
 // topRows is the rows above the screen: the menu bar.
@@ -123,17 +124,15 @@ func (m Model) toolbarClick(x, y int) (tea.Model, tea.Cmd, bool) {
 
 // refreshRunMenus greys out what the Run menu offers and the workspace cannot do now.
 func (m Model) refreshRunMenus() Model {
-	busy := m.starting || m.stopping
-	running := m.active()
-	nothing := len(m.session.Sources()) == 0
 	_, waiting := m.toolsWaiting()
-	m.bar.SetEnabled(entryStart, !running && !busy && !nothing && !waiting)
-	m.bar.SetEnabled(entryPause, running && !busy && !m.run.Paused())
-	m.bar.SetEnabled(entryResume, running && !busy && m.run.Paused())
-	m.bar.SetEnabled(entryStop, running && !busy)
-	m.bar.SetEnabled(entryRetry, m.running() && !busy)
+	menu := runcontrol.RunMenuOf(m.facts(), len(m.session.Sources()) == 0, waiting)
+	m.bar.SetEnabled(entryStart, menu.Start)
+	m.bar.SetEnabled(entryPause, menu.Pause)
+	m.bar.SetEnabled(entryResume, menu.Resume)
+	m.bar.SetEnabled(entryStop, menu.Stop)
+	m.bar.SetEnabled(entryRetry, menu.Retry)
 	m.bar.SetEnabled(entryOpenFolder, m.host.OpenFolder != nil)
-	m.bar.SetEnabled(entryDownloadAll, running && !busy && m.waiting())
+	m.bar.SetEnabled(entryDownloadAll, menu.DownloadAll)
 	return m
 }
 
@@ -186,13 +185,8 @@ func (m Model) disabledReason() string {
 	}
 	for i, b := range m.buttons() {
 		if b.disabled && m.hoverY == y+i && m.hoverX >= x && m.hoverX < x+w {
-			if m.starting || m.stopping {
-				return "One moment..."
-			}
-			if state, waiting := m.toolsWaiting(); waiting {
-				return state.Message
-			}
-			return "Add a source first."
+			state, waiting := m.toolsWaiting()
+			return runcontrol.DisabledReason(m.facts(), waiting, state.Message)
 		}
 	}
 	return ""

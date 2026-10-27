@@ -201,9 +201,6 @@ func (m Model) addToRun(links []string) Model {
 	return m
 }
 
-// waiting says whether some song of the run waits for the person to choose it.
-func (m Model) waiting() bool { return m.facts().Waiting() }
-
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if ws, ok := next.(Model); ok {
@@ -609,15 +606,8 @@ func (m *Model) syncFile() {
 // start begins the downloads of the list, or its review. A list with no file is saved
 // first, so what happens to it is never lost.
 func (m Model) start(review bool) (Model, tea.Cmd) {
-	switch {
-	case m.running():
-		m.notice = "The downloads are already going"
-		return m, nil
-	case len(m.session.Sources()) == 0:
-		m.notice = "The list is empty: add a source first (Ctrl+L)"
-		return m, nil
-	case m.host.Start == nil:
-		m.notice = "Downloading is not available here"
+	if refusal := runcontrol.Refusal(m.facts(), len(m.session.Sources()), m.host.Start != nil); refusal != "" {
+		m.notice = refusal
 		return m, nil
 	}
 	if state, waiting := m.toolsWaiting(); waiting {
