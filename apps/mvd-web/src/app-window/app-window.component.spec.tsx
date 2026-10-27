@@ -90,4 +90,27 @@ describe('AppWindow', () => {
     expect(await screen.findByRole('region', { name: 'Preferences' }, { timeout: 5000 })).toBeTruthy()
     expect(look()).toBe('inset')
   })
+
+  it('draws the preferences as a window of the style, the terminal look included, until the program closes them', async () => {
+    const program = fakeProgram()
+    render(<AppWindow />)
+    program.send('mvd:style', 'dos')
+    program.send('mvd:prefs', JSON.stringify({
+      title:   'Preferences',
+      tabs:    ['Output', 'Theme'],
+      tab:     0,
+      fields:  [],
+      colours: { background: '', accent: '#ff2a6d', focus: '', highlight: '', success: '', error: '', dim: '', text: '', selected: '' },
+    }))
+    expect(await screen.findByRole('dialog', { name: 'Preferences' }, { timeout: 5000 })).toBeTruthy()
+    expect(document.documentElement.dataset.family).toBe('dos')
+
+    // The Close button at the bottom, not the one of the title bar.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).find(button => button.classList.contains('classic-button')) as HTMLElement)
+    const intents = program.sent.filter(([name]) => name === 'mvd:prefs-intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
+    expect(intents).toEqual([{ kind: 'prefs-close' }])
+
+    program.send('mvd:prefs', 'null')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
 })

@@ -28,6 +28,8 @@ import (
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-core/playlistfile"
+	"youtube-downloader/libs/mvd-core/prefsform"
+	"youtube-downloader/libs/mvd-core/prefspopup"
 	"youtube-downloader/libs/mvd-core/tui"
 	"youtube-downloader/libs/mvd-core/workspace"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
@@ -157,15 +159,17 @@ func run(movedFrom string, askToMove bool, review string) error {
 		},
 		// Quitting from the screens ends the program that runs them, and the window would
 		// otherwise stay open on a page with nothing behind it.
-		Quit:       stop,
-		Version:    version,
-		Clipboard:  terminalui.SystemClipboard{},
-		Modal:      backdrop.Set,
-		Style:      classic.SetStyle,
-		Window:     classic.Show,
-		Tools:      toolsState(tools),
-		OpenFolder: openfolder.Open,
-		Uninstall:  terminalui.Uninstall(removal),
+		Quit:      stop,
+		Version:   version,
+		Clipboard: terminalui.SystemClipboard{},
+		Modal:     backdrop.Set,
+		Style:     classic.SetStyle,
+		Window:    classic.Show,
+		// The preferences are a window the page draws, in every style.
+		Preferences: classic.ShowPreferences,
+		Tools:       toolsState(tools),
+		OpenFolder:  openfolder.Open,
+		Uninstall:   terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: move,
 	}, logf))
@@ -189,6 +193,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// and closing it ends the app. A second start does not get past appwindow.Run: it
 	// raises the first window and ends.
 	classic.OnIntent = func(in windowsnapshot.Intent) { program.Send(workspace.WindowIntentMsg(in)) }
+	classic.OnPrefsIntent = func(in prefsform.WindowIntent) { program.Send(prefspopup.WindowIntentMsg(in)) }
 	err = appwindow.Run(ctx, appwindow.Options{
 		Program: program, DataDir: appDir, Backdrop: backdrop, Classic: classic,
 		OnCloseRequest: func() { program.Send(workspace.CloseRequestedMsg{}) },

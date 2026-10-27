@@ -72,6 +72,14 @@ const families: Record<ChromeFamily, ChromeLayout> = {
     menuStyle:        'sticky',
     pixelSnap:        true,
   },
+  // MVD's terminal look: a frame of lines, the title on its top edge and a close mark at the right.
+  'dos': {
+    ...windows,
+    titleAlign:    'center',
+    controlsRight: ['close'],
+    mnemonics:     'none',
+    pixelSnap:     false,
+  },
   'aqua': {
     ...mac,
     controlsLeft:     ['close', 'minimise', 'maximise'],

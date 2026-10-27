@@ -10,6 +10,7 @@ import (
 	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/prefsform"
 	"youtube-downloader/libs/mvd-core/prefspopup"
 	"youtube-downloader/libs/mvd-core/screenview"
 	"youtube-downloader/libs/mvd-core/workspace"
@@ -32,6 +33,10 @@ type WorkspaceInput struct {
 	// the window shows after every change while the style is a classic one, for the host to draw.
 	Style  func(style string)
 	Window func(windowsnapshot.Snapshot)
+	// Preferences, when set, is called after every change with the preferences as a window draws
+	// them while they are open, and nil once they close: the host draws them, in every style,
+	// instead of the terminal look's popup.
+	Preferences func(*prefsform.Window)
 }
 
 // NewWorkspaceApp returns the app whose main screen is the workspace: the download list
@@ -97,11 +102,19 @@ func (a workspaceApp) report() workspaceApp {
 		a.in.Style(style)
 		a.style = &style
 	}
+	if a.in.Preferences != nil {
+		if a.inPrefs {
+			w := a.prefs.Window()
+			a.in.Preferences(&w)
+		} else {
+			a.in.Preferences(nil)
+		}
+	}
 	if style == config.WindowStyleDOS || a.in.Window == nil {
 		return a
 	}
 	snap := a.ws.Window()
-	if a.inPrefs {
+	if a.inPrefs && a.in.Preferences == nil {
 		snap.Covered = &windowsnapshot.Covered{Title: "Preferences"}
 	}
 	a.in.Window(snap)
@@ -267,6 +280,10 @@ func (a workspaceApp) Outline() ScreenOutline {
 func (a workspaceApp) View() tea.View {
 	if !a.inPrefs {
 		return a.ws.View()
+	}
+	if a.in.Preferences != nil {
+		// The host draws the preferences as a window of its own, over the workspace.
+		return screenview.Of(dialog.Dim(a.ws.Render()))
 	}
 	w, h := a.popupSize()
 	x, y := dialog.Centre(a.width, a.height, w, h)

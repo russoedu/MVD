@@ -48,6 +48,8 @@ export function MenuBar ({ menus, layout, onEntry, blocked }: MenuBarProps) {
       else titles[0].focus()
     }
     const onKeyDown = (event: KeyboardEvent): void => {
+      // A dialog over the window, such as the preferences, has the keyboard.
+      if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return
       altAlone = event.key === 'Alt'
       if (altAlone || event.defaultPrevented) return
       if (event.key === 'F10' && !event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey) {

@@ -1,0 +1,155 @@
+/*
+ * MVD's terminal look, for the windows the page draws over the terminal: a double line frame in
+ * the colours of the terminal's own theme, the title on its top edge, a fixed width font, buttons
+ * written [ Like this ] and a hard shadow. The colours come from the settings (--dos-*, set by the
+ * window that is open); the values here are MVD Neon's, for when none were given.
+ */
+:root[data-theme='dos'] {
+  --dos-background-color: var(--dos-background, #0d0221);
+  --dos-text-color: var(--dos-text, #e0e0ff);
+  --dos-accent-color: var(--dos-accent, #ff2a6d);
+  --dos-focus-color: var(--dos-focus, #05d9e8);
+  --dos-highlight-color: var(--dos-highlight, #f9f871);
+  --dos-dim-color: var(--dos-dim, #7a7aa8);
+  --dos-good-color: var(--dos-success, #01ff89);
+  --dos-bad-color: var(--dos-error, #ff4365);
+  --dos-selected-color: var(--dos-selected, #2a1b5e);
+
+  --ui-font: 'Fixedsys Excelsior', Consolas, 'Courier New', monospace;
+  --ui-size: 16px;
+  --title-font: var(--ui-font);
+  --title-size: 16px;
+  --title-weight: 400;
+  --mono-font: var(--ui-font);
+  --mono-size: 16px;
+  --smoothing: none;
+
+  --desktop: var(--dos-background-color);
+  --face: var(--dos-background-color);
+  --window: var(--dos-background-color);
+  --text: var(--dos-text-color);
+  --text-dim: var(--dos-dim-color);
+  --text-good: var(--dos-good-color);
+  --text-bad: var(--dos-bad-color);
+  --text-busy: var(--dos-highlight-color);
+  --select-bg: var(--dos-selected-color);
+  --select-text: var(--dos-highlight-color);
+  --focus-ring: 1px solid var(--dos-highlight-color);
+
+  --raised: none;
+  --sunken: inset 0 0 0 1px var(--dos-dim-color);
+  --pressed: none;
+  --etched: inset 0 -1px var(--dos-dim-color);
+
+  --frame-bg: var(--dos-background-color);
+  --frame-border: 4px double var(--dos-focus-color);
+  --frame-shadow: 10px 10px 0 rgb(0 0 0 / 60%);
+  --frame-radius: 0;
+  --frame-padding: 2px 6px 6px;
+  --frame-backdrop: none;
+
+  --title-height: 24px;
+  --title-bg: transparent;
+  --title-text: var(--dos-accent-color);
+  --title-text-shadow: none;
+
+  --control-width: 24px;
+  --control-height: 20px;
+  --control-bg: transparent;
+  --control-shadow: none;
+  --control-pressed-shadow: none;
+  --control-radius: 0;
+  --control-text: var(--dos-bad-color);
+  --control-close-bg: transparent;
+  --control-close-width: 24px;
+  --control-gap: 0;
+  --control-close-gap: 0;
+
+  --menubar-bg: var(--dos-background-color);
+  --menu-bg: var(--dos-background-color);
+  --menu-border: 1px solid var(--dos-focus-color);
+  --menu-shadow: 6px 6px 0 rgb(0 0 0 / 60%);
+  --menu-radius: 0;
+  --menu-padding: 2px;
+  --menu-item-select-bg: var(--dos-selected-color);
+  --menu-item-select-text: var(--dos-highlight-color);
+  --menu-item-radius: 0;
+  --menu-separator: inset 0 -1px var(--dos-dim-color);
+
+  --toolbar-bg: var(--dos-background-color);
+
+  --button-height: 26px;
+  --button-padding: 0 4px;
+  --button-bg: transparent;
+  --button-text: var(--dos-highlight-color);
+  --button-border: none;
+  --button-shadow: none;
+  --button-radius: 0;
+  --button-hover-bg: var(--dos-selected-color);
+  --button-hover-border: none;
+  --button-pressed-bg: var(--dos-selected-color);
+  --button-pressed-text: var(--dos-accent-color);
+  --button-pressed-shadow: none;
+  --button-default-bg: transparent;
+  --button-default-text: var(--dos-accent-color);
+  --button-default-border: none;
+  --button-default-shadow: none;
+  --button-default-animation: none;
+  --button-transition: none;
+  --button-disabled-text: var(--dos-dim-color);
+  --button-disabled-text-shadow: none;
+
+  --field-bg: var(--dos-background-color);
+  --field-border: 1px solid var(--dos-dim-color);
+  --field-shadow: none;
+  --field-radius: 0;
+  --field-padding: 2px 6px;
+
+  --pane-bg: var(--dos-background-color);
+  --pane-border: 1px solid var(--dos-dim-color);
+  --pane-shadow: none;
+  --pane-radius: 0;
+  --pane-padding: 0;
+  --header-bg: var(--dos-background-color);
+  --header-border: 1px solid var(--dos-dim-color);
+  --header-shadow: none;
+  --row-alt-bg: var(--dos-background-color);
+
+  --progress-height: 14px;
+  --progress-trough: var(--dos-background-color);
+  --progress-trough-border: 1px solid var(--dos-dim-color);
+  --progress-trough-shadow: none;
+  --progress-radius: 0;
+  --progress-padding: 1px;
+  --progress-fill: var(--dos-highlight-color);
+  --progress-fill-radius: 0;
+  --progress-unknown: repeating-linear-gradient(90deg, var(--dos-highlight-color) 0 8px, transparent 8px 16px);
+  --progress-animation: none;
+
+  --check-size: 14px;
+  --check-bg: var(--dos-background-color);
+  --check-border: 1px solid var(--dos-dim-color);
+  --check-shadow: none;
+  --check-radius: 0;
+  --check-mark: var(--dos-highlight-color);
+  --check-on-bg: var(--dos-background-color);
+  --radio-radius: 50%;
+
+  --status-bg: var(--dos-background-color);
+  --status-shadow: inset 0 1px var(--dos-dim-color);
+
+  --dialog-shadow: 10px 10px 0 rgb(0 0 0 / 60%);
+  --dialog-animation: none;
+
+  --cursor-wait: wait;
+  --cursor-progress: progress;
+}
+
+/* Buttons read [ Like this ], as the terminal look writes them. */
+:root[data-theme='dos'] .classic-button::before {
+  content: '[ ';
+}
+
+:root[data-theme='dos'] .classic-button::after {
+  content: ' ]';
+}

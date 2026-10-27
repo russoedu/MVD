@@ -23,6 +23,7 @@ export default [
       'apps/mvd-web/src/add-music-window/**/*.css',
       'apps/mvd-web/src/theme-preview/**/*.css',
       'apps/mvd-web/src/classic-app/**/*.css',
+      'apps/mvd-web/src/preferences-window/**/*.css',
     ],
     rules: {
       'css/no-invalid-properties': ['error', { allowUnknownVariables: true }],

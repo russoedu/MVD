@@ -2,9 +2,9 @@ import { useEffect } from 'react'
 import type { MenuSnapshot, WorkspaceIntent } from '../workspace-snapshot'
 import { isPlainCharacter, matchesShortcut } from './shortcut-match.policy'
 
-/** Places that use the keyboard for themselves: text fields and open menus. */
+/** Places that use the keyboard for themselves: text fields, open menus and dialogs. */
 const ownsKeyboard = (target: EventTarget | null): boolean =>
-  target instanceof Element && target.closest('input, textarea, select, [contenteditable], [role="menu"]') !== null
+  target instanceof Element && target.closest('input, textarea, select, [contenteditable], [role="menu"], [role="dialog"]') !== null
 
 /**
  * The window's keyboard: a menu entry's shortcut chooses it, as the menu would, and a plain letter

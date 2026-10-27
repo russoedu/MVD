@@ -7,6 +7,7 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"youtube-downloader/libs/mvd-core/prefsform"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
 
@@ -18,20 +19,26 @@ const (
 	styleRequestEvent = "mvd:style-request"
 	snapshotEvent     = "mvd:snapshot"
 	intentEvent       = "mvd:intent"
+	prefsEvent        = "mvd:prefs"
+	prefsIntentEvent  = "mvd:prefs-intent"
 )
 
-// ClassicWindow carries the classic themed window between the program and the page: the window
-// style chosen in the preferences, what the window shows (as JSON, sent only when it changed), and
-// the intents the page sends back. It is made before the window and works once the window is up;
-// before that, what it is told is kept and sent when the page asks.
+// ClassicWindow carries the windows the page draws between the program and the page: the window
+// style chosen in the preferences, what the classic window shows, the preferences while they are
+// open (in every style), each as JSON sent only when it changed, and the intents the page sends
+// back. It is made before the window and works once the window is up; before that, what it is told
+// is kept and sent when the page asks.
 type ClassicWindow struct {
-	// OnIntent is given each intent the page sends; nil drops them.
-	OnIntent func(windowsnapshot.Intent)
+	// OnIntent is given each intent of the main window the page sends, and OnPrefsIntent each one
+	// of the preferences; nil drops them.
+	OnIntent      func(windowsnapshot.Intent)
+	OnPrefsIntent func(prefsform.WindowIntent)
 
 	mu       sync.Mutex
 	ctx      context.Context
 	style    string
 	snapshot string
+	prefs    string
 }
 
 // attach starts listening to the page, and returns how to stop.
@@ -49,10 +56,21 @@ func (w *ClassicWindow) attach(ctx context.Context) func() {
 			w.OnIntent(in)
 		}
 	})
+	stopPrefsIntents := wailsruntime.EventsOn(ctx, prefsIntentEvent, func(data ...interface{}) {
+		if len(data) == 0 || w.OnPrefsIntent == nil {
+			return
+		}
+		text, ok := data[0].(string)
+		var in prefsform.WindowIntent
+		if ok && json.Unmarshal([]byte(text), &in) == nil {
+			w.OnPrefsIntent(in)
+		}
+	})
 	stopRequests := wailsruntime.EventsOn(ctx, styleRequestEvent, func(...interface{}) { w.resend() })
 
 	return func() {
 		stopIntents()
+		stopPrefsIntents()
 		stopRequests()
 	}
 }
@@ -84,10 +102,27 @@ func (w *ClassicWindow) Show(snap windowsnapshot.Snapshot) {
 	}
 }
 
+// ShowPreferences says what the preferences window shows, or nil once it is closed; the page is
+// told only when it changed.
+func (w *ClassicWindow) ShowPreferences(prefs *prefsform.Window) {
+	data, err := json.Marshal(prefs)
+	if err != nil {
+		return
+	}
+	w.mu.Lock()
+	changed := string(data) != w.prefs
+	w.prefs = string(data)
+	ctx := w.ctx
+	w.mu.Unlock()
+	if changed && ctx != nil {
+		wailsruntime.EventsEmit(ctx, prefsEvent, string(data))
+	}
+}
+
 // resend tells the page the style and the last snapshot again, for a page that has just started.
 func (w *ClassicWindow) resend() {
 	w.mu.Lock()
-	ctx, style, snapshot := w.ctx, w.style, w.snapshot
+	ctx, style, snapshot, prefs := w.ctx, w.style, w.snapshot, w.prefs
 	w.mu.Unlock()
 	if ctx == nil || style == "" {
 		return
@@ -95,5 +130,8 @@ func (w *ClassicWindow) resend() {
 	wailsruntime.EventsEmit(ctx, styleEvent, style)
 	if snapshot != "" {
 		wailsruntime.EventsEmit(ctx, snapshotEvent, snapshot)
+	}
+	if prefs != "" {
+		wailsruntime.EventsEmit(ctx, prefsEvent, prefs)
 	}
 }
