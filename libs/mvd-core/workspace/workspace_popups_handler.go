@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
+	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 // AboutOpen reports whether the About window is showing.
@@ -171,16 +172,18 @@ func (m Model) refreshMenus() Model {
 	return m
 }
 
-// Background says whether a message is the workspace's own beat, which it must get whatever popup
-// is open over it: the one that keeps the list up to date with a run, and the one that looks at
-// the tools again while they are being fetched.
+// Background says whether a message is the workspace's own, which it must get whatever popup is
+// open over it: the beat that keeps the list up to date with a run and the one that looks at the
+// tools again while they are fetched, a run that started or closed, and the download screen's own
+// events and ticks. The screen reads a run's events one at a time, each one asking for the next:
+// one taken by a popup was never handed on, and the screen stopped following the run for good.
 func Background(msg tea.Msg) bool {
 	switch msg.(type) {
-	case saveTickMsg, toolsTickMsg:
+	case saveTickMsg, toolsTickMsg, runStartedMsg, runClosedMsg:
 		return true
 	}
 
-	return false
+	return downloadpage.IsLeftover(msg)
 }
 
 // ShortcutsWindow is the Keyboard shortcuts window for a host that draws it over something of its
