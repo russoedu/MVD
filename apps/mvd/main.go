@@ -203,6 +203,12 @@ func run(movedFrom string, askToMove bool, review string) error {
 				program.Send(workspace.OpenListMsg{Path: list})
 			}
 		},
+		// macOS hands a double clicked .mvd over this way instead of in the arguments.
+		OnFileOpen: func(path string) {
+			if list := filetype.ListInArgs([]string{path}); list != "" {
+				program.Send(workspace.OpenListMsg{Path: list})
+			}
+		},
 	})
 	stop()
 

@@ -19,6 +19,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -43,6 +44,10 @@ type Options struct {
 	// window instead of opening its own: a .mvd file double clicked while the app is open
 	// arrives this way. Nil for none.
 	OnSecondStart func(args []string)
+	// OnFileOpen is told the path of a file the system opens with this app. macOS does not put
+	// a double clicked file in the arguments, in a first start or a second one: it sends this
+	// instead. Nil for none.
+	OnFileOpen func(path string)
 	// Backdrop, when set, is told by the program when a popup is open, and tells the page.
 	Backdrop *Backdrop
 	// Classic, when set, carries the classic themed window between the program and the page.
@@ -127,6 +132,7 @@ func Run(ctx context.Context, opts Options) error {
 		Windows: &windows.Options{
 			WebviewUserDataPath: filepath.Join(opts.DataDir, "webview"),
 		},
+		Mac: &mac.Options{OnFileOpen: opts.OnFileOpen},
 		Linux: &linux.Options{
 			Icon:        windowIcon,
 			ProgramName: "MVD",
