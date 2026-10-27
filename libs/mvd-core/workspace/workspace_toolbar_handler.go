@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"fmt"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -157,12 +156,7 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 		return next, cmd, true
 	case entryDownloadAll:
 		if m.running() {
-			n := m.run.ReleaseAll()
-			if n == 1 {
-				m.done = "1 song accepted: it will download"
-			} else {
-				m.done = fmt.Sprintf("%d songs accepted: they will download", n)
-			}
+			m.done = runcontrol.AcceptedNotice(m.run.ReleaseAll())
 		}
 		return m, nil, true
 	}

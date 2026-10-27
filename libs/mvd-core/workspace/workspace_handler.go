@@ -192,11 +192,7 @@ func (m Model) addToRun(links []string) Model {
 	}
 	m.loadedKey = m.sourcesKey()
 	m.syncFile()
-	if len(links) == 1 {
-		m.done = "Added: its songs are loading"
-	} else {
-		m.done = fmt.Sprintf("Added %d sources: their songs are loading", len(links))
-	}
+	m.done = runcontrol.AddedNotice(len(links))
 
 	return m
 }
@@ -683,7 +679,7 @@ func (m Model) stop(quit bool) (Model, tea.Cmd) {
 		if quit {
 			return m, m.quit()
 		}
-		m.notice = "Nothing is running"
+		m.notice = runcontrol.NothingRunning
 		return m, nil
 	}
 	m.syncList()
@@ -708,16 +704,16 @@ func (m Model) quit() tea.Cmd {
 
 func (m Model) togglePause() Model {
 	if m.run == nil {
-		m.notice = "Nothing is running"
+		m.notice = runcontrol.NothingRunning
 		return m
 	}
-	if m.run.Paused() {
+	held := m.run.Paused()
+	if held {
 		m.run.Resume()
-		m.done = "Downloading: what you accept goes on from here"
 	} else {
 		m.run.Pause()
-		m.done = "Stopped: the songs on their way finish, and nothing else begins"
 	}
+	m.done = runcontrol.PauseNotice(!held)
 	m.screen = m.screen.WithPaused(m.run.Paused())
 
 	return m
@@ -725,10 +721,10 @@ func (m Model) togglePause() Model {
 
 func (m Model) retryAll() Model {
 	if m.run == nil {
-		m.notice = "Nothing is running"
+		m.notice = runcontrol.NothingRunning
 		return m
 	}
-	m.done = fmt.Sprintf("%d songs queued again", m.run.RetryAll())
+	m.done = runcontrol.RetryNotice(m.run.RetryAll())
 	return m
 }
 
