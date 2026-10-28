@@ -35,12 +35,12 @@ func Ask() State { return State{On: true, Focus: AnswerKeep} }
 
 // Words are the two lines of the question for n songs that would be lost.
 func Words(n int) (what, ask string) {
-	what = fmt.Sprintf("%d songs are still downloading.", n)
+	what, ask = fmt.Sprintf("%d songs are still downloading.", n), "Quit and stop them?"
 	if n == 1 {
-		what = "1 song is still downloading."
+		what, ask = "1 song is still downloading.", "Quit and stop it?"
 	}
 
-	return what, "Quit and stop them?"
+	return what, ask
 }
 
 // Key is what a key does while the question is asked: y quits, n and esc keep downloading, the
