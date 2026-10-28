@@ -1,4 +1,5 @@
 import { Button, Dialog, Heading, Input, Label, Modal, ModalOverlay, TextField } from 'react-aria-components'
+import { useEffect, useRef } from 'react'
 import { orderDialogButtons, type ChromeLayout } from '../classic-themes'
 import { TitleBar } from '../classic-window'
 import type { ButtonSnapshot, QuestionSnapshot } from '../workspace-snapshot'
@@ -26,6 +27,10 @@ export function QuestionWindow ({ question, layout, container, onButton, onText 
   const sheet = layout.dialogStyle === 'sheet'
   const titled = layout.dialogStyle === 'window'
   const escape = escapeButton(question.buttons)
+  const fieldRef = useRef<HTMLInputElement>(null)
+
+  // A line to write has the cursor as soon as the question opens.
+  useEffect(() => { fieldRef.current?.focus() }, [question.id])
   const primary = question.buttons.find(button => button.role === 'default')
 
   return (
@@ -74,7 +79,7 @@ export function QuestionWindow ({ question, layout, container, onButton, onText 
                 {question.field && (
                   <TextField className='classic-question-field' value={question.field.text} onChange={onText}>
                     <Label className='classic-question-label'>{question.field.label}</Label>
-                    <Input className='classic-field' />
+                    <Input ref={fieldRef} className='classic-field' />
                   </TextField>
                 )}
               </div>

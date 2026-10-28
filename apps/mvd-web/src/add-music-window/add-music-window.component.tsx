@@ -27,6 +27,11 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
 
   const formRef = useRef<HTMLFormElement>(null)
 
+  // The cursor is in the first field when the dialog opens and when another mode changes the fields.
+  useEffect(() => {
+    formRef.current?.querySelector<HTMLInputElement>('input[type=text]')?.focus()
+  }, [adding.mode])
+
   // Windows: Alt and a letter reaches the choice, field or button with that letter; so does the
   // letter alone when the focus is not in a text field. The dialog is modal, so every key is its.
   useEffect(() => {
