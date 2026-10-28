@@ -155,6 +155,26 @@ func TestClosingAsksOnlyWhileSongsAreDownloading(t *testing.T) {
 	}
 }
 
+func TestTheCloseQuestionGoesWhenTheLastSongIsDone(t *testing.T) {
+	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
+	list := downloadlist.New([]string{"https://youtu.be/a"})
+	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
+	m = m.runStartedFor(t, run)
+	m.dl.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1}}})
+	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading, TargetID: "abc12345678"})
+	next, _ := m.Update(CloseRequestedMsg{})
+	m = next.(Model)
+	if !m.closing.On {
+		t.Fatal("a close while downloading did not ask")
+	}
+
+	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone, TargetID: "abc12345678"})
+	next, cmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	if next.(Model).closing.On || cmd == nil {
+		t.Errorf("the question stayed after the last song finished (on %v, cmd %v)", next.(Model).closing.On, cmd != nil)
+	}
+}
+
 func TestShiftAndTheArrowsTickSongsEvenThoughTheMenuHasThemForMovingLinks(t *testing.T) {
 	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
 	list := downloadlist.New([]string{"https://youtu.be/a"})

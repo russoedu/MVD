@@ -217,6 +217,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ws.done, ws.caution = "", ""
 			}
 		}
+		// The question is about songs that would be lost: once none is left, there is nothing to ask.
+		if ws.closing.On && ws.downloading() == 0 {
+			var quit tea.Cmd
+			ws, quit = ws.quitNow()
+			cmd = tea.Batch(cmd, quit)
+		}
 		if ws.wantsLoading() {
 			var load tea.Cmd
 			ws, load = ws.start(true)

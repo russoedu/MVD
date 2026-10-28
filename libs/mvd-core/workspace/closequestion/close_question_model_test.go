@@ -42,7 +42,7 @@ func TestAClickAnswersAndHoverMovesTheFocus(t *testing.T) {
 }
 
 func TestTheQuestionSaysHowManySongsWouldBeLost(t *testing.T) {
-	if what, _ := Words(1); what != "1 song is still downloading." {
+	if what, ask := Words(1); what != "1 song is still downloading." || ask != "Quit and stop it?" {
 		t.Errorf("one song: %q", what)
 	}
 	if what, ask := Words(4); what != "4 songs are still downloading." || ask != "Quit and stop them?" {
