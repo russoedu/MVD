@@ -112,11 +112,16 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
                 </Radio>
               ))}
             </RadioGroup>
-            {adding.fields.map(each => <AddMusicTextField key={each.field} field={each} onText={onText} />)}
-            <ul className='classic-dialog-help'>
-              {adding.help.map(line => <li key={line}>{line}</li>)}
-            </ul>
-            {adding.problem && <p className='classic-dialog-problem' role='alert'>{adding.problem}</p>}
+            {/* Both have room kept for the longest, so the buttons stay where they are as the choice changes or a problem appears. */}
+            <div className='classic-dialog-fields'>
+              {adding.fields.map(each => <AddMusicTextField key={each.field} field={each} onText={onText} />)}
+              <ul className='classic-dialog-help'>
+                {adding.help.map(line => <li key={line}>{line}</li>)}
+              </ul>
+            </div>
+            <div className='classic-dialog-problem-slot'>
+              {adding.problem && <p className='classic-dialog-problem' role='alert'>{adding.problem}</p>}
+            </div>
             <div className='classic-dialog-buttons' data-side={layout.defaultButton === 'first' ? 'windows' : 'mac'}>
               {orderDialogButtons(adding.buttons, layout).map(button => (
                 <Button
