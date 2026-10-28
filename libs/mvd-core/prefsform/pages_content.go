@@ -168,10 +168,10 @@ func Pages(caps Capabilities) []Page {
 	}
 	return []Page{
 		{Name: "Output", Fields: []Field{
-			{Label: "Videos Output Folder", Hint: "Where the downloaded videos are saved.", Kind: KindFolder,
+			{Label: "Videos Output Folder", Hint: "The folder your videos are saved in. Browse… picks another one.", Kind: KindFolder,
 				Get: func(c config.Config) string { return c.OutputDir },
 				Set: func(c *config.Config, v string) { c.OutputDir = v }},
-			{Label: "Output Template", Hint: "How each file is named, and which folders it goes in. Add blocks, and type any text between them.", Kind: KindTemplate,
+			{Label: "Output Template", Hint: "How each saved file is named and filed. Add a block such as ARTIST or TITLE, and type any text between them. The way it is now works; change it only if you want to.", Kind: KindTemplate,
 				Get: func(c config.Config) string { return c.OutputTemplate },
 				Set: func(c *config.Config, v string) { c.OutputTemplate = v }},
 		}},
