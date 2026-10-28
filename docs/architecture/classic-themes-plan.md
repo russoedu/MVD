@@ -213,7 +213,7 @@ Added in #371:
 - **Sharp Windows 95.** The family's `pixelSnap` zooms the page so one CSS pixel is a whole number of screen pixels: 80 % on a screen at 125 %, 133 % at 150 %. It follows changes of scale.
   - React Aria places menus by screen position, which the zoom would scale again. The menu's box therefore undoes the zoom (`--pixel-zoom`), and the panel inside puts it back.
 
-In the app (#376): Preferences > Theme > **Window style** chooses the terminal look or a classic system, saved as `window_style` in `config.conf`.
+In the app (#376): Preferences > Theme > **Look** chooses the terminal look or a classic system, saved as `window_style` in `config.conf`.
 - **Program to page.** The workspace builds its window as a snapshot (`libs/mvd-core/workspace/windowsnapshot`, renderer-neutral). The snapshot carries:
   - menus with their enabled entries, shortcuts and keyboard letters;
   - toolbar buttons with their roles and why one is off;

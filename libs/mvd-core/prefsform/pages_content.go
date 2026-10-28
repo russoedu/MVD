@@ -59,11 +59,11 @@ func colourField(label string, slot func(*config.ThemeColors) *string) Field {
 }
 
 // windowStyleField is the choice of how the window looks: MVD's terminal look, or one of the
-// classic systems. The colours below are the terminal look's.
+// classic systems.
 func windowStyleField() Field {
 	return Field{
-		Label: "Window style", Kind: KindChoice, Options: config.WindowStyleIDs(), Show: config.WindowStyleName,
-		Hint: "The terminal look, or the look of a classic Windows or Mac. The colours below are the terminal look's",
+		Label: "Look", Kind: KindChoice, Options: config.WindowStyleIDs(), Show: config.WindowStyleName,
+		Hint: "The terminal look, or the look of a classic Windows or Mac. A change applies at once",
 		Get: func(c config.Config) string {
 			if config.ValidWindowStyle(c.WindowStyle) {
 				return c.WindowStyle
@@ -96,8 +96,8 @@ func windowSchemeField() Field {
 // themeField is the choice of theme: each of the themes of the app, and the person's own.
 func themeField() Field {
 	return Field{
-		Label: "Theme", Kind: KindChoice, Options: config.ThemeNames(),
-		Hint: "Pick one to start from, then change any colour below to make it yours",
+		Label: "Colours", Kind: KindChoice, Options: config.ThemeNames(),
+		Hint: "The terminal look's colours: pick a set to start from, then change any colour below to make it yours",
 		Get:  func(c config.Config) string { return c.ThemeName },
 		Set: func(c *config.Config, v string) {
 			if colours, ok := config.PresetColors(v); ok {
