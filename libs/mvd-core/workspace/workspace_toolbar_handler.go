@@ -166,7 +166,7 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 		return next, cmd, true
 	case entryDownloadAll:
 		if m.running() {
-			m.done = runcontrol.AcceptedNotice(m.run.ReleaseAll())
+			m.done = runcontrol.AcceptedNotice(m.run.ReleaseAll(), m.run.Paused())
 		}
 		return m, nil, true
 	}

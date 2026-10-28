@@ -414,13 +414,13 @@ func TestTheStatusSaysWhetherAnOfficialVideoWasFound(t *testing.T) {
 	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a", Official: true}); got != "official found" {
 		t.Errorf("an official video says %q", got)
 	}
-	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a", OwnOfficial: true}); got != "is official" {
+	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a", OwnOfficial: true}); got != "official video" {
 		t.Errorf("an own official video says %q", got)
 	}
 	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a", Better: true}); got != "better found" {
 		t.Errorf("a better video says %q", got)
 	}
-	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a"}); got != "original only" {
+	if got := word(engine.EvEntryState{Entry: 3, State: engine.StatePlanned, TargetID: "a"}); got != "original upload" {
 		t.Errorf("the original says %q", got)
 	}
 	if got := word(engine.EvEntryState{Entry: 3, State: engine.StateAccepted, TargetID: "a"}); got != "accepted" {

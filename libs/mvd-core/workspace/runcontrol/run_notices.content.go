@@ -11,15 +11,21 @@ func PauseNotice(paused bool) string {
 		return "Stopped: the songs on their way finish, and nothing else begins"
 	}
 
-	return "Downloading: what you accept goes on from here"
+	return "Download is on: the songs you accept start now"
 }
 
 // RetryNotice says how many failed songs were queued again.
 func RetryNotice(n int) string { return fmt.Sprintf("%d songs queued again", n) }
 
-// AcceptedNotice says how many waiting songs were accepted for download.
-func AcceptedNotice(n int) string {
-	if n == 1 {
+// AcceptedNotice says how many waiting songs were accepted for download. While the downloads are
+// held, they only begin once the person presses Download, and the notice says so.
+func AcceptedNotice(n int, held bool) string {
+	switch {
+	case n == 1 && held:
+		return "1 song accepted: press Download to start it"
+	case held:
+		return fmt.Sprintf("%d songs accepted: press Download to start them", n)
+	case n == 1:
 		return "1 song accepted: it will download"
 	}
 

@@ -53,10 +53,10 @@ func plannedWord(en *runstate.Entry) (word string, tone Tone) {
 	case en.Official:
 		return "official found", ToneSuccess
 	case en.OwnOfficial:
-		return "is official", ToneSuccess
+		return "official video", ToneSuccess
 	case en.Better:
 		return "better found", ToneFocus
 	}
 
-	return "original only", ToneHighlight
+	return "original upload", ToneHighlight
 }
