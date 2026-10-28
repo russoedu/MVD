@@ -81,7 +81,9 @@ type Model struct {
 	filterList       filterMenu
 	// marquee counts the ticks, for the text of the selected row that is wider than its column.
 	marquee int
-	spin    int
+	// marqueeOf is the text the marquee is running on, so a new text starts from its beginning.
+	marqueeOf string
+	spin      int
 	// embedded: inside an app model, it ends with FinishedMsg instead of quitting.
 	embedded bool
 	// playlistsTop and entriesTop are how many rows the links and the songs are scrolled down.
@@ -139,10 +141,19 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	before := [3]int{m.session.SelPlaylist, m.session.SelEntry, int(m.session.Pane)}
 	next, cmd := m.update(msg)
-	if now, ok := next.(Model); ok && [3]int{now.session.SelPlaylist, now.session.SelEntry, int(now.session.Pane)} != before {
-		// A row that was just chosen shows the start of its name, still, before it scrolls.
-		now.marquee = 0
-		now.keepSelectionVisible()
+	if now, ok := next.(Model); ok {
+		moved := [3]int{now.session.SelPlaylist, now.session.SelEntry, int(now.session.Pane)} != before
+		if moved {
+			// A row that was just chosen shows the start of its name, still, before it scrolls.
+			now.marquee = 0
+			now.keepSelectionVisible()
+		}
+		if _, isEvent := msg.(evMsg); isEvent || moved {
+			// The same row with a new name (a title that arrives, a list that fills) starts over too.
+			if subject := now.marqueeSubject(); subject != now.marqueeOf {
+				now.marqueeOf, now.marquee = subject, 0
+			}
+		}
 		next = now
 	}
 
