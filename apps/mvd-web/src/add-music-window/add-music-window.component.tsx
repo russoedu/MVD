@@ -1,8 +1,25 @@
 import { Button, Dialog, Heading, Input, Label, Modal, ModalOverlay, Radio, RadioGroup, TextField } from 'react-aria-components'
 import { useEffect, useRef } from 'react'
 import { isMnemonic, orderDialogButtons, pressedLetter, type ChromeLayout } from '../classic-themes'
-import { MnemonicLabel, TitleBar } from '../classic-window'
+import { MnemonicLabel, TitleBar, useEchoedText } from '../classic-window'
 import type { AddMusicField, AddMusicMode, AddMusicSnapshot } from '../workspace-snapshot'
+
+interface AddMusicFieldProps {
+  field:  AddMusicSnapshot['fields'][number]
+  onText: (field: AddMusicField, text: string) => void
+}
+
+/** One field of the dialog: it shows what is typed at once, while the program keeps the text. */
+function AddMusicTextField ({ field: { field, label, mnemonic, text }, onText }: AddMusicFieldProps) {
+  const [shown, write] = useEchoedText(text, next => onText(field, next))
+
+  return (
+    <TextField className='classic-text-field' data-field={field} value={shown} onChange={write}>
+      <Label className='classic-field-label'><MnemonicLabel label={label} mnemonic={mnemonic} /></Label>
+      <Input className='classic-field' />
+    </TextField>
+  )
+}
 
 interface AddMusicWindowProps {
   adding:    AddMusicSnapshot
@@ -95,12 +112,7 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
                 </Radio>
               ))}
             </RadioGroup>
-            {adding.fields.map(({ field, label, mnemonic, text }) => (
-              <TextField key={field} className='classic-text-field' data-field={field} value={text} onChange={value => onText(field, value)}>
-                <Label className='classic-field-label'><MnemonicLabel label={label} mnemonic={mnemonic} /></Label>
-                <Input className='classic-field' />
-              </TextField>
-            ))}
+            {adding.fields.map(each => <AddMusicTextField key={each.field} field={each} onText={onText} />)}
             <ul className='classic-dialog-help'>
               {adding.help.map(line => <li key={line}>{line}</li>)}
             </ul>
