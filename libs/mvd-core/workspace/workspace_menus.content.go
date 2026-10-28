@@ -23,6 +23,7 @@ const (
 	entryShortcuts   = "Keyboard shortcuts"
 	entryDocs        = "Documentation"
 	entryReport      = "Report a problem…"
+	entryUpdates     = "Check for updates…"
 )
 
 func menus() []menubar.Menu {
@@ -66,6 +67,7 @@ func menus() []menubar.Menu {
 			{Name: entryShortcuts, Shortcut: "F1 / Ctrl+K"},
 			{Name: entryDocs},
 			{Name: entryReport},
+			{Name: entryUpdates},
 			{Separator: true},
 			{Name: entryAbout},
 		}},

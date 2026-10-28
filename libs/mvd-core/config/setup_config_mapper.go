@@ -63,6 +63,8 @@ func applyKey(cfg *Config, key, val, path string) {
 		cfg.OfficialVideo = officialModeOf(val)
 	case "save_not_found":
 		cfg.SaveNotFound = parseBool(val)
+	case "check_for_updates":
+		cfg.CheckForUpdates = parseBool(val)
 	case "auto_retry":
 		cfg.AutoRetry = parseBool(val)
 	case "retry_cycles":
@@ -186,6 +188,7 @@ func configText(cfg Config) string {
 	w("cookies_file", cfg.CookiesFile)
 	w("create_log_file", strconv.FormatBool(cfg.CreateLogFile))
 	w("log_dir", cfg.LogDir)
+	w("check_for_updates", strconv.FormatBool(cfg.CheckForUpdates))
 	w("extra_args", strings.Join(cfg.ExtraArgs, " "))
 	w("theme", cfg.ThemeName)
 	w("window_style", cfg.WindowStyle)

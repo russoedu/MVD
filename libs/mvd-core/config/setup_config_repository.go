@@ -30,6 +30,17 @@ func LoadOrCreate(path, appDir, downloadsDir string) (cfg Config, created bool, 
 	return cfg, true, nil
 }
 
+// Load reads the settings that are saved at path, over the defaults, and creates nothing: a file
+// that is not there gives the defaults.
+func Load(path, appDir string) (Config, error) {
+	base := Default(appDir, "")
+	if _, err := os.Stat(path); err != nil {
+		return base, nil
+	}
+
+	return parseInto(path, base)
+}
+
 // parseInto overlays the key=value file at path onto base.
 func parseInto(path string, base Config) (Config, error) {
 	cfg := base

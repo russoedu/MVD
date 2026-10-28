@@ -40,7 +40,7 @@ func TestSaveAsHasItsOwnShortcutAndHelpHasNoOpenSource(t *testing.T) {
 	if saveAs != "Ctrl+Shift+S" {
 		t.Errorf("Save as has %q", saveAs)
 	}
-	if want := []string{entryShortcuts, entryDocs, entryReport, entryAbout}; strings.Join(help, "|") != strings.Join(want, "|") {
+	if want := []string{entryShortcuts, entryDocs, entryReport, entryUpdates, entryAbout}; strings.Join(help, "|") != strings.Join(want, "|") {
 		t.Errorf("Help has %v, want %v", help, want)
 	}
 }
@@ -281,5 +281,28 @@ func TestCopyCutAndPasteUseTheMachineClipboard(t *testing.T) {
 	m, _ = choose(m, entryPaste)
 	if got := addressesOf(m); len(got) != 3 || got[1] != "https://one" {
 		t.Errorf("after pasting links %v", got)
+	}
+}
+
+func TestCheckForUpdatesRunsTheHostsCheckAndShowsWhatItSays(t *testing.T) {
+	m := New(Host{Version: "1.2.3", CheckForUpdate: func() string { return "MVD 1.2.3 is up to date." }}, config.Config{}, downloadlist.New([]string{"a"}))
+	m = sized(m)
+	next, cmd := m.Update(menubar.SelectedMsg{Name: entryUpdates})
+	m = next.(Model)
+	if cmd == nil {
+		t.Fatal("no check was started")
+	}
+	next, _ = m.Update(cmd())
+	if got := next.(Model).notice; got != "MVD 1.2.3 is up to date." {
+		t.Errorf("notice = %q", got)
+	}
+}
+
+func TestTheAboutWindowSaysWhenANewerVersionIsKnown(t *testing.T) {
+	m := New(Host{Version: "1.2.3", UpdateNote: func() string { return "MVD 1.3.0 is available: Help > Check for updates." }}, config.Config{}, downloadlist.New([]string{"a"}))
+	m = sized(m)
+	next, _ := m.Update(menubar.SelectedMsg{Name: entryAbout})
+	if screen := ansi.Strip(next.(Model).render()); !strings.Contains(screen, "MVD 1.3.0 is available") {
+		t.Error("the About window does not name the newer version")
 	}
 }
