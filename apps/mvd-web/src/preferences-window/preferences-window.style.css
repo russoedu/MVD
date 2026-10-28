@@ -31,6 +31,34 @@
   padding: 3px;
 }
 
+/* Its own window: the window is the frame, and the settings fill what is left of it. */
+.preferences-own-window {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  max-height: none;
+  box-shadow: none;
+}
+
+.preferences-own-window .preferences-dialog {
+  height: 100%;
+  max-height: none;
+}
+
+.preferences-own-window .preferences-body {
+  flex: 1;
+}
+
+.preferences-own-window .preferences-tabs {
+  flex: 1;
+  min-height: 0;
+}
+
+.preferences-own-window .preferences-page {
+  flex: 1;
+  height: auto;
+}
+
 .preferences-dialog {
   display: flex;
   flex-direction: column;

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { sampleWorkspace } from '../theme-preview/sample-workspace.content'
 import { AppWindow } from './app-window.component'
+import { PreferencesApp } from './preferences-app.component'
 
 jest.mock('../terminal-window', () => ({
   TerminalWindow:    ({ look }: { look: string }) => <main data-testid='terminal' data-look={look} />,
@@ -29,6 +30,14 @@ function fakeProgram () {
       for (const listener of named) listener(value)
     }),
   }
+}
+
+const preferences = {
+  title:   'Preferences',
+  tabs:    ['Output', 'Theme'],
+  tab:     0,
+  fields:  [],
+  colours: { background: '', accent: '#ff2a6d', focus: '', highlight: '', success: '', error: '', dim: '', text: '', selected: '' },
 }
 
 const look = (): string | undefined => screen.getByTestId('terminal').dataset.look
@@ -98,27 +107,18 @@ describe('AppWindow', () => {
     expect(look()).toBe('inset')
   })
 
-  it('draws the preferences as a window of the style, the terminal look included, until the program closes them', async () => {
+  it('cannot be used while the preferences are open in their own window', () => {
     const program = fakeProgram()
     render(<AppWindow />)
     program.send('mvd:style', 'dos')
-    program.send('mvd:prefs', JSON.stringify({
-      title:   'Preferences',
-      tabs:    ['Output', 'Theme'],
-      tab:     0,
-      fields:  [],
-      colours: { background: '', accent: '#ff2a6d', focus: '', highlight: '', success: '', error: '', dim: '', text: '', selected: '' },
-    }))
-    expect(await screen.findByRole('dialog', { name: 'Preferences' }, { timeout: 5000 })).toBeTruthy()
-    expect(document.documentElement.dataset.family).toBe('dos')
+    expect(document.querySelector('.app-window')?.hasAttribute('inert')).toBe(false)
 
-    // The Close button at the bottom, not the one of the title bar.
-    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).find(button => button.classList.contains('classic-button')) as HTMLElement)
-    const intents = program.sent.filter(([name]) => name === 'mvd:prefs-intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
-    expect(intents).toEqual([{ kind: 'prefs-close' }])
+    program.send('mvd:prefs', JSON.stringify(preferences))
+    expect(document.querySelector('.app-window')?.hasAttribute('inert')).toBe(true)
+    expect(screen.queryByRole('dialog')).toBeNull()
 
     program.send('mvd:prefs', 'null')
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.querySelector('.app-window')?.hasAttribute('inert')).toBe(false)
   })
 
   it('asks the quit question as an alert of the theme, with Keep downloading the safe answer', async () => {
@@ -143,5 +143,39 @@ describe('AppWindow', () => {
     fireEvent.click(within(alert).getByRole('button', { name: 'Quit' }))
     const intents = program.sent.filter(([name]) => name === 'mvd:intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
     expect(intents).toContainEqual({ kind: 'question-button', id: 'quit' })
+  })
+})
+
+describe('PreferencesApp', () => {
+  beforeAll(async () => {
+    await Promise.all([import('../preferences-window'), import('../classic-themes')])
+  })
+
+  afterEach(() => Reflect.deleteProperty(globalThis, 'runtime'))
+
+  it('fills its own window with the preferences, in the window style, and sends what the person does', async () => {
+    const program = fakeProgram()
+    render(<PreferencesApp />)
+    expect(program.sent.map(([name]) => name)).toContain('mvd:style-request')
+    program.send('mvd:style', 'dos')
+    program.send('mvd:prefs', JSON.stringify(preferences))
+
+    expect(await screen.findByRole('dialog', { name: 'Preferences' }, { timeout: 5000 })).toBeTruthy()
+    expect(document.querySelector('.preferences-own-window')).not.toBeNull()
+    expect(document.documentElement.dataset.family).toBe('dos')
+
+    // The Close button at the bottom, not the one of the title bar.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).find(button => button.classList.contains('classic-button')) as HTMLElement)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    const intents = program.sent.filter(([name]) => name === 'mvd:prefs-intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
+    expect(intents).toEqual([{ kind: 'prefs-close' }, { kind: 'prefs-close' }])
+  })
+
+  it('shows nothing until the program has the preferences open', () => {
+    const program = fakeProgram()
+    const { container } = render(<PreferencesApp />)
+    program.send('mvd:style', 'dos')
+
+    expect(container.children).toHaveLength(0)
   })
 })
