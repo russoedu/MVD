@@ -1,11 +1,10 @@
 package appwindow
 
 import (
-	"context"
 	"encoding/json"
 	"sync"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"youtube-downloader/libs/mvd-core/prefsform"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
@@ -35,38 +34,32 @@ type ClassicWindow struct {
 	OnPrefsIntent func(prefsform.WindowIntent)
 
 	mu       sync.Mutex
-	ctx      context.Context
+	app      *application.App
 	style    string // the style and its scheme, as the JSON the page reads
 	snapshot string
 	prefs    string
 }
 
 // attach starts listening to the page, and returns how to stop.
-func (w *ClassicWindow) attach(ctx context.Context) func() {
+func (w *ClassicWindow) attach(app *application.App) func() {
 	w.mu.Lock()
-	w.ctx = ctx
+	w.app = app
 	w.mu.Unlock()
-	stopIntents := wailsruntime.EventsOn(ctx, intentEvent, func(data ...interface{}) {
-		if len(data) == 0 || w.OnIntent == nil {
-			return
-		}
-		text, ok := data[0].(string)
+	stopIntents := app.Event.On(intentEvent, func(event *application.CustomEvent) {
+		text, ok := event.Data.(string)
 		var in windowsnapshot.Intent
-		if ok && json.Unmarshal([]byte(text), &in) == nil {
+		if ok && w.OnIntent != nil && json.Unmarshal([]byte(text), &in) == nil {
 			w.OnIntent(in)
 		}
 	})
-	stopPrefsIntents := wailsruntime.EventsOn(ctx, prefsIntentEvent, func(data ...interface{}) {
-		if len(data) == 0 || w.OnPrefsIntent == nil {
-			return
-		}
-		text, ok := data[0].(string)
+	stopPrefsIntents := app.Event.On(prefsIntentEvent, func(event *application.CustomEvent) {
+		text, ok := event.Data.(string)
 		var in prefsform.WindowIntent
-		if ok && json.Unmarshal([]byte(text), &in) == nil {
+		if ok && w.OnPrefsIntent != nil && json.Unmarshal([]byte(text), &in) == nil {
 			w.OnPrefsIntent(in)
 		}
 	})
-	stopRequests := wailsruntime.EventsOn(ctx, styleRequestEvent, func(...interface{}) { w.resend() })
+	stopRequests := app.Event.On(styleRequestEvent, func(*application.CustomEvent) { w.resend() })
 
 	return func() {
 		stopIntents()
@@ -83,10 +76,10 @@ func (w *ClassicWindow) SetStyle(style, scheme string) {
 	}
 	w.mu.Lock()
 	w.style = string(data)
-	ctx := w.ctx
+	app := w.app
 	w.mu.Unlock()
-	if ctx != nil {
-		wailsruntime.EventsEmit(ctx, styleEvent, string(data))
+	if app != nil {
+		app.Event.Emit(styleEvent, string(data))
 	}
 }
 
@@ -99,10 +92,10 @@ func (w *ClassicWindow) Show(snap windowsnapshot.Snapshot) {
 	w.mu.Lock()
 	changed := string(data) != w.snapshot
 	w.snapshot = string(data)
-	ctx := w.ctx
+	app := w.app
 	w.mu.Unlock()
-	if changed && ctx != nil {
-		wailsruntime.EventsEmit(ctx, snapshotEvent, string(data))
+	if changed && app != nil {
+		app.Event.Emit(snapshotEvent, string(data))
 	}
 }
 
@@ -116,26 +109,26 @@ func (w *ClassicWindow) ShowPreferences(prefs *prefsform.Window) {
 	w.mu.Lock()
 	changed := string(data) != w.prefs
 	w.prefs = string(data)
-	ctx := w.ctx
+	app := w.app
 	w.mu.Unlock()
-	if changed && ctx != nil {
-		wailsruntime.EventsEmit(ctx, prefsEvent, string(data))
+	if changed && app != nil {
+		app.Event.Emit(prefsEvent, string(data))
 	}
 }
 
 // resend tells the page the style and the last snapshot again, for a page that has just started.
 func (w *ClassicWindow) resend() {
 	w.mu.Lock()
-	ctx, style, snapshot, prefs := w.ctx, w.style, w.snapshot, w.prefs
+	app, style, snapshot, prefs := w.app, w.style, w.snapshot, w.prefs
 	w.mu.Unlock()
-	if ctx == nil || style == "" {
+	if app == nil || style == "" {
 		return
 	}
-	wailsruntime.EventsEmit(ctx, styleEvent, style)
+	app.Event.Emit(styleEvent, style)
 	if snapshot != "" {
-		wailsruntime.EventsEmit(ctx, snapshotEvent, snapshot)
+		app.Event.Emit(snapshotEvent, snapshot)
 	}
 	if prefs != "" {
-		wailsruntime.EventsEmit(ctx, prefsEvent, prefs)
+		app.Event.Emit(prefsEvent, prefs)
 	}
 }
