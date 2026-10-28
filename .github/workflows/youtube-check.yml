@@ -126,7 +126,7 @@ jobs:
         run: |
           sudo curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod +x /usr/local/bin/yt-dlp
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         if: steps.gate.outputs.go == 'true'
         with:
           name: youtube-check-report
