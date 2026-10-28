@@ -12,7 +12,7 @@ var windowKinds = map[FieldKind]WindowKind{
 }
 
 // welcomeText is what the first start says over the settings.
-const welcomeText = "Welcome to MVD! Check where the videos go and how they are named, then Save."
+const welcomeText = "Welcome to MVD! Check where the videos go and how they are named."
 
 // Window is the form as a window draws it: the tab shown with its settings and their values.
 func (f Form) Window() Window {

@@ -106,6 +106,7 @@ func (a workspaceApp) report() workspaceApp {
 	if a.in.Preferences != nil {
 		if a.inPrefs {
 			w := a.prefs.Window()
+			w.Pending = a.waitsForSave(a.prefs.Config())
 			a.in.Preferences(&w)
 		} else {
 			a.in.Preferences(nil)

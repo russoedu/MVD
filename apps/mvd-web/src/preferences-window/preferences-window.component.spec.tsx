@@ -4,10 +4,11 @@ import { PreferencesWindow } from './preferences-window.component'
 import type { PreferencesIntent, PreferencesSnapshot } from './preferences-window.contract'
 
 const prefs: PreferencesSnapshot = {
-  title:  'Preferences',
-  tabs:   ['Output', 'Download', 'Advanced', 'Theme'],
-  tab:    0,
-  fields: [
+  title:   'Preferences',
+  tabs:    ['Output', 'Download', 'Advanced', 'Theme'],
+  tab:     0,
+  pending: true,
+  fields:  [
     { label: 'Videos Output Folder', kind: 'folder', value: '/music' },
     {
       label:   'Output Template',
@@ -47,6 +48,17 @@ describe('PreferencesWindow', () => {
     expect(footer).toEqual(['Save', 'Close'])
     expect(document.documentElement.dataset.theme).toBe('windows-95')
     expect(within(dialog).queryByText('Theme', { selector: '.preferences-label' })).toBeNull()
+  })
+
+  it('has Close as its one way out while nothing waits for Save', () => {
+    open(classicThemeOf('windows-95'), { ...prefs, pending: false })
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Close' }).some(button => button.classList.contains('classic-button'))).toBe(true)
+  })
+
+  it('says what Save keeps while something waits for it', () => {
+    open()
+    expect(screen.getByRole('status').textContent).toBe('The folder and the file names are kept when you press Save.')
   })
 
   it('sends the tab chosen, a folder typed, Browse…, a block added and Save', () => {

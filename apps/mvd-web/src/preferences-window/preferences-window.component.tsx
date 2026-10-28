@@ -16,11 +16,19 @@ interface PreferencesWindowProps {
   ownWindow?: boolean
 }
 
-/** The buttons at the bottom: Save keeps the settings, Close leaves them. */
-const buttons: ButtonSnapshot[] = [
-  { id: 'save', label: 'Save', role: 'default', enabled: true },
-  { id: 'close', label: 'Close', role: 'cancel', enabled: true },
-]
+/**
+ * The buttons at the bottom. Every setting is kept the moment it changes except the folder and
+ * the file names, which wait for Save; so Save is there only while something waits, and
+ * otherwise Close is the one way out.
+ */
+function buttonsFor (pending: boolean): ButtonSnapshot[] {
+  return pending
+    ? [
+        { id: 'save', label: 'Save', role: 'default', enabled: true },
+        { id: 'close', label: 'Close', role: 'cancel', enabled: true },
+      ]
+    : [{ id: 'close', label: 'Close', role: 'default', enabled: true }]
+}
 
 /** Wears the terminal look's colours on the page's root while MVD's own look draws the window. */
 function useTerminalColours (theme: ClassicTheme, colours: TerminalColours): void {
@@ -71,9 +79,9 @@ export function PreferencesWindow ({ theme, scheme, prefs, onIntent, ownWindow =
           </TabPanel>
         </Tabs>
         <div className='preferences-footer'>
-          <p className='preferences-status' data-bad={prefs.bad || undefined} role='status'>{prefs.status}</p>
+          <p className='preferences-status' data-bad={prefs.bad || undefined} role='status'>{prefs.status ?? (prefs.pending ? 'The folder and the file names are kept when you press Save.' : undefined)}</p>
           <div className='preferences-buttons'>
-            {orderDialogButtons(buttons, layout).map(button => (
+            {orderDialogButtons(buttonsFor(prefs.pending === true), layout).map(button => (
               <Button
                 key={button.id}
                 className='classic-button'
