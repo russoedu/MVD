@@ -2,6 +2,24 @@
  * The controls every part of a classic window uses: buttons, text fields, check boxes and radio
  * buttons. They read only the theme's tokens.
  */
+
+/*
+ * Help and hint lines: the text colour thinned a little, which keeps 4.5:1 against the face of
+ * every style and scheme (the period greys, #808080 on #c0c0c0, do not). The terminal look keeps
+ * its dim colour.
+ */
+:root {
+  --text-hint: color-mix(in srgb, var(--text) 72%, transparent);
+}
+
+:root[data-family='dos'] {
+  --text-hint: var(--text-dim);
+}
+
+/* The mark in front of a button's words, from a font that has it (Lucida Grande has no play triangle). */
+.classic-glyph {
+  font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Arial Unicode MS', 'DejaVu Sans', sans-serif;
+}
 .classic-button {
   box-sizing: border-box;
   min-width: 75px;

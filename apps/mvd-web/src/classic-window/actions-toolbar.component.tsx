@@ -6,6 +6,14 @@ interface ActionsToolbarProps {
   onButton: (id: string) => void
 }
 
+/** A button's words; the mark in front (► ■ ✓ +) is drawn in a font that has it. */
+function ButtonLabel ({ label }: { label: string }) {
+  const mark = /^([►■✓+]) (.*)$/.exec(label)
+  if (!mark) return <>{label}</>
+
+  return <><span className='classic-glyph'>{mark[1]}</span> {mark[2]}</>
+}
+
 /** The row of buttons under the menu bar: what can be done next. A disabled one says why when pointed at. */
 export function ActionsToolbar ({ buttons, onButton }: ActionsToolbarProps) {
   return (
@@ -18,7 +26,7 @@ export function ActionsToolbar ({ buttons, onButton }: ActionsToolbarProps) {
             isDisabled={!button.enabled}
             onPress={() => onButton(button.id)}
           >
-            {button.label}
+            <ButtonLabel label={button.label} />
           </Button>
         </span>
       ))}

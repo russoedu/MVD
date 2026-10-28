@@ -148,8 +148,7 @@
 }
 
 .classic-log {
-  font-family: var(--mono-font);
-  font-size: var(--mono-size);
+  /* Details is sentences, so it reads in the style's own body text. */
   white-space: pre-wrap;
 }
 
