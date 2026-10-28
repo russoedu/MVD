@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -33,6 +37,9 @@ type Checker struct {
 	Open func(url string) error
 	// Logf writes to the log.
 	Logf func(format string, args ...interface{})
+	// Quit asks the program to close, as the close button does: it asks first when songs download.
+	// The new version starts once the program has closed.
+	Quit func()
 	// Client, URL and Now are for the tests; the zero values are the internet, GitHub's list and
 	// the clock.
 	Client *http.Client
@@ -40,6 +47,21 @@ type Checker struct {
 	Now    func() time.Time
 
 	latest atomic.Value // string: the newest version known so far
+	// relaunch is the program to start when this one has closed, once an update was put in place.
+	relaunch atomic.Value // string
+
+	// The following are for the tests.
+	executable func() (string, error)
+	goos       string
+	goarch     string
+	insecure   bool // allow http addresses
+}
+
+// Relaunch is the program to start now that the app has closed, or "" when no update is waiting.
+func (c *Checker) Relaunch() string {
+	v, _ := c.relaunch.Load().(string)
+
+	return v
 }
 
 func (c *Checker) now() time.Time {
@@ -136,9 +158,74 @@ func (c *Checker) CheckNow(ctx context.Context) string {
 	return fmt.Sprintf("MVD %s is available. Not updating now.", release.Version)
 }
 
-// update brings the release in. For now that is opening its page, where the builds are.
-func (c *Checker) update(_ context.Context, release Release) string {
-	return c.showPage(release)
+// update brings the release in: the zip for this system is downloaded, checked against the
+// checksum GitHub states for it, and the running program is replaced by the one inside. When
+// that cannot be done safely (another system, a folder that is not writable, a download that
+// fails or does not match) nothing is changed and the person is taken to the release page.
+func (c *Checker) update(ctx context.Context, release Release) string {
+	if err := c.replaceFrom(ctx, release); err != nil {
+		c.Logf("Could not update MVD by itself: %v", err)
+
+		return fmt.Sprintf("MVD could not update itself (%v). %s", err, c.showPage(release))
+	}
+
+	return fmt.Sprintf("MVD %s is in place. It opens when you close this one.", release.Version)
+}
+
+func (c *Checker) replaceFrom(ctx context.Context, release Release) error {
+	goos, goarch := c.goos, c.goarch
+	if goos == "" {
+		goos, goarch = runtime.GOOS, runtime.GOARCH
+	}
+	name, ok := assetName(release.Version, goos, goarch)
+	if !ok {
+		return fmt.Errorf("it only does that on Windows so far, and this is %s", goos)
+	}
+	asset, ok := assetOf(release, name)
+	if !ok {
+		return fmt.Errorf("%s is not in the release", name)
+	}
+	if !c.insecure && !strings.HasPrefix(asset.URL, "https://") {
+		return fmt.Errorf("the download is not an https address")
+	}
+	executable := c.executable
+	if executable == nil {
+		executable = os.Executable
+	}
+	exe, err := executable()
+	if err != nil {
+		return err
+	}
+	if exe, err = filepath.EvalSymlinks(exe); err != nil {
+		return err
+	}
+
+	// The pieces are kept in the app-data folder, which is always writable, and removed after.
+	work, err := os.MkdirTemp(c.Dir, "update-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(work) }()
+	client := c.Client
+	if client == nil {
+		client = &http.Client{Timeout: 5 * time.Minute}
+	}
+	zipPath, newProgram := filepath.Join(work, name), filepath.Join(work, programName)
+	if err := downloadChecked(ctx, client, asset.URL, asset.Digest, zipPath); err != nil {
+		return err
+	}
+	if err := extractProgram(zipPath, programName, newProgram); err != nil {
+		return err
+	}
+	if err := replaceProgram(exe, newProgram); err != nil {
+		return err
+	}
+	c.relaunch.Store(exe)
+	if c.Quit != nil {
+		c.Quit()
+	}
+
+	return nil
 }
 
 func (c *Checker) showPage(release Release) string {
