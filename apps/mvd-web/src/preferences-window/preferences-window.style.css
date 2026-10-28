@@ -98,7 +98,7 @@
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  max-height: 52vh;
+  height: 52vh; /* the same on every tab, so the window does not move between them */
   overflow: auto;
   padding: 12px;
   border: var(--pane-border);
