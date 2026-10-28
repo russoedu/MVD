@@ -22,6 +22,9 @@ func (m Model) windowIntent(in windowsnapshot.Intent) (tea.Model, tea.Cmd) {
 		}
 		return m.choose(in.ID)
 	case windowsnapshot.IntentButton:
+		if in.ID == entryDownloadAll && m.canAcceptAll() {
+			return m.choose(entryDownloadAll)
+		}
 		for _, b := range m.buttons() {
 			if b.entry == in.ID && !b.disabled {
 				return m.choose(b.entry)

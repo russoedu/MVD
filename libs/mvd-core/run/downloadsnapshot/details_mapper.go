@@ -75,7 +75,7 @@ func DetailsOf(s downloadsession.Session) []Line {
 			say(linkSummary(s, pl), songlist.ToneText, false)
 			if s.WaitingIn(pl) > 0 && s.AnyWaiting() {
 				blank()
-				say("Accept them all with the button below, or tab to the songs to choose one by one.", songlist.ToneHighlight, false)
+				say("Accept them all with the ✓ Accept button, or tab to the songs to choose one by one.", songlist.ToneHighlight, false)
 			}
 		}
 
