@@ -16,7 +16,7 @@ func RunMenuOf(f Facts, nothing, toolsWaiting bool) RunMenu {
 		Pause:       running && !busy && !f.Paused,
 		Resume:      running && !busy && f.Paused,
 		Stop:        running && !busy,
-		Retry:       f.HasRun && !busy,
+		Retry:       f.HasRun && !busy && f.Tally.Failed > 0,
 		DownloadAll: running && !busy && f.Waiting(),
 	}
 }

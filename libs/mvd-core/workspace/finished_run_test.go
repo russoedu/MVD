@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -228,11 +229,44 @@ func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
 func TestStoppingShowsInTheHeaderForAsLongAsTheDownloadsAreHeld(t *testing.T) {
 	m, run := started(t)
 	m = m.togglePause()
-	if !run.paused || !strings.Contains(screenOf(m), "STOPPED") {
+	if !run.paused || !strings.Contains(screenOf(m), "PAUSED") {
 		t.Errorf("paused %v, screen:\n%s", run.paused, screenOf(m))
 	}
 	m = m.togglePause()
-	if strings.Contains(screenOf(m), "STOPPED") {
-		t.Error("it still says STOPPED after the downloads went on")
+	if strings.Contains(screenOf(m), "PAUSED") {
+		t.Error("it still says PAUSED after the downloads went on")
+	}
+}
+
+func TestARunThatSavedNothingOffersAnotherSourceBeforeTheFolder(t *testing.T) {
+	m, _ := started(t)
+	m = finishRun(t, m, 0, 1)
+	if got := labels(m.buttons()); got != "+ Add source|Open folder|► Load playlists again|Retry failed" {
+		t.Errorf("the buttons are %q", got)
+	}
+}
+
+func TestRetryFailedWaitsForASongThatFailed(t *testing.T) {
+	m, _ := started(t)
+	m = download(m)
+	for _, b := range m.buttons() {
+		if b.entry == entryRetry && !b.disabled {
+			t.Error("Retry failed can be used with nothing failed")
+		}
+	}
+}
+
+func TestANewListSaysWhereTheSavedOneWentAndNothingForAListThatWasNeverSaved(t *testing.T) {
+	m := listOf("https://a")
+	next, _ := m.Update(menubar.SelectedMsg{Name: entryNew})
+	if got := next.(Model).done; got != "" {
+		t.Errorf("a list that was never saved says %q", got)
+	}
+	if err := m.session.Save(filepath.Join(t.TempDir(), "mix.mvd")); err != nil {
+		t.Fatal(err)
+	}
+	next, _ = m.Update(menubar.SelectedMsg{Name: entryNew})
+	if got := next.(Model).done; !strings.Contains(got, "mix.mvd is kept") {
+		t.Errorf("a saved list is not said to be kept: %q", got)
 	}
 }

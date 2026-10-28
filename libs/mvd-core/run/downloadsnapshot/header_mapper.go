@@ -54,10 +54,10 @@ func stateLabel(s downloadsession.Session, t runstate.Tally) string {
 		return "ACCEPTED · press Download to start · " + elapsed
 	case s.State.Idle && t.Planned > 0:
 		return "CHOOSE WHAT TO DOWNLOAD · " + elapsed
-	case s.Paused:
-		return "STOPPED · " + elapsed
 	case s.State.Idle:
-		return "FINISHED · " + elapsed
+		return "FINISHED · " + elapsed // a pause that came after the last song is a finished run
+	case s.Paused:
+		return "PAUSED · " + elapsed
 	case t.Downloading > 0:
 		return downloadingSummary(t) + " · " + elapsed
 	}

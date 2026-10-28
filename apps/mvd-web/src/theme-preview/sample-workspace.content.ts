@@ -72,7 +72,7 @@ export const sampleWorkspace: WorkspaceSnapshot = {
       mnemonic: 'R',
       entries:  [
         entry('load', 'Load playlists', 'L', ctrl('R')),
-        entry('pause', 'Stop downloads', 'd', ctrl('P'), { separatorBefore: true }),
+        entry('pause', 'Pause downloads', 'd', ctrl('P'), { separatorBefore: true }),
         entry('stop', 'Stop', 'S', ctrl('.')),
         entry('retry', 'Retry failed', 'R', ctrl('T')),
         entry('add-source', 'Add source…', 'A', ctrl('L'), { separatorBefore: true }),
@@ -92,7 +92,7 @@ export const sampleWorkspace: WorkspaceSnapshot = {
     },
   ],
   toolbar: [
-    { id: 'pause', label: '❚❚ Stop downloads', role: 'other', enabled: true },
+    { id: 'pause', label: 'Pause downloads', role: 'other', enabled: true },
     { id: 'stop', label: '■ Stop', role: 'other', enabled: true },
     { id: 'retry', label: 'Retry failed', role: 'other', enabled: false, disabledReason: 'Nothing has failed.' },
     { id: 'add-source', label: '+ Add source', role: 'default', enabled: true },

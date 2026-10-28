@@ -1,9 +1,11 @@
 package downloadsnapshot
 
 import (
+	"strings"
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/musicsearch"
+	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"youtube-downloader/libs/mvd-core/runstate"
 )
 
@@ -24,5 +26,18 @@ func TestASearchByNameIsCalledWhatItAsksFor(t *testing.T) {
 	}
 	if got := shortAddress("https://www.youtube.com/watch?v=x"); got != "youtube.com/watch?v=x" {
 		t.Errorf("a web address is called %q", got)
+	}
+}
+
+func TestAPauseThatCameAfterTheLastSongIsAFinishedRun(t *testing.T) {
+	state := runstate.New(nil)
+	state.Idle = true
+	s := downloadsession.Session{State: state, Paused: true}
+	if got := stateLabel(s, runstate.Tally{}); !strings.HasPrefix(got, "FINISHED") {
+		t.Errorf("a held run with nothing left says %q", got)
+	}
+	s.State.Idle = false
+	if got := stateLabel(s, runstate.Tally{}); !strings.HasPrefix(got, "PAUSED") {
+		t.Errorf("a held run with work left says %q", got)
 	}
 }

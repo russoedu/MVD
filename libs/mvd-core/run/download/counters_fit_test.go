@@ -41,10 +41,10 @@ func TestACounterAtZeroLeavesRoomForTheOnesThatMatter(t *testing.T) {
 
 func TestWhileTheDownloadsAreHeldTheHeaderSaysStopped(t *testing.T) {
 	m := sampleModel(t)
-	if _, right := m.headerTexts(); strings.Contains(right, "STOPPED") {
+	if _, right := m.headerTexts(); strings.Contains(right, "PAUSED") {
 		t.Errorf("not stopped, but it says %q", right)
 	}
-	if _, right := m.WithPaused(true).headerTexts(); !strings.Contains(right, "STOPPED") {
+	if _, right := m.WithPaused(true).headerTexts(); !strings.Contains(right, "PAUSED") {
 		t.Errorf("stopped, but it says %q", right)
 	}
 }

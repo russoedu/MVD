@@ -436,9 +436,13 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 			m.notice = "Stop the downloads before starting a new list"
 			return m, nil
 		}
+		kept := m.session.Path()
 		m.session = downloadlist.New(nil)
 		m.show(m.view().WithState(m.session.Preview()))
 		m.notice = ""
+		if kept != "" {
+			m.done = "New list. " + filepath.Base(kept) + " is kept: File > Open brings it back"
+		}
 	case entryOpen:
 		if m.running() {
 			if m.holdsOnlyTheList() {
@@ -620,7 +624,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 				m.notice = "Cannot save the list: " + err.Error()
 				return m, nil
 			}
-			m.done = "Kept this list as a draft: " + cells.TruncateMiddle(draft, max(m.width-34, 20))
+			m.done = "Kept this list as a draft: " + filepath.Base(draft) + " (File > Open finds it)"
 		}
 	}
 	if m.session.Path() == "" {

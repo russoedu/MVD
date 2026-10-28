@@ -47,7 +47,7 @@ type shortcutSection struct {
 
 // shortcutSections are what the Keyboard shortcuts window lists: every shortcut of every menu,
 // read from the menus themselves so the window cannot say anything the menus do not, then the
-// keys of the download screen. Two entries that share a key (Download and Stop downloads) are said once.
+// keys of the download screen. Two entries that share a key (Download and Pause downloads) are said once.
 func shortcutSections() []shortcutSection {
 	var sections []shortcutSection
 	for _, menu := range menus() {
