@@ -23,6 +23,16 @@ const (
 	entryDownloadAll = "Accept all songs"
 )
 
+// acceptAllLabel is the toolbar button of a themed window for entryDownloadAll.
+const acceptAllLabel = "✓ Accept all songs"
+
+// canAcceptAll says some song of the run waits for the person and accepting them all is allowed now.
+func (m Model) canAcceptAll() bool {
+	_, waiting := m.toolsWaiting()
+
+	return runcontrol.RunMenuOf(m.facts(), len(m.session.Sources()) == 0, waiting).DownloadAll
+}
+
 // button is one button of the toolbar.
 type button struct {
 	label    string // what it says

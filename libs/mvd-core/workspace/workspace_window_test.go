@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/downloadlist"
+	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/musicsearch"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
@@ -166,5 +169,29 @@ func TestTheSnapshotIsWrittenWithTheNamesTheWindowReads(t *testing.T) {
 		if !strings.Contains(string(data), name) {
 			t.Errorf("the snapshot has no %s:\n%s", name, data)
 		}
+	}
+}
+
+func TestSongsWaitingForTheirChoiceGiveTheThemedWindowAnAcceptButtonThatAcceptsThem(t *testing.T) {
+	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
+	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, downloadlist.New([]string{"https://youtu.be/a"})))
+	m = m.runStartedFor(t, run)
+	m.dl.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1}}})
+	if first := m.Window().Toolbar[0]; first.ID == entryDownloadAll {
+		t.Fatalf("an Accept button before any song waits: %+v", first)
+	}
+
+	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "abc12345678"})
+	first := m.Window().Toolbar[0]
+	if first.ID != entryDownloadAll || !first.Enabled || first.Role != windowsnapshot.RoleDefault {
+		t.Fatalf("the first button = %+v", first)
+	}
+	for _, other := range m.Window().Toolbar[1:] {
+		if other.Role == windowsnapshot.RoleDefault {
+			t.Errorf("two default buttons: %+v", other)
+		}
+	}
+	if next := intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentButton, ID: entryDownloadAll}); next.done == "" {
+		t.Error("pressing Accept said nothing")
 	}
 }

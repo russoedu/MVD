@@ -86,19 +86,25 @@ func (m Model) windowMenus() []windowsnapshot.Menu {
 }
 
 // windowButtons are the buttons of the toolbar: the first that can be used is the default one,
-// and one that cannot says why.
+// and one that cannot says why. While songs wait for the person to choose them, the window leads
+// with the button the details name, since it has no column of buttons beside the playlists.
 func (m Model) windowButtons() []windowsnapshot.Button {
 	buttons := m.buttons()
-	out := make([]windowsnapshot.Button, len(buttons))
+	out := make([]windowsnapshot.Button, 0, len(buttons)+1)
+	accept := m.canAcceptAll()
+	if accept {
+		out = append(out, windowsnapshot.Button{ID: entryDownloadAll, Label: acceptAllLabel, Role: windowsnapshot.RoleDefault, Enabled: true})
+	}
 	for i, b := range buttons {
 		role := windowsnapshot.RoleOther
-		if buttonKind(buttons, i) == dialog.PillPrimary {
+		if !accept && buttonKind(buttons, i) == dialog.PillPrimary {
 			role = windowsnapshot.RoleDefault
 		}
-		out[i] = windowsnapshot.Button{ID: b.entry, Label: b.label, Role: role, Enabled: !b.disabled}
+		one := windowsnapshot.Button{ID: b.entry, Label: b.label, Role: role, Enabled: !b.disabled}
 		if b.disabled {
-			out[i].DisabledReason = m.whyDisabled()
+			one.DisabledReason = m.whyDisabled()
 		}
+		out = append(out, one)
 	}
 
 	return out
