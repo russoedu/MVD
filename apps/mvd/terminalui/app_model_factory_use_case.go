@@ -61,6 +61,10 @@ type Host struct {
 	Quit func()
 	// Version is the version of the app, for its About window.
 	Version string
+	// CheckForUpdate and UpdateNote are the check for a newer version (Help > Check for updates)
+	// and the line its last result adds to the About window; nil for none.
+	CheckForUpdate func() string
+	UpdateNote     func() string
 	// Clipboard is the machine's clipboard; nil to use the terminal's own.
 	Clipboard workspace.Clipboard
 	// Modal is told when a popup opens and closes over the screen; nil for none.
@@ -131,6 +135,9 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				OpenFolder: host.OpenFolder,
 				Version:    host.Version,
 				Clipboard:  host.Clipboard,
+
+				CheckForUpdate: host.CheckForUpdate,
+				UpdateNote:     host.UpdateNote,
 			},
 		})}
 	}

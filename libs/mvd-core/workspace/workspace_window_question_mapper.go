@@ -48,7 +48,11 @@ func (m Model) windowQuestion() *windowsnapshot.Question {
 		if version == "" {
 			version = "dev"
 		}
-		lines := append([]string{"MVD - Music Video Downloader", "Version " + version}, aboutParagraphs...)
+		head := []string{"MVD - Music Video Downloader", "Version " + version}
+		if note := m.updateNote(); note != "" {
+			head = append(head, note)
+		}
+		lines := append(head, aboutParagraphs...)
 
 		return &windowsnapshot.Question{
 			ID: windowsnapshot.QuestionAbout, Title: entryAbout, Tone: windowsnapshot.ToneNote,

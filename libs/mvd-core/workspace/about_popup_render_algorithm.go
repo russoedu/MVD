@@ -35,6 +35,9 @@ func (m Model) aboutLayout() aboutLayout {
 	add("")
 	add(look.Title.Render("MVD") + " " + look.Text.Render("· Music Video Downloader"))
 	add(look.Dim.Render("Version ") + look.Yellow.Render(version))
+	if note := m.updateNote(); note != "" {
+		add(look.Green.Render(note))
+	}
 	linkY := len(lines)
 	add(look.Cyan.Underline(true).Render(projectURL))
 	add("")

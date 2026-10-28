@@ -22,11 +22,15 @@ import (
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/notification"
 	"youtube-downloader/apps/mvd/openfolder"
+	"youtube-downloader/apps/mvd/question"
+	"youtube-downloader/apps/mvd/selfupdate"
 	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
 	"youtube-downloader/apps/mvd/uninstall"
 	"youtube-downloader/libs/mvd-core/appdir"
+	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/deps"
+	"youtube-downloader/libs/mvd-core/openurl"
 	"youtube-downloader/libs/mvd-core/playlistfile"
 	"youtube-downloader/libs/mvd-core/prefsform"
 	"youtube-downloader/libs/mvd-core/prefspopup"
@@ -116,6 +120,14 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// yt-dlp and ffmpeg are kept up to date: checked in the background at start, and again
 	// when a download fails, after which the failed downloads are tried again.
 	var terminalRuns *terminalui.Runs
+	checker := &selfupdate.Checker{
+		Dir: appDir, Version: version, Notify: notify, Ask: question.Ask, Open: openurl.Open, Logf: logf,
+		// The switch is in the preferences, read each time so a change counts at once.
+		Enabled: func() bool {
+			cfg, err := config.Load(terminalui.ConfigPath(appDir), appDir)
+			return err != nil || cfg.CheckForUpdates
+		},
+	}
 	updates := toolupdates.New(
 		func() []string {
 			return deps.UpdateIn(binDir, toolupdates.Reporter(logf, func(notification.Notice) {}))
@@ -162,6 +174,9 @@ func run(movedFrom string, askToMove bool, review string) error {
 		Quit:      stop,
 		Version:   version,
 		Clipboard: terminalui.SystemClipboard{},
+
+		CheckForUpdate: func() string { return checker.CheckNow(ctx) },
+		UpdateNote:     checker.Note,
 		Modal:     backdrop.Set,
 		Style:     classic.SetStyle,
 		Window:    classic.Show,
@@ -188,6 +203,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 		_ = tools.Wait(ctx)
 		updates.AtStart()
 	}()
+	// A newer MVD is looked for once a day, in the background; the person is only told.
+	go checker.AtStart(ctx)
 
 	// The window runs on this goroutine (macOS needs the main thread) until it is closed,
 	// and closing it ends the app. A second start does not get past appwindow.Run: it

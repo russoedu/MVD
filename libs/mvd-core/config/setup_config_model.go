@@ -58,6 +58,10 @@ type Config struct {
 	CreateLogFile bool
 	LogDir        string
 
+	// CheckForUpdates lets the app look, at most once a day, whether a newer MVD is published.
+	// Nothing is downloaded without the person saying yes.
+	CheckForUpdates bool
+
 	// ExtraArgs are advanced raw yt-dlp flags.
 	ExtraArgs []string
 
@@ -101,6 +105,7 @@ func Default(appDir, downloadsDir string) Config {
 		CookiesFile:            filepath.Join(appDir, "cookies.txt"),
 		CreateLogFile:          true,
 		LogDir:                 appDir,
+		CheckForUpdates:        true,
 		ExtraArgs:              []string{"-4", "--js-runtimes", "deno", "--js-runtimes", "node"},
 		Colors:                 DefaultThemeColors(),
 		ThemeName:              DefaultThemeName,

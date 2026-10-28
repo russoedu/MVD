@@ -57,6 +57,13 @@ type Host struct {
 	// Version is the version of the app, which the About window tells; empty for a build
 	// that has none.
 	Version string
+	// CheckForUpdate looks for a newer version now, asks the person about it in the system's own
+	// dialog and returns the line to show afterwards ("" for none). It waits for the network, so
+	// the workspace calls it off the screen's goroutine. Nil for a host that cannot update.
+	CheckForUpdate func() string
+	// UpdateNote is the line the About window adds when a newer version is known ("" for none).
+	// It must be quick: it is asked each time the window is drawn.
+	UpdateNote func() string
 }
 
 // Clipboard is the text the person copied, and a way to copy.

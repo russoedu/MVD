@@ -135,6 +135,9 @@ func Pages(caps Capabilities) []Page {
 		{Label: "Log File Location", Hint: "The folder the log is written to.", Kind: KindFolder,
 			Get: func(c config.Config) string { return c.LogDir },
 			Set: func(c *config.Config, v string) { c.LogDir = v }},
+		{Label: "Check for Updates", Hint: "Once a day, ask whether a newer MVD is out. Nothing is downloaded until you say Update now.", Kind: KindChoice, Options: yesNo,
+			Get: func(c config.Config) string { return boolText(c.CheckForUpdates) },
+			Set: func(c *config.Config, v string) { c.CheckForUpdates = v == "yes" }},
 	}
 	if caps.CanMove {
 		advanced = append(advanced, Field{Label: "Move MVD to its own folder", Kind: KindAction, Action: ActionMove})

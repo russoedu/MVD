@@ -44,6 +44,8 @@ type (
 		chosen  bool
 		err     error
 	}
+	// updateCheckedMsg carries the line the check for a newer version left to show.
+	updateCheckedMsg struct{ line string }
 	// saveTickMsg is the beat at which the list is brought up to date with the run.
 	saveTickMsg time.Time
 	// toolsTickMsg is the beat at which the state of the tools is looked at again, while they
@@ -300,6 +302,12 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.asking = askNone
 		return m.answered(askOpen, msg.Path)
 
+	case updateCheckedMsg:
+		if msg.line != "" {
+			m.notice = msg.line
+		}
+		return m, nil
+
 	case filePickedMsg:
 		if msg.err != nil {
 			m.notice = "Cannot show the file window: " + msg.err.Error()
@@ -486,6 +494,14 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		m.openAddress(projectURL + "#readme")
 	case entryReport:
 		m.openAddress(m.reportAddress())
+	case entryUpdates:
+		if m.host.CheckForUpdate == nil {
+			m.notice = "This build cannot look for updates"
+			return m, nil
+		}
+		m.notice = "Looking for a newer version…"
+		check := m.host.CheckForUpdate
+		return m, func() tea.Msg { return updateCheckedMsg{line: check()} }
 	case entryQuit:
 		return m.closeRequested()
 	}

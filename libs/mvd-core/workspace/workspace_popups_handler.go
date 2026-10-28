@@ -76,6 +76,15 @@ func (m Model) shortcutsMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
+// updateNote is the line about a newer version that the About window adds, or "".
+func (m Model) updateNote() string {
+	if m.host.UpdateNote == nil {
+		return ""
+	}
+
+	return m.host.UpdateNote()
+}
+
 // openAddress opens an address in the person's browser, or says it when there is none.
 func (m *Model) openAddress(address string) {
 	if m.host.Open == nil {
