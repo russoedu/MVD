@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { ThemePreview } from './theme-preview.route'
 
 function choose (label: string): void {
@@ -62,6 +62,14 @@ describe('ThemePreview', () => {
     expect(screen.getByRole('dialog', { name: 'Add music' })).toBeTruthy()
     expect(document.querySelector('.classic-dialog[data-style="plain"] .classic-title-bar')).toBeNull()
     expect(within(screen.getByRole('dialog')).getAllByRole('button').map(button => button.textContent)).toEqual(['Cancel', 'Add'])
+  })
+
+  it('puts the cursor in the first field of the window for adding music when it opens', async () => {
+    render(<ThemePreview />)
+    choose('Windows 95')
+    fireEvent.click(screen.getByRole('button', { name: '+ Add source' }))
+
+    await waitFor(() => expect(document.activeElement).toBe(document.querySelector('.classic-dialog [data-field] input')))
   })
 
   it('writes the key hints the way each family does', () => {
