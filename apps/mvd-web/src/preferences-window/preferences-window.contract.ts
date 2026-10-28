@@ -65,6 +65,8 @@ export interface PreferencesSnapshot {
   bad?:     boolean
   /** True while a window of the program's (the folder chooser, a question) has the answer. */
   busy?:    boolean
+  /** True while the folder or the file names changed wait for Save; everything else is kept at once. */
+  pending?: boolean
   colours:  TerminalColours
 }
 

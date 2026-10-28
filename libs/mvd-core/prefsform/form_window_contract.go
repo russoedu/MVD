@@ -80,6 +80,9 @@ type Window struct {
 	Status  string        `json:"status,omitempty"`
 	Bad     bool          `json:"bad,omitempty"`
 	Busy    bool          `json:"busy,omitempty"`
+	// Pending is true while the folder or the file names changed are waiting for Save: every
+	// other setting is kept the moment it changes, so Save has nothing else to do.
+	Pending bool          `json:"pending,omitempty"`
 	Colours WindowColours `json:"colours"`
 }
 
