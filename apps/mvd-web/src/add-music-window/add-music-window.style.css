@@ -33,3 +33,15 @@
   padding-left: 18px;
   color: var(--text-hint);
 }
+
+/* Room for the three fields of a search and its help, and for a problem of two lines. */
+.classic-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 14em;
+}
+
+.classic-dialog-problem-slot {
+  min-height: 2.6em;
+}
