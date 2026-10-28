@@ -14,8 +14,13 @@ func TestRunMenuOfWithoutRun(t *testing.T) {
 
 func TestRunMenuOfPausedAndBusy(t *testing.T) {
 	paused := RunMenuOf(Facts{HasRun: true, Paused: true}, false, false)
-	if !paused.Resume || paused.Pause || !paused.Stop || !paused.Retry {
-		t.Fatalf("a paused run resumes: %+v", paused)
+	if !paused.Resume || paused.Pause || !paused.Stop || paused.Retry {
+		t.Fatalf("a paused run resumes, and has nothing to retry: %+v", paused)
+	}
+	failed := Facts{HasRun: true, Paused: true}
+	failed.Tally.Failed = 1
+	if !RunMenuOf(failed, false, false).Retry {
+		t.Fatal("a run with a failed song can retry it")
 	}
 	busy := RunMenuOf(Facts{HasRun: true, Stopping: true}, false, false)
 	if busy.Stop || busy.Retry || busy.Start {

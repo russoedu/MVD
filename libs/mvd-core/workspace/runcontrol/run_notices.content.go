@@ -8,7 +8,7 @@ const NothingRunning = "Nothing is running"
 // PauseNotice is what is said once the downloads are held (paused) or let go on again.
 func PauseNotice(paused bool) string {
 	if paused {
-		return "Stopped: the songs on their way finish, and nothing else begins"
+		return "Paused: the songs on their way finish, and nothing else begins"
 	}
 
 	return "Downloading: what you accept goes on from here"

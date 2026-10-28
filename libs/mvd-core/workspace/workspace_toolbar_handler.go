@@ -16,9 +16,9 @@ const topRows = 1
 const (
 	entryStart       = "Load playlists"
 	entryAddLink     = "Add source…"
-	entryPause       = "Stop downloads"
+	entryPause       = "Pause downloads"
 	entryResume      = "Download"
-	entryStop        = "Stop"
+	entryStop        = "Stop and cancel"
 	entryRetry       = "Retry failed"
 	entryDownloadAll = "Accept all songs"
 )
@@ -50,8 +50,14 @@ func (m Model) buttons() []button {
 		if m.dl.State.Tally().Failed > 0 {
 			out = append(out, button{"Retry failed", entryRetry, busy})
 		}
+		out = append(out, button{"+ Add source", entryAddLink, busy})
+		if m.dl.State.Tally().Done == 0 {
+			// Nothing was saved, so the folder is not where the person goes next: the first button
+			// that can be used is the main one, and that is the way to give another source.
+			out = append(out[len(out)-1:], out[:len(out)-1]...)
+		}
 
-		return append(out, button{"+ Add source", entryAddLink, busy})
+		return out
 	}
 	if !m.running() {
 		_, waiting := m.toolsWaiting()
@@ -61,13 +67,13 @@ func (m Model) buttons() []button {
 			{"+ Add source", entryAddLink, busy},
 		}
 	}
-	// Download starts the downloads of what was accepted, and Stop downloads holds them again: the
+	// Download starts the downloads of what was accepted, and Pause downloads holds them again: the
 	// songs that are on their way finish, and nothing else begins.
 	download := button{"► Download", entryResume, busy}
 	if !m.run.Paused() {
-		download = button{"■ Stop downloads", entryPause, busy}
+		download = button{"Pause downloads", entryPause, busy}
 	}
-	out := []button{download, {"Retry failed", entryRetry, busy}, {"+ Add source", entryAddLink, busy}}
+	out := []button{download, {"Retry failed", entryRetry, busy || m.facts().Tally.Failed == 0}, {"+ Add source", entryAddLink, busy}}
 	return out
 }
 
