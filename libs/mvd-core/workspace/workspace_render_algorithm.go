@@ -167,6 +167,16 @@ func (m Model) summaryLine() string {
 	const label = "  ·  Videos in "
 	hint := "  ·  " + menubar.ShortcutLabel("Ctrl+Shift+O") + " opens it"
 	room := m.width - ansi.StringWidth(plain) - ansi.StringWidth(label) - 2
+	if _, _, _, drawn := m.buttonRows(); !drawn && m.width > 0 {
+		// No room for the buttons: say where they went before the folder, which is in the menu too.
+		const where = "  ·  Buttons: Run menu"
+		if room-ansi.StringWidth(where) < 30 {
+			return line + look.Dim.Render(where)
+		}
+		room -= ansi.StringWidth(where)
+
+		return line + look.Dim.Render(label) + look.Text.Render(cells.TruncateMiddle(m.cfg.OutputDir, room)) + look.Dim.Render(where)
+	}
 	if room < 30 {
 		return line // too narrow for the folder: the counts say it
 	}

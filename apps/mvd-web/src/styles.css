@@ -12,6 +12,8 @@ body,
 body {
   margin: 0;
   background: #000;
+  /* The window is one screen: at its smallest size nothing may add a page scroll bar. */
+  overflow-x: hidden;
 }
 
 #root {
