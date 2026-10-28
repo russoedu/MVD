@@ -38,12 +38,15 @@ type ClassicWindow struct {
 	style    string // the style and its scheme, as the JSON the page reads
 	snapshot string
 	prefs    string
+	// window is the window of the preferences, once there is one to open.
+	window *preferencesWindow
 }
 
 // attach starts listening to the page, and returns how to stop.
-func (w *ClassicWindow) attach(app *application.App) func() {
+func (w *ClassicWindow) attach(app *application.App, window *preferencesWindow) func() {
 	w.mu.Lock()
 	w.app = app
+	w.window = window
 	w.mu.Unlock()
 	stopIntents := app.Event.On(intentEvent, func(event *application.CustomEvent) {
 		text, ok := event.Data.(string)
@@ -100,7 +103,7 @@ func (w *ClassicWindow) Show(snap windowsnapshot.Snapshot) {
 }
 
 // ShowPreferences says what the preferences window shows, or nil once it is closed; the page is
-// told only when it changed.
+// told only when it changed. The window opens with the first and closes with the nil.
 func (w *ClassicWindow) ShowPreferences(prefs *prefsform.Window) {
 	data, err := json.Marshal(prefs)
 	if err != nil {
@@ -109,10 +112,13 @@ func (w *ClassicWindow) ShowPreferences(prefs *prefsform.Window) {
 	w.mu.Lock()
 	changed := string(data) != w.prefs
 	w.prefs = string(data)
-	app := w.app
+	app, window := w.app, w.window
 	w.mu.Unlock()
 	if changed && app != nil {
 		app.Event.Emit(prefsEvent, string(data))
+	}
+	if window != nil {
+		window.set(prefs != nil)
 	}
 }
 

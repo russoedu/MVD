@@ -16,6 +16,8 @@ import (
 	ttygo "github.com/meta-ui-labs/treactui/packages/tty-go"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+
+	"youtube-downloader/libs/mvd-core/prefsform"
 )
 
 //go:embed window_icon.png
@@ -84,11 +86,19 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	})
 	var stopClassic func()
+	preferences := &preferencesWindow{app: app}
 	if opts.Backdrop != nil {
 		opts.Backdrop.attach(app)
 	}
 	if opts.Classic != nil {
-		stopClassic = opts.Classic.attach(app)
+		stopClassic = opts.Classic.attach(app, preferences)
+		// Closing the preferences window by the system's means asks the program to close them, as the
+		// close button of the page does.
+		preferences.onClose = func() {
+			if opts.Classic.OnPrefsIntent != nil {
+				opts.Classic.OnPrefsIntent(prefsform.WindowIntent{Kind: prefsform.IntentClose})
+			}
+		}
 	}
 	if opts.OnFileOpen != nil {
 		app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
@@ -118,6 +128,9 @@ func Run(ctx context.Context, opts Options) error {
 		event.Cancel() // the program decides, asking first when songs download
 		opts.OnCloseRequest()
 	})
+
+	preferences.main = window
+	window.RegisterHook(events.Common.WindowFocus, func(*application.WindowEvent) { preferences.focus() })
 
 	go func() {
 		<-ctx.Done()

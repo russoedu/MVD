@@ -1,3 +1,9 @@
+/* MVD's window as a whole, which cannot be used (`inert`) while the preferences window is open;
+   it adds no box of its own. */
+.app-window {
+  display: contents;
+}
+
 /* A classic window fills MVD's window, above the terminal that keeps running behind it. */
 .app-window-classic {
   position: fixed;
