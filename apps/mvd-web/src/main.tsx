@@ -1,6 +1,7 @@
 import { lazy, StrictMode, Suspense } from 'react'
 import * as ReactDOM from 'react-dom/client'
 import { AppWindow } from './app-window'
+import { installProgramRuntime } from './program-runtime'
 
 // Loaded only on its own page, so the terminal page does not carry the classic themes.
 const ThemePreview = lazy(async () => {
@@ -8,6 +9,8 @@ const ThemePreview = lazy(async () => {
 
   return { default: page }
 })
+
+installProgramRuntime()
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement,

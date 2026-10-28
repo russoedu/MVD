@@ -1,10 +1,9 @@
 package appwindow
 
 import (
-	"context"
 	"sync"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // backdropEvent is the event the page listens to, to dim itself while a popup is open.
@@ -15,21 +14,21 @@ const backdropEvent = "mvd:modal"
 // up; before that, and after, Set does nothing.
 type Backdrop struct {
 	mu  sync.Mutex
-	ctx context.Context
+	app *application.App
 }
 
-func (b *Backdrop) attach(ctx context.Context) {
+func (b *Backdrop) attach(app *application.App) {
 	b.mu.Lock()
-	b.ctx = ctx
+	b.app = app
 	b.mu.Unlock()
 }
 
 // Set says whether a popup is open.
 func (b *Backdrop) Set(open bool) {
 	b.mu.Lock()
-	ctx := b.ctx
+	app := b.app
 	b.mu.Unlock()
-	if ctx != nil {
-		wailsruntime.EventsEmit(ctx, backdropEvent, open)
+	if app != nil {
+		app.Event.Emit(backdropEvent, open)
 	}
 }
