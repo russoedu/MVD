@@ -54,8 +54,19 @@ func main() {
 	move := flag.Bool("move", false, "ask to move the app to its own folder now, whatever was answered before")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
 	edit := flag.String("edit", "", "open the playlist editor on a playlist address or a saved .mvd file; a .mvd file given by itself does the same")
+	afterExit := flag.Int(selfupdate.AfterExitFlag, 0, "set by the app itself after an update: wait for this process to end before opening")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	flag.Parse()
+
+	// An updated program is started by the old one, which is still closing: it opens only once
+	// that one has gone, so the two never share the single window.
+	if *afterExit > 0 {
+		selfupdate.WaitForExit(*afterExit, 30*time.Second)
+	}
+	// The old program an update renamed aside is removed, once nothing runs it.
+	if exe, err := os.Executable(); err == nil {
+		go install.CleanUpMovedProgram(exe + selfupdate.AsideSuffix)
+	}
 
 	if *removeApp {
 		if err := runUninstall(); err != nil {
@@ -211,6 +222,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// raises the first window and ends.
 	classic.OnIntent = func(in windowsnapshot.Intent) { program.Send(workspace.WindowIntentMsg(in)) }
 	classic.OnPrefsIntent = func(in prefsform.WindowIntent) { program.Send(prefspopup.WindowIntentMsg(in)) }
+	checker.Quit = func() { program.Send(workspace.CloseRequestedMsg{}) }
 	err = appwindow.Run(ctx, appwindow.Options{
 		Program: program, DataDir: appDir, Backdrop: backdrop, Classic: classic,
 		OnCloseRequest: func() { program.Send(workspace.CloseRequestedMsg{}) },
@@ -228,6 +240,12 @@ func run(movedFrom string, askToMove bool, review string) error {
 		},
 	})
 	stop()
+	// An update put in place while the app ran opens as soon as the app has closed.
+	if exe := checker.Relaunch(); exe != "" {
+		if startErr := selfupdate.Relaunch(exe); startErr != nil {
+			logf("The updated MVD could not be started: %v", startErr)
+		}
+	}
 
 	return err
 }
