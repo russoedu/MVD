@@ -67,7 +67,10 @@ func newUpdateRig(t *testing.T, packageName, digest string, archive []byte) *upd
 	}))
 	t.Cleanup(server.Close)
 
-	installDir := t.TempDir()
+	installDir, err := filepath.EvalSymlinks(t.TempDir()) // the checker resolves links; so must the expectation
+	if err != nil {
+		t.Fatal(err)
+	}
 	rig.exe = filepath.Join(installDir, "mvd.exe")
 	if err := os.WriteFile(rig.exe, []byte("old"), 0o700); err != nil {
 		t.Fatal(err)
