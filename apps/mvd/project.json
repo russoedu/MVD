@@ -70,8 +70,17 @@
         "command": "node -e \"const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','production'+(os==='linux'?',gtk3':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)\""
       },
       "dependsOn": [
-        "stage-web"
+        "stage-web",
+        "fetch-music-fixer"
       ]
+    },
+    "fetch-music-fixer": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/fetch-music-fixer.cjs",
+        "cwd": "{workspaceRoot}"
+      }
     },
     "package-native": {
       "executor": "nx:run-commands",

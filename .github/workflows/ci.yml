@@ -347,6 +347,8 @@ jobs:
 
       - run: npx nx run-many -t lint,test,build-native,package-native --projects=tag:build:cgo
         name: Lint, test, build and package the native apps
+        env:
+          VIDEOCRAW_TOKEN: ${{ secrets.VIDEOCRAW_TOKEN }}
 
       # LOCAL (not mnci): the release files are named <product>_<version>_<os>_<processor>.<type>
       # by tools/release-assets.cjs. This builds them with a fixed version, so a pull request
@@ -375,6 +377,7 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' && hashFiles('tools/go-app-release.cjs') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VIDEOCRAW_TOKEN: ${{ secrets.VIDEOCRAW_TOKEN }}
 
       # Same release the zips go to, stamped with the tag's version. The tools script
       # above only attaches zips, so the disk image is attached here.
