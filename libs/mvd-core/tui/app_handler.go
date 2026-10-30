@@ -45,6 +45,9 @@ type SetupInput struct {
 	// Move, when set, is offered on the preferences: it asks the person on the machine's
 	// own screen where the app should live and moves it there if they agree.
 	Move Mover
+	// SignIn, when set, is offered on the preferences: it opens a window to sign in to YouTube
+	// and says what came of it.
+	SignIn func() (message string, err error)
 }
 
 // SetupResult is returned when the setup screens close.

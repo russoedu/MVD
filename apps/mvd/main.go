@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"youtube-downloader/apps/mvd/openfolder"
 	"youtube-downloader/apps/mvd/question"
 	"youtube-downloader/apps/mvd/selfupdate"
+	"youtube-downloader/apps/mvd/signin"
 	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
 	"youtube-downloader/apps/mvd/uninstall"
@@ -38,6 +40,7 @@ import (
 	"youtube-downloader/libs/mvd-core/workspace"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 	"youtube-downloader/libs/mvd-core/ytdlp"
+	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 )
 
 var version = "dev"
@@ -56,7 +59,17 @@ func main() {
 	edit := flag.String("edit", "", "open the playlist editor on a playlist address or a saved .mvd file; a .mvd file given by itself does the same")
 	afterExit := flag.Int(selfupdate.AfterExitFlag, 0, "set by the app itself after an update: wait for this process to end before opening")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
+	signInDir := flag.String(signin.Flag, "", "set by the app itself: show the window to sign in to YouTube, with its profile in this folder")
 	flag.Parse()
+
+	if *signInDir != "" {
+		if err := signin.RunWindow(*signInDir); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		return
+	}
 
 	// An updated program is started by the old one, which is still closing: it opens only once
 	// that one has gone, so the two never share the single window.
@@ -188,9 +201,9 @@ func run(movedFrom string, askToMove bool, review string) error {
 
 		CheckForUpdate: func() string { return checker.CheckNow(ctx) },
 		UpdateNote:     checker.Note,
-		Modal:     backdrop.Set,
-		Style:     classic.SetStyle,
-		Window:    classic.Show,
+		Modal:          backdrop.Set,
+		Style:          classic.SetStyle,
+		Window:         classic.Show,
 		// The preferences are a window the page draws, in every style.
 		Preferences: classic.ShowPreferences,
 		Tools:       toolsState(tools),
@@ -198,6 +211,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 		Uninstall:   terminalui.Uninstall(removal),
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: move,
+		// Signing in inside MVD is only done on Windows, where yt-dlp can read the window's cookies.
+		SignIn: signInHost(ctx, appDir, ytDlpPath),
 	}, logf))
 
 	// .mvd files are download lists of this program: they get its icon and open it. It is
@@ -285,4 +300,15 @@ func toolsState(tools *deps.Preparation) func() workspace.ToolsState {
 
 		return workspace.ToolsState{Message: tools.Status()}
 	}
+}
+
+// signInHost is what the preferences call to sign in to YouTube inside MVD, or nil where that is
+// not offered.
+func signInHost(ctx context.Context, appDir, ytDlpPath string) func() (string, error) {
+	if runtime.GOOS != "windows" {
+		return nil
+	}
+	ytArgs := fetch.NormalizeArgs(config.Default(appDir, "").ExtraArgs)
+
+	return func() (string, error) { return signin.Run(ctx, appDir, ytDlpPath, ytArgs) }
 }

@@ -46,7 +46,30 @@ func setCookieChoice(c *config.Config, v string) {
 	}
 }
 
-var cookieOptions = []string{"off", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari", "all"}
+var cookieOptions = []string{"off", "mvd", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari", "all"}
+
+// cookieOptionsFor leaves out the sign-in made inside MVD where the host cannot offer it.
+func cookieOptionsFor(caps Capabilities) []string {
+	if caps.CanSignIn {
+		return cookieOptions
+	}
+	var options []string
+	for _, o := range cookieOptions {
+		if o != "mvd" {
+			options = append(options, o)
+		}
+	}
+
+	return options
+}
+
+func showCookieOption(option string) string {
+	if option == "mvd" {
+		return "MVD sign-in"
+	}
+
+	return capitalise(option)
+}
 
 // colourField is a theme colour; slot points at it inside the config.
 func colourField(label string, slot func(*config.ThemeColors) *string) Field {
@@ -124,7 +147,7 @@ func Pages(caps Capabilities) []Page {
 		{Label: "Give up on a slow start after (seconds)", Kind: KindStepper, Hint: "How long a download may take to start before it is stopped.", Min: 10, Max: 3600, Step: 10,
 			Get: func(c config.Config) string { return intText(c.StartTimeoutSeconds) },
 			Set: func(c *config.Config, v string) { c.StartTimeoutSeconds = parseInt(v) }},
-		{Label: "Use my browser's YouTube login", Hint: "Off reads nothing from your browsers. Pick one to use its login for age-restricted or private videos; All tries each installed browser.", Kind: KindChoice, Options: cookieOptions,
+		{Label: "Use my browser's YouTube login", Hint: "Off reads nothing from your browsers. Pick one to use its login for age-restricted or private videos; All tries each installed browser.", Kind: KindChoice, Options: cookieOptionsFor(caps), Show: showCookieOption,
 			Get: cookieChoice, Set: setCookieChoice},
 		{Label: "List songs with no official video (CSV)", Hint: "Only matters when Download Official Music Video is set to Only: keeps a CSV list of the songs no official video was found for.", Kind: KindChoice, Options: yesNo,
 			Get: func(c config.Config) string { return boolText(c.SaveNotFound) },
@@ -138,6 +161,9 @@ func Pages(caps Capabilities) []Page {
 		{Label: "Check for Updates", Hint: "Once a day, ask whether a newer MVD is out. Nothing is downloaded until you say Update now.", Kind: KindChoice, Options: yesNo,
 			Get: func(c config.Config) string { return boolText(c.CheckForUpdates) },
 			Set: func(c *config.Config, v string) { c.CheckForUpdates = v == "yes" }},
+	}
+	if caps.CanSignIn {
+		advanced = append(advanced, Field{Label: "Sign in to YouTube", Hint: "Opens a window to sign in once. With a Premium account the music downloads at a higher quality. Then pick MVD sign-in in the setting above.", Kind: KindAction, Action: ActionSignIn})
 	}
 	if caps.CanMove {
 		advanced = append(advanced, Field{Label: "Move MVD to its own folder", Kind: KindAction, Action: ActionMove})

@@ -45,6 +45,8 @@ type Host struct {
 	Uninstall tui.Uninstaller
 	// Move moves the app to its own folder after asking; nil to offer no move.
 	Move tui.Mover
+	// SignIn, when set, opens the window to sign in to YouTube; see tui.SetupInput.
+	SignIn func() (string, error)
 	// Plan and PlanDownload run the playlist editor's plan-only run and the download of
 	// what it chose; Describe names a video the person picked. Each may be nil.
 	Plan         tui.RunStarter
@@ -109,7 +111,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 		}
 
 		return accessibleApp{tui.NewWorkspaceApp(tui.WorkspaceInput{
-			Setup:       tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move},
+			Setup:       tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move, SignIn: host.SignIn},
 			List:        list,
 			Live:        runner.LiveSettings,
 			Modal:       host.Modal,
