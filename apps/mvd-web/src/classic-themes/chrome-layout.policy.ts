@@ -1,6 +1,7 @@
 import type { ButtonSnapshot } from '../workspace-snapshot'
 import type { ChromeFamily, ClassicTheme, ClassicThemeId } from './classic-theme.model'
 
+/** A control of a window's title bar. */
 export type WindowControl = 'minimise' | 'maximise' | 'close'
 
 /** Where a theme puts things, and how its dialogs, menus and shortcuts behave. */

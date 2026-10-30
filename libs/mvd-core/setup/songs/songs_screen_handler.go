@@ -29,6 +29,7 @@ type Model struct {
 	width, height int
 }
 
+// New returns the screen for pasting songs, which saves the song file in the folder dir.
 func New(dir string) Model {
 	ta := textarea.New()
 	ta.Placeholder = "Paste or type your songs, one per line: Artist - Title\n(a first line like  # My road trip  names the list;\na CSV with title and artist columns works too)"
@@ -38,6 +39,7 @@ func New(dir string) Model {
 	return Model{ta: ta, paste: songpaste.New(dir)}
 }
 
+// SetSize tells the screen that it has w columns and h rows. It also fits the text area to them.
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.ta.SetWidth(max(10, w-2))
@@ -45,6 +47,8 @@ func (m Model) SetSize(w, h int) Model {
 	return m
 }
 
+// Update handles msg, which is usually a key press, and returns the new model and a command.
+// It also returns the outcome, which says when the songs were added or the screen was cancelled.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	if k, ok := msg.(tea.KeyPressMsg); ok {
 		switch k.String() {
@@ -61,6 +65,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	return m, cmd, None
 }
 
+// View draws the screen, with a summary of the songs or the problem found in width columns and height rows and returns it as text.
 func (m Model) View(width, height int) string {
 	props := Default()
 	props.Palette = Palette(look.CurrentPalette())
@@ -76,6 +81,7 @@ func (m Model) View(width, height int) string {
 	return View(props, width, height).View
 }
 
+// Hints returns the key hints for the screen.
 func (m Model) Hints() []keybar.Hint {
 	return []keybar.Hint{{Key: "ctrl+s", Desc: "add to the list"}, {Key: "esc", Desc: "cancel"}}
 }

@@ -15,6 +15,7 @@ var titleNoise = map[string]bool{
 	"clean": true, "feat": true, "ft": true, "featuring": true,
 }
 
+// YearToken matches a word that is a year from 1900 to 2099.
 var YearToken = regexp.MustCompile(`^(19|20)\d\d$`)
 
 // titleTokens lowercases a title and splits it into words, leaving out the

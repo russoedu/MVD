@@ -125,10 +125,14 @@ type Part struct {
 	keys bool
 }
 
+// Props are the properties of a component, each a text under its name.
 type Props map[string]string
 
+// Flag reports whether the prop key is the text "true".
 func (p Props) Flag(key string) bool { return p[key] == "true" }
 
+// Integer returns the whole number in the prop key.
+// It returns fallback when the prop is missing or is not a whole number.
 func (p Props) Integer(key string, fallback int) int {
 	n, err := strconv.Atoi(strings.TrimSpace(p[key]))
 	if err != nil {
@@ -256,8 +260,10 @@ func buildPart(c Placed) *Part {
 	return StaticPart(box(c.W, c.H, "normal", "240", "", ""))
 }
 
+// Str returns the text of the prop key, or an empty text when it is missing.
 func (p Props) Str(key string) string { return p[key] }
 
+// StaticPart returns a component that always shows content and ignores every message.
 func StaticPart(content string) *Part {
 	return &Part{update: func(tea.Msg) tea.Cmd { return nil }, view: func() string { return content }}
 }
@@ -460,8 +466,11 @@ func textAreaPart(p Props, w, h int) *Part {
 // word is a list item.
 type word string
 
+// FilterValue returns the text the list filters on, which is the word itself.
 func (w word) FilterValue() string { return string(w) }
+// Title returns the text the list shows for the item, which is the word itself.
 func (w word) Title() string       { return string(w) }
+// Description returns an empty text, because a word has no description.
 func (w word) Description() string { return "" }
 
 func listPart(p Props, w, h int) *Part {

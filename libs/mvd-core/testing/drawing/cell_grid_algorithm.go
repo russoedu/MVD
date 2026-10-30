@@ -17,6 +17,7 @@ type cell struct {
 	Attrs  string // b bold, d dim, i italic, u underline, r reverse, s strike
 }
 
+// String describes the cell for a failure message: its text, colours, and attributes.
 func (c cell) String() string {
 	return fmt.Sprintf("%q fg=%s bg=%s %s", c.Text, orDefault(c.FG), orDefault(c.BG), c.Attrs)
 }

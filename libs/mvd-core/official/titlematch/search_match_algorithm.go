@@ -6,6 +6,7 @@ import (
 	"unicode"
 )
 
+// Bracketed matches a part of a title in parentheses or square brackets, such as (Official Video).
 var Bracketed = regexp.MustCompile(`\([^)]*\)|\[[^\]]*\]`)
 
 // ArtistFromChannel strips the " - Topic" suffix from an art track channel.

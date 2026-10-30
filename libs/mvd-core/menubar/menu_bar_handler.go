@@ -134,13 +134,17 @@ func WithColours(accent, muted, rule string) Option {
 
 // WithAccent, WithMuted and WithRule set one colour each.
 func WithAccent(c string) Option { return func(m *Model) { m.accent = c } }
-func WithMuted(c string) Option  { return func(m *Model) { m.muted = c } }
-func WithRule(c string) Option   { return func(m *Model) { m.rule = c } }
+// WithMuted sets the muted colour c, used for the other headings and the shortcuts.
+func WithMuted(c string) Option { return func(m *Model) { m.muted = c } }
+// WithRule sets the rule colour c, used for the box.
+func WithRule(c string) Option { return func(m *Model) { m.rule = c } }
 
 // SetAccent, SetMuted and SetRule change the colours later.
 func (m *Model) SetAccent(c string) { m.accent = c }
-func (m *Model) SetMuted(c string)  { m.muted = c }
-func (m *Model) SetRule(c string)   { m.rule = c }
+// SetMuted changes the muted colour to c.
+func (m *Model) SetMuted(c string) { m.muted = c }
+// SetRule changes the rule colour to c.
+func (m *Model) SetRule(c string) { m.rule = c }
 
 // SetMenus replaces the menus and closes the bar.
 func (m *Model) SetMenus(menus []Menu) { m.bar.SetMenus(menus) }
@@ -192,6 +196,7 @@ func (m Model) MenusJSON() string { return MenusJSON(m.bar.Menus()) }
 
 // Width and Height are the room the component takes.
 func (m Model) Width() int  { return m.w }
+// Height returns the rows the component takes.
 func (m Model) Height() int { return m.h }
 
 // ContentHeight is the rows the bar and the box of its tallest menu need.

@@ -88,12 +88,17 @@ func newSketchGrid(w, h int) *sketchGrid {
 	return &sketchGrid{W: w, H: h, c: make([]sketchCell, w*h)}
 }
 
+// Set puts cell c at column x and row y.
+// It ignores a position outside the grid.
 func (g *sketchGrid) Set(x, y int, c sketchCell) {
 	if x >= 0 && y >= 0 && x < g.W && y < g.H {
 		g.c[y*g.W+x] = c
 	}
 }
 
+// Text writes text from column x on row y in style s and returns the cells it used.
+// MaxW limits the cells used when it is above zero.
+// A double-width character that would pass the right edge ends the text.
 func (g *sketchGrid) Text(x, y int, text string, s sketchStyle, maxW int) int {
 	n := 0
 	for _, ch := range text {
@@ -127,6 +132,7 @@ func sketchRuneWidth(r rune) int {
 // sketchWidth is the number of terminal cells of a text.
 func sketchWidth(s string) int { return lipgloss.Width(s) }
 
+// Fill sets every cell of rectangle r to the character ch in style s.
 func (g *sketchGrid) Fill(r sketchRect, ch rune, s sketchStyle) {
 	for y := r.Y; y < r.Y+r.H; y++ {
 		for x := r.X; x < r.X+r.W; x++ {
@@ -135,6 +141,8 @@ func (g *sketchGrid) Fill(r sketchRect, ch rune, s sketchStyle) {
 	}
 }
 
+// Box clears rectangle r in style s and draws border b around it.
+// A rectangle under two cells wide or high is only cleared.
 func (g *sketchGrid) Box(r sketchRect, b sketchBorder, s sketchStyle) {
 	g.Fill(r, ' ', s)
 	if r.W < 2 || r.H < 2 {

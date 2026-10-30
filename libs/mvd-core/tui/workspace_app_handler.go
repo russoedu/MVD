@@ -68,6 +68,7 @@ type workspaceApp struct {
 	style *string
 }
 
+// Init returns the first commands of the workspace, and of the preferences when they are open.
 func (a workspaceApp) Init() tea.Cmd {
 	if a.inPrefs {
 		return tea.Batch(a.ws.Init(), a.prefs.Init())
@@ -75,6 +76,7 @@ func (a workspaceApp) Init() tea.Cmd {
 	return a.ws.Init()
 }
 
+// Update handles msg and returns the next model and its command. It tells the host when a popup opens or closes and when the window style changes.
 func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := a.update(msg)
 	if app, ok := next.(workspaceApp); ok && app.in.Modal != nil {
@@ -280,6 +282,7 @@ func (a workspaceApp) Outline() ScreenOutline {
 	return a.ws.Outline()
 }
 
+// View returns the workspace as a terminal view, with the preferences drawn over it when open.
 func (a workspaceApp) View() tea.View {
 	if !a.inPrefs {
 		return a.ws.View()

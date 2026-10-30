@@ -113,6 +113,7 @@ func (m Model) quit() tea.Cmd {
 	return tea.Quit
 }
 
+// New returns the download screen for the controller c and listens to the events of c.
 func New(c Controller) Model {
 	return Model{session: downloadsession.New(c), events: c.Events()}
 }
@@ -131,6 +132,7 @@ func tick() tea.Cmd {
 	return tea.Tick(120*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
+// Init returns the commands that wait for an engine event and start the tick. Without events it only starts the tick.
 func (m Model) Init() tea.Cmd {
 	if m.events == nil {
 		return tick()
@@ -138,6 +140,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(waitEvent(m.events), tick())
 }
 
+// Update handles msg and returns the next screen and its command. It restarts the name scroll when the selection or the selected name changes.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	before := [3]int{m.session.SelPlaylist, m.session.SelEntry, int(m.session.Pane)}
 	next, cmd := m.update(msg)
@@ -316,6 +319,7 @@ func (m *Model) outputVisible() bool {
 	return m.session.FullLog || m.width >= minWideWidth
 }
 
+// View returns the drawn screen as a terminal view.
 func (m Model) View() tea.View { return screenview.Of(m.render()) }
 
 // NewEmbedded is the download screen as a part of an app model: it ends with FinishedMsg

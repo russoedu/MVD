@@ -16,10 +16,10 @@ import (
 	"youtube-downloader/libs/mvd-core/sourcelist"
 )
 
-// SetupAction is what the user chose on the setup screens.
 // textareaBlink drives the textarea cursor.
 var textareaBlink = textarea.Blink
 
+// SetupAction is what the user chose on the setup screens.
 type SetupAction int
 
 const (
@@ -136,8 +136,10 @@ func newSetupModel(in SetupInput) setupModel {
 	return m
 }
 
+// Init returns the commands that make the text cursors blink.
 func (m setupModel) Init() tea.Cmd { return tea.Batch(textareaBlink, m.config.Init()) }
 
+// Update handles msg and returns the next model and its command. It sends msg to the screen shown and finishes the setup when that screen asks.
 func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -280,4 +282,5 @@ func (m setupModel) saveList() {
 	}
 }
 
+// View returns the current setup screen as a terminal view.
 func (m setupModel) View() tea.View { return screenview.Of(m.render()) }

@@ -16,6 +16,7 @@ import (
 	"youtube-downloader/libs/mvd-core/config"
 )
 
+// Outcome is what the host does next after a key press on the screen.
 type Outcome int
 
 const (
@@ -26,6 +27,7 @@ const (
 	Colours
 )
 
+// ItemCount is how many settings the screen lists.
 const ItemCount = preferencessession.ItemCount
 
 // Model is the preferences screen in the terminal: what it does is the session's. The model turns
@@ -41,6 +43,7 @@ type Model struct {
 	width, height int
 }
 
+// New returns the preferences screen for the settings in cfg.
 func New(cfg config.Config) Model {
 	ti := textinput.New()
 	ti.Prompt = "> "
@@ -68,8 +71,10 @@ func (m Model) WithFolderPicker(pick FolderPicker) Model {
 	return m
 }
 
+// Init returns the command that makes the cursor of the typing box blink.
 func (m Model) Init() tea.Cmd { return textinput.Blink }
 
+// SetSize tells the screen that it has w columns and h rows. It also fits the typing box and the folder browser.
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-8))
@@ -113,6 +118,8 @@ func (m *Model) run(effect preferencessession.Effect) (tea.Cmd, Outcome) {
 	return nil, None
 }
 
+// Update handles msg, which is usually a key press, and returns the new model and a command.
+// It also returns the outcome for the host and the settings as they stand, saved or not.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome, config.Config) {
 	k, isKey := msg.(tea.KeyPressMsg)
 
@@ -232,6 +239,7 @@ func (m *Model) updateEditor(msg tea.Msg, k tea.KeyPressMsg, isKey bool) tea.Cmd
 
 // --- View -------------------------------------------------------------------
 
+// View draws the screen, or the folder browser while a folder is chosen in width columns and height rows and returns it as text.
 func (m Model) View(width, height int) string {
 	if m.session.Mode == settings.EditFolder {
 		return m.folder.View(width, height)
@@ -264,6 +272,7 @@ func (m Model) View(width, height int) string {
 	return View(props, width, height).View
 }
 
+// Hints returns the key hints for the current state, which can be moving, editing, browsing folders or waiting.
 func (m Model) Hints() []keybar.Hint {
 	mode := m.session.Mode
 	if mode == settings.EditFolder {

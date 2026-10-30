@@ -12,12 +12,17 @@ type engineResolver struct {
 	*official.Resolver
 }
 
+// Identify names the song of the video videoID from its title, channel and duration in seconds.
+// Logf receives the progress lines.
+// It returns the identification that the engine passes back to Pick.
 func (r engineResolver) Identify(videoID, title, channel string, durationSec int, logf func(format string, a ...interface{})) engine.Identification {
 	identified := r.Resolver.Identify(videoID, title, channel, durationSec, logf)
 	artist, name, _ := identified.Named()
 	return engine.Identification{Done: identified.Done, Resolution: resolutionOf(identified.Version), Artist: artist, Title: name, Album: identified.Album(), State: identified}
 }
 
+// Pick chooses the version of the song that identification names. Logf receives the progress lines.
+// It returns an empty resolution when the identification did not come from this resolver.
 func (r engineResolver) Pick(identification engine.Identification, logf func(format string, a ...interface{})) engine.Resolution {
 	identified, ok := identification.State.(official.Identified)
 	if !ok {

@@ -46,6 +46,7 @@ func ExampleName(template, ext string) string {
 // TemplateBlock is one of the blocks that add a field to the template.
 type TemplateBlock struct{ Name, Token string }
 
+// TemplateBlocks lists the blocks the person can add to the file name pattern, with their yt-dlp fields.
 var TemplateBlocks = []TemplateBlock{
 	{"ARTIST", "%(artist,uploader)s"},
 	{"TITLE", "%(title)s"},

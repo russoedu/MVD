@@ -21,6 +21,14 @@ export function focusTerminal (host: ParentNode): void {
   host.querySelector<HTMLElement>(keyboardInput)?.focus()
 }
 
+/**
+ * Keeps the keyboard in the terminal: puts focus on its input when the page or the window gets
+ * focus again and nothing else holds it.
+ *
+ * @param host The element that holds the terminal.
+ * @param enabled False while another window has the keyboard. The default is true.
+ * @returns Nothing. The listeners are removed when the component unmounts.
+ */
 export function useFocusTerminal (host: React.RefObject<HTMLElement | null>, enabled = true): void {
   useEffect(() => {
     const element = host.current

@@ -63,6 +63,7 @@ func (m Model) SetSize(w, h int) Model {
 	return m.reveal()
 }
 
+// Init returns the command that makes the text cursor blink.
 func (m Model) Init() tea.Cmd { return textinput.Blink }
 
 // show puts the cursor on the first field of tab.
@@ -73,6 +74,7 @@ func (m Model) show(tab int) Model {
 	return m.reveal()
 }
 
+// Update handles msg and returns the next popup and its command. A key press ends the welcome state, and a picked theme shows at once.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if _, pressed := msg.(tea.KeyPressMsg); pressed {
 		m.form.Welcome = false // the person has started to use it

@@ -4,6 +4,7 @@
  */
 export type ChromeFamily = 'windows-classic' | 'windows-themed' | 'mac-classic' | 'aqua' | 'dos'
 
+/** The id of a classic theme: the system whose window look it draws. */
 export type ClassicThemeId =
   | 'dos' |
   'windows-3-1' |
@@ -21,6 +22,7 @@ export interface ColourScheme {
   label: string
 }
 
+/** One classic theme: its id, the name the picker shows, its chrome family and its colour schemes. */
 export interface ClassicTheme {
   id:       ClassicThemeId
   /** The name the theme picker shows. */

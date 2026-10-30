@@ -5,4 +5,5 @@ export const pixelLetters: Record<string, string[]> = {
   D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
 }
 
+/** The word the pixel logo spells. Each of its letters has a bitmap in pixelLetters. */
 export const logoWord = 'MVD'

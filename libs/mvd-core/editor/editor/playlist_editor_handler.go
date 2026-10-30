@@ -113,6 +113,7 @@ func NewPlanning(host EditorHost, run downloadpage.Run, brought, saved []playlis
 	}
 }
 
+// Init returns the first command: a refresh tick for a live session, the event wait and tick while planning, else nil.
 func (m Model) Init() tea.Cmd {
 	if m.session.IsLive() {
 		return refreshTick()
@@ -137,6 +138,7 @@ func editorTick() tea.Cmd {
 	return tea.Tick(120*time.Millisecond, func(t time.Time) tea.Msg { return TickMsg(t) })
 }
 
+// Update handles msg and returns the next editor and its command. Planning events advance the session, and keys and mouse go to their handlers.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:

@@ -28,6 +28,7 @@ const (
 	StateAccepted
 )
 
+// String returns the lower-case name of the state, or "unknown" for a value that has none.
 func (s EntryState) String() string {
 	switch s {
 	case StateQueued:

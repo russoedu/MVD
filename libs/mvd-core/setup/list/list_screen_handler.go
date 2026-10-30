@@ -30,6 +30,7 @@ type Model struct {
 	width, height int
 }
 
+// New returns the editor holding the lines of URLs.
 func New(URLs []string) Model {
 	ta := textarea.New()
 	ta.Placeholder = "Paste or type playlist / video URLs, one per line"
@@ -41,6 +42,7 @@ func New(URLs []string) Model {
 	return Model{ta: ta, list: list}
 }
 
+// SetSize tells the screen that it has w columns and h rows. It also fits the text area to them.
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.ta.SetWidth(max(10, w-2))
@@ -58,6 +60,8 @@ func (m Model) WithURL(url string) Model {
 	return m
 }
 
+// Update handles msg, which is usually a key press, and returns the new model and a command.
+// It also returns the outcome, which says where the screen leads.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	if k, ok := msg.(tea.KeyPressMsg); ok {
 		if m.list.ConfirmQuit {
@@ -91,6 +95,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	return m, cmd, None
 }
 
+// View draws the editor in width columns and height rows and returns it as text.
 func (m Model) View(width, height int) string {
 	title := " " + urllist.Heading
 	if count := m.list.Count(); count != "" {
@@ -107,6 +112,7 @@ func (m Model) View(width, height int) string {
 	return View(props, width, height).View
 }
 
+// Hints returns the key hints for the editor.
 func (m Model) Hints() []keybar.Hint {
 	return []keybar.Hint{
 		{Key: "ctrl+s", Desc: "start"}, {Key: "ctrl+o", Desc: "songs"}, {Key: "ctrl+e", Desc: "review"}, {Key: "ctrl+p", Desc: "preferences"},

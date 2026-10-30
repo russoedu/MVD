@@ -18,6 +18,7 @@ type Unit struct {
 	R     rune   // the character, for text
 }
 
+// IsBlock reports whether the unit is a block of the pattern, not a character of text.
 func (u Unit) IsBlock() bool { return u.Token != "" }
 
 // labelOf is what a block says: the name the palette gives it, else the first field of the

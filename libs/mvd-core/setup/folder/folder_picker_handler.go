@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+// Outcome is what the host does next after a key press on the picker.
 type Outcome int
 
 const (
@@ -29,6 +30,7 @@ type Model struct {
 	width, height int
 }
 
+// New returns a picker that starts in the folder start.
 func New(start string) Model {
 	ti := textinput.New()
 	ti.Prompt = "new folder: "
@@ -39,12 +41,15 @@ func New(start string) Model {
 // ResolveDir is the absolute folder the picker begins in.
 func ResolveDir(start string) string { return folderbrowser.ResolveDir(start) }
 
+// SetSize tells the screen that it has w columns and h rows. It also fits the new folder box to the width.
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-16))
 	return m
 }
 
+// Update handles msg, which is usually a key press, and returns the new model and a command.
+// It also returns the outcome, which says when a folder was chosen or the picker was cancelled.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
@@ -92,6 +97,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	return m, nil, None
 }
 
+// Hints returns the key hints for the current state, browsing or naming a new folder.
 func (m Model) Hints() []keybar.Hint {
 	if m.browser.Creating {
 		return []keybar.Hint{{Key: "enter", Desc: "create"}, {Key: "esc", Desc: "cancel"}}
@@ -102,6 +108,7 @@ func (m Model) Hints() []keybar.Hint {
 	}
 }
 
+// View draws the picker in width columns and height rows and returns it as text.
 func (m Model) View(width, height int) string {
 	b := m.browser
 	var rows []FoldersRow

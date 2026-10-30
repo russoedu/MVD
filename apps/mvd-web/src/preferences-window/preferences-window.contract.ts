@@ -5,6 +5,7 @@
  */
 export type PreferenceKind = 'choice' | 'number' | 'text' | 'folder' | 'template' | 'colour' | 'action'
 
+/** One choice of a setting that picks from a list: the value kept and the label shown. */
 export interface PreferenceOption {
   value:     string
   label:     string
@@ -18,6 +19,7 @@ export interface PatternUnit {
   block?: boolean
 }
 
+/** One setting in the preferences window: its label, its kind, its value and the limits of that kind. */
 export interface PreferenceField {
   label:        string
   hint?:        string
@@ -53,6 +55,7 @@ export interface TerminalColours {
   selected:   string
 }
 
+/** Everything the preferences window draws: its tabs, the settings of the open tab, the status and the colours. */
 export interface PreferencesSnapshot {
   title:    string
   /** What the first start says, until the person does something. */
@@ -70,6 +73,7 @@ export interface PreferencesSnapshot {
   colours:  TerminalColours
 }
 
+/** What the person did in the preferences window, as the window sends it to the program. */
 export type PreferencesIntent =
   | { kind: 'prefs-tab', index: number } |
   { kind: 'prefs-set', field: number, text: string } |

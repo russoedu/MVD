@@ -121,6 +121,7 @@ func linksInText(text, selfID string) []string {
 	return out
 }
 
+// UniqueStrings returns in without empty strings and repeats, keeping the order of first appearance.
 func UniqueStrings(in []string) []string {
 	seen := make(map[string]bool, len(in))
 	var out []string

@@ -157,6 +157,7 @@ type engineRun struct {
 	done   chan struct{}
 }
 
+// Close cancels the run, drains its events, and waits until the engine has stopped.
 func (r *engineRun) Close() {
 	r.cancel()
 	for range r.Events() {

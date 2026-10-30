@@ -14,6 +14,7 @@ import (
 	"youtube-downloader/libs/mvd-core/setup/advancedsession"
 )
 
+// Outcome is what the host does next after a key press on the screen.
 type Outcome int
 
 const (
@@ -30,6 +31,7 @@ type Model struct {
 	width, height int
 }
 
+// New returns the screen for the settings in cfg.
 func New(cfg config.Config) Model {
 	ti := textinput.New()
 	ti.Prompt = "> "
@@ -39,6 +41,7 @@ func New(cfg config.Config) Model {
 // Config is the settings as they stand, including changes not yet saved.
 func (m Model) Config() config.Config { return m.session.Cfg }
 
+// SetSize tells the screen that it has w columns and h rows. It also fits the typing box to the width.
 func (m Model) SetSize(w, h int) Model {
 	m.width, m.height = w, h
 	m.input.SetWidth(max(10, w-8))
@@ -62,6 +65,8 @@ func (m *Model) showTyped() {
 	m.input.CursorEnd()
 }
 
+// Update handles msg, which is usually a key press, and returns the new model and a command.
+// It also returns the outcome for the host and the settings as they stand, saved or not.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome, config.Config) {
 	k, isKey := msg.(tea.KeyPressMsg)
 
@@ -113,6 +118,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome, config.Config) {
 	return m, nil, None, m.session.Cfg
 }
 
+// Hints returns the key hints for the current state, editing a value or moving between settings.
 func (m Model) Hints() []keybar.Hint {
 	if m.session.Editing() {
 		return []keybar.Hint{{Key: "enter", Desc: "apply"}, {Key: "esc", Desc: "cancel"}}
@@ -120,6 +126,7 @@ func (m Model) Hints() []keybar.Hint {
 	return []keybar.Hint{{Key: "↑↓", Desc: "move"}, {Key: "enter", Desc: "edit"}, {Key: "s", Desc: "save"}, {Key: "esc", Desc: "back"}}
 }
 
+// View draws the screen in width columns and height rows and returns it as text.
 func (m Model) View(width, height int) string {
 	props := Default()
 	props.Palette = Palette(look.CurrentPalette())

@@ -31,6 +31,7 @@ func ListPlaylist(ctx context.Context, bin, playlistURL string, extraArgs []stri
 	return ParsePlaylistEntries(strings.NewReader(string(out)))
 }
 
+// LastLine returns the last line of s without surrounding spaces, or s trimmed when it has one line.
 func LastLine(s string) string {
 	s = strings.TrimSpace(s)
 	if i := strings.LastIndex(s, "\n"); i >= 0 {

@@ -43,11 +43,14 @@ func newPlaylistTrackSource(search trackpick.Searcher, sources trackfind.Sources
 	}
 }
 
+// Handles reports whether one of the providers can list the link.
 func (s playlistTrackSource) Handles(link string) bool {
 	_, ok := s.providerFor(link)
 	return ok
 }
 
+// Tracks lists the title and the songs of the playlist at link, through the provider that handles it.
+// It returns nothing when no provider handles the link, and the provider's error when listing fails.
 func (s playlistTrackSource) Tracks(ctx context.Context, link string) (string, []engine.Track, error) {
 	provider, ok := s.providerFor(link)
 	if !ok {
@@ -56,6 +59,9 @@ func (s playlistTrackSource) Tracks(ctx context.Context, link string) (string, [
 	return provider.Tracks(ctx, link)
 }
 
+// Find looks for the YouTube video of track and receives the progress lines in logf.
+// It returns the video id and whether that video is official.
+// It returns an error when the search fails.
 func (s playlistTrackSource) Find(_ context.Context, track engine.Track, logf func(format string, a ...interface{})) (string, bool, error) {
 	found, err := trackfind.FindTrack(s.search, s.sources, track.Title, track.Artist, track.DurationMs/1000, logf)
 	return found.VideoID, found.Official, err
@@ -72,11 +78,14 @@ func (s playlistTrackSource) providerFor(link string) (playlistProvider, bool) {
 
 type spotifyProvider struct{ client *spotify.Client }
 
+// Handles reports whether link is a Spotify playlist.
 func (spotifyProvider) Handles(link string) bool {
 	_, ok := spotify.PlaylistID(link)
 	return ok
 }
 
+// Tracks fetches the Spotify playlist at link and returns its title and songs.
+// It returns an error when the fetch fails.
 func (p spotifyProvider) Tracks(ctx context.Context, link string) (string, []engine.Track, error) {
 	playlist, err := p.client.Fetch(ctx, link)
 	if err != nil {
@@ -91,11 +100,14 @@ func (p spotifyProvider) Tracks(ctx context.Context, link string) (string, []eng
 
 type appleMusicProvider struct{ client *applemusic.Client }
 
+// Handles reports whether link is an Apple Music playlist.
 func (appleMusicProvider) Handles(link string) bool {
 	_, ok := applemusic.PlaylistURL(link)
 	return ok
 }
 
+// Tracks fetches the Apple Music playlist at link and returns its title and songs.
+// It returns an error when the fetch fails.
 func (p appleMusicProvider) Tracks(ctx context.Context, link string) (string, []engine.Track, error) {
 	playlist, err := p.client.Fetch(ctx, link)
 	if err != nil {
@@ -112,11 +124,14 @@ func (p appleMusicProvider) Tracks(ctx context.Context, link string) (string, []
 // Title" lines or a CSV, whatever service the list came from.
 type songFileProvider struct{}
 
+// Handles reports whether link points to a song file.
 func (songFileProvider) Handles(link string) bool {
 	_, ok := songfile.FilePath(link)
 	return ok
 }
 
+// Tracks loads the song file at link and returns its title and songs.
+// It returns an error when the file cannot be loaded.
 func (songFileProvider) Tracks(_ context.Context, link string) (string, []engine.Track, error) {
 	path, _ := songfile.FilePath(link)
 	list, err := songfile.Load(path)
@@ -135,8 +150,11 @@ func (songFileProvider) Tracks(_ context.Context, link string) (string, []engine
 // that of any other song.
 type searchProvider struct{ finder catalog.Finder }
 
+// Handles reports whether link is a search by name.
 func (searchProvider) Handles(link string) bool { return musicsearch.Is(link) }
 
+// Tracks finds the songs the search at link asks for and returns the title and the songs.
+// It returns an error when the search is not for an artist, an album or a song, or when the catalogues fail.
 func (p searchProvider) Tracks(ctx context.Context, link string) (string, []engine.Track, error) {
 	query, ok := musicsearch.Parse(link)
 	if !ok {

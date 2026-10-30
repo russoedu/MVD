@@ -178,6 +178,7 @@ type engineRun struct {
 // Events is the engine's events, as the ledger saw them.
 func (r *engineRun) Events() <-chan interface{} { return r.events }
 
+// Close cancels the run, drains its events, waits until the engine has stopped, then releases the run.
 func (r *engineRun) Close() {
 	r.cancel()
 	for range r.events {

@@ -29,6 +29,9 @@ func newRunLogger(path string) (*runLogger, error) {
 	return l, nil
 }
 
+// Write appends line to the log with the time and a tag for the playlist.
+// Playlist is the zero-based playlist index. Entry is the entry id, and a negative entry tags the playlist alone.
+// It does nothing when the logger has no file.
 func (l *runLogger) Write(playlist, entry int, line string) {
 	if l.f == nil {
 		return
@@ -42,6 +45,7 @@ func (l *runLogger) Write(playlist, entry int, line string) {
 	_, _ = fmt.Fprintf(l.f, "%s [%s] %s\n", time.Now().Format("15:04:05"), tag, line)
 }
 
+// Close closes the log file, if there is one.
 func (l *runLogger) Close() {
 	if l.f != nil {
 		_ = l.f.Close()

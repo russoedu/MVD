@@ -19,6 +19,7 @@ func newTaskQueue() *taskQueue {
 	return q
 }
 
+// Push adds the entry id to the end of the queue and wakes one waiting Pop.
 func (q *taskQueue) Push(id int) {
 	q.mu.Lock()
 	q.items = append(q.items, id)
@@ -48,6 +49,8 @@ func (q *taskQueue) Pop(ctx context.Context) (int, bool) {
 	return id, true
 }
 
+// Close ends the queue and wakes every waiting Pop.
+// Items already queued can still be popped.
 func (q *taskQueue) Close() {
 	q.mu.Lock()
 	q.closed = true

@@ -42,6 +42,7 @@ const (
 	KindAudio
 )
 
+// String returns "official audio" for KindAudio and "official video" for any other kind.
 func (k Kind) String() string {
 	if k == KindAudio {
 		return "official audio"

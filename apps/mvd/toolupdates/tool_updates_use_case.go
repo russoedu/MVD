@@ -36,6 +36,7 @@ type Updates struct {
 	done func()
 }
 
+// New returns an Updates that checks through run. Failed downloads are requeued through retry. It shows notices through notify, logs through logf, and reads the time from now.
 func New(run func() []string, retry func() int, notify func(notification.Notice), logf func(string, ...interface{}), now func() time.Time) *Updates {
 	return &Updates{run: run, retry: retry, notify: notify, logf: logf, now: now}
 }

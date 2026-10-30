@@ -48,12 +48,14 @@ export interface Shortcut {
   key:    string
 }
 
+/** One menu of the menu bar: its label and its entries. */
 export interface MenuSnapshot {
   label:     string
   mnemonic?: Mnemonic
   entries:   MenuEntrySnapshot[]
 }
 
+/** One entry of a menu: what it says, its shortcut and whether it can be used. */
 export interface MenuEntrySnapshot {
   id:               string
   label:            string
@@ -67,6 +69,7 @@ export interface MenuEntrySnapshot {
 /** What a button means in its group: a theme places the default and the cancel buttons. */
 export type ButtonRole = 'default' | 'cancel' | 'other'
 
+/** One button of a dialog or of the window: its label, its role and whether it can be used. */
 export interface ButtonSnapshot {
   id:              string
   label:           string
@@ -80,6 +83,7 @@ export interface ButtonSnapshot {
 /** How a line reads: a theme picks the colour. */
 export type Tone = 'normal' | 'dim' | 'good' | 'bad' | 'busy'
 
+/** One row of the list of sources: a link or a search, with its state. */
 export interface SourceRow {
   id:     string
   label:  string
@@ -87,6 +91,7 @@ export interface SourceRow {
   tone:   Tone
 }
 
+/** The list of sources: its heading, its rows and the selected row. */
 export interface SourcesSnapshot {
   heading:  string
   rows:     SourceRow[]
@@ -96,6 +101,7 @@ export interface SourcesSnapshot {
 /** Progress from 0 to 1, 'unknown' while it cannot be measured, or null when there is none. */
 export type Progress = number | 'unknown' | null
 
+/** One row of the list of songs: the song, its progress and its status. */
 export interface SongRow {
   id:       string
   ticked:   boolean
@@ -106,30 +112,37 @@ export interface SongRow {
   tone:     Tone
 }
 
+/** The list of songs: its heading, its rows and the selected row. */
 export interface SongsSnapshot {
   heading:  string
   rows:     SongRow[]
   selected: number
 }
 
+/** The details of the selected song: a heading and its lines. */
 export interface DetailsSnapshot {
   heading: string
   lines:   string[]
 }
 
+/** One hint of the status line: a shortcut and what it does. */
 export interface KeyHint {
   shortcut: Shortcut
   label:    string
 }
 
+/** The status line: a summary and the hints for the keys that work now. */
 export interface StatusSnapshot {
   summary: string
   hints:   KeyHint[]
 }
 
+/** How music is added: by the address of a link or by a search. */
 export type AddMusicMode = 'url' | 'search'
+/** A field of the Add music window. */
 export type AddMusicField = 'url' | 'artist' | 'album' | 'song'
 
+/** The Add music window: its mode, the fields of that mode, its help, any problem and its buttons. */
 export interface AddMusicSnapshot {
   heading:  string
   mode:     AddMusicMode

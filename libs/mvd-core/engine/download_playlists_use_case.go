@@ -1014,6 +1014,7 @@ type rejectedDownload struct {
 	files   []string
 }
 
+// Error returns the problem that made the download unfit to keep.
 func (r *rejectedDownload) Error() string { return r.problem }
 
 // checkDownloaded hands each file yt-dlp reported to Options.CheckDownload. A problem

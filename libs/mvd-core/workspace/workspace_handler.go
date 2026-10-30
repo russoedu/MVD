@@ -152,6 +152,7 @@ func (m *Model) show(v downloadpage.Model) { m.screen, m.dl = v, v.Session() }
 // Session is the list that is open.
 func (m Model) Session() *downloadlist.Session { return m.session }
 
+// Init returns the first command of the screen and the tick that checks the tools.
 func (m Model) Init() tea.Cmd { return tea.Batch(m.screen.Init(), m.toolsTick()) }
 
 func (m Model) running() bool { return m.run != nil }
@@ -209,6 +210,7 @@ func (m Model) addToRun(links []string) Model {
 	return m
 }
 
+// Update handles msg and returns the next model and its command. It also clears notices when a run ends, quits when nothing is left to lose, and loads songs.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if ws, ok := next.(Model); ok {
