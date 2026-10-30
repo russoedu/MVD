@@ -23,6 +23,8 @@ type Job struct {
 	Video, Music string
 	// OutDir receives <video name>-better.mp4 and result.json.
 	OutDir string
+	// FFmpeg is a folder holding ffmpeg and ffprobe, or the ffmpeg program; empty uses the PATH.
+	FFmpeg string
 }
 
 // Result is what the app says it did.
@@ -41,8 +43,12 @@ func Fix(ctx context.Context, job Job, onEvent func(action string)) (Result, err
 		return Result{}, err
 	}
 	resultFile := filepath.Join(job.OutDir, "result.json")
-	cmd := exec.Command(job.Exe, "--headless", "--videos", job.Video, "--input", "music="+job.Music,
-		"--out", resultFile, "--json-events")
+	args := []string{"--headless", "--videos", job.Video, "--input", "music=" + job.Music,
+		"--out", resultFile, "--json-events"}
+	if job.FFmpeg != "" {
+		args = append(args, "--ffmpeg", job.FFmpeg)
+	}
+	cmd := exec.Command(job.Exe, args...)
 	procwindow.Hide(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
