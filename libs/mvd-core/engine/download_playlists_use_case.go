@@ -75,6 +75,10 @@ type Options struct {
 	// song to the search again, without that video; an error only means it could not be
 	// checked. The file itself is never changed.
 	CheckDownload func(ctx context.Context, path string) (problem string, err error)
+	// AfterDownload, when set, is called with the files of each finished official video, to
+	// improve them in place (the best audio put on the video, say). A failure is only
+	// logged: the video as downloaded is kept.
+	AfterDownload func(ctx context.Context, videoID string, files []string, log func(format string, args ...any)) error
 	Workers       int    // the most videos in flight across all playlists; fewer while the service limits requests
 	LogPath       string // "" disables the log file
 	Resolver      OfficialResolver
@@ -986,7 +990,18 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 			e.mu.Unlock()
 		}
 		if check {
-			return e.checkDownloaded(ctx, pl, eid, target, pathsFile)
+			if rejected := e.checkDownloaded(ctx, pl, eid, target, pathsFile); rejected != nil {
+				return rejected
+			}
+		}
+		e.mu.Lock()
+		official, files := en.official, en.saved
+		e.mu.Unlock()
+		if e.opts.AfterDownload != nil && official && len(files) > 0 {
+			logf := func(format string, args ...any) { e.log(pl, eid, format, args...) }
+			if afterErr := e.opts.AfterDownload(ctx, target, files, logf); afterErr != nil {
+				e.log(pl, eid, "[better audio] %v", afterErr)
+			}
 		}
 	}
 	return err

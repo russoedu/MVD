@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 
@@ -117,6 +118,9 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 		HoldForReview:       hold,
 		Plan:                plan,
 		CheckDownload:       checkOneSidedSound(ytDlpPath),
+	}
+	if cfg.BetterAudio && runtime.GOOS == "windows" {
+		opts.AfterDownload = betterAudio(ytDlpPath, extraArgs)
 	}
 	// Videos are downloaded and merged out of the library and moved in once complete.
 	if appDir, err := appdir.Dir(); err == nil {
