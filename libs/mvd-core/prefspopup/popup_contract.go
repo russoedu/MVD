@@ -14,6 +14,10 @@ type Host struct {
 	Move func() (message string, err error)
 	// Uninstall asks to remove the app and says what came of it.
 	Uninstall func() (message string, err error)
+	// SignIn opens the window to sign in to YouTube and says what came of it.
+	SignIn func() (message string, err error)
+	// SignInState says what the last sign-in came to ("premium", "free", "none"), or "".
+	SignInState func() string
 	// StylesWindow says the host draws its window in the classic systems' looks too, so the
 	// preferences offer the choice.
 	StylesWindow bool

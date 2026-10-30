@@ -26,6 +26,7 @@ const (
 	ActionNone ActionKind = iota
 	ActionMove
 	ActionUninstall
+	ActionSignIn
 )
 
 // Field is one setting of a page.
@@ -94,6 +95,10 @@ type Capabilities struct {
 	CanMove bool
 	// CanUninstall says the host can remove the app.
 	CanUninstall bool
+	// CanSignIn says the host can open a window to sign in to YouTube.
+	CanSignIn bool
+	// SignInState is what the last sign-in came to ("premium", "free", "none"), or empty.
+	SignInState string
 	// CanStyleWindow says the host draws its window in the classic systems' looks too.
 	CanStyleWindow bool
 }

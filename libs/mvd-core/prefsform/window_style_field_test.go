@@ -34,3 +34,28 @@ func TestTheWindowStyleIsOfferedFirstOnlyWhereTheHostDrawsIt(t *testing.T) {
 		t.Errorf("style %q reads %q", cfg.WindowStyle, field.OptionText("windows-xp"))
 	}
 }
+
+func TestSignInIsOnlyOfferedWhereTheHostCanDoIt(t *testing.T) {
+	has := func(caps Capabilities) (action, option bool) {
+		for _, page := range Pages(caps) {
+			for _, f := range page.Fields {
+				if f.Kind == KindAction && f.Action == ActionSignIn {
+					action = true
+				}
+				for _, o := range f.Options {
+					if o == "mvd" {
+						option = true
+					}
+				}
+			}
+		}
+
+		return action, option
+	}
+	if a, o := has(Capabilities{}); a || o {
+		t.Errorf("without the capability: action %v, option %v, want neither", a, o)
+	}
+	if a, o := has(Capabilities{CanSignIn: true}); !a || !o {
+		t.Errorf("with the capability: action %v, option %v, want both", a, o)
+	}
+}

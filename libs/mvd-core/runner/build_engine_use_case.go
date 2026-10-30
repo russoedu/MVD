@@ -70,13 +70,17 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 	}
 	switch {
 	case cfg.CookiesFromBrowser != "" && cfg.CookiesFile != "":
+		spec := cfg.CookiesFromBrowser
+		if spec == cookies.SignInChoice {
+			spec = cookies.SignInSpec(filepath.Dir(cfg.CookiesFile))
+		}
 		log("exporting cookies from %s...", cfg.CookiesFromBrowser)
-		if err := ytdlp.ExportCookies(ctx, ytDlpPath, cfg.CookiesFromBrowser, cfg.CookiesFile, probe, extraArgs); err != nil {
+		if err := ytdlp.ExportCookies(ctx, ytDlpPath, spec, cfg.CookiesFile, probe, extraArgs); err != nil {
 			log("warning: %v", err)
 		}
 	case cfg.AutoCookies && cfg.CookiesFile != "" && cookieMissing:
 		log("looking for YouTube cookies in your browsers...")
-		if b, ok := cookies.Acquire(ctx, ytDlpPath, cfg.CookiesFile, probe, extraArgs, cookies.InstalledBrowsers(), log); ok {
+		if b, ok := cookies.Acquire(ctx, ytDlpPath, cfg.CookiesFile, probe, extraArgs, withSignIn(cfg.CookiesFile, cookies.InstalledBrowsers()), log); ok {
 			log("found a YouTube login in %s", b)
 		} else {
 			log("no usable browser cookies found; continuing without them")
@@ -167,4 +171,15 @@ func checkOneSidedSound(ytDlpPath string) func(ctx context.Context, path string)
 		}
 		return "the sound plays on one side only", nil
 	}
+}
+
+// withSignIn puts the login made inside MVD first, when there is one: it is the one the person
+// made for MVD.
+func withSignIn(cookiesFile string, browsers []string) []string {
+	appDir := filepath.Dir(cookiesFile)
+	if !cookies.HasSignIn(appDir) {
+		return browsers
+	}
+
+	return append([]string{cookies.SignInSpec(appDir)}, browsers...)
 }
