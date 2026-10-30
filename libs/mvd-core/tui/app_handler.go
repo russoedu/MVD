@@ -48,6 +48,8 @@ type SetupInput struct {
 	// SignIn, when set, is offered on the preferences: it opens a window to sign in to YouTube
 	// and says what came of it.
 	SignIn func() (message string, err error)
+	// SignInState says what the last sign-in came to, for the preferences to show.
+	SignInState func() string
 }
 
 // SetupResult is returned when the setup screens close.

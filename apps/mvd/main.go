@@ -31,6 +31,7 @@ import (
 	"youtube-downloader/apps/mvd/uninstall"
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/cookies"
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-core/openurl"
 	"youtube-downloader/libs/mvd-core/playlistfile"
@@ -212,7 +213,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 		// Moving later is possible whatever was answered when the app asked by itself.
 		Move: move,
 		// Signing in inside MVD is only done on Windows, where yt-dlp can read the window's cookies.
-		SignIn: signInHost(ctx, appDir, ytDlpPath),
+		SignIn:      signInHost(ctx, appDir, ytDlpPath),
+		SignInState: func() string { return cookies.SignInState(appDir) },
 	}, logf))
 
 	// .mvd files are download lists of this program: they get its icon and open it. It is

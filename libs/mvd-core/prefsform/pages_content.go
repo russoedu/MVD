@@ -48,6 +48,20 @@ func setCookieChoice(c *config.Config, v string) {
 
 var cookieOptions = []string{"off", "mvd", "firefox", "chrome", "edge", "brave", "chromium", "opera", "vivaldi", "safari", "all"}
 
+// signInLabel names the sign-in button, with what the last sign-in came to.
+func signInLabel(state string) string {
+	switch state {
+	case "premium":
+		return "Sign in to YouTube (signed in, Premium)"
+	case "free":
+		return "Sign in to YouTube (signed in, not Premium)"
+	case "none":
+		return "Sign in to YouTube (no login found)"
+	}
+
+	return "Sign in to YouTube"
+}
+
 // cookieOptionsFor leaves out the sign-in made inside MVD where the host cannot offer it.
 func cookieOptionsFor(caps Capabilities) []string {
 	if caps.CanSignIn {
@@ -163,7 +177,7 @@ func Pages(caps Capabilities) []Page {
 			Set: func(c *config.Config, v string) { c.CheckForUpdates = v == "yes" }},
 	}
 	if caps.CanSignIn {
-		advanced = append(advanced, Field{Label: "Sign in to YouTube", Hint: "Opens a window to sign in once. With a Premium account the music downloads at a higher quality. Then pick MVD sign-in in the setting above.", Kind: KindAction, Action: ActionSignIn})
+		advanced = append(advanced, Field{Label: signInLabel(caps.SignInState), Hint: "Opens a window to sign in once. With a Premium account the music downloads at a higher quality. Then pick MVD sign-in in the setting above.", Kind: KindAction, Action: ActionSignIn})
 	}
 	if caps.CanMove {
 		advanced = append(advanced, Field{Label: "Move MVD to its own folder", Kind: KindAction, Action: ActionMove})

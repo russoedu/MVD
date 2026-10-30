@@ -234,7 +234,7 @@ func (a workspaceApp) popupHost() prefspopup.Host {
 			return movingResult(outcome, err)
 		}
 	}
-	host.SignIn = in.SignIn
+	host.SignIn, host.SignInState = in.SignIn, in.SignInState
 	if in.Uninstall != nil {
 		uninstall := in.Uninstall
 		host.Uninstall = func() (string, error) {

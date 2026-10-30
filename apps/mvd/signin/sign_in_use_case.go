@@ -21,6 +21,7 @@ func Run(ctx context.Context, appDir, ytDlpPath string, ytArgs []string) (string
 		return "", fmt.Errorf("the sign-in window did not run: %w", err)
 	}
 	signedIn, premium := cookies.CheckSignIn(ctx, ytDlpPath, cookies.SignInSpec(appDir), ytArgs)
+	cookies.SaveSignInState(appDir, signedIn, premium)
 
 	return outcomeMessage(signedIn, premium), nil
 }

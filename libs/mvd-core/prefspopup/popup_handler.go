@@ -38,7 +38,12 @@ func New(cfg config.Config, host Host) Model {
 
 // capabilities are what the host can do, as the form asks for it.
 func capabilities(host Host) prefsform.Capabilities {
-	return prefsform.Capabilities{CanPickFolder: host.PickFolder != nil, CanMove: host.Move != nil, CanUninstall: host.Uninstall != nil, CanSignIn: host.SignIn != nil, CanStyleWindow: host.StylesWindow}
+	state := ""
+	if host.SignInState != nil {
+		state = host.SignInState()
+	}
+
+	return prefsform.Capabilities{SignInState: state, CanPickFolder: host.PickFolder != nil, CanMove: host.Move != nil, CanUninstall: host.Uninstall != nil, CanSignIn: host.SignIn != nil, CanStyleWindow: host.StylesWindow}
 }
 
 // Config is the settings as changed so far.
