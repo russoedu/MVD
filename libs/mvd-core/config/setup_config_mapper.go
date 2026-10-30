@@ -63,6 +63,8 @@ func applyKey(cfg *Config, key, val, path string) {
 		cfg.OfficialVideo = officialModeOf(val)
 	case "save_not_found":
 		cfg.SaveNotFound = parseBool(val)
+	case "better_audio":
+		cfg.BetterAudio = parseBool(val)
 	case "check_for_updates":
 		cfg.CheckForUpdates = parseBool(val)
 	case "auto_retry":
@@ -180,6 +182,7 @@ func configText(cfg Config) string {
 	w("pick_workers", strconv.Itoa(cfg.PickWorkers))
 	w("official_video", string(cfg.OfficialVideo))
 	w("save_not_found", strconv.FormatBool(cfg.SaveNotFound))
+	w("better_audio", strconv.FormatBool(cfg.BetterAudio))
 	w("auto_retry", strconv.FormatBool(cfg.AutoRetry))
 	w("retry_cycles", strconv.Itoa(cfg.RetryCycles))
 	w("retry_wait_seconds", strconv.Itoa(cfg.RetryWaitSeconds))

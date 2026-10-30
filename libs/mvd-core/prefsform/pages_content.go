@@ -1,6 +1,7 @@
 package prefsform
 
 import (
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -231,6 +232,10 @@ func Pages(caps Capabilities) []Page {
 			{Label: "Download Official Music Video", Hint: "Yes: use the official music video when there is one, and the video as it is otherwise. Only: download just the songs that have one. No: never look for it.", Kind: KindChoice, Options: config.OfficialModes,
 				Get: func(c config.Config) string { return string(c.OfficialVideo) },
 				Set: func(c *config.Config, v string) { c.OfficialVideo = config.OfficialMode(v) }},
+			{Label: "Best Audio On The Video", Hint: "After an official music video is downloaded, replace its sound with the best quality of the song and line them up. Needs time for every song. Windows only.", Kind: KindChoice, Options: yesNo,
+				Shown: func(config.Config) bool { return runtime.GOOS == "windows" },
+				Get:   func(c config.Config) string { return boolText(c.BetterAudio) },
+				Set:   func(c *config.Config, v string) { c.BetterAudio = v == "yes" }},
 			{Label: "Max Concurrent Downloads", Hint: "How many videos are downloaded at the same time. More is faster but uses more of your connection.", Kind: KindStepper, Min: 1, Max: 32, Step: 1,
 				Get: func(c config.Config) string { return intText(c.MaxConcurrentDownloads) },
 				Set: func(c *config.Config, v string) { c.MaxConcurrentDownloads = parseInt(v) }},

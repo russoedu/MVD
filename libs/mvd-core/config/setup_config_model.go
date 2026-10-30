@@ -37,6 +37,9 @@ type Config struct {
 	// a CSV file in the output folder (the playlist, the artist, the title and the
 	// address of the video, when there is one).
 	SaveNotFound bool
+	// BetterAudio, on Windows, puts the best audio of the song on the official video (with
+	// music-fixer) once it is downloaded.
+	BetterAudio bool
 	AutoRetry    bool
 	// RetryCycles is how many times a failed download is retried.
 	RetryCycles int
