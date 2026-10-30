@@ -15,7 +15,7 @@ func CheckSignIn(ctx context.Context, bin, spec string, extraArgs []string) (sig
 	if err != nil {
 		return false, false
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 	file := dir + string(os.PathSeparator) + "cookies.txt"
 	if err := ytdlp.ExportCookies(ctx, bin, spec, file, premiumProbeURL, extraArgs); err != nil || !hasYouTubeSession(file) {
 		return false, false
