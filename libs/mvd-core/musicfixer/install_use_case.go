@@ -23,6 +23,11 @@ var ErrNotBundled = errors.New("this build of MVD has no music-fixer for this sy
 
 // Install puts the bundled music-fixer in dataDir and returns the path of its program. A folder
 // already made from the same bundle is kept as it is.
+//
+// dataDir: the folder that holds MVD's data. The app goes in its music-fixer folder.
+//
+// It returns ErrNotBundled when this build has no zip for this system. It returns another error
+// when the zip is damaged, holds a file outside its folder, has no program, or cannot be written.
 func Install(dataDir string) (string, error) {
 	zipName := fmt.Sprintf("bundle/music-fixer-%s-%s.zip", runtime.GOOS, runtime.GOARCH)
 	data, err := bundled.ReadFile(zipName)

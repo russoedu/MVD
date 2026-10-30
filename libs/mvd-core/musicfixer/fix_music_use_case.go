@@ -36,8 +36,14 @@ type Result struct {
 	Score    float64
 }
 
-// Fix runs the app and waits. onEvent, when not nil, gets the name of each action as it starts.
-// Cancelling ctx asks the app to stop, and Fix returns ctx's error.
+// Fix runs the music-fixer app on one video and waits for it to end.
+//
+// ctx: cancelling it asks the app to stop, and Fix then returns ctx's error.
+// job: the program, the video, the high-quality music, the output folder and the ffmpeg to use.
+// onEvent: when not nil, gets the name of each action as it starts.
+//
+// It returns the new video and how the music was lined up. It returns an error when the output
+// folder cannot be made, the app cannot start, the app reports a failure, or ctx is cancelled.
 func Fix(ctx context.Context, job Job, onEvent func(action string)) (Result, error) {
 	if err := os.MkdirAll(job.OutDir, 0o755); err != nil {
 		return Result{}, err
