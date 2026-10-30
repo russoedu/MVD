@@ -89,3 +89,6 @@ test-output
 
 # Playwright MCP scratch output
 /.playwright-mcp/
+
+# music-fixer builds from VideoCraw (private); put here by the release build only
+/libs/mvd-core/musicfixer/bundle/*.zip

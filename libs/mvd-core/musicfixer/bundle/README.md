@@ -1,0 +1,1 @@
+The release build puts music-fixer-<os>-<arch>.zip (from VideoCraw's private releases) in this folder before compiling. The zips are never committed (see .gitignore); without one, the app builds and the feature is off.
