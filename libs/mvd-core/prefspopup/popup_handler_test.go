@@ -1,6 +1,7 @@
 package prefspopup
 
 import (
+	"runtime"
 	"github.com/charmbracelet/x/ansi"
 	"strings"
 	"testing"
@@ -74,7 +75,11 @@ func TestTabsShowTheirPagesAndKeepTheSettings(t *testing.T) {
 
 func TestAStepperStaysBetweenItsLimits(t *testing.T) {
 	m := newPopup().show(1)
-	for range 4 {
+	downs := 4
+	if runtime.GOOS == "windows" {
+		downs++ // Best Audio On The Video comes before it, and shows only on Windows
+	}
+	for range downs {
 		m = press(m, "down") // to Max Concurrent Downloads
 	}
 	for range 50 {
